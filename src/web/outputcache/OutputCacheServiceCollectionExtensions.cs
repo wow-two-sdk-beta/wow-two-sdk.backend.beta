@@ -1,0 +1,27 @@
+using Microsoft.Extensions.DependencyInjection;
+
+namespace WoW.Two.Sdk.Backend.Beta.Web.OutputCache;
+
+/// <summary>
+/// `Microsoft.AspNetCore.OutputCaching` registration with conventional policies.
+/// </summary>
+public static class OutputCacheServiceCollectionExtensions
+{
+    /// <summary>Default named policy: 60-second cache.</summary>
+    public const string DefaultPolicyName = "wow-two-default";
+
+    /// <summary>
+    /// Register output caching with a default 60-second policy. Add policies via the returned builder.
+    /// </summary>
+    public static IServiceCollection AddWowTwoOutputCache(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddOutputCache(options =>
+        {
+            options.AddPolicy(DefaultPolicyName, b => b.Expire(TimeSpan.FromSeconds(60)));
+        });
+
+        return services;
+    }
+}

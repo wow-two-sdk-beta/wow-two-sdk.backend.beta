@@ -22,7 +22,7 @@ See [`targets.md` §6](./docs/analysis/philosophy/targets.md#6-phase-mapping). Q
 | Phase | Bundle | Status |
 |---|---|---|
 | P0 | testing scaffold (parallel track) | ✅ shipped (12 packages) |
-| P1 | boot floor — foundation + observability + web basics | 🚧 foundation shipped (7 packages); observability + web pending |
+| P1 | boot floor — foundation + observability + web basics | ✅ shipped (24 packages: 7 foundation + 8 observability + 9 web) |
 | P2 | request pipeline + auth | planned |
 | P3 | persistence + outbound | planned |
 | P4 | distributed essentials | planned |

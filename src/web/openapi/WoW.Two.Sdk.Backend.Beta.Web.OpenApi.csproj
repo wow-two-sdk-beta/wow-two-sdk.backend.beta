@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>`Microsoft.AspNetCore.OpenApi` (.NET 9 first-party) wiring with conventional defaults.</Description>
+    <PackageTags>wow-two; backend; beta; web; openapi; swagger</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+
+</Project>

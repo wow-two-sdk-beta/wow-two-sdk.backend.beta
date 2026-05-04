@@ -8,11 +8,15 @@
 |---|---|---|
 | P0 | Testing scaffold (parallel track) | ✅ 12 packages shipped |
 | P1 — foundation | `time`, `errors`, `results`, `validation`, `serialization`, `guards`, `value-objects` | ✅ 7 packages shipped |
-| P1 — observability | `logging`, `tracing`, `metrics`, `healthchecks`, `otlp`, `prometheus`, `azure-monitor`, `datadog` | planned |
-| P1 — web | `hosting`, `openapi`, `problemdetails`, `ratelimit`, `outputcache`, `secureheaders`, `cors`, `compression`, `versioning` | planned |
-| P2–P6 | request pipeline + auth · persistence + outbound · distributed · SaaS · heavy domain | planned |
+| P1 — observability | `logging`, `tracing`, `metrics`, `healthchecks`, `otlp`, `prometheus`, `azure-monitor`, `datadog` | ✅ 8 packages shipped |
+| P1 — web | `hosting`, `openapi`, `problemdetails`, `ratelimit`, `outputcache`, `secureheaders`, `cors`, `compression`, `versioning` | ✅ 9 packages shipped |
+| P2 | request pipeline + auth | planned |
+| P3 | persistence + outbound | planned |
+| P4 | distributed essentials | planned |
+| P5 | SaaS-shaped (tenancy + AI + flags) | planned |
+| P6 | heavy domain extensions | planned |
 
-19 packages shipped, 150+ planned. See [`docs/conventions/package-registry.md`](./docs/conventions/package-registry.md).
+**36 packages shipped**, 150+ planned. See [`docs/conventions/package-registry.md`](./docs/conventions/package-registry.md).
 
 ## Quick start (once P1 ships)
 

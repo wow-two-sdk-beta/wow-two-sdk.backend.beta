@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>RFC 7807 ProblemDetails wiring — built-in `AddProblemDetails` + Hellang middleware bridge.</Description>
+    <PackageTags>wow-two; backend; beta; web; problem-details; rfc7807</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Hellang.Middleware.ProblemDetails" />
+    <ProjectReference Include="..\..\foundation\errors\WoW.Two.Sdk.Backend.Beta.Errors.csproj" />
+  </ItemGroup>
+
+</Project>

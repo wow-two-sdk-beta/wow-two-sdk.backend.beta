@@ -43,30 +43,30 @@
 | Package | Niche | Status |
 |---|---|---|
 | `WoW.Two.Sdk.Backend.Beta.Observability` | Meta — wires logging + tracing + metrics + health | planned |
-| `WoW.Two.Sdk.Backend.Beta.Observability.Logging` | Serilog → ILogger wiring, default sinks, enrichers | planned |
-| `WoW.Two.Sdk.Backend.Beta.Observability.Tracing` | OpenTelemetry tracer + ASP.NET Core/HttpClient/SqlClient/EFCore instrumentation | planned |
-| `WoW.Two.Sdk.Backend.Beta.Observability.Metrics` | OTel meters + runtime/process instrumentation | planned |
-| `WoW.Two.Sdk.Backend.Beta.Observability.HealthChecks` | Xabaril core providers + UI helpers | planned |
-| `WoW.Two.Sdk.Backend.Beta.Observability.Otlp` | OTLP exporter pre-config | planned |
-| `WoW.Two.Sdk.Backend.Beta.Observability.Prometheus` | Prometheus scrape exporter | planned |
-| `WoW.Two.Sdk.Backend.Beta.Observability.AzureMonitor` | Azure Monitor exporter | planned |
-| `WoW.Two.Sdk.Backend.Beta.Observability.Datadog` | Datadog exporter adapter | planned |
+| `WoW.Two.Sdk.Backend.Beta.Observability.Logging` | `UseWowTwoLogging` — Serilog → `ILogger<T>` w/ Console + rolling File + enrichers | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Observability.Tracing` | `AddWowTwoTracing` — OTel tracer + AspNetCore/HttpClient/Grpc/SqlClient/EFCore/Redis instrumentation | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Observability.Metrics` | `AddWowTwoMetrics` — OTel meter + AspNetCore/HttpClient/Runtime/Process | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Observability.HealthChecks` | `AddWowTwoHealthChecks` — `IHealthChecksBuilder` + Xabaril provider deps (SqlServer/Postgres/MySql/Redis/RabbitMQ/Mongo/Kafka/Elastic/Network/Uris/AzureSB/AzureStorage/AwsS3/AwsSqs) | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Observability.Otlp` | `AddWowTwoOtlpExporter` — OTLP gRPC/HTTP for traces + metrics | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Observability.Prometheus` | `AddWowTwoPrometheusExporter` — scrape endpoint | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Observability.AzureMonitor` | `AddWowTwoAzureMonitorExporter` — Azure Monitor distro | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Observability.Datadog` | `Datadog.Trace` re-export (use OTLP route by default) | shipped |
 
 ### Web
 
 | Package | Niche | Status |
 |---|---|---|
 | `WoW.Two.Sdk.Backend.Beta.Web` | Meta — wires hosting + openapi + problem details + secure-headers + cors + ratelimit + outputcache | planned |
-| `WoW.Two.Sdk.Backend.Beta.Web.Hosting` | Kestrel defaults, forwarded headers, host filtering | planned |
-| `WoW.Two.Sdk.Backend.Beta.Web.OpenApi` | `Microsoft.AspNetCore.OpenApi` defaults | planned |
+| `WoW.Two.Sdk.Backend.Beta.Web.Hosting` | `AddWowTwoHosting` / `UseWowTwoHosting` — forwarded headers + request decompression | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Web.OpenApi` | `AddWowTwoOpenApi` / `MapWowTwoOpenApi` — `Microsoft.AspNetCore.OpenApi` (.NET 9) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Web.OpenApi.Swashbuckle` | Swashbuckle fallback adapter | planned |
-| `WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails` | RFC 7807 + Hellang + custom mappers | planned |
-| `WoW.Two.Sdk.Backend.Beta.Web.RateLimit` | `Microsoft.AspNetCore.RateLimiting` policies + Redis distributed limiter | planned |
-| `WoW.Two.Sdk.Backend.Beta.Web.OutputCache` | OutputCaching middleware with HybridCache | planned |
-| `WoW.Two.Sdk.Backend.Beta.Web.SecureHeaders` | CSP / HSTS / X-Frame-Options / Permissions-Policy | planned |
-| `WoW.Two.Sdk.Backend.Beta.Web.Cors` | CORS policy presets | planned |
-| `WoW.Two.Sdk.Backend.Beta.Web.Compression` | Response compression (gzip/brotli/zstd) | planned |
-| `WoW.Two.Sdk.Backend.Beta.Web.Versioning` | `Asp.Versioning.*` defaults | planned |
+| `WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails` | `AddWowTwoProblemDetails` — RFC 7807 + traceId/requestId enrichment | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Web.RateLimit` | `AddWowTwoRateLimit` — sliding window per-IP, 100 req/min default | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Web.OutputCache` | `AddWowTwoOutputCache` — built-in middleware with default 60s policy | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Web.SecureHeaders` | `UseWowTwoSecureHeaders` — OWASP-flavored preset (HSTS, CSP-friendly, COOP/COEP/CORP) | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Web.Cors` | `AddWowTwoCors` — single-line CORS policy registration | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Web.Compression` | `AddWowTwoCompression` — Brotli + Gzip with `Fastest` level | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Web.Versioning` | `AddWowTwoVersioning` — URL/header/query versioning with `1.0` default | shipped |
 
 ## P2 — Request pipeline + auth
 
