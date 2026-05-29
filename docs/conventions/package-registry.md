@@ -96,23 +96,25 @@
 
 | Package | Niche | Status |
 |---|---|---|
-| `WoW.Two.Sdk.Backend.Beta.Data` | Meta — EF Core + audit + soft-delete + bulk + naming-conventions | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore` | EF Core base setup | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SqlServer` | SQL Server provider preset | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Postgres` | Npgsql provider preset | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.MySql` | Pomelo MySQL provider preset | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Sqlite` | SQLite provider preset | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Cosmos` | Cosmos provider preset | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit` | SaveChangesInterceptor for `CreatedAt`/`UpdatedAt`/by | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SoftDelete` | Query filter + restore op | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.NamingConventions` | snake_case / lower_case naming | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Bulk` | EFCore.BulkExtensions wrapper | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Triggered` | EntityFrameworkCore.Triggered preset | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Projectables` | EFCore.Projectables wrapper | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.Dapper` | Dapper conventions + base helpers | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.Migrations.Ef` | EF Migrations runner | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.Migrations.DbUp` | DbUp script-runner alternative | planned |
-| `WoW.Two.Sdk.Backend.Beta.Data.Specifications` | Ardalis.Specification wrapper | planned |
+| `WoW.Two.Sdk.Backend.Beta.Data` | Meta — wires Abstractions + EF Core + Audit + SoftDelete + NamingConventions + Json + Ef Migrations runner | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.Abstractions` | Entity contracts — `IEntity`, `IKeyedEntity<TId>`, `IAuditable`/`ICreationAuditable`/`IModificationAuditable` (+ `…By<TUserId>` actor variants), `ISoftDeletable`/`ISoftDeletableBy<TUserId>`, `IHasTenant<TTenantId>`, `IRowVersioned`, `IHasXmin`, `IVersioned`. Zero deps. | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore` | `AppDbContextBase` + `AddEntityFrameworkCore<TContext>` (pooling + config scanner) | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SqlServer` | `UseSqlServerConventional` — retry-on-failure (6×), 30s command timeout | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Postgres` | `UseNpgsqlConventional` — retry + NpgsqlDataSource overload for enum mapping | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.MySql` | `UseMySqlConventional` — Pomelo + AutoDetect server version | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Sqlite` | `UseSqliteConventional` — 30s command timeout | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Cosmos` | `UseCosmosConventional` — connection-string + endpoint+key overloads | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit` | `AuditInterceptor` (SaveChangesInterceptor) + `IAuditCurrentUserAccessor` for `CreatedBy`/`UpdatedBy` | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SoftDelete` | `SoftDeleteInterceptor` (DELETE→UPDATE) + `ApplySoftDeleteFilter` ModelBuilder ext | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.NamingConventions` | `UseSnakeCase/LowerCase/CamelCase/UpperSnakeCaseNamingConvention` | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Json` | `JsonValueConverter<T>` + `JsonValueComparer<T>` + `HasJsonConversion()` PropertyBuilder ext | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Bulk` | EFCore.BulkExtensions re-export (BulkInsert/Update/Delete) | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Triggered` | `UseTriggersConventional` + `AddTriggersFromAssemblies` | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Projectables` | `UseProjectablesConventional` — `[Projectable]` computed properties | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.Dapper` | `AddDapperConventions` (snake_case + DateOnly + ListTypeHandler), `IDbConnectionFactory` | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.Migrations.Ef` | `AddEfMigrationsRunner<TContext>` — hosted service with connect-retry | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.Migrations.DbUp` | `AddDbUpRunner` — hosted service + provider factories (Postgres/SqlServer/MySql/Sqlite) | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.Specifications` | `AddSpecificationRepository<TContext>` — Ardalis.Specification generic repo | scaffold |
 
 ### Caching
 

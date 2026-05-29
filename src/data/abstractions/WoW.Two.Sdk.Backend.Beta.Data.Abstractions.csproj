@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Entity contracts (IEntity marker + IKeyedEntity&lt;TId&gt; PK contract + IAuditable, ISoftDeletable, IHasTenant, IRowVersioned, IHasXmin, IVersioned traits) — zero ORM deps. Reference from Domain assemblies.</Description>
+    <PackageTags>wow-two; backend; beta; data; abstractions; entities; ddd</PackageTags>
+  </PropertyGroup>
+
+</Project>
