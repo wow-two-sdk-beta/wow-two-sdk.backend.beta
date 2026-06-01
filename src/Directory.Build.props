@@ -11,6 +11,9 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- Beta-forever: keep perf/style/design analyzer suggestions visible (warnings) but non-blocking.
+         Correctness analyzers stay as errors. Tighten these per-area as the surface matures. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);CA1848;CA1873;CA1305;CA1000;CA1716</WarningsNotAsErrors>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>

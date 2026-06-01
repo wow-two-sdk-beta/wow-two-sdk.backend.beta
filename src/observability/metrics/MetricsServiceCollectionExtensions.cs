@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 
 namespace WoW.Two.Sdk.Backend.Beta.Observability.Metrics;
 

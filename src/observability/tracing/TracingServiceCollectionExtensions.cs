@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 namespace WoW.Two.Sdk.Backend.Beta.Observability.Tracing;
