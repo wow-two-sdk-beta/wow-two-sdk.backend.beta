@@ -121,6 +121,23 @@ services.UseArgon2PasswordHasher<IdentityUser>();
 
 **Rule of thumb**: a developer who has never heard of wow-two should be able to read the method name and immediately know what it does. If you'd want to add a comment like `// these are wow-two's defaults`, the method name is wrong — bake the meaning in.
 
+### Data / persistence verbs (ecosystem-wide)
+
+One vocabulary for store operations, **identical across every provider** (EF Core, Dapper, SqlServer/Npgsql/Sqlite/Mongo/in-memory). The same call reads the same regardless of backend — that's the point.
+
+| Verb | Means | Not |
+|---|---|---|
+| `Create` | bring a **new** entity into existence (persist a new row) | `Insert` (SQL-specific), `Add` (reserved — see below) |
+| `Get` | read. Composes: `GetById`, `GetAll`, `GetByFilter` | `List` (breaks at `ListById`), `Fetch` (implies remote) |
+| `Update` | persist changes to an existing entity | |
+| `Delete` | remove. Plus id form `DeleteById` | `Remove` |
+
+`Add` is **reserved for membership / collection operations** — `AddUserToGroup`, add-to-in-memory-collection, `services.Add…` DI registration. It never means "persist a new row" (that's `Create`).
+
+Method shape: `{Verb}[By{Key}][Range]Async`, always `Async`-suffixed, `CancellationToken cancellationToken = default` last. Examples: `CreateAsync`, `CreateRangeAsync`, `GetByIdAsync`, `DeleteByIdAsync`.
+
+> **Why not the Specification pattern / Ardalis repo?** It's `IQueryable`-bound and can't lower to Dapper SQL — it would split the query story across providers, the exact inconsistency this vocabulary avoids. Thin repos own id-based CRUD; complex queries are plain LINQ (EF) or `SqlNaming`-built SQL (Dapper) where actually needed.
+
 ### Stable identifiers (cookie names, policy names)
 
 Constants that need to be unique system-wide may keep a stable identifier shape (e.g. cookie name `.app.auth`, policy name `"default"`). Don't bake `wow-two` into them — they're consumer-visible and may collide with consumer-defined names.

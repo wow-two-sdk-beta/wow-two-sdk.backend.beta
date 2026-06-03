@@ -105,8 +105,6 @@
     <PackageReference Include="EFCore.NamingConventions" />
     <PackageReference Include="EntityFrameworkCore.Projectables" />
     <PackageReference Include="EntityFrameworkCore.Triggered" />
-    <PackageReference Include="Ardalis.Specification" />
-    <PackageReference Include="Ardalis.Specification.EntityFrameworkCore" />
     <PackageReference Include="dbup-core" />
     <PackageReference Include="dbup-mysql" />
     <PackageReference Include="dbup-postgresql" />
