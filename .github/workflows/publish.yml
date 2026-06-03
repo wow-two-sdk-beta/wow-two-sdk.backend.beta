@@ -1,17 +1,14 @@
 name: publish
 
-# Beta-forever: every push to main packs and publishes a new build to nuget.org.
+# Beta-forever: every push to main bumps the version, packs, publishes to nuget.org,
+# then commits the bumped version back (so the repo always reflects what's published).
 #
-# Version = 10.{y}.{z}-beta
-#   x = 10  → the .NET line (fixed)
-#   z       → commit count mod 100   (bumps every commit)
-#   y       → commit count div 100   (bumps each time z rolls past 99)
-#   -beta   → prerelease label. The mono-lib pulls prerelease deps (OpenTelemetry,
-#             Pomelo EF, StronglyTypedId, …), so a STABLE package is rejected by NuGet
-#             (NU5104). It's beta-forever anyway — the label is the truth.
+# Version is the source of truth in src/Directory.Build.props — format 10.{y}.{z}-beta:
+#   x = 10     → .NET line (fixed)
+#   z          → bumps each release; rolls to 0 (and y += 1) when it passes 99
+#   -beta      → prerelease label (the mono-lib pulls prerelease deps → NU5104 on a stable id)
 #
-# It's a stateless linear build counter derived from history — no version file to
-# write back, no nuget query, so no self-triggering loop and no races.
+# The bump commit carries [skip ci] so it never re-triggers this workflow (no publish loop).
 
 on:
   push:
@@ -19,45 +16,53 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write          # commit the version bump back to main
 
 concurrency:
-  group: publish-nuget
-  cancel-in-progress: false   # never cancel a half-finished publish
+  group: publish
+  cancel-in-progress: false  # never cancel a half-finished publish
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0        # REQUIRED: full history so `rev-list --count` is real (default shallow = 1)
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      - name: Compute version (10.y.z from commit count)
-        id: ver
+      - name: Bump version (10.y.z-beta)
+        id: bump
         run: |
-          N=$(git rev-list --count HEAD)
-          CORE="10.$((N / 100)).$((N % 100))"               # numeric core — for FileVersion (no suffix allowed)
-          echo "version=$CORE-beta"   >> "$GITHUB_OUTPUT"   # package version (prerelease label)
-          echo "fileversion=$CORE"    >> "$GITHUB_OUTPUT"   # assembly FileVersion (numeric only)
-          echo "::notice::Publishing $CORE-beta (commit #$N)"
+          PROPS=src/Directory.Build.props
+          CUR=$(grep -oP '(?<=<Version>)[^<]+' "$PROPS" | head -1)
+          CORE=${CUR%-beta}
+          IFS=. read -r _ Y Z <<< "$CORE"
+          Z=$((10#$Z + 1))
+          if [ "$Z" -ge 100 ]; then Z=0; Y=$((10#$Y + 1)); fi
+          VERSION="10.$Y.$Z-beta"
+          FILEVERSION="10.$Y.$Z"
+          sed -i "s|<Version>[^<]*</Version>|<Version>$VERSION</Version>|" "$PROPS"
+          sed -i "s|<FileVersion>[^<]*</FileVersion>|<FileVersion>$FILEVERSION</FileVersion>|" "$PROPS"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "::notice::Releasing $VERSION (was $CUR)"
 
-      - name: Pack
-        run: >
-          dotnet pack src/WoW.Two.Sdk.Backend.Beta.csproj
-          -c Release
-          -p:Version=${{ steps.ver.outputs.version }}
-          -p:FileVersion=${{ steps.ver.outputs.fileversion }}
-          -p:ContinuousIntegrationBuild=true
-          -o artifacts
+      - name: Pack         # version comes from Directory.Build.props (just bumped)
+        run: dotnet pack src/WoW.Two.Sdk.Backend.Beta.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
 
       - name: Push to nuget.org   # the adjacent .snupkg is pushed automatically
-        run: >
-          dotnet nuget push "artifacts/*.nupkg"
-          -s https://api.nuget.org/v3/index.json
-          -k ${{ secrets.NUGET_API_KEY }}
-          --skip-duplicate
+        run: dotnet nuget push "artifacts/*.nupkg" -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_API_KEY }} --skip-duplicate
+
+      - name: Commit + tag the bump
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/Directory.Build.props
+          git commit -m "chore: release ${{ steps.bump.outputs.version }} [skip ci]"
+          git tag "v${{ steps.bump.outputs.version }}"
+          git push --follow-tags
