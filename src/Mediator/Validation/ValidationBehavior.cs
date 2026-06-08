@@ -1,43 +1,33 @@
-using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using WoW.Two.Sdk.Backend.Beta.Validation;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Validation;
 
-/// <summary>
-/// Pipeline behavior that runs every registered <see cref="IValidator{T}"/> for the request type.
-/// Throws <see cref="ValidationException"/> if any rule fails.
-/// </summary>
-public sealed class ValidationBehavior<TRequest, TResponse>(IServiceProvider serviceProvider)
+/// <summary>Validates each request through the <see cref="IValidator{T}"/> wrapper and throws when it is invalid.</summary>
+/// <typeparam name="TRequest">The request type.</typeparam>
+/// <typeparam name="TResponse">The response type.</typeparam>
+public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
     /// <inheritdoc />
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(next);
 
-        var validators = serviceProvider.GetServices<IValidator<TRequest>>().ToArray();
-        if (validators.Length == 0)
-            return await next().ConfigureAwait(false);
-
-        var context = new ValidationContext<TRequest>(request);
-        var failures = (await Task.WhenAll(validators.Select(v => v.ValidateAsync(context, cancellationToken))).ConfigureAwait(false))
-            .SelectMany(r => r.Errors)
-            .Where(f => f is not null)
-            .ToArray();
-
-        if (failures.Length > 0)
-            throw new ValidationException(failures);
+        foreach (var validator in validators)
+            validator.ValidateAndThrow(request);
 
         return await next().ConfigureAwait(false);
     }
 }
 
-/// <summary>Registration helper.</summary>
+/// <summary>Provides registration for the validation pipeline behavior.</summary>
 public static class ValidationBehaviorServiceCollectionExtensions
 {
-    /// <summary>Register the validation pipeline behavior.</summary>
+    /// <summary>Registers the validation pipeline behavior.</summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The same service collection, for chaining.</returns>
     public static IServiceCollection AddMediatorValidationBehavior(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

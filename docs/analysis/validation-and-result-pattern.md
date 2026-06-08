@@ -1,6 +1,6 @@
 # Validation & Result pattern
 
-*Last updated: 2026-06-03 · Status: **Stage 2 (generic Result) built**; Stage 3 (validation engine) next*
+*Last updated: 2026-06-03 · Status: **Stages 1–3 + boundary mapper built**; vault wiring (Stage 4) next*
 
 Kit-owned validation + result pattern. Built bottom-up; the whole concern lands as one commit.
 This doc is the durable design memory — any session can resume from it.
@@ -35,13 +35,23 @@ Result (abstract)          Result<T> (abstract)
 `IsSuccess`, `Ok` / `Fail` factories, `Match`, `Map`. **Failure carries a single `DomainError`** (the kit's
 existing error record). No multi-error, no error union.
 
-## Validation engine — Stage 3 (next)
+## Validation engine — Stage 3 (built)
+`src/Foundation/Validation/` + `src/Mediator/Validation/`
 - `IValidator<T>` (our wrapper): `ValidationResult Validate(T)` (no throw) + `void ValidateAndThrow(T)`
   (throws `ValidationException`). Names mirror FluentValidation.
-- `ValidationException(IReadOnlyList<ValidationError>)`.
-- FV adapter implements `IValidator<T>`, mapping FV output → our model.
-- Refactor existing `Mediator/Validation/ValidationBehavior` to call our `ValidateAndThrow` + throw our exception.
+- `ValidationException(IReadOnlyList<ValidationError>)` (+ standard ctors for CA1032).
+- `FluentValidationAdapter<T> : IValidator<T>` — runs the registered FV validators, maps failures → our model. FV stays hidden.
+- `AddFluentValidatorsFromAssemblies(...)` now also wires the adapter (`IValidator<>` → `FluentValidationAdapter<>`).
+- `Mediator/Validation/ValidationBehavior` refactored — injects `IEnumerable<IValidator<TRequest>>`, calls `ValidateAndThrow` (no-op when none registered).
 - **Sync only.** Async (IO validators) → a *separate* `IAsyncValidator<T>` when needed — never two methods on one interface.
+
+Wiring: consumer writes FluentValidation `AbstractValidator<T>` → adapter maps to our `ValidationResult` → behavior throws our `ValidationException` → boundary maps to `ValidationProblemDetails` (next section).
+
+## Boundary mapping — kit brick (built)
+`src/Web/ExceptionHandling/`
+- `ValidationExceptionHandler : IExceptionHandler` — maps a thrown `ValidationException` → 400 `ValidationProblemDetails` (errors grouped by `Property`), written via `IProblemDetailsService` so the kit's `traceId`/`requestId` enrichment applies. **Pipeline-level** (native `IExceptionHandler`), not controllers.
+- `AddValidationExceptionHandler()` registers it.
+- Consumer wiring: `AddTraceAwareProblemDetails()` + `AddValidationExceptionHandler()` + `app.UseExceptionHandler()`.
 
 ## Error model — collapsed (was a 3-variant hierarchy)
 Earlier sketch: `Error = DomainError | ValidationError | ExceptionalError`. **Dropped** — the union forced
