@@ -1,9 +1,18 @@
 # Package registry
 
-*Last updated: 2026-05-04*
+*Last updated: 2026-06-10*
+
+> **Mono-lib note:** since the mono-lib migration these "packages" are subpath areas of the single
+> `WoW2.Sdk.Backend.Beta` NuGet (plus the separate `.Testing` lib). Rows still track per-area status.
 
 > Lookup table of every NuGet package this repo produces.
 > Status: **stub** = csproj exists, no impl · **scaffold** = registration + minimal API · **shipped** = real wrapper, tested · **planned** = not yet started.
+
+## Meta — composition root
+
+| Package | Niche | Status |
+|---|---|---|
+| `WoW.Two.Sdk.Backend.Beta` (root, `src/meta/`) | `AddApiDefaults()` / `UseApiDefaults()` — one-import P1 boot floor (Serilog + OTel + health + proxy hosting + OpenAPI + problem details + rate limit + output cache + compression + optional CORS/validators). Auth/mediator/data stay explicit. | shipped |
 
 ## P0 — Testing scaffold (parallel track)
 
@@ -86,10 +95,26 @@
 | `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Microsoft` | `AddMicrosoftAuthentication(clientId, clientSecret)` | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.GitHub` | `AddGitHubAuthentication(clientId, clientSecret, scopes)` | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Apple` | `AddAppleAuthentication(clientId, teamId, keyId, keyPath)` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Facebook` | `AddFacebookAuthentication(appId, appSecret, scopes)` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.LinkedIn` | `AddLinkedInAuthentication(clientId, clientSecret, scopes)` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Discord` | `AddDiscordAuthentication(clientId, clientSecret, scopes)` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Slack` | `AddSlackAuthentication(clientId, clientSecret, scopes)` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.GitLab` | `AddGitLabAuthentication(clientId, clientSecret, scopes)` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Amazon` | `AddAmazonAuthentication(clientId, clientSecret, scopes)` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Twitch` | `AddTwitchAuthentication(clientId, clientSecret, scopes)` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Spotify` | `AddSpotifyAuthentication(clientId, clientSecret, scopes)` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Yandex` | `AddYandexAuthentication(clientId, clientSecret, scopes)` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Reddit` | `AddRedditAuthentication(clientId, clientSecret, scopes)` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Notion` | `AddNotionAuthentication(clientId, clientSecret, scopes)` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Vkontakte` | `AddVkontakteAuthentication(clientId, clientSecret, scopes)` | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.IdentityApi` | `AddIdentityApiEndpoints<TContext>()` — bearer-token Identity endpoints with hardened defaults | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Mfa.Totp` | `TotpService` — secret gen + otpauth URI + verify with ±1 step tolerance | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Mfa.WebAuthn` | `AddFido2WebAuthn(domain, name, origins)` — Fido2.AspNet | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.PasswordHashing.Argon2` | `UseArgon2PasswordHasher<TUser>()` — OWASP 2024 baseline | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.Policies` | `AddRolePolicy()` — `IRolePolicy` + `DictionaryRolePolicy` default (scope → allowed roles) | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.Jwt.Issuance` | `AddJwtTokenIssuance()` — `ITokenIssuer` HMAC issuance (HS256/384/512), per-call lifetime/audience overrides; pure lib, no ASP.NET dependency | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.Otp` | `AddOtpService()` — `IOtpService` create/verify keyed by (subject, scope); `IOtpStore` (memory default) + `IOtpCodeGenerator` (crypto-random numeric) + `IOtpDeliveryHandler` seam; fixed-time compare, rate limit, max attempts | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.Otp.Telegram` | `AddTelegramOtpDelivery()` — chat-id delivery via consumer-registered `ITelegramBotClient` (Telegram.Bot, MIT) | shipped |
 
 ## P3 — Persistence + outbound
 
@@ -138,10 +163,10 @@
 | `WoW.Two.Sdk.Backend.Beta.Http.Refit` | `AddRefitApiClient<TApi>(baseAddr, …)` — Refit client + SDK JSON + resilience baked in; `CreateDefaultRefitSettings()` | scaffold |
 | `WoW.Two.Sdk.Backend.Beta.Http.Resilience` | `AddSdkResilience()` (`IHttpClientBuilder` ext) + tunable `HttpResilienceOptions` over `Microsoft.Extensions.Http.Resilience` (Polly v8) | scaffold |
 | `WoW.Two.Sdk.Backend.Beta.Http.Core` | `AddResilientClient<TClient>` / `AddResilientClient(name, …)` — plain typed/named HttpClient + SDK resilience | scaffold |
-| `WoW.Two.Sdk.Backend.Beta.Http.Hedging` | Standard-Hedging handler preset | planned |
-| `WoW.Two.Sdk.Backend.Beta.Http.HeaderPropagation` | Forward headers to outbound HttpClient | planned |
-| `WoW.Two.Sdk.Backend.Beta.Http.Auth.OAuth2ClientCredentials` | Token-aware HttpClient handler | planned |
-| `WoW.Two.Sdk.Backend.Beta.Http.Auth.Mtls` | Client cert handler | planned |
+| `WoW.Two.Sdk.Backend.Beta.Http.Hedging` | `AddSdkHedging()` — standard-hedging preset (parallel attempt racing) + tunable `HttpHedgingOptions`; for idempotent latency-sensitive calls | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Http.HeaderPropagation` | `AddConventionalHeaderPropagation(…)` + `AddPropagatedHeaders()` — X-Correlation-Id / X-Request-Id defaults over `Microsoft.AspNetCore.HeaderPropagation` | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Http.Auth.OAuth2ClientCredentials` | `AddOAuth2ClientCredentials()` — client_credentials bearer handler; per-client-name token cache, single-flight fetch, refresh skew | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Http.Auth.Mtls` | `AddMutualTls()` — client-certificate `SocketsHttpHandler` (loaded cert or PKCS#12 path) | scaffold |
 
 ## P4 — Distributed essentials
 
@@ -164,19 +189,19 @@
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Mqtt` | MQTTnet direct use | planned |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks` | Outbound webhook delivery (HMAC + retry + DLQ) | planned |
 | `WoW.Two.Sdk.Backend.Beta.Jobs` | Meta — Hangfire defaults | planned |
-| `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire` | Hangfire wrapping | planned |
-| `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.Postgres` | Hangfire on Postgres | planned |
+| `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire` | `AddHangfireJobs(storage, opts)` + `AddInMemoryHangfireJobs()` (dev) + `UseHangfireJobsDashboard()` (local-only default). SDK serializer conventions, worker/queue tuning. **Hangfire is LGPL-3.0 — sole exception to permissive-only, per targets.md P4** | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.Postgres` | `AddPostgresHangfireJobs(connStr, opts)` — PostgreSQL storage preset | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.SqlServer` | Hangfire on SQL Server | planned |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.Redis` | Hangfire on Redis | planned |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Coravel` | Coravel alt | planned |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.NCronJob` | NCronJob alt | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms` | Meta — email + SMS + push abstractions | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Email` | `IEmailSender` abstraction | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Email.MailKit` | MailKit/MimeKit SMTP impl | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Email.SendGrid` | SendGrid impl | planned |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Email` | `IEmailSender` + `EmailMessage`/`EmailSendResult` (result-typed) + `AddEmailDefaults()` (From/Reply-To defaults) | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Email.MailKit` | `AddMailKitEmailSender()` — SMTP via MailKit (any relay; mailpit/mailhog dev) | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Email.SendGrid` | `AddSendGridEmailSender()` — SendGrid v3 API | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.Mailgun` | Mailgun impl | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.Postmark` | Postmark impl | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Email.Ses` | AWS SES impl | planned |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Email.Ses` | `AddSesEmailSender()` — SES v2 simple send (no attachments; raw-MIME future) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.Acs` | Azure Communication Services email impl | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.FluentEmail` | FluentEmail templating | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Sms` | `ISmsSender` abstraction | planned |

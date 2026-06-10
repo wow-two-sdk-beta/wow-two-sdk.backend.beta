@@ -33,19 +33,11 @@
   </ItemGroup>
 
   <!--
-    BACKLOG — temporarily excluded. These 5 leaf helpers fail extension-method resolution in the unified
-    compile (CS1061 on AddResponseCompression / AddRateLimiter / AddApple / AddGitHub / AddMicrosoftAccount)
-    while their siblings (oauth-google, cors, hosting, jwt, cookies, …) compile fine. Root cause is a
-    per-package ASP.NET reference-resolution conflict under CPM transitive pinning — isolated, not systemic.
-    Re-include once resolved (likely a single transitive-pin fix). Tracked in package-registry.md.
+    The former "excluded pending ASP.NET reference-conflict fix" block is gone — all five CS1061s were
+    missing using directives, never a reference conflict: AddApple / AddGitHub / AddMicrosoftAccount live in
+    `Microsoft.Extensions.DependencyInjection`, AddRateLimiter / AddResponseCompression in
+    `Microsoft.AspNetCore.Builder`. Fixed in the five files; nothing is excluded anymore.
   -->
-  <ItemGroup Label="Excluded pending ASP.NET reference-conflict fix">
-    <Compile Remove="Web/Compression/**/*.cs" />
-    <Compile Remove="Web/RateLimit/**/*.cs" />
-    <Compile Remove="Identity/OAuth/Apple/**/*.cs" />
-    <Compile Remove="Identity/OAuth/GitHub/**/*.cs" />
-    <Compile Remove="Identity/OAuth/Microsoft/**/*.cs" />
-  </ItemGroup>
 
   <ItemGroup Label="Foundation / language">
     <PackageReference Include="Ardalis.GuardClauses" />
@@ -79,14 +71,16 @@
     <PackageReference Include="NetEscapades.AspNetCore.SecurityHeaders" />
   </ItemGroup>
 
-  <ItemGroup Label="Http / outbound — Refit + Polly v8 resilience">
+  <ItemGroup Label="Http / outbound — Refit + Polly v8 resilience + header propagation">
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="Microsoft.AspNetCore.HeaderPropagation" />
     <PackageReference Include="Refit" />
     <PackageReference Include="Refit.HttpClientFactory" />
   </ItemGroup>
 
   <ItemGroup Label="Identity / auth">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Facebook" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" />
@@ -94,11 +88,38 @@
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" />
+    <PackageReference Include="AspNet.Security.OAuth.Amazon" />
     <PackageReference Include="AspNet.Security.OAuth.Apple" />
+    <PackageReference Include="AspNet.Security.OAuth.Discord" />
     <PackageReference Include="AspNet.Security.OAuth.GitHub" />
+    <PackageReference Include="AspNet.Security.OAuth.GitLab" />
+    <PackageReference Include="AspNet.Security.OAuth.LinkedIn" />
+    <PackageReference Include="AspNet.Security.OAuth.Notion" />
+    <PackageReference Include="AspNet.Security.OAuth.Reddit" />
+    <PackageReference Include="AspNet.Security.OAuth.Slack" />
+    <PackageReference Include="AspNet.Security.OAuth.Spotify" />
+    <PackageReference Include="AspNet.Security.OAuth.Twitch" />
+    <PackageReference Include="AspNet.Security.OAuth.Vkontakte" />
+    <PackageReference Include="AspNet.Security.OAuth.Yandex" />
+    <PackageReference Include="Telegram.Bot" />
     <PackageReference Include="Fido2.AspNet" />
     <PackageReference Include="Konscious.Security.Cryptography.Argon2" />
     <PackageReference Include="Otp.NET" />
+  </ItemGroup>
+
+  <ItemGroup Label="Comms — email">
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="SendGrid" />
+    <PackageReference Include="AWSSDK.SimpleEmailV2" />
+  </ItemGroup>
+
+  <!-- Hangfire is LGPL-3.0 — the one exception to the permissive-only rule, blessed by targets.md §6 (P4).
+       Revisit if/when the SDK distills to a non-beta lib. -->
+  <ItemGroup Label="Jobs — Hangfire">
+    <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="Hangfire.AspNetCore" />
+    <PackageReference Include="Hangfire.InMemory" />
+    <PackageReference Include="Hangfire.PostgreSql" />
   </ItemGroup>
 
   <ItemGroup Label="Data / EF Core / Dapper / migrations">

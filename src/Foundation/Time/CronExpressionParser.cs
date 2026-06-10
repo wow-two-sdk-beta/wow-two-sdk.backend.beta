@@ -1,16 +1,19 @@
 using Cronos;
 
+#pragma warning disable CA1200 // doc-id (T:) crefs are deliberate — Hangfire.Core bundles a second public Cronos namespace, so short crefs are ambiguous (CS0419)
+
 namespace WoW.Two.Sdk.Backend.Beta.Time;
 
 /// <summary>
-/// Thin wrapper around <see cref="CronExpression"/> with conventional defaults.
+/// Thin wrapper around <see cref="T:Cronos.CronExpression"/> with conventional defaults.
+/// (Doc-id crefs: Hangfire.Core bundles its own public Cronos types, making short crefs ambiguous.)
 /// </summary>
 public static class CronExpressionParser
 {
     /// <summary>
     /// Parse a cron expression. Accepts both 5-field (standard) and 6-field (with-seconds) forms via heuristic.
     /// </summary>
-    /// <exception cref="CronFormatException">Invalid expression.</exception>
+    /// <exception cref="T:Cronos.CronFormatException">Invalid expression.</exception>
     public static CronExpression Parse(string expression)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(expression);

@@ -11,13 +11,16 @@
 | P1 — observability | `logging`, `tracing`, `metrics`, `healthchecks`, `otlp`, `prometheus`, `azure-monitor`, `datadog` | ✅ 8 packages shipped |
 | P1 — web | `hosting`, `openapi`, `problemdetails`, `ratelimit`, `outputcache`, `secureheaders`, `cors`, `compression`, `versioning` | ✅ 9 packages shipped |
 | P2 — mediator | `mediator`, `mediator.{validation, logging, authorization, idempotency}` | ✅ 5 packages shipped |
-| P2 — identity | `identity.{jwt, cookies, oidc, identity-api}`, `oauth.{google, microsoft, github, apple}`, `mfa.{totp, webauthn}`, `password-hashing.argon2` | ✅ 11 packages shipped |
-| P3 | persistence + outbound | planned |
-| P4 | distributed essentials | planned |
+| P2 — identity | `identity.{jwt, cookies, oidc, identity-api}`, `oauth.{16 providers}`, `mfa.{totp, webauthn}`, `password-hashing.argon2`, `otp` + `otp.telegram`, `jwt.issuance`, `policies` | ✅ shipped |
+| P3 | persistence + outbound | 🚧 `data` ✅ · `http` ✅ · `caching` deferred |
+| P4 | distributed essentials | 🚧 `comms/email` ✅ · `jobs/hangfire(+postgres)` ✅ · messaging + webhooks planned |
+| meta | `AddApiDefaults()` / `UseApiDefaults()` one-import boot floor | ✅ |
 | P5 | SaaS-shaped (tenancy + AI + flags) | planned |
 | P6 | heavy domain extensions | planned |
 
-**52 packages shipped**, 130+ planned. See [`docs/conventions/package-registry.md`](./docs/conventions/package-registry.md).
+Ships as a **mono-lib** — one NuGet (`WoW2.Sdk.Backend.Beta`) + a separate `.Testing` lib; per-area subpaths inside. Area-by-area status: [`docs/conventions/package-registry.md`](./docs/conventions/package-registry.md).
+
+OAuth sign-in providers (16): Google, Microsoft, GitHub, Apple, Facebook, LinkedIn, Discord, Slack, GitLab, Amazon, Twitch, Spotify, Yandex, Reddit, Notion, VK. Passwordless: `AddOtpService` + `AddTelegramOtpDelivery` + `AddJwtTokenIssuance` + `AddRolePolicy`.
 
 ## Active design work
 
@@ -28,32 +31,15 @@ In-progress patterns being designed/built — read these to know what's underway
 ## Quick start
 
 ```csharp
+using WoW.Two.Sdk.Backend.Beta;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Foundation
-builder.Host.UseSerilogConventional();
-builder.Services
-    .AddTimeProviders()
-    .AddFluentValidatorsFromAssemblies(typeof(Program).Assembly);
+// One call = serilog + otel + health + proxy hosting + openapi + problemdetails
+//            + rate limit + output cache + compression (all flag-off-able).
+builder.AddApiDefaults(o => o.ValidatorAssemblies.Add(typeof(Program).Assembly));
 
-// Observability
-builder.Services
-    .AddOpenTelemetryTracing("my-service")
-    .AddOpenTelemetryMetrics("my-service")
-    .AddOtlpExporters()
-    .AddHealthChecksBuilder();
-
-// Web
-builder.Services
-    .AddProxyAwareHosting()
-    .AddOpenApiDefaults()
-    .AddTraceAwareProblemDetails()
-    .AddPerIpSlidingWindowRateLimit()
-    .AddDefaultOutputCache()
-    .AddBrotliGzipCompression()
-    .AddDefaultCorsPolicy("https://example.com");
-
-// Pipeline + auth
+// Per-app concerns stay explicit:
 builder.Services
     .AddMediator(typeof(Program).Assembly)
     .AddMediatorValidationBehavior()
@@ -66,16 +52,15 @@ builder.Services
     });
 
 var app = builder.Build();
-app.UseProxyAwareHosting();
-app.UseOwaspSecureHeaders();
+app.UseApiDefaults();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseRateLimiter();
-app.UseOutputCache();
-app.UseResponseCompression();
-app.MapOpenApiEndpoint();
+app.MapGet("/", () => "ok");
 app.Run();
 ```
+
+Need per-concern control? Every piece `AddApiDefaults` wires is a public extension you can call
+directly — the expansion is listed in [`src/meta/README.md`](./src/meta/README.md).
 
 ## Read these first
 

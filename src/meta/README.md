@@ -1,37 +1,38 @@
-# WoW.Two.Sdk.Backend.Beta
+# Meta — `AddApiDefaults` / `UseApiDefaults`
 
-> Meta-package — installs the curated WoW Two backend SDK bundle.
-
-## Install
-
-```
-dotnet add package WoW.Two.Sdk.Backend.Beta
-```
-
-## What you get
-
-This package depends on every "default" wrapper in P1–P5. Installing it pulls in the entire baseline: foundation, observability, web, mediator, identity, data, caching, http, messaging, jobs, comms, tenancy, AI, and feature-flags.
-
-Testing tools (`WoW.Two.Sdk.Backend.Beta.Testing` family) are a **separate** meta — they ship in test projects, not production assemblies.
-
-## Quick start
+> The one-import boot floor. Namespace `WoW.Two.Sdk.Backend.Beta` (root) — one `using` lights it up.
 
 ```csharp
 using WoW.Two.Sdk.Backend.Beta;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// One call wires the curated baseline (foundation + observability + web + mediator + identity).
-builder.AddBackendBeta();
+builder.AddApiDefaults(o =>
+{
+    o.ValidatorAssemblies.Add(typeof(Program).Assembly);   // optional
+    o.CorsOrigins.Add("https://app.example.com");          // optional
+});
 
 var app = builder.Build();
+app.UseApiDefaults();
+app.MapGet("/", () => "ok");
 app.Run();
 ```
 
-> The meta-level `AddBackendBeta()` ships once the per-area defaults stabilize. Until then, compose the per-area extensions directly (see the root [README.md](../../README.md) Quick start).
+## What it wires
+
+| Side | Concerns |
+|---|---|
+| `AddApiDefaults` | Serilog (`UseSerilogConventional`) · TimeProvider · OTel tracing + metrics + OTLP · health checks · proxy-aware hosting · OpenAPI · trace-aware ProblemDetails · validation exception handler · per-IP rate limit · output cache · Brotli/Gzip compression · CORS (when origins given) · FluentValidation scan (when assemblies given) |
+| `UseApiDefaults` | forwarded headers · OWASP secure headers · CORS · rate limiter · output cache · compression · OpenAPI endpoint · `/health` |
+
+Every concern has an off-flag on `ApiDefaultsOptions`; defaults are all-on.
+
+## Deliberately NOT included
+
+Auth (`AddJwtBearerAuthentication`, OAuth providers, OTP), mediator, and data — they need per-app
+decisions (keys, assemblies, connection strings). Add them between the two calls as usual.
 
 ## See also
 
-- [Phase mapping](../../docs/analysis/philosophy/targets.md#6-phase-mapping)
+- Root [README.md](../../README.md) — per-area composition when you need more control
 - [Package registry](../../docs/conventions/package-registry.md)
-- Per-area README in `src/<area>/`

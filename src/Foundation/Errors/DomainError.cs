@@ -28,6 +28,9 @@ public enum DomainErrorCategory
 
     /// <summary>Unexpected server error. Maps to 500.</summary>
     Unexpected = 500,
+
+    /// <summary>Service temporarily unavailable — a required dependency or resource is down, locked, or sealed. Maps to 503.</summary>
+    Unavailable = 503,
 }
 
 /// <summary>
@@ -73,4 +76,8 @@ public sealed record DomainError(
     /// <summary>Convenience factory — unexpected server error.</summary>
     public static DomainError Unexpected(string code, string message, string? detail = null) =>
         new(code, message, DomainErrorCategory.Unexpected, detail);
+
+    /// <summary>Convenience factory — service unavailable (dependency down, resource locked/sealed).</summary>
+    public static DomainError Unavailable(string code, string message, string? detail = null) =>
+        new(code, message, DomainErrorCategory.Unavailable, detail);
 }

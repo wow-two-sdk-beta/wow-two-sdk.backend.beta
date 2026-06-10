@@ -1,5 +1,6 @@
-using AspNet.Security.OAuth.Apple;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders.Physical;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Apple;
 
@@ -27,7 +28,7 @@ public static class AppleOAuthServiceCollectionExtensions
             o.ClientId = clientId;
             o.TeamId = teamId;
             o.KeyId = keyId;
-            o.UsePrivateKey(_ => new FileInfo(privateKeyPath));
+            o.UsePrivateKey(_ => new PhysicalFileInfo(new FileInfo(privateKeyPath)));
             o.SaveTokens = true;
         });
     }

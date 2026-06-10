@@ -25,9 +25,10 @@ See [`targets.md` §6](./docs/analysis/philosophy/targets.md#6-phase-mapping). Q
 |---|---|---|
 | P0 | testing scaffold (parallel track) | ✅ shipped (12 packages) |
 | P1 | boot floor — foundation + observability + web basics | ✅ shipped (24 packages: 7 foundation + 8 observability + 9 web) |
-| P2 | request pipeline + auth | ✅ shipped (16 packages: 5 mediator + 11 identity) |
-| P3 | persistence + outbound | planned |
-| P4 | distributed essentials | planned |
+| P2 | request pipeline + auth | ✅ shipped (mediator + identity, incl. otp/otp.telegram/jwt.issuance/policies + 16 OAuth providers) |
+| P3 | persistence + outbound | 🚧 data ✅ · http ✅ · caching deferred |
+| P4 | distributed essentials | 🚧 comms/email ✅ · jobs/hangfire(+postgres) ✅ · messaging + webhooks planned |
+| meta | `AddApiDefaults()` / `UseApiDefaults()` one-import boot floor (`src/meta/`, root namespace) | ✅ shipped |
 | P5 | SaaS-shaped (tenancy + AI + flags) | planned |
 | P6 | heavy domain extensions | planned |
 
