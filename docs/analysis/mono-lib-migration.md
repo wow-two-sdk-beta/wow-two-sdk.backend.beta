@@ -8,10 +8,10 @@ Collapsed the 72 per-concern `.csproj` files into **two** class libraries, divid
 
 | Lib | csproj | Globs | Deps |
 |---|---|---|---|
-| Core | `src/WoW.Two.Sdk.Backend.Beta.csproj` | every shipping folder (`foundation/ observability/ web/ mediator/ identity/ data/`) minus `testing/` | ~92 packages + `FrameworkReference Microsoft.AspNetCore.App` |
-| Testing | `src/testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj` | `testing/**` | 21 packages (xUnit, Testcontainers, Verify, WireMock, …) |
+| Core | `src/WoW.Two.Sdk.Backend.Beta.csproj` | every shipping folder (`Foundation/ Observability/ Web/ Mediator/ Identity/ Data/`) minus `Testing/` | ~92 packages + `FrameworkReference Microsoft.AspNetCore.App` |
+| Testing | `src/Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj` | `Testing/**` | 21 packages (xUnit, Testcontainers, Verify, WireMock, …) |
 
-- **Folders now mirror namespaces (PascalCase, nested).** After the collapse, an IDE re-synced namespaces to the lowercase-kebab folder names (`data/ef-core/` → `…Beta.data.ef_core`), breaking ~89 files. Fixed by canonicalizing namespaces back to PascalCase and renaming folders to match: `Data/EntityFrameworkCore/Audit/`, `Identity/OAuth/Apple/`, `Foundation/Time/`, `testing/Containers/Postgres/` (folder = namespace). Compound EF-Core / OAuth / Mfa / Migrations leaves are nested dirs, not kebab.
+- **Folders now mirror namespaces (PascalCase, nested).** After the collapse, an IDE re-synced namespaces to the lowercase-kebab folder names (`data/ef-core/` → `…Beta.data.ef_core`), breaking ~89 files. Fixed by canonicalizing namespaces back to PascalCase and renaming folders to match: `Data/EntityFrameworkCore/Audit/`, `Identity/OAuth/Apple/`, `Foundation/Time/`, `Testing/Containers/Postgres/` (folder = namespace). Compound EF-Core / OAuth / Mfa / Migrations leaves are nested dirs, not kebab. A later pass (2026-06) PascalCased the remaining kebab area folders too — `comms/email-mailkit/` → `Comms/EmailMailKit/`, `http/auth-oauth2-client-credentials/` → `Http/AuthOAuth2ClientCredentials/`, `jobs/hangfire-postgres/` → `Jobs/HangfirePostgres/`, `meta/` → `Meta/` — so every `src/` folder now matches its namespace 1:1.
   - **Foundation**: grouped under `Foundation/` folder but namespaces stay top-level (`Foundation/Time/` → `…Beta.Time`, NOT `…Beta.Foundation.Time`).
   - **Mediator core**: `Mediator/` folder → `…Beta.Mediator` (no `.Core`).
   - **Testing container fixtures**: `testing/Containers/Postgres/` etc. all share the base namespace `…Beta.Testing.Containers` (per-engine fixtures, one namespace).

@@ -12,7 +12,7 @@
 
 | Package | Niche | Status |
 |---|---|---|
-| `WoW.Two.Sdk.Backend.Beta` (root, `src/meta/`) | `AddApiDefaults()` / `UseApiDefaults()` — one-import P1 boot floor (Serilog + OTel + health + proxy hosting + OpenAPI + problem details + rate limit + output cache + compression + optional CORS/validators). Auth/mediator/data stay explicit. | shipped |
+| `WoW.Two.Sdk.Backend.Beta` (root, `src/Meta/`) | `AddApiDefaults()` / `UseApiDefaults()` — one-import P1 boot floor (Serilog + OTel + health + proxy hosting + OpenAPI + problem details + rate limit + output cache + compression + optional CORS/validators). Auth/mediator/data stay explicit. | shipped |
 
 ## P0 — Testing scaffold (parallel track)
 

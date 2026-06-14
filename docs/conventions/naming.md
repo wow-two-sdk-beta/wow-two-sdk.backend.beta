@@ -1,6 +1,6 @@
 # Naming conventions
 
-*Last updated: 2026-05-04*
+*Last updated: 2026-06-14*
 
 ## Package IDs
 
@@ -20,11 +20,15 @@ PascalCase. Dotted. No abbreviations except established ones (e.g., `OAuth`, `Sq
 
 ## Folder names (filesystem)
 
-`kebab-case`. Match the area portion of the package id, lowercased and hyphenated.
+`PascalCase`. The folder name matches the namespace / package-id segment **1:1** — same casing, no hyphens, no underscores. So a file's `namespace` is its folder path under `src/` verbatim. This keeps `CA1707` (underscores in identifiers) impossible at the root and removes any need for `.editorconfig` suppression.
 
-- `src/foundation/time/` → `WoW.Two.Sdk.Backend.Beta.Time`
-- `src/web/output-cache/` → `WoW.Two.Sdk.Backend.Beta.Web.OutputCache`
-- `src/identity/oauth-google/` → `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Google`
+- `src/Foundation/Time/` → `WoW.Two.Sdk.Backend.Beta.Foundation.Time`
+- `src/Web/OutputCache/` → `WoW.Two.Sdk.Backend.Beta.Web.OutputCache`
+- `src/Identity/OAuth/Google/` → `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Google`
+
+Apply the §Acronyms rules to each segment (`ai` → `AI`, `auth-oauth2-client-credentials` → `AuthOAuth2ClientCredentials`, `hangfire-postgres` → `HangfirePostgres`, `feature-flags` → `FeatureFlags`), and keep established product casings (`MailKit`, `SendGrid`, `OpenAI`, `Postgres`, `SqlServer`, `RabbitMq`).
+
+> **Linux CI is case-sensitive.** Build-file path globs (`DefaultItemExcludes`, `.slnx` project paths, workflow `dotnet pack` paths) must match the on-disk PascalCase exactly — a lowercased path silently no-ops on `ubuntu-latest` even though macOS hides it.
 
 ## Namespaces
 

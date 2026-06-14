@@ -84,16 +84,16 @@ src/<area>/<package>/
 ├── <Module>.standard.md                   ← RFC 2119 behavioral contract
 ├── <Module>.spec.md                       ← API + usage snippets
 ├── <Module>.tests.cs                      ← runnable examples (xUnit)
-└── <folder>.md                            ← folder lead doc (kebab folder name, e.g. `time.md`) — 1-screen quickstart. NOT `README.md` (only the repo root may be `README.md`)
+└── <Folder>.md                            ← folder lead doc (PascalCase folder name, e.g. `Time.md`) — 1-screen quickstart. NOT `README.md` (only the repo root may be `README.md`)
 ```
 
 > No `tests/` separate folder. Test files live next to the wrapper they document.
-> Folder lead doc is `{folder}.md` (kebab-cased), never a per-folder `README.md` — see `repo-structure.md` §3.
+> Folder lead doc is `{Folder}.md` (PascalCase, matching the folder), never a per-folder `README.md` — see `repo-structure.md` §3.
 
 ## Naming
 
 - **NuGet package id**: `WoW.Two.Sdk.Backend.Beta.<Domain>` (PascalCase, dotted)
-- **Folder name**: `kebab-case` (`time/`, `output-cache/`, `feature-flags/`)
+- **Folder name**: `PascalCase`, matching the package-id/namespace segment 1:1 (`Time/`, `OutputCache/`, `FeatureFlags/`)
 - **Repo namespace**: `WoW.Two.Sdk.Backend.Beta.<Domain>` matches package id
 - **Public extension class**: `<Domain>ServiceCollectionExtensions` (XxxServiceCollectionExtensions pattern Microsoft uses)
 - **Public extension method**: `Add<Domain>(this IServiceCollection services, …)` returning `IServiceCollection`

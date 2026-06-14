@@ -5,15 +5,15 @@
 
     One class library compiling every shipping concern under src/ (foundation, observability,
     web, mediator, identity, data, …) — divided by FOLDERS, not projects. The folder tree is
-    unchanged; only the per-concern .csproj boundaries were removed. Namespaces are unchanged
-    (e.g. WoW.Two.Sdk.Backend.Beta.Data.Dapper still lives in src/data/dapper/).
+    unchanged; only the per-concern .csproj boundaries were removed. Namespaces match their folder
+    path 1:1 (e.g. WoW.Two.Sdk.Backend.Beta.Data.Dapper lives in src/Data/Dapper/).
 
     Why: kill the create-csproj / wire-ProjectReference / build-graph / version-per-package cycle.
     Push one package, iterate fast. We split back into granular packages when the surface is
     mature and saturated. Cost accepted: this package's transitive closure is large (every DB
     driver, OpenTelemetry, Serilog, etc.).
 
-    Test helpers (P0) ship as a SEPARATE mono-lib (testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj)
+    Test helpers (P0) ship as a SEPARATE mono-lib (Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj)
     so xUnit / Testcontainers never leak into a production reference. Excluded from this compile below.
   -->
 
@@ -26,10 +26,11 @@
     <!-- Exclude the testing mono-lib tree, the web-free Data/Abstractions project tree, the web-free
          migrator CLI tree (its own Exe project), and any stray build artifacts from this compile.
          Each is its own project (referenced/standalone); globbing them here too would double-compile their types.
-         Paths MUST match the on-disk casing (Data/Migrations/cli) — MSBuild globs are case-sensitive on Linux CI,
-         so a lowercase 'data/migrations/cli/**' silently fails to exclude there and drags System.CommandLine into
-         the mono-lib compile (CS0234/CS0246). macOS is case-insensitive and hides this — keep PascalCase. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);testing/**;Mediator.Tests/**;Data/Abstractions/**;Data/Migrations/cli/**;**/obj/**;**/bin/**</DefaultItemExcludes>
+         Paths MUST match the on-disk casing (now all PascalCase: Testing, Data/Migrations/cli) — MSBuild globs
+         are case-sensitive on Linux CI, so a lowercase 'testing/**' or 'data/migrations/cli/**' silently fails to
+         exclude there and drags those projects' types into the mono-lib compile (CS0234/CS0246). macOS is
+         case-insensitive and hides this — keep PascalCase. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Testing/**;Mediator.Tests/**;Data/Abstractions/**;Data/Migrations/cli/**;**/obj/**;**/bin/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <!-- web/*, identity/*, mediator/authorization compile against the ASP.NET Core shared framework. -->

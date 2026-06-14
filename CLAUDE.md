@@ -6,7 +6,7 @@ The `WoW.Two.Sdk.Backend.Beta.*` family — beta-forever .NET 9 backend SDK aggr
 
 > **Beta-forever rules**: no CHANGELOG, no PR gates, no required tests, push directly to main, fix-forward when broken. CI builds + auto-bumps `0.0.y` on each main push.
 
-> **⚠️ Structure (current): MONO-LIB.** The per-concern `.csproj` files were collapsed into **two** class libraries — `src/WoW.Two.Sdk.Backend.Beta.csproj` (all shipping concerns) and `src/testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj` (test helpers). Each globs its folder tree; the per-area **folders and namespaces are unchanged**. Rationale + migration log + backlog: [`docs/analysis/mono-lib-migration.md`](./docs/analysis/mono-lib-migration.md). We split back into granular packages when the surface matures. Sections below that describe "per-package csproj" shape are historical until rewritten.
+> **⚠️ Structure (current): MONO-LIB.** The per-concern `.csproj` files were collapsed into **two** class libraries — `src/WoW.Two.Sdk.Backend.Beta.csproj` (all shipping concerns) and `src/Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj` (test helpers). Each globs its folder tree; the per-area folders are **PascalCase, matching the namespace/package-id segment 1:1** (e.g. `src/Comms/EmailMailKit/` → `…Comms.EmailMailKit`). Rationale + migration log + backlog: [`docs/analysis/mono-lib-migration.md`](./docs/analysis/mono-lib-migration.md). We split back into granular packages when the surface matures. Sections below that describe "per-package csproj" shape are historical until rewritten.
 
 ## Source-of-truth docs
 
@@ -29,7 +29,7 @@ See [`targets.md` §6](./docs/analysis/philosophy/targets.md#6-phase-mapping). Q
 | P2 | request pipeline + auth | ✅ shipped (mediator + identity, incl. otp/otp.telegram/jwt.issuance/policies + 16 OAuth providers) |
 | P3 | persistence + outbound | 🚧 data ✅ · http ✅ · caching deferred |
 | P4 | distributed essentials | 🚧 comms/email ✅ · jobs/hangfire(+postgres) ✅ · messaging + webhooks planned |
-| meta | `AddApiDefaults()` / `UseApiDefaults()` one-import boot floor (`src/meta/`, root namespace) | ✅ shipped |
+| meta | `AddApiDefaults()` / `UseApiDefaults()` one-import boot floor (`src/Meta/`) | ✅ shipped |
 | P5 | SaaS-shaped (tenancy + AI + flags) | planned |
 | P6 | heavy domain extensions | planned |
 

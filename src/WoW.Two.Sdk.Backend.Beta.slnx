@@ -1,7 +1,7 @@
 <Solution>
   <Project Path="WoW.Two.Sdk.Backend.Beta.csproj" />
   <Project Path="Data/Abstractions/WoW.Two.Sdk.Backend.Beta.Data.Abstractions.csproj" />
-  <Project Path="data/migrations/cli/WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli.csproj" />
-  <Project Path="testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj" />
+  <Project Path="Data/Migrations/cli/WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli.csproj" />
+  <Project Path="Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj" />
   <Project Path="Mediator.Tests/WoW.Two.Sdk.Backend.Beta.Mediator.Tests.csproj" />
 </Solution>

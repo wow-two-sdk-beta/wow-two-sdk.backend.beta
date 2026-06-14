@@ -58,7 +58,7 @@ jobs:
           # mono-lib + Data.Abstractions (the mono-lib's nuspec dependency) + the wow-migrate CLI tool.
           dotnet pack src/WoW.Two.Sdk.Backend.Beta.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
           dotnet pack src/Data/Abstractions/WoW.Two.Sdk.Backend.Beta.Data.Abstractions.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
-          dotnet pack src/data/migrations/cli/WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
+          dotnet pack src/Data/Migrations/cli/WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
 
       - name: Authenticate to NuGet (Trusted Publishing)   # OIDC → short-lived API key, no stored secret
         uses: NuGet/login@v1
