@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Time;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 using WoW.Two.Sdk.Backend.Beta.Observability.HealthChecks;
 using WoW.Two.Sdk.Backend.Beta.Observability.Logging;
 using WoW.Two.Sdk.Backend.Beta.Observability.Metrics;
 using WoW.Two.Sdk.Backend.Beta.Observability.Otlp;
 using WoW.Two.Sdk.Backend.Beta.Observability.Tracing;
-using WoW.Two.Sdk.Backend.Beta.Time;
-using WoW.Two.Sdk.Backend.Beta.Validation;
 using WoW.Two.Sdk.Backend.Beta.Web.Compression;
 using WoW.Two.Sdk.Backend.Beta.Web.Cors;
 using WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
@@ -17,7 +17,7 @@ using WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails;
 using WoW.Two.Sdk.Backend.Beta.Web.RateLimit;
 using WoW.Two.Sdk.Backend.Beta.Web.SecureHeaders;
 
-namespace WoW.Two.Sdk.Backend.Beta;
+namespace WoW.Two.Sdk.Backend.Beta.meta;
 
 /// <summary>
 /// The one-import boot floor — wires the SDK's P1 baseline (logging, tracing, metrics, health,

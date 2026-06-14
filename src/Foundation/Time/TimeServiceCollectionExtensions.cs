@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
-namespace WoW.Two.Sdk.Backend.Beta.Time;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Time;
 
 /// <summary>
 /// Registration helpers for time abstractions.

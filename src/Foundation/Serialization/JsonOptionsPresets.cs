@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using NodaTime;
 using NodaTime.Serialization.SystemTextJson;
 
-namespace WoW.Two.Sdk.Backend.Beta.Serialization;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Serialization;
 
 /// <summary>
 /// Conventional <see cref="JsonSerializerOptions"/> presets for the Wow Two backend SDK.

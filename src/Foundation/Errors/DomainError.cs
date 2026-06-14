@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Errors;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
 /// <summary>
 /// Canonical error category — opinionated mapping to HTTP status codes.

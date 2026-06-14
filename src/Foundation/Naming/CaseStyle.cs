@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Naming;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 /// <summary>Identifier casing styles produced and parsed by <see cref="CaseConverter"/>.</summary>
 public enum CaseStyle

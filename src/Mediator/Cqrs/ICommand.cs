@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Mediator;
+namespace WoW.Two.Sdk.Backend.Beta.Mediator.Cqrs;
 
 /// <summary>
 /// Marks a command — a write operation that returns a result of type <typeparamref name="TResult"/>.

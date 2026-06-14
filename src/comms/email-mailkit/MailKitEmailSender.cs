@@ -1,8 +1,9 @@
 using MailKit.Net.Smtp;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using WoW.Two.Sdk.Backend.Beta.comms.email;
 
-namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.MailKit;
+namespace WoW.Two.Sdk.Backend.Beta.comms.email_mailkit;
 
 /// <summary>
 /// SMTP <see cref="IEmailSender"/> over MailKit — works against any SMTP relay

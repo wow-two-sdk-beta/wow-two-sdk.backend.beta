@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Mediator;
+namespace WoW.Two.Sdk.Backend.Beta.Mediator.Result;
 
 /// <summary>
 /// Collapse helpers for <see cref="AppResult{TSuccess,TFailure}"/>. Kept as extensions so the union stays a

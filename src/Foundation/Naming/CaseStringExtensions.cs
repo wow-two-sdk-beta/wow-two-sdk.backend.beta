@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Naming;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 /// <summary>String extension shorthands over <see cref="CaseConverter"/>.</summary>
 public static class CaseStringExtensions

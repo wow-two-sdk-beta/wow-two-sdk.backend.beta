@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Validation;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
 /// <summary>Represents validation failure raised as an exception.</summary>
 public sealed class ValidationException : Exception

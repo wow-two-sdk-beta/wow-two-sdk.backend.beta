@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Http.Resilience;
+namespace WoW.Two.Sdk.Backend.Beta.http.resilience;
 
 /// <summary>
 /// Tunable inputs for the SDK's standard outbound-HTTP resilience pipeline

@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Validation;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
 /// <summary>Represents the outcome of validating an object.</summary>
 public abstract record ValidationResult

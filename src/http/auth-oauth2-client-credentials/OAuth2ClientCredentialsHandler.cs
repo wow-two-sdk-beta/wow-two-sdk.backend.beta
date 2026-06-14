@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Options;
 
-namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.OAuth2ClientCredentials;
+namespace WoW.Two.Sdk.Backend.Beta.http.auth_oauth2_client_credentials;
 
 /// <summary>
 /// Delegating handler that attaches a cached client-credentials bearer token to every outgoing

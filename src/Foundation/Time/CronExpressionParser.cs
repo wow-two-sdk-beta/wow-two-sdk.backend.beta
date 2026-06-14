@@ -2,7 +2,7 @@ using Cronos;
 
 #pragma warning disable CA1200 // doc-id (T:) crefs are deliberate — Hangfire.Core bundles a second public Cronos namespace, so short crefs are ambiguous (CS0419)
 
-namespace WoW.Two.Sdk.Backend.Beta.Time;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Time;
 
 /// <summary>
 /// Thin wrapper around <see cref="T:Cronos.CronExpression"/> with conventional defaults.

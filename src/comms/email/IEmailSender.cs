@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Comms.Email;
+namespace WoW.Two.Sdk.Backend.Beta.comms.email;
 
 /// <summary>
 /// Transactional email seam — one implementation per provider (MailKit SMTP, SendGrid, SES, …).

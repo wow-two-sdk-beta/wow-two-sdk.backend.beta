@@ -1,8 +1,9 @@
 using Amazon.SimpleEmailV2;
 using Amazon.SimpleEmailV2.Model;
 using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.comms.email;
 
-namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.Ses;
+namespace WoW.Two.Sdk.Backend.Beta.comms.email_ses;
 
 /// <summary>
 /// <see cref="IEmailSender"/> over Amazon SES v2 simple send.

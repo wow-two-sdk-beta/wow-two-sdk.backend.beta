@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Mediator;
+namespace WoW.Two.Sdk.Backend.Beta.Mediator.Result;
 
 /// <summary>
 /// The outcome of an application operation — a closed discriminated union that either succeeds with a

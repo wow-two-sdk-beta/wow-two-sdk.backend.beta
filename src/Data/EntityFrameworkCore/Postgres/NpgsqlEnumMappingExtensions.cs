@@ -1,6 +1,6 @@
 using System.Reflection;
 using Npgsql;
-using WoW.Two.Sdk.Backend.Beta.Naming;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Postgres;
 

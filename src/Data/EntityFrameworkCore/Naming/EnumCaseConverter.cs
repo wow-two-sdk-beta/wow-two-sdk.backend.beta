@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using WoW.Two.Sdk.Backend.Beta.Naming;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Naming;
 

@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Http.Hedging;
+namespace WoW.Two.Sdk.Backend.Beta.http.hedging;
 
 /// <summary>
 /// Tunable inputs for the SDK's standard outbound-HTTP hedging pipeline — fires a parallel

@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace WoW.Two.Sdk.Backend.Beta;
+namespace WoW.Two.Sdk.Backend.Beta.meta;
 
 /// <summary>
 /// Tunable inputs for <c>AddApiDefaults</c> / <c>UseApiDefaults</c>. Everything defaults to on —

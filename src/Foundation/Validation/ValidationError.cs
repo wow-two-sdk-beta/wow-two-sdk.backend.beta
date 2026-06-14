@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Validation;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
 /// <summary>Represents a single field-level validation error.</summary>
 /// <param name="Property">Name or path of the offending member; empty for object-level rules.</param>

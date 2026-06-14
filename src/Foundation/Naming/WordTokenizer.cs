@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace WoW.Two.Sdk.Backend.Beta.Naming;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 /// <summary>
 /// Splits an identifier into its constituent words, independent of the input casing style.

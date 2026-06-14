@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using WoW.Two.Sdk.Backend.Beta.Validation;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
 

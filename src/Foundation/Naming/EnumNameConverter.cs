@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace WoW.Two.Sdk.Backend.Beta.Naming;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 /// <summary>
 /// Converts enum values to and from case-styled string labels, reversibly.

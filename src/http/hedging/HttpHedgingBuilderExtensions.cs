@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
 
-namespace WoW.Two.Sdk.Backend.Beta.Http.Hedging;
+namespace WoW.Two.Sdk.Backend.Beta.http.hedging;
 
 /// <summary>
 /// Applies the SDK's standard hedging pipeline to an outbound <see cref="IHttpClientBuilder"/>.

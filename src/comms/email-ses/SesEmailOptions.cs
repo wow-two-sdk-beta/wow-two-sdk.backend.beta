@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.Ses;
+namespace WoW.Two.Sdk.Backend.Beta.comms.email_ses;
 
 /// <summary>Amazon SES (v2 API) settings. Credentials come from the standard AWS chain.</summary>
 public sealed class SesEmailOptions

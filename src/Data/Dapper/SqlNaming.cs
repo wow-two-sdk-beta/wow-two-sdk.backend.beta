@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
-using WoW.Two.Sdk.Backend.Beta.Naming;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper;
 

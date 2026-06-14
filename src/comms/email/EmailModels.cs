@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Comms.Email;
+namespace WoW.Two.Sdk.Backend.Beta.comms.email;
 
 /// <summary>An email address with an optional display name.</summary>
 /// <param name="Address">The address (<c>user@example.com</c>).</param>

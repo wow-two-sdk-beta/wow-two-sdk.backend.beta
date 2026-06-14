@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using WoW.Two.Sdk.Backend.Beta.Mediator;
+using WoW.Two.Sdk.Backend.Beta.Mediator.Result;
 using Xunit;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests;

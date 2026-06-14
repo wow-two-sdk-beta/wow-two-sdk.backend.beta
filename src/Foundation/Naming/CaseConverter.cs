@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Naming;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 /// <summary>
 /// Converts identifiers between <see cref="CaseStyle"/>s. Tokenizes the input with

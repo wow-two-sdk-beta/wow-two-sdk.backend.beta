@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Options;
 using SendGrid;
 using SendGrid.Helpers.Mail;
+using WoW.Two.Sdk.Backend.Beta.comms.email;
+using EmailAddress = WoW.Two.Sdk.Backend.Beta.comms.email.EmailAddress;
 
-namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.SendGrid;
+namespace WoW.Two.Sdk.Backend.Beta.comms.email_sendgrid;
 
 /// <summary><see cref="IEmailSender"/> over the SendGrid v3 API.</summary>
 public sealed class SendGridEmailSender : IEmailSender

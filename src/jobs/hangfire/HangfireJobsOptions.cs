@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire;
+namespace WoW.Two.Sdk.Backend.Beta.jobs.hangfire;
 
 /// <summary>Server tuning for Hangfire background processing.</summary>
 public sealed class HangfireJobsOptions

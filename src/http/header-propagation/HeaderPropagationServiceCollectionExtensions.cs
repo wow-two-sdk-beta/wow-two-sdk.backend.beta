@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace WoW.Two.Sdk.Backend.Beta.Http.HeaderPropagation;
+namespace WoW.Two.Sdk.Backend.Beta.http.header_propagation;
 
 /// <summary>
 /// Forwards selected inbound request headers onto outbound <see cref="HttpClient"/> calls

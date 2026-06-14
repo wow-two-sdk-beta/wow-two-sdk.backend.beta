@@ -3,7 +3,7 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace WoW.Two.Sdk.Backend.Beta.Validation;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
 /// <summary>Provides registration for FluentValidation-backed validators behind the <see cref="IValidator{T}"/> wrapper.</summary>
 public static class ValidationServiceCollectionExtensions

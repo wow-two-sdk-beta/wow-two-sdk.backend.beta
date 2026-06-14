@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Mediator;
+namespace WoW.Two.Sdk.Backend.Beta.Mediator.Cqrs;
 
 /// <summary>
 /// CQRS-flavored dispatch facade over <see cref="ISender"/>. <c>SendAsync</c> overloads forward to

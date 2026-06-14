@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using WoW.Two.Sdk.Backend.Beta.Validation;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
 

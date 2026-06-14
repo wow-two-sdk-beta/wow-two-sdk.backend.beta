@@ -1,7 +1,7 @@
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire;
+namespace WoW.Two.Sdk.Backend.Beta.jobs.hangfire;
 
 /// <summary>
 /// Hangfire background jobs — fire-and-forget (<c>IBackgroundJobClient</c>), delayed, and recurring

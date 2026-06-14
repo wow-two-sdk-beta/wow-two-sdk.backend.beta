@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using WoW.Two.Sdk.Backend.Beta.Http.Resilience;
+using WoW.Two.Sdk.Backend.Beta.http.resilience;
 
-namespace WoW.Two.Sdk.Backend.Beta.Http.Core;
+namespace WoW.Two.Sdk.Backend.Beta.http.core;
 
 /// <summary>
 /// Registration helpers for plain <see cref="HttpClient"/>-based typed clients (no Refit),

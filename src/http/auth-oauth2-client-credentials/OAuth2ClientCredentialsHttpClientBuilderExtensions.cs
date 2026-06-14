@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
-namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.OAuth2ClientCredentials;
+namespace WoW.Two.Sdk.Backend.Beta.http.auth_oauth2_client_credentials;
 
 /// <summary>
 /// Attaches OAuth2 <c>client_credentials</c> bearer-token acquisition to an outbound HTTP client.

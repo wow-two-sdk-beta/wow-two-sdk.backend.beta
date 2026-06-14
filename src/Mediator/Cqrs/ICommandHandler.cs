@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Mediator;
+namespace WoW.Two.Sdk.Backend.Beta.Mediator.Cqrs;
 
 /// <summary>
 /// Handles a <see cref="ICommand{TResult}"/> and produces its result.

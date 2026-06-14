@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace WoW.Two.Sdk.Backend.Beta.Comms.Email;
+namespace WoW.Two.Sdk.Backend.Beta.comms.email;
 
 /// <summary>Cross-provider email defaults registration.</summary>
 public static class EmailServiceCollectionExtensions

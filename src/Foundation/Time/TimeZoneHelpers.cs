@@ -1,6 +1,6 @@
 using TimeZoneConverter;
 
-namespace WoW.Two.Sdk.Backend.Beta.Time;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Time;
 
 /// <summary>
 /// Cross-platform time-zone resolution.

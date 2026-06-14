@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Validation;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
 /// <summary>Adapts FluentValidation validators to the <see cref="IValidator{T}"/> contract.</summary>
 /// <typeparam name="T">The type being validated.</typeparam>

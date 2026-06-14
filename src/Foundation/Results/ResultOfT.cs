@@ -1,6 +1,6 @@
-using WoW.Two.Sdk.Backend.Beta.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
-namespace WoW.Two.Sdk.Backend.Beta.Results;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 /// <summary>Represents the outcome of an operation that returns a <typeparamref name="T"/> value.</summary>
 /// <typeparam name="T">The success value type.</typeparam>

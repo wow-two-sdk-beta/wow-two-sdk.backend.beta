@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace WoW.Two.Sdk.Backend.Beta.Http.Resilience;
+namespace WoW.Two.Sdk.Backend.Beta.http.resilience;
 
 /// <summary>
 /// Applies the SDK's standard resilience pipeline to an outbound <see cref="IHttpClientBuilder"/>.
