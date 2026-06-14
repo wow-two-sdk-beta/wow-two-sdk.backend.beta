@@ -56,6 +56,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.3" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Cosmos" Version="10.0.3" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.3" />
+    <PackageVersion Include="Npgsql" Version="10.0.0" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageVersion Include="EFCore.BulkExtensions" Version="10.0.1" />
@@ -283,6 +284,10 @@
     <PackageVersion Include="Testcontainers.LocalStack" Version="4.1.0" />
     <PackageVersion Include="Respawn" Version="6.2.1" />
     <PackageVersion Include="JustEat.HttpClientInterception" Version="5.1.1" />
+  </ItemGroup>
+
+  <ItemGroup Label="CLI / tooling">
+    <PackageVersion Include="System.CommandLine" Version="2.0.9" />
   </ItemGroup>
 
   <ItemGroup Label="Source link / build">

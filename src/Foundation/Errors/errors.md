@@ -23,5 +23,5 @@ public ErrorOr<User> GetUser(Guid id) =>
 
 ## See also
 
-- [WoW.Two.Sdk.Backend.Beta.Results](../results/README.md) for the result wrappers
-- [WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails](../../web/problemdetails/README.md) (P1) for the HTTP mapper
+- [WoW.Two.Sdk.Backend.Beta.Results](../results/results.md) for the result wrappers
+- [WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails](../../web/problemdetails/problem-details.md) (P1) for the HTTP mapper

@@ -9,22 +9,22 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.Jwt;
 public sealed record JwtOptions
 {
     /// <summary>Required token issuer.</summary>
-    public string Issuer { get; init; } = "";
+    public string Issuer { get; set; } = "";
 
     /// <summary>Required token audience.</summary>
-    public string Audience { get; init; } = "";
+    public string Audience { get; set; } = "";
 
     /// <summary>Symmetric signing key (for HMAC algos). Use either this or <see cref="JwksUri"/>.</summary>
-    public string? SymmetricKey { get; init; }
+    public string? SymmetricKey { get; set; }
 
     /// <summary>JWKS URI (for asymmetric / managed keys via OIDC discovery).</summary>
-    public Uri? JwksUri { get; init; }
+    public Uri? JwksUri { get; set; }
 
     /// <summary>Validate token expiration. Default <c>true</c>.</summary>
-    public bool ValidateLifetime { get; init; } = true;
+    public bool ValidateLifetime { get; set; } = true;
 
     /// <summary>Clock skew. Default 30 seconds.</summary>
-    public TimeSpan ClockSkew { get; init; } = TimeSpan.FromSeconds(30);
+    public TimeSpan ClockSkew { get; set; } = TimeSpan.FromSeconds(30);
 }
 
 /// <summary>JWT bearer registration helpers.</summary>

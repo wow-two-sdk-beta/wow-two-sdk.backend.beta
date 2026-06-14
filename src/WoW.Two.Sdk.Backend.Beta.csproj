@@ -23,13 +23,21 @@
     <Description>WoW Two backend SDK (beta-forever mono-lib) — foundation, observability, web, mediator, identity, and data concerns in one package, divided by folders.</Description>
     <PackageTags>wow-two; backend; beta; sdk; aspnet; mono</PackageTags>
 
-    <!-- Exclude the testing mono-lib tree and any stray build artifacts from this compile. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);testing/**;**/obj/**;**/bin/**</DefaultItemExcludes>
+    <!-- Exclude the testing mono-lib tree, the web-free Data/Abstractions project tree, the web-free
+         migrator CLI tree (its own Exe project), and any stray build artifacts from this compile.
+         Each is its own project (referenced/standalone); globbing them here too would double-compile their types. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);testing/**;Data/Abstractions/**;data/migrations/cli/**;**/obj/**;**/bin/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <!-- web/*, identity/*, mediator/authorization compile against the ASP.NET Core shared framework. -->
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- The web-free data-contracts seam (IDbConnectionFactory, entity/repository interfaces). Referencing it
+       (not globbing it) keeps a single type identity so every consumer of IDbConnectionFactory still resolves. -->
+  <ItemGroup>
+    <ProjectReference Include="Data/Abstractions/WoW.Two.Sdk.Backend.Beta.Data.Abstractions.csproj" />
   </ItemGroup>
 
   <!--

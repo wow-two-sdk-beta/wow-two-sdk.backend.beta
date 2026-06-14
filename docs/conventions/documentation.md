@@ -20,7 +20,7 @@ src/foundation/time/
 ├── TimeModule.standard.md           ← RFC 2119 contract — "must / should"
 ├── TimeModule.spec.md               ← concrete API + usage snippets
 ├── TimeModule.tests.cs              ← runnable examples (xUnit)
-└── README.md                        ← 1-screen quickstart + see-also
+└── time.md                          ← 1-screen quickstart + see-also (folder lead doc = `{folder}.md`)
 ```
 
 `*.standard.md` and `*.spec.md` borrow the UI lib's per-component pattern. `*.tests.cs` is our **Storybook for backend** — every wrapper test demonstrates intended usage AND catches regressions.
@@ -51,7 +51,7 @@ The IDEAS catalog (`docs/analysis/philosophy/ideas.md`) is the encyclopedic memo
 - **Every wrapper ships with at least one xUnit test acting as docs.** Even trivial wrappers — the test proves the registration call works.
 - **`*.standard.md` is RFC 2119 (MUST/SHOULD/MAY) only.** Behavior contract, not API. Survives API churn.
 - **`*.spec.md` is concrete API + usage.** Matches code. Updated when wrapper API changes.
-- **`README.md` is the 1-screen elevator pitch.** Install, register, one snippet, see-also links.
+- **The folder lead doc `{folder}.md` is the 1-screen elevator pitch** (kebab-cased folder name, e.g. `time.md`, `output-cache.md`; never `README.md` below the repo root). Install, register, one snippet, see-also links.
 - **XML doc comments on every public type.** `<GenerateDocumentationFile>true</GenerateDocumentationFile>` is on globally.
 - **Don't embed full underlying-lib API docs.** Link out instead.
 

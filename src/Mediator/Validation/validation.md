@@ -16,4 +16,4 @@ builder.Services.AddMediator(typeof(Program).Assembly);
 builder.Services.AddMediatorValidationBehavior();                   // wires the behavior
 ```
 
-Throws `FluentValidation.ValidationException` if any rule fails — pair with [`Web.ProblemDetails`](../../web/problemdetails/README.md) to map to RFC 7807 400 responses.
+Throws `FluentValidation.ValidationException` if any rule fails — pair with [`Web.ProblemDetails`](../../web/problemdetails/problem-details.md) to map to RFC 7807 400 responses.

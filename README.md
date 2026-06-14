@@ -60,7 +60,7 @@ app.Run();
 ```
 
 Need per-concern control? Every piece `AddApiDefaults` wires is a public extension you can call
-directly — the expansion is listed in [`src/meta/README.md`](./src/meta/README.md).
+directly — the expansion is listed in [`src/meta/meta.md`](./src/meta/meta.md).
 
 ## Read these first
 

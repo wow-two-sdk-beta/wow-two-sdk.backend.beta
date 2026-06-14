@@ -28,4 +28,4 @@ Throws:
 - `UnauthorizedAccessException` — caller not authenticated
 - `AuthorizationException` — caller lacks permission
 
-Map to RFC 7807 401/403 via [`Web.ProblemDetails`](../../web/problemdetails/README.md).
+Map to RFC 7807 401/403 via [`Web.ProblemDetails`](../../web/problemdetails/problem-details.md).

@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    DATA ABSTRACTIONS (beta-forever) — the one WEB-FREE seam.
+
+    A BCL-only contracts package so a `dotnet tool` CLI (e.g. smart-qr-migrate) can depend on the
+    SDK's data seam WITHOUT dragging in the ASP.NET Core shared framework. The core mono-lib
+    (WoW.Two.Sdk.Backend.Beta.csproj) carries `<FrameworkReference Include="Microsoft.AspNetCore.App"/>`,
+    so anything referencing it inherits ASP.NET. This project deliberately does NOT.
+
+    Holds: entity/repository interfaces (IEntity, IKeyedEntity, IRepository, IHasTableName, …) and the
+    Dapper connection seam (IDbConnectionFactory, DataSourceConnectionFactory) moved out of Data/Dapper.
+    The connection-factory types KEEP namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper so the migrator
+    engine and existing consumers' `using` lines do not churn — only the assembly boundary moved.
+
+    Dependencies: BCL only (System.Data.Common is in-box) + Microsoft.Extensions.DependencyInjection.Abstractions
+    for the connection-factory DI helpers. NO FrameworkReference. Inherits Directory.Build.props + CPM.
+  -->
+
+  <PropertyGroup>
+    <!-- Published ID uses the OWNED WoW2.* reserved prefix. Assembly + namespaces remain WoW.Two.*. -->
+    <PackageId>WoW2.Sdk.Backend.Beta.Data.Abstractions</PackageId>
+    <Description>WoW Two backend SDK data abstractions (beta-forever) — BCL-only entity/repository contracts and the Dapper connection seam (IDbConnectionFactory). Web-free so CLI tools can consume it without ASP.NET.</Description>
+    <PackageTags>wow-two; backend; beta; sdk; data; abstractions; dapper</PackageTags>
+
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/obj/**;**/bin/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!-- DI helpers for the connection seam — base abstractions only, NOT the ASP.NET shared framework. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+</Project>

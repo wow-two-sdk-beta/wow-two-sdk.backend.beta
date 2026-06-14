@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    WEB-FREE MIGRATOR CLI: the `wow-migrate` dotnet tool.
+
+    Lives OUTSIDE the mono-lib on purpose. The mono-lib (WoW.Two.Sdk.Backend.Beta.csproj) carries a
+    FrameworkReference to Microsoft.AspNetCore.App, so referencing it would drag ASP.NET into a console
+    tool. Instead this project:
+      * references ONLY the BCL-only Data.Abstractions (IDbConnectionFactory + DataSourceConnectionFactory,
+        namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper),
+      * LINK-compiles the SQL migrator engine sources from ../../Migrations/Sql/ (no mono-lib reference),
+      * brings its own concrete DI container + logging + Npgsql + Dapper via PackageReferences.
+
+    NO FrameworkReference. NO mono-lib ProjectReference. Verified web-free via the transitive package
+    listing (no Microsoft.AspNetCore.* / MediatR).
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli</RootNamespace>
+    <AssemblyName>wow-migrate</AssemblyName>
+  </PropertyGroup>
+
+  <!-- Real dotnet tool: installs as `wow-migrate` via `dotnet tool install`. -->
+  <PropertyGroup>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>wow-migrate</ToolCommandName>
+    <PackageId>WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli</PackageId>
+    <CreateRidSpecificToolPackages>false</CreateRidSpecificToolPackages>
+    <Description>Web-free SQL migrator CLI (`wow-migrate`) over the WoW Two backend SDK bespoke migrator — status, apply, new, promote, rollback, verify (+--repair) against a Postgres database.</Description>
+    <PackageTags>wow-two; backend; beta; sdk; data; migrations; cli; dotnet-tool; postgres</PackageTags>
+    <!-- README packaging from Directory.Build.props is conditional on a sibling README; none here, so disable the pack hint. -->
+    <PackageReadmeFile></PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- The one web-free seam: IDbConnectionFactory + DataSourceConnectionFactory (BCL-only). -->
+  <ItemGroup>
+    <ProjectReference Include="../../Abstractions/WoW.Two.Sdk.Backend.Beta.Data.Abstractions.csproj" />
+  </ItemGroup>
+
+  <!-- Link (do NOT reference) the SQL migrator engine — compiles it web-free into this tool. -->
+  <ItemGroup>
+    <Compile Include="../../Migrations/Sql/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Dapper" />
+    <!-- DI host + logging: the engine references only the abstractions; the CLI brings the concrete container. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+</Project>

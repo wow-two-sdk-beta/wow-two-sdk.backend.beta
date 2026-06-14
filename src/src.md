@@ -27,4 +27,4 @@ dotnet restore WoW.Two.Sdk.Backend.Beta.slnx -m:1
 MSBUILDDISABLENODEREUSE=1 dotnet build WoW.Two.Sdk.Backend.Beta.slnx --no-restore -m:1
 ```
 
-Each concern keeps its own `README.md` / `*.spec.md` / `*.standard.md` in its folder as documentation.
+Each concern keeps its own folder lead doc `{folder}.md` / `*.spec.md` / `*.standard.md` in its folder as documentation (lead doc is `{folder}.md`, never a sub-folder `README.md`).

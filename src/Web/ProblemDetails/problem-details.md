@@ -18,7 +18,7 @@ app.UseExceptionHandler();
 app.UseStatusCodePages();
 ```
 
-Throw `Microsoft.AspNetCore.Http.BadHttpRequestException` etc. — they map to ProblemDetails automatically. Or return `DomainError`-shaped results from your handlers and convert via the [`Errors`](../../foundation/errors/README.md) package.
+Throw `Microsoft.AspNetCore.Http.BadHttpRequestException` etc. — they map to ProblemDetails automatically. Or return `DomainError`-shaped results from your handlers and convert via the [`Errors`](../../foundation/errors/errors.md) package.
 
 ## See also
 

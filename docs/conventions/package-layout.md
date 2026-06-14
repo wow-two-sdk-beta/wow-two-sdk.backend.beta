@@ -84,10 +84,11 @@ src/<area>/<package>/
 ├── <Module>.standard.md                   ← RFC 2119 behavioral contract
 ├── <Module>.spec.md                       ← API + usage snippets
 ├── <Module>.tests.cs                      ← runnable examples (xUnit)
-└── README.md                              ← 1-screen quickstart
+└── <folder>.md                            ← folder lead doc (kebab folder name, e.g. `time.md`) — 1-screen quickstart. NOT `README.md` (only the repo root may be `README.md`)
 ```
 
 > No `tests/` separate folder. Test files live next to the wrapper they document.
+> Folder lead doc is `{folder}.md` (kebab-cased), never a per-folder `README.md` — see `repo-structure.md` §3.
 
 ## Naming
 

@@ -47,21 +47,7 @@ public static class DapperServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// Registers a custom <see cref="IDbConnectionFactory"/> implementation.
-    /// </summary>
-    public static IServiceCollection AddDbConnectionFactory<TFactory>(this IServiceCollection services)
-        where TFactory : class, IDbConnectionFactory
-    {
-        services.AddSingleton<IDbConnectionFactory, TFactory>();
-        return services;
-    }
-
-    /// <summary>Registers <see cref="DataSourceConnectionFactory"/> as the <see cref="IDbConnectionFactory"/>, backed by a registered <see cref="System.Data.Common.DbDataSource"/>.</summary>
-    public static IServiceCollection AddDataSourceConnectionFactory(this IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        services.AddSingleton<IDbConnectionFactory, DataSourceConnectionFactory>();
-        return services;
-    }
+    // IDbConnectionFactory registration (AddDbConnectionFactory / AddDataSourceConnectionFactory) moved to
+    // ConnectionFactoryServiceCollectionExtensions in the web-free WoW.Two.Sdk.Backend.Beta.Data.Abstractions
+    // project, alongside IDbConnectionFactory + DataSourceConnectionFactory. Same namespace — no consumer churn.
 }

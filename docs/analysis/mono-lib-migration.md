@@ -19,7 +19,7 @@ Collapsed the 72 per-concern `.csproj` files into **two** class libraries, divid
 
 > **⚠️ Recovery incident (2026-06-01).** The folder rename was first attempted with a script that ran TWICE in parallel on shared staging + did case-insensitive `mv data→Data` on macOS APFS. This destroyed the working tree: 102→57 `.cs`. **All recovered.** 18 files came back from `git checkout HEAD`; **39 uncommitted P3 files** (all of `data/ef-core*`, `data/migrations-*`, `data/dapper`, `data/specifications`) were reconstructed from **JetBrains Rider Local History** (`~/Library/Caches/JetBrains/Rider2026.1/caches/content.dat` — VFS content store keeps every saved revision as plaintext). Extraction: maximal printable-byte runs (UTF-8-aware so em-dashes don't split files) anchored on the declaration matching each filename; 32/33 EF files auto-recovered, 1 marker file + the 6 Dapper/Spec files restored from an intermediate backup. Final tree rebuilt to 108 `.cs`, **0 errors / 0 warnings**. Lessons: (1) never run FS-mutating scripts in parallel; (2) on case-insensitive FS, delete the old dir before `mv`-ing the case-variant in; (3) commit before bulk restructuring. Backups: `/tmp/sdk-src-PASCALCASE-GREEN-*`.
 - **Testing is separate** so xUnit / Testcontainers never enter a production reference. (Merge into one lib if ever desired — they're cleanly separable; testing helpers only depend on each other.)
-- `slnx` rewritten to the 2 projects. Per-folder `README.md` / `*.spec.md` / `*.standard.md` kept as docs.
+- `slnx` rewritten to the 2 projects. Per-folder lead doc `{folder}.md` / `*.spec.md` / `*.standard.md` kept as docs.
 
 ## Why it was clean
 

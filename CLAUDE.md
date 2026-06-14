@@ -13,7 +13,8 @@ The `WoW.Two.Sdk.Backend.Beta.*` family — beta-forever .NET 9 backend SDK aggr
 - **[`docs/analysis/philosophy/ideas.md`](./docs/analysis/philosophy/ideas.md)** — encyclopedic catalog of every .NET tech / pattern / library / runtime API. **No verdicts** — pure inventory. Source of ideas; read when considering scope expansion.
 - **[`docs/analysis/philosophy/targets.md`](./docs/analysis/philosophy/targets.md)** — verdict per item: **DONE / NOW / NEXT / LATER / MAYBE / SKIP / LOCKED**. Mirrors `ideas.md`'s structure. Read when deciding what to ship next.
 - **[`docs/conventions/`](./docs/conventions/)** — package layout, naming, documentation strategy, package registry (lookup table).
-- **[`docs/templates/`](./docs/templates/)** — copy-paste templates for new packages (`csproj`, `Module.cs`, `Options.cs`, `standard.md`, `spec.md`, `Tests.cs`, `README.md`).
+- **[`docs/templates/`](./docs/templates/)** — copy-paste templates for new packages (`csproj`, `Module.cs`, `Options.cs`, `standard.md`, `spec.md`, `Tests.cs`, `folder-doc.md` — the folder lead doc, copied to `{folder}.md`).
+- **[`docs/planning/platform-planning.md`](./docs/planning/platform-planning.md)** — standing roadmap + backlog of lego features to build; deep-dives under `docs/planning/<feature>/` (e.g. [`identity/identity-architecture.md`](./docs/planning/identity/identity-architecture.md)). Format follows `conventions/planning/platform-planning/`.
 
 When scope expansion is considered, walk `targets.md` first. If the desired vector is missing or marked **MAYBE/LATER**, raise it for triage and update both files. Treat these two as a paired source-of-truth — when one changes, sync the other.
 
@@ -75,12 +76,12 @@ src/<area>/<package>/
 ├── <Public types>.cs
 ├── <Module>.standard.md                     ← RFC 2119 contract (when API has shape)
 ├── <Module>.spec.md                         ← API + usage snippets (when API has shape)
-└── README.md                                ← 1-screen quickstart + see-also
+└── <folder>.md                              ← folder lead doc (kebab folder name, e.g. `time.md`) — 1-screen quickstart + see-also. NOT `README.md` below the repo root
 ```
 
 **Naming**: package id carries the brand (`WoW.Two.Sdk.Backend.Beta.<Area>`), but **method/class names do NOT have a `WowTwo` prefix** — they describe what they actually do (e.g. `AddJwtBearerAuthentication`, `AddOpenTelemetryTracing`, `UseOwaspSecureHeaders`, `JsonOptionsPresets`, `WebApiTestBase<T>`). Mirrors the older `Backbone.Language.Features.Serialization` package convention. See [`docs/conventions/naming.md`](./docs/conventions/naming.md).
 
-Tiny adapter packages (e.g. each container engine) ship just csproj + main file + README. Standard/spec are reserved for packages where the API has non-trivial shape.
+Tiny adapter packages (e.g. each container engine) ship just csproj + main file + the folder lead doc `{folder}.md`. Standard/spec are reserved for packages where the API has non-trivial shape.
 
 See [`docs/conventions/package-layout.md`](./docs/conventions/package-layout.md).
 
@@ -109,7 +110,7 @@ Registration: descriptive method names without `WowTwo` prefix — `services.Add
 
 ## Documentation strategy
 
-**Wrappers** ship docs (`spec.md`, `standard.md`, `README.md`, `Tests.cs` examples). **Underlying libs** are NOT documented by us — we link to their official docs.
+**Wrappers** ship docs (`spec.md`, `standard.md`, the folder lead doc `{folder}.md`, `Tests.cs` examples). **Underlying libs** are NOT documented by us — we link to their official docs.
 
 See [`docs/conventions/documentation.md`](./docs/conventions/documentation.md).
 
