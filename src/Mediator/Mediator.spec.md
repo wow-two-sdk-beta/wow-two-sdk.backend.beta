@@ -1,6 +1,6 @@
 # Mediator — spec
 
-*Last updated: 2026-05-04*
+*Last updated: 2026-06-14*
 
 ## NuGet
 
@@ -50,6 +50,33 @@ WoW.Two.Sdk.Backend.Beta.Mediator
 | `AddMediator()` | Scans calling assembly. |
 | `AddMediator(params Assembly[])` | Scans supplied assemblies. |
 | `AddMediatorBehavior(typeof(B<,>))` | Register open-generic behavior. |
+
+### CQRS layer (`Cqrs/`)
+
+Intent markers layered over the request/handler primitives — same dispatch, clearer naming. The DI scan already binds these (an `IQueryHandler<,>` **is** an `IRequestHandler<,>`); no scanner change.
+
+| Type | Notes |
+|---|---|
+| `IQuery<TResult>` | `: IRequest<TResult>` — read marker. (Invariant `TResult` — the SDK's `IRequest<TResponse>` is invariant.) |
+| `ICommand<TResult>` | `: IRequest<TResult>` — write marker (value). |
+| `ICommand` | `: IRequest` — write marker (void). |
+| `IQueryHandler<TQuery, TResult>` | `: IRequestHandler<TQuery, TResult> where TQuery : IQuery<TResult>`. |
+| `ICommandHandler<TCommand, TResult>` | `: IRequestHandler<TCommand, TResult> where TCommand : ICommand<TResult>`. |
+| `ICommandHandler<TCommand>` | `: IRequestHandler<TCommand> where TCommand : ICommand`. |
+| `SenderCqrsExtensions.SendAsync(...)` | `SendAsync` overloads on `ISender` forwarding to `Send` — query / command-with-result / void command. The facade products inject; resolves via `using WoW.Two.Sdk.Backend.Beta.Mediator`. |
+
+### Result union (`Result/`)
+
+A closed discriminated union every handler/endpoint returns — typed success **or** typed, context-bearing failure. See [`result-pattern.md`](../../../../conventions/development/backend/foundation/result-pattern.md).
+
+| Type | Notes |
+|---|---|
+| `AppResult<TSuccess, TFailure>` | `abstract record`, private ctor; `where TSuccess : ISuccessResult, TFailure : IFailureResult`. |
+| `AppResult<,>.Success` | `sealed record Success(TSuccess Data, IApplicationSuccessContext? Context = null)`. |
+| `AppResult<,>.Failure` | `sealed record Failure(TFailure Error, IApplicationFailureContext? Context = null)`. |
+| `ISuccessResult` / `IFailureResult` | Empty markers constraining the payloads. |
+| `IApplicationSuccessContext` / `IApplicationFailureContext` | Empty markers — per-side optional context. |
+| `AppResultExtensions.Match<…, TOut>(onSuccess, onFailure)` | Collapse to one `TOut`. **Two overloads** — `Func<Success, TOut>` (payload) and `Func<TOut>` (no-arg, for void-ish commands → `NoContent`); failure arm is always `Func<Failure, TOut>`. |
 
 ## Quick start
 
@@ -113,6 +140,45 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
 }
 
 builder.Services.AddMediatorBehavior(typeof(LoggingBehavior<,>));
+```
+
+## CQRS + AppResult
+
+A query/command + handler returning the standard union, consumed via `.Match`:
+
+```csharp
+// per-operation result container — implements the markers
+public abstract record CodeGetByIdResult
+{
+    private CodeGetByIdResult() { }
+    public sealed record Success(CodeDto Code) : CodeGetByIdResult, ISuccessResult;
+    public sealed record Failure(string ErrorMessage, bool NotFound = false) : CodeGetByIdResult, IFailureResult;
+}
+
+public sealed record CodeGetByIdQuery(Guid Id) : IQuery<AppResult<CodeGetByIdResult.Success, CodeGetByIdResult.Failure>>;
+
+public sealed class CodeGetByIdHandler(MyDb db)
+    : IQueryHandler<CodeGetByIdQuery, AppResult<CodeGetByIdResult.Success, CodeGetByIdResult.Failure>>
+{
+    public async Task<AppResult<CodeGetByIdResult.Success, CodeGetByIdResult.Failure>> Handle(CodeGetByIdQuery q, CancellationToken ct)
+        => await db.Codes.FindAsync([q.Id], ct) is { } code
+            ? new AppResult<CodeGetByIdResult.Success, CodeGetByIdResult.Failure>.Success(new(code.ToDto()))
+            : new AppResult<CodeGetByIdResult.Success, CodeGetByIdResult.Failure>.Failure(new("Code not found", NotFound: true));
+}
+
+// controller — SendAsync facade + .Match collapse
+[HttpGet("{id:guid}")]
+public async Task<IActionResult> GetById(Guid id, CancellationToken ct) =>
+    (await sender.SendAsync(new CodeGetByIdQuery(id), ct)).Match<IActionResult>(
+        onSuccess: ok => Ok(ApiResponse<CodeDto>.Ok(ok.Data.Code)),
+        onFailure: fail => fail.Error.NotFound ? NotFound() : Problem(fail.Error.ErrorMessage));
+
+// void-ish command — no-arg success arm → NoContent
+[HttpDelete("{id:guid}")]
+public async Task<IActionResult> DeleteById(Guid id, CancellationToken ct) =>
+    (await sender.SendAsync(new CodeDeleteCommand(id), ct)).Match<IActionResult>(
+        onSuccess: () => NoContent(),
+        onFailure: fail => Problem(fail.Error.ErrorMessage));
 ```
 
 ## Behavior order

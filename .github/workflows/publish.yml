@@ -53,8 +53,12 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "::notice::Releasing $VERSION (was $CUR)"
 
-      - name: Pack         # version comes from Directory.Build.props (just bumped)
-        run: dotnet pack src/WoW.Two.Sdk.Backend.Beta.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
+      - name: Pack         # version from Directory.Build.props (just bumped). Pack the 3 published projects:
+        run: |
+          # mono-lib + Data.Abstractions (the mono-lib's nuspec dependency) + the wow-migrate CLI tool.
+          dotnet pack src/WoW.Two.Sdk.Backend.Beta.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
+          dotnet pack src/Data/Abstractions/WoW.Two.Sdk.Backend.Beta.Data.Abstractions.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
+          dotnet pack src/data/migrations/cli/WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
 
       - name: Authenticate to NuGet (Trusted Publishing)   # OIDC → short-lived API key, no stored secret
         uses: NuGet/login@v1

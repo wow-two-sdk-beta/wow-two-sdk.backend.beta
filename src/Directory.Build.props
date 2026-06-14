@@ -30,7 +30,6 @@
     <PackageProjectUrl>https://github.com/wow-two-sdk-beta/wow-two-sdk.backend.beta</PackageProjectUrl>
     <RepositoryUrl>https://github.com/wow-two-sdk-beta/wow-two-sdk.backend.beta.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -54,7 +53,13 @@
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
   </ItemGroup>
 
-  <!-- README is included in every NuGet automatically if a README.md sits next to the csproj -->
+  <!-- README is the package's PackageReadmeFile when one sits next to the csproj (e.g. src/README.md for the mono-lib).
+       This is a functional NuGet file, NOT a folder lead-doc — the no-README-below-root rule does not apply to it.
+       Set PackageReadmeFile ONLY when the file exists, so README-less packable projects (Abstractions, CLI) don't fail NU5039. -->
+
+  <PropertyGroup Condition="Exists('$(MSBuildProjectDirectory)/README.md')">
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
 
   <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/README.md')">
     <None Include="README.md" Pack="true" PackagePath="\" />

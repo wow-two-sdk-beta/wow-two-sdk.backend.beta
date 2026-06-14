@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    MEDIATOR UNIT TESTS (beta-forever exception).
+
+    The SDK is beta-forever with "no required tests", but the CQRS + AppResult absorption ships a
+    public contract (the discriminated union + .Match collapse + CQRS markers) worth a guard. This is
+    the SDK's first unit-test project — xUnit + AwesomeAssertions, referencing the core mono-lib.
+
+    Non-packable, no XML-doc gate. Relaxes a few analyzer-as-error rules that are noise in test code
+    (underscore test names, ConfigureAwait, null-arg guards on test helpers).
+  -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Test-code conventions clash with latest-recommended-as-error: underscores in test names (CA1707),
+         no ConfigureAwait (CA2007), public-method null guards (CA1062), static-test-class (CA1052). -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);CA1707;CA2007;CA1062;CA1052;CA1819;xUnit1041</WarningsNotAsErrors>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/obj/**;**/bin/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!-- The core mono-lib carries FrameworkReference Microsoft.AspNetCore.App; match it so
+       Microsoft.Extensions.* (DI, etc.) resolve from the shared framework instead of as CPM-pinned
+       packages — otherwise the lib's transitive HeaderPropagation 10.0.9 downgrade-conflicts the 10.0.3 pin. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="AwesomeAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../WoW.Two.Sdk.Backend.Beta.csproj" />
+  </ItemGroup>
+
+</Project>

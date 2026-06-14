@@ -23,6 +23,22 @@ builder.Services.AddMediator(typeof(Program).Assembly);
 builder.Services.AddMediatorBehavior(typeof(LoggingBehavior<,>));
 ```
 
+### CQRS + result (`Cqrs/` · `Result/`)
+
+Intent markers + the standard result union layered over the primitives:
+
+```csharp
+public sealed record GetCodeQuery(Guid Id) : IQuery<AppResult<GetCodeResult.Success, GetCodeResult.Failure>>;
+
+// dispatch via the SendAsync facade, collapse via .Match
+(await sender.SendAsync(new GetCodeQuery(id), ct)).Match<IActionResult>(
+    onSuccess: ok => Ok(ok.Data),       // or () => NoContent() for void-ish commands
+    onFailure: fail => Problem(fail.Error.ErrorMessage));
+```
+
+- `Cqrs/` — `IQuery<T>` / `ICommand<T>` / `ICommand` + `IQueryHandler` / `ICommandHandler` (markers over `IRequest`/`IRequestHandler`; same DI scan) + `SendAsync` on `ISender`.
+- `Result/` — `AppResult<TSuccess, TFailure>` closed union (`Success`/`Failure` cases) + `ISuccessResult` / `IFailureResult` / context markers + `.Match`. See [`result-pattern.md`](../../../../conventions/development/backend/foundation/result-pattern.md).
+
 See [Mediator.spec.md](./Mediator.spec.md) for the full surface and patterns.
 
 ## See also

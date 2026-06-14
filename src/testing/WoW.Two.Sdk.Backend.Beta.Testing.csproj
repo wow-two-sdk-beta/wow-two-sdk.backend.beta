@@ -18,6 +18,11 @@
     <!-- Test-only + unpublished: downgrade the critical-vuln advisory (System.Drawing.Common 5.0.0, transitive via a test tool) to non-blocking. Revisit by bumping the puller. -->
     <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1904</WarningsNotAsErrors>
 
+    <!-- Test-HELPER library (xUnit fixtures/extensions), not a test SUITE: it references xunit but ships
+         no runner (no Microsoft.NET.Test.Sdk / xunit.runner). Tell `dotnet test` to skip it so a
+         solution-wide run doesn't fail on a testhost-with-no-tests error. -->
+    <IsTestProject>false</IsTestProject>
+
     <DefaultItemExcludes>$(DefaultItemExcludes);**/obj/**;**/bin/**</DefaultItemExcludes>
   </PropertyGroup>
 

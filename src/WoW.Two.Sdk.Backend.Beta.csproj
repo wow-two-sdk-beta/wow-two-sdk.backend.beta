@@ -26,7 +26,7 @@
     <!-- Exclude the testing mono-lib tree, the web-free Data/Abstractions project tree, the web-free
          migrator CLI tree (its own Exe project), and any stray build artifacts from this compile.
          Each is its own project (referenced/standalone); globbing them here too would double-compile their types. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);testing/**;Data/Abstractions/**;data/migrations/cli/**;**/obj/**;**/bin/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);testing/**;Mediator.Tests/**;Data/Abstractions/**;data/migrations/cli/**;**/obj/**;**/bin/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <!-- web/*, identity/*, mediator/authorization compile against the ASP.NET Core shared framework. -->
