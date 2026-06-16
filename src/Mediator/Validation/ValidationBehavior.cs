@@ -11,7 +11,7 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
     where TRequest : notnull
 {
     /// <inheritdoc />
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(next);
 

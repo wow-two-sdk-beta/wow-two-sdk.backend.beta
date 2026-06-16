@@ -16,8 +16,8 @@ public interface INotification;
 /// <summary>Handles a request and produces a response.</summary>
 public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse>
 {
-    /// <summary>Handle the request.</summary>
-    Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken);
+    /// <summary>Handle the request. Sync-completing handlers may return a completed <see cref="ValueTask{TResult}"/>.</summary>
+    ValueTask<TResponse> HandleAsync(TRequest request, CancellationToken cancellationToken);
 }
 
 /// <summary>Handles a request that produces no response.</summary>
@@ -27,34 +27,34 @@ public interface IRequestHandler<in TRequest> : IRequestHandler<TRequest, Unit> 
 public interface INotificationHandler<in TNotification> where TNotification : INotification
 {
     /// <summary>Handle the notification.</summary>
-    Task Handle(TNotification notification, CancellationToken cancellationToken);
+    ValueTask HandleAsync(TNotification notification, CancellationToken cancellationToken);
 }
 
 /// <summary>Pipeline behavior wrapping a request handler.</summary>
 public interface IPipelineBehavior<in TRequest, TResponse> where TRequest : notnull
 {
-    /// <summary>Invoke the next behavior or the handler.</summary>
-    Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken);
+    /// <summary>Invoke the next behavior or the handler. Await <paramref name="next"/> exactly once.</summary>
+    ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken);
 }
 
-/// <summary>Continuation in a pipeline.</summary>
-public delegate Task<TResponse> RequestHandlerDelegate<TResponse>();
+/// <summary>Continuation in a pipeline — invokes the next behavior or the handler. Await exactly once.</summary>
+public delegate ValueTask<TResponse> RequestHandlerDelegate<TResponse>();
 
 /// <summary>Sender — fire a request and await its response.</summary>
 public interface ISender
 {
     /// <summary>Send a strongly-typed request.</summary>
-    Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default);
+    ValueTask<TResponse> SendAsync<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default);
 
     /// <summary>Send a request with no response.</summary>
-    Task Send(IRequest request, CancellationToken cancellationToken = default);
+    ValueTask<Unit> SendAsync(IRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Publisher — fire a notification to all registered handlers.</summary>
 public interface IPublisher
 {
     /// <summary>Publish a notification.</summary>
-    Task Publish<TNotification>(TNotification notification, CancellationToken cancellationToken = default) where TNotification : INotification;
+    ValueTask PublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken = default) where TNotification : INotification;
 }
 
 /// <summary>Combined sender + publisher.</summary>
@@ -68,4 +68,7 @@ public readonly record struct Unit
 
     /// <summary>Completed task wrapping <see cref="Value"/>.</summary>
     public static readonly Task<Unit> Task = System.Threading.Tasks.Task.FromResult(Value);
+
+    /// <summary>Completed <see cref="ValueTask{TResult}"/> wrapping <see cref="Value"/>.</summary>
+    public static ValueTask<Unit> ValueTask => new(Value);
 }

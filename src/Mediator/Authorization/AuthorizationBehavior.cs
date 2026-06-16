@@ -24,7 +24,7 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
     where TRequest : notnull
 {
     /// <inheritdoc />
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(next);

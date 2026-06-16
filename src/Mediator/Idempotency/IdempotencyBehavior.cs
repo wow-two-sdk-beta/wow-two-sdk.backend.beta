@@ -53,7 +53,7 @@ public sealed class IdempotencyBehavior<TRequest, TResponse>(IIdempotencyStore s
     public static TimeSpan Ttl { get; set; } = TimeSpan.FromHours(24);
 
     /// <inheritdoc />
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(next);

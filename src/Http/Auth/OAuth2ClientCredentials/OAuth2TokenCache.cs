@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.Json;
 
-namespace WoW.Two.Sdk.Backend.Beta.Http.AuthOAuth2ClientCredentials;
+namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.OAuth2ClientCredentials;
 
 /// <summary>
 /// Singleton per-client-name access-token cache. Single-flights token-endpoint calls so concurrent

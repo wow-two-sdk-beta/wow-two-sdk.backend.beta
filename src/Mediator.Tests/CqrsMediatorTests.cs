@@ -14,16 +14,16 @@ public sealed class CqrsMediatorTests
 
     private sealed class PingHandler : IQueryHandler<Ping, string>
     {
-        public Task<string> Handle(Ping request, CancellationToken cancellationToken)
-            => Task.FromResult($"pong:{request.Text}");
+        public ValueTask<string> HandleAsync(Ping request, CancellationToken cancellationToken)
+            => ValueTask.FromResult($"pong:{request.Text}");
     }
 
     private sealed record Add(int A, int B) : ICommand<int>;
 
     private sealed class AddHandler : ICommandHandler<Add, int>
     {
-        public Task<int> Handle(Add request, CancellationToken cancellationToken)
-            => Task.FromResult(request.A + request.B);
+        public ValueTask<int> HandleAsync(Add request, CancellationToken cancellationToken)
+            => ValueTask.FromResult(request.A + request.B);
     }
 
     private sealed record Touch : ICommand;
@@ -32,10 +32,10 @@ public sealed class CqrsMediatorTests
     {
         public static int Count;
 
-        public Task<Unit> Handle(Touch request, CancellationToken cancellationToken)
+        public ValueTask<Unit> HandleAsync(Touch request, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref Count);
-            return Unit.Task;
+            return Unit.ValueTask;
         }
     }
 
@@ -62,7 +62,7 @@ public sealed class CqrsMediatorTests
         provider.GetService<IRequestHandler<Touch, Unit>>().Should().BeOfType<TouchHandler>();
     }
 
-    // --- SendAsync facade forwards to ISender.Send for each overload ---
+    // --- SendAsync (native on ISender) dispatches each CQRS shape; a query IS an IRequest<T> ---
 
     [Fact]
     public async Task SendAsync_dispatches_a_query()
@@ -96,21 +96,20 @@ public sealed class CqrsMediatorTests
     }
 
     [Fact]
-    public async Task SendAsync_query_equals_Send()
+    public async Task SendAsync_void_command_returns_unit()
     {
         var sender = BuildSender();
 
-        var viaFacade = await sender.SendAsync(new Ping("x"));
-        var viaSend = await sender.Send(new Ping("x"));
+        var unit = await sender.SendAsync((IRequest)new Touch());
 
-        viaFacade.Should().Be(viaSend);
+        unit.Should().Be(Unit.Value);
     }
 
     [Fact]
-    public async Task SendAsync_throws_on_null_sender()
+    public async Task SendAsync_throws_on_null_request()
     {
-        ISender sender = null!;
-        var act = async () => await sender.SendAsync(new Ping("x"));
+        var sender = BuildSender();
+        var act = async () => await sender.SendAsync<string>(null!);
 
         await act.Should().ThrowAsync<ArgumentNullException>();
     }

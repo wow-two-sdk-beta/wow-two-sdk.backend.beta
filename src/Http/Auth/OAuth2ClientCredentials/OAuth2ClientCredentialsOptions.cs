@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Http.AuthOAuth2ClientCredentials;
+namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.OAuth2ClientCredentials;
 
 /// <summary>
 /// Settings for the OAuth2 <c>client_credentials</c> bearer-token handler attached to an outbound

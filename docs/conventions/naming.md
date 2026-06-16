@@ -26,7 +26,16 @@ PascalCase. Dotted. No abbreviations except established ones (e.g., `OAuth`, `Sq
 - `src/Web/OutputCache/` → `WoW.Two.Sdk.Backend.Beta.Web.OutputCache`
 - `src/Identity/OAuth/Google/` → `WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Google`
 
-Apply the §Acronyms rules to each segment (`ai` → `AI`, `auth-oauth2-client-credentials` → `AuthOAuth2ClientCredentials`, `hangfire-postgres` → `HangfirePostgres`, `feature-flags` → `FeatureFlags`), and keep established product casings (`MailKit`, `SendGrid`, `OpenAI`, `Postgres`, `SqlServer`, `RabbitMq`).
+**Provider leaves nest under their concept parent — dotted, not flat.** A provider belonging to a concept family becomes a child folder of that concept, mirroring `Identity/OAuth/Google/`:
+
+- `src/Comms/Email/MailKit/` → `…Comms.Email.MailKit` (provider under the `Email` concept; NOT a flat `Comms/EmailMailKit/`)
+- `src/Http/Auth/OAuth2ClientCredentials/` → `…Http.Auth.OAuth2ClientCredentials`
+- `src/Jobs/Hangfire/Postgres/` → `…Jobs.Hangfire.Postgres`
+- `src/Ai/Vector/Qdrant/` → `…Ai.Vector.Qdrant`
+
+A single-concept area with no provider family stays flat (`src/Http/HeaderPropagation/`).
+
+Apply the §Acronyms rules to each segment — always PascalCase, never all-caps (`ai` → `Ai`, `feature-flags` → `FeatureFlags`) — and keep mixed-case product casings (`MailKit`, `SendGrid`, `OpenAi`, `Postgres`, `SqlServer`, `RabbitMq`).
 
 > **Linux CI is case-sensitive.** Build-file path globs (`DefaultItemExcludes`, `.slnx` project paths, workflow `dotnet pack` paths) must match the on-disk PascalCase exactly — a lowercased path silently no-ops on `ubuntu-latest` even though macOS hides it.
 
@@ -199,9 +208,13 @@ TimeModule.tests.cs   // class TimeModuleTests
 
 ## Acronyms
 
-Pascal-case all acronyms longer than 2 letters: `OpenApi`, `JsonSchema`, `OAuth` (special — established).
+**Always PascalCase — first letter cap, the rest lower — NEVER all-caps**, even when it distorts the original. No length exception, no "established" exception.
 
-Two-letter acronyms stay all-caps: `IO`, `UI`, `ID` (but `Id` when used as a member name like `UserId`).
+- `Id` (not `ID`), `Ai` (not `AI`), `Api` (not `API`), `Mqtt` (not `MQTT`), `OpenApi`, `JsonSchema`.
+- Folders + namespaces follow this with no exceptions: `src/Ai/`, `src/Ai/Vector/Qdrant/`, `…Beta.Ai.Vector.Qdrant`.
+- Mixed-case proper product names have no all-caps *run* and are left verbatim: `OAuth`, `SendGrid`, `MailKit`, `RabbitMq`, `SqlServer`, `OpenAi` (the model-vendor leaf — its `AI` tail is an acronym → `Ai`).
+
+> Public type/member names follow the same rule (`UserId`, not `UserID`). This pass fixes only the folders/namespaces and obvious all-caps in types it touches; a broader type-name acronym sweep is tracked separately.
 
 ## Database / table names (when our packages create schema)
 

@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Comms.EmailSendGrid;
+namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.SendGrid;
 
 /// <summary>SendGrid API settings.</summary>
 public sealed class SendGridEmailOptions

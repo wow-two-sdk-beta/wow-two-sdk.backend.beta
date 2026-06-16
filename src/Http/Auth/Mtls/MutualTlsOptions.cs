@@ -1,6 +1,6 @@
 using System.Security.Cryptography.X509Certificates;
 
-namespace WoW.Two.Sdk.Backend.Beta.Http.AuthMtls;
+namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.Mtls;
 
 /// <summary>
 /// Client-certificate settings for mutual-TLS HTTP clients. Provide either a loaded

@@ -1,7 +1,7 @@
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace WoW.Two.Sdk.Backend.Beta.Http.AuthMtls;
+namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.Mtls;
 
 /// <summary>
 /// Configures an outbound HTTP client to present a client certificate (mutual TLS).

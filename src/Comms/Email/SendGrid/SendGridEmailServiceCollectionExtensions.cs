@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 using SendGrid;
 using WoW.Two.Sdk.Backend.Beta.Comms.Email;
 
-namespace WoW.Two.Sdk.Backend.Beta.Comms.EmailSendGrid;
+namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.SendGrid;
 
 /// <summary>SendGrid sender registration.</summary>
 public static class SendGridEmailServiceCollectionExtensions

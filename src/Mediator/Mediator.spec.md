@@ -38,9 +38,9 @@ WoW.Two.Sdk.Backend.Beta.Mediator
 
 | Type | Notes |
 |---|---|
-| `ISender.Send<T>(IRequest<T>)` | Returns `Task<T>`. |
-| `ISender.Send(IRequest)` | Returns `Task`. |
-| `IPublisher.Publish<T>(T)` | Sequential fan-out. |
+| `ISender.SendAsync<T>(IRequest<T>)` | Returns `ValueTask<T>`. |
+| `ISender.SendAsync(IRequest)` | Returns `ValueTask<Unit>` (dispatches as `SendAsync<Unit>`). |
+| `IPublisher.PublishAsync<T>(T)` | `ValueTask` — sequential fan-out. |
 | `IMediator` | Combined. |
 
 ### Registration
@@ -63,7 +63,8 @@ Intent markers layered over the request/handler primitives — same dispatch, cl
 | `IQueryHandler<TQuery, TResult>` | `: IRequestHandler<TQuery, TResult> where TQuery : IQuery<TResult>`. |
 | `ICommandHandler<TCommand, TResult>` | `: IRequestHandler<TCommand, TResult> where TCommand : ICommand<TResult>`. |
 | `ICommandHandler<TCommand>` | `: IRequestHandler<TCommand> where TCommand : ICommand`. |
-| `SenderCqrsExtensions.SendAsync(...)` | `SendAsync` overloads on `ISender` forwarding to `Send` — query / command-with-result / void command. The facade products inject; resolves via `using WoW.Two.Sdk.Backend.Beta.Mediator`. |
+
+`SendAsync` is native on `ISender` — `sender.SendAsync(query)` / `sender.SendAsync(command)` bind to `ISender.SendAsync<T>(IRequest<T>)` directly (a query/command **is** an `IRequest<T>`). No separate CQRS sender facade.
 
 ### Result union (`Result/`)
 
@@ -93,7 +94,7 @@ public sealed record GetUser(Guid Id) : IRequest<UserDto>;
 
 public sealed class GetUserHandler(MyDb db) : IRequestHandler<GetUser, UserDto>
 {
-    public async Task<UserDto> Handle(GetUser request, CancellationToken ct) =>
+    public async ValueTask<UserDto> HandleAsync(GetUser request, CancellationToken ct) =>
         await db.Users.FindAsync([request.Id], ct) is { } user
             ? new UserDto(user.Id, user.Email)
             : throw new KeyNotFoundException();
@@ -106,8 +107,8 @@ Send:
 public class UsersController(IMediator mediator) : ControllerBase
 {
     [HttpGet("{id:guid}")]
-    public Task<UserDto> Get(Guid id, CancellationToken ct) =>
-        mediator.Send(new GetUser(id), ct);
+    public async Task<UserDto> Get(Guid id, CancellationToken ct) =>
+        await mediator.SendAsync(new GetUser(id), ct);
 }
 ```
 
@@ -119,7 +120,7 @@ public sealed record OrderPlaced(Guid OrderId) : INotification;
 public class SendOrderEmail : INotificationHandler<OrderPlaced> { /* ... */ }
 public class TrackAnalytics : INotificationHandler<OrderPlaced> { /* ... */ }
 
-await mediator.Publish(new OrderPlaced(orderId), ct);
+await mediator.PublishAsync(new OrderPlaced(orderId), ct);
 ```
 
 Pipeline behaviors:
@@ -129,7 +130,7 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
-    public async Task<TResponse> Handle(TRequest req, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
+    public async ValueTask<TResponse> HandleAsync(TRequest req, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
     {
         log.LogInformation("→ {Request}", typeof(TRequest).Name);
         var sw = Stopwatch.StartNew();
@@ -160,7 +161,7 @@ public sealed record CodeGetByIdQuery(Guid Id) : IQuery<AppResult<CodeGetByIdRes
 public sealed class CodeGetByIdHandler(MyDb db)
     : IQueryHandler<CodeGetByIdQuery, AppResult<CodeGetByIdResult.Success, CodeGetByIdResult.Failure>>
 {
-    public async Task<AppResult<CodeGetByIdResult.Success, CodeGetByIdResult.Failure>> Handle(CodeGetByIdQuery q, CancellationToken ct)
+    public async ValueTask<AppResult<CodeGetByIdResult.Success, CodeGetByIdResult.Failure>> HandleAsync(CodeGetByIdQuery q, CancellationToken ct)
         => await db.Codes.FindAsync([q.Id], ct) is { } code
             ? new AppResult<CodeGetByIdResult.Success, CodeGetByIdResult.Failure>.Success(new(code.ToDto()))
             : new AppResult<CodeGetByIdResult.Success, CodeGetByIdResult.Failure>.Failure(new("Code not found", NotFound: true));

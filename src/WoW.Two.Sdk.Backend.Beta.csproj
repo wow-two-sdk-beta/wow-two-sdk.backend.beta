@@ -6,7 +6,8 @@
     One class library compiling every shipping concern under src/ (foundation, observability,
     web, mediator, identity, data, …) — divided by FOLDERS, not projects. The folder tree is
     unchanged; only the per-concern .csproj boundaries were removed. Namespaces match their folder
-    path 1:1 (e.g. WoW.Two.Sdk.Backend.Beta.Data.Dapper lives in src/Data/Dapper/).
+    path 1:1, including nested provider leaves (e.g. WoW.Two.Sdk.Backend.Beta.Comms.Email.MailKit
+    lives in src/Comms/Email/MailKit/, …Jobs.Hangfire.Postgres in src/Jobs/Hangfire/Postgres/).
 
     Why: kill the create-csproj / wire-ProjectReference / build-graph / version-per-package cycle.
     Push one package, iterate fast. We split back into granular packages when the surface is

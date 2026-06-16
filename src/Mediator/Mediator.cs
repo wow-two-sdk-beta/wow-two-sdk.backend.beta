@@ -14,29 +14,30 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
     private static readonly ConcurrentDictionary<Type, PublishDispatcher> _publishDispatchers = new();
 
     /// <inheritdoc />
-    public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
+    public ValueTask<TResponse> SendAsync<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         var dispatcher = _requestDispatchers.GetOrAdd(request.GetType(), BuildRequestDispatcher);
-        return (Task<TResponse>)dispatcher(serviceProvider, request, typeof(TResponse), cancellationToken);
+        // The dispatcher boxes the ValueTask<TResponse> once (reflection erases the static type); unbox and return.
+        return (ValueTask<TResponse>)dispatcher(serviceProvider, request, cancellationToken);
     }
 
     /// <inheritdoc />
-    public Task Send(IRequest request, CancellationToken cancellationToken = default)
-        => Send<Unit>(request, cancellationToken);
+    public ValueTask<Unit> SendAsync(IRequest request, CancellationToken cancellationToken = default)
+        => SendAsync<Unit>(request, cancellationToken);
 
     /// <inheritdoc />
-    public async Task Publish<TNotification>(TNotification notification, CancellationToken cancellationToken = default)
+    public ValueTask PublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken = default)
         where TNotification : INotification
     {
         ArgumentNullException.ThrowIfNull(notification);
         var dispatcher = _publishDispatchers.GetOrAdd(notification.GetType(), BuildPublishDispatcher);
-        await dispatcher(serviceProvider, notification, cancellationToken).ConfigureAwait(false);
+        return dispatcher(serviceProvider, notification, cancellationToken);
     }
 
-    private delegate object RequestDispatcher(IServiceProvider sp, object request, Type responseType, CancellationToken ct);
+    private delegate object RequestDispatcher(IServiceProvider sp, object request, CancellationToken ct);
 
-    private delegate Task PublishDispatcher(IServiceProvider sp, object notification, CancellationToken ct);
+    private delegate ValueTask PublishDispatcher(IServiceProvider sp, object notification, CancellationToken ct);
 
     private static RequestDispatcher BuildRequestDispatcher(Type requestType)
     {
@@ -52,23 +53,27 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
             .GetMethod(nameof(DispatchTyped), BindingFlags.NonPublic | BindingFlags.Static)!
             .MakeGenericMethod(requestType, responseType);
 
-        return (sp, req, _, ct) => method.Invoke(null, [sp, req, ct])!;
+        // method returns ValueTask<TResponse>; reflection boxes it to object (the closed return type is
+        // unknown to the cache). SendAsync<TResponse> unboxes it back — one box per dispatch, no Task wrap.
+        return (sp, req, ct) => method.Invoke(null, [sp, req, ct])!;
     }
 
-    private static async Task<TResponse> DispatchTyped<TRequest, TResponse>(IServiceProvider sp, TRequest request, CancellationToken ct)
+    private static ValueTask<TResponse> DispatchTyped<TRequest, TResponse>(IServiceProvider sp, TRequest request, CancellationToken ct)
         where TRequest : IRequest<TResponse>
     {
         var handler = sp.GetRequiredService<IRequestHandler<TRequest, TResponse>>();
         var behaviors = sp.GetServices<IPipelineBehavior<TRequest, TResponse>>().Reverse().ToArray();
 
-        RequestHandlerDelegate<TResponse> pipeline = () => handler.Handle(request, ct);
+        RequestHandlerDelegate<TResponse> pipeline = () => handler.HandleAsync(request, ct);
         foreach (var behavior in behaviors)
         {
             var current = pipeline;
-            pipeline = () => behavior.Handle(request, current, ct);
+            pipeline = () => behavior.HandleAsync(request, current, ct);
         }
 
-        return await pipeline().ConfigureAwait(false);
+        // No await here — return the head of the pipeline directly so a sync-completing chain stays sync.
+        // Each behavior/handler awaits its own `next()` exactly once (await-once discipline).
+        return pipeline();
     }
 
     private static PublishDispatcher BuildPublishDispatcher(Type notificationType)
@@ -77,15 +82,15 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
             .GetMethod(nameof(PublishTyped), BindingFlags.NonPublic | BindingFlags.Static)!
             .MakeGenericMethod(notificationType);
 
-        return (sp, n, ct) => (Task)method.Invoke(null, [sp, n, ct])!;
+        return (sp, n, ct) => (ValueTask)method.Invoke(null, [sp, n, ct])!;
     }
 
-    private static async Task PublishTyped<TNotification>(IServiceProvider sp, TNotification notification, CancellationToken ct)
+    private static async ValueTask PublishTyped<TNotification>(IServiceProvider sp, TNotification notification, CancellationToken ct)
         where TNotification : INotification
     {
         var handlers = sp.GetServices<INotificationHandler<TNotification>>();
-        // Sequential by default — predictable order, simpler error handling.
+        // Sequential by default — predictable order, simpler error handling. A throwing handler aborts the rest.
         foreach (var h in handlers)
-            await h.Handle(notification, ct).ConfigureAwait(false);
+            await h.HandleAsync(notification, ct).ConfigureAwait(false);
     }
 }

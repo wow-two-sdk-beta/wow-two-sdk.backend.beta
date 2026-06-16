@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 using MimeKit;
 using WoW.Two.Sdk.Backend.Beta.Comms.Email;
 
-namespace WoW.Two.Sdk.Backend.Beta.Comms.EmailMailKit;
+namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.MailKit;
 
 /// <summary>
 /// SMTP <see cref="IEmailSender"/> over MailKit — works against any SMTP relay

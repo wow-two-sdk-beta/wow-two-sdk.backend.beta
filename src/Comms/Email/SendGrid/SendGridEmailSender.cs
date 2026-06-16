@@ -4,7 +4,7 @@ using SendGrid.Helpers.Mail;
 using WoW.Two.Sdk.Backend.Beta.Comms.Email;
 using EmailAddress = WoW.Two.Sdk.Backend.Beta.Comms.Email.EmailAddress;
 
-namespace WoW.Two.Sdk.Backend.Beta.Comms.EmailSendGrid;
+namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.SendGrid;
 
 /// <summary><see cref="IEmailSender"/> over the SendGrid v3 API.</summary>
 public sealed class SendGridEmailSender : IEmailSender

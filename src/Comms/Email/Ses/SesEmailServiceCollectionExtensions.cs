@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Comms.Email;
 
-namespace WoW.Two.Sdk.Backend.Beta.Comms.EmailSes;
+namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.Ses;
 
 /// <summary>Amazon SES sender registration.</summary>
 public static class SesEmailServiceCollectionExtensions
