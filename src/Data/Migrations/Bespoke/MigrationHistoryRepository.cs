@@ -1,7 +1,7 @@
 using System.Data.Common;
 using Dapper;
 
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Persists and fetches migration-history rows and brokers the apply-loop advisory lock.</summary>
 /// <remarks>Reads schema, table, and lock id from <see cref="MigrationOptions"/>; delegates DDL and locking SQL to the <see cref="IMigrationDialect"/>.</remarks>

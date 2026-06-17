@@ -2,7 +2,7 @@
 
 *Last updated: 2026-06-13*
 
-> Strategy index for the three database-migration runners shipped side-by-side in this package — `Ef/`, `DbUp/`, `Sql/`. This doc **routes**; engine internals live in each sub-folder's own lead doc (notably `Sql/sql.md`). `Sql/` is the intended default for wow-two products.
+> Strategy index for the three database-migration runners shipped side-by-side in this package — `Ef/`, `DbUp/`, `Sql/`. This doc **routes**; engine internals live in each sub-folder's own lead doc (notably `Bespoke/bespoke.md`). `Sql/` is the intended default for wow-two products.
 
 ---
 
@@ -52,7 +52,7 @@ Carrying a legacy embedded-.sql DbUp script library forward?
 
 ### Provider note
 
-`Ef/` and `DbUp/` are provider-flexible; `Sql/` is **Postgres-only today** by design (it issues `pg_advisory_lock` and relies on Postgres transactional DDL). If a product must target SQL Server or SQLite for schema management, use `Ef/` or `DbUp/` until the `Sql/` provider seam (a SQLite dialect) ships — see `Sql/sql.md`.
+`Ef/` and `DbUp/` are provider-flexible; `Sql/` is **Postgres-only today** by design (it issues `pg_advisory_lock` and relies on Postgres transactional DDL). If a product must target SQL Server or SQLite for schema management, use `Ef/` or `DbUp/` until the `Sql/` provider seam (a SQLite dialect) ships — see `Bespoke/bespoke.md`.
 
 ---
 
@@ -71,7 +71,7 @@ services.AddDbUpRunner(o =>
     o.ScriptsAssembly      = typeof(Program).Assembly;
 });
 
-// Sql/ — bespoke raw-SQL, host-agnostic; the intended default (see Sql/sql.md)
+// Sql/ — bespoke raw-SQL, host-agnostic; the intended default (see Bespoke/bespoke.md)
 services.AddSqlMigrations(o => { /* MigrationOptions: AllowRollback (dev only), ... */ });
 ```
 
@@ -81,7 +81,7 @@ services.AddSqlMigrations(o => { /* MigrationOptions: AllowRollback (dev only), 
 
 - `Ef/` — `EfMigrationsServiceCollectionExtensions` (`AddEfMigrationsRunner<TContext>`), `EfMigrationsHostedService<TContext>` (calls `Database.MigrateAsync`), `EfMigrationsOptions`.
 - `DbUp/` — `DbUpServiceCollectionExtensions` (`AddDbUpRunner`), `DbUpHostedService`, `DbUpOptions`, `DbUpProviderFactories` (`Postgres`/`SqlServer`/`MySql`).
-- `Sql/` — bespoke engine: `IMigrationRunnerService`/`MigrationRunnerService`, `MigrationDescriptor`, `AddSqlMigrations`, `MigrationOptions`, on-disk `Migrations/NNN-name/{Apply,Rollback}.sql`. **All engine internals, the `wow-migrate` CLI, packaging, and the build-then-extract plan are documented in `Sql/sql.md`** — this index does not duplicate them.
+- `Sql/` — bespoke engine: `IMigrationRunnerService`/`MigrationRunnerService`, `MigrationDescriptor`, `AddSqlMigrations`, `MigrationOptions`, on-disk `Migrations/NNN-name/{Apply,Rollback}.sql`. **All engine internals, the `wow-migrate` CLI, packaging, and the build-then-extract plan are documented in `Bespoke/bespoke.md`** — this index does not duplicate them.
 
 ---
 
@@ -89,6 +89,6 @@ services.AddSqlMigrations(o => { /* MigrationOptions: AllowRollback (dev only), 
 
 - `./Ef/` — EF Core code-first runner (`AddEfMigrationsRunner<TContext>`, `Database.MigrateAsync`).
 - `./DbUp/` — DbUp embedded-script runner (`AddDbUpRunner`, `DbUpProviderFactories`).
-- `./Sql/sql.md` — bespoke raw-SQL migrator design doc (`AddSqlMigrations`, `IMigrationRunnerService`, `MigrationDescriptor`, `Migrations/NNN-name/Apply.sql`) — engine, concurrency, CLI, packaging.
-- `../Dapper/` — `IDbConnectionFactory` the `Sql/` engine runs over (BCL-only extraction pending; see `Sql/sql.md` §0.1).
+- `./Bespoke/bespoke.md` — bespoke raw-SQL migrator design doc (`AddSqlMigrations`, `IMigrationRunnerService`, `MigrationDescriptor`, `Migrations/NNN-name/Apply.sql`) — engine, concurrency, CLI, packaging.
+- `../Dapper/` — `IDbConnectionFactory` the `Sql/` engine runs over (BCL-only extraction pending; see `Bespoke/bespoke.md` §0.1).
 - `conventions/development/backend/persistence/database.md` — schema-first rule + EF waste-rule (for `Sql/`, `Migrations/*/Apply.sql` IS the canonical schema EF maps over).

@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Thrown when the history records applied migrations whose source is absent — the running binary is older than the database, or a migration folder was deleted.</summary>
 public sealed class MigrationOrphanException(IReadOnlyList<int> orphanedOrdinals)

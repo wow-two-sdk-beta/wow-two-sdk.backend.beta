@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Defines the database engine a migration run targets, selecting the matching SQL dialect.</summary>
 /// <example>Set on <see cref="MigrationOptions.Provider"/> to pick the dialect.</example>

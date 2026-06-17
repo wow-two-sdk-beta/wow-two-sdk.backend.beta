@@ -2,7 +2,7 @@ using System.Data.Common;
 using Dapper;
 using Npgsql;
 
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Provides the PostgreSQL dialect: maintenance-DB create, advisory locking, and history-table DDL.</summary>
 /// <remarks>Use as the <see cref="IMigrationDialect"/> when <see cref="MigrationOptions.Provider"/> is <see cref="DatabaseProvider.Postgres"/>.</remarks>

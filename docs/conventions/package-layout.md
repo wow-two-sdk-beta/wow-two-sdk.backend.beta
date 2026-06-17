@@ -7,59 +7,59 @@
 ```
 wow-two-sdk.backend.beta/
 ├── src/
-│   ├── WoW.Two.Sdk.Backend.Beta.sln       ← solution at src/ root
+│   ├── WoW.Two.Sdk.Backend.Beta.slnx      ← solution at src/ root (.slnx — canonical)
+│   ├── WoW.Two.Sdk.Backend.Beta.csproj    ← core lib (globs every shipping folder)
 │   ├── Directory.Build.props              ← shared MSBuild properties
 │   ├── Directory.Packages.props           ← centralized package versions
 │   ├── .editorconfig                      ← rules for entire src/
 │   │
-│   ├── meta/
+│   ├── Meta/
 │   │   └── WoW.Two.Sdk.Backend.Beta/      ← meta-package — refs curated set
 │   │
-│   ├── foundation/                        ← P1 — leaf-level deps
-│   │   ├── time/         → WoW.Two.Sdk.Backend.Beta.Time
-│   │   ├── errors/       → WoW.Two.Sdk.Backend.Beta.Errors
-│   │   ├── results/      → WoW.Two.Sdk.Backend.Beta.Results
-│   │   ├── validation/   → WoW.Two.Sdk.Backend.Beta.Validation
-│   │   └── serialization/ → WoW.Two.Sdk.Backend.Beta.Serialization
+│   ├── Foundation/                        ← P1 — leaf-level deps
+│   │   ├── Time/         → WoW.Two.Sdk.Backend.Beta.Foundation.Time
+│   │   ├── Errors/       → WoW.Two.Sdk.Backend.Beta.Foundation.Errors
+│   │   ├── Results/      → WoW.Two.Sdk.Backend.Beta.Foundation.Results
+│   │   ├── Validation/   → WoW.Two.Sdk.Backend.Beta.Foundation.Validation
+│   │   └── Serialization/ → WoW.Two.Sdk.Backend.Beta.Foundation.Serialization
 │   │
-│   ├── observability/                     ← P1
-│   │   ├── logging/
-│   │   ├── tracing/
-│   │   ├── metrics/
-│   │   └── healthchecks/
+│   ├── Observability/                     ← P1
+│   │   ├── Logging/
+│   │   ├── Tracing/
+│   │   ├── Metrics/
+│   │   └── HealthChecks/
 │   │
-│   ├── web/                               ← P1
-│   │   ├── hosting/
-│   │   ├── openapi/
-│   │   ├── problemdetails/
-│   │   ├── ratelimit/
-│   │   ├── outputcache/
-│   │   ├── secureheaders/
-│   │   └── cors/
+│   ├── Web/                               ← P1
+│   │   ├── Hosting/
+│   │   ├── OpenApi/
+│   │   ├── ProblemDetails/
+│   │   ├── RateLimit/
+│   │   ├── OutputCache/
+│   │   ├── SecureHeaders/
+│   │   └── Cors/
 │   │
-│   ├── mediator/                          ← P2
-│   ├── identity/                          ← P2
-│   ├── data/                              ← P3
-│   ├── caching/                           ← P3
-│   ├── http/                              ← P3
-│   ├── messaging/                         ← P4
-│   ├── jobs/                              ← P4
-│   ├── comms/                             ← P4
-│   ├── tenancy/                           ← P5
-│   ├── ai/                                ← P5
-│   ├── feature-flags/                     ← P5
-│   ├── realtime/                          ← P6
-│   ├── storage/                           ← P6
-│   ├── search/                            ← P6
-│   ├── workflow/                          ← P6
+│   ├── Mediator/                          ← P2
+│   ├── Identity/                          ← P2
+│   ├── Data/                              ← P3
+│   ├── Caching/                           ← P3
+│   ├── Http/                              ← P3
+│   ├── Messaging/                         ← P4
+│   ├── Jobs/                              ← P4
+│   ├── Comms/                             ← P4
+│   ├── Tenancy/                           ← P5
+│   ├── Ai/                                ← P5
+│   ├── FeatureFlags/                      ← P5
+│   ├── Realtime/                          ← P6
+│   ├── Storage/                           ← P6
+│   ├── Search/                            ← P6
+│   ├── Workflow/                          ← P6
 │   │
-│   └── testing/                           ← P0 — parallel, ships continuously
-│       ├── core/
-│       ├── containers/
-│       ├── verify/
-│       ├── bogus/
-│       ├── wiremock/
-│       └── assertions/
+│   └── Testing/                           ← P0 — parallel, ships continuously
+│       ├── Assertions/
+│       ├── Containers/
+│       ├── Verify/
+│       ├── Bogus/
+│       └── WireMock/
 │
 ├── docs/
 │   ├── analysis/philosophy/               ← ideas.md + targets.md
@@ -118,7 +118,7 @@ This mirrors the UI lib's foundation/domain rule. Future: enforce via custom Ros
 
 ## Solution organization
 
-Single `WoW.Two.Sdk.Backend.Beta.sln` at `src/` root, with **solution folders** mirroring the directory structure (foundation, observability, web, etc.).
+Single `WoW.Two.Sdk.Backend.Beta.slnx` at `src/` root, with **solution folders** mirroring the directory structure (Foundation, Observability, Web, etc.).
 
 For consumers and IDE perf at scale, plan to add `.slnf` filters per phase (e.g., `WoW.Two.Sdk.Backend.Beta.P1.slnf` opens just P1 packages).
 

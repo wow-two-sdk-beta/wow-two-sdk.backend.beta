@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Represents a snapshot of migrator state: what is applied, pending, drifted, or orphaned.</summary>
 /// <example>A status report with one applied migration and none pending.</example>

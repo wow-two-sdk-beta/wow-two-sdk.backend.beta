@@ -7,7 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests;
 
 /// <summary>
 /// Pipeline composition: behaviors wrap the handler, run in registration order (first registered = outermost),
-/// and a short-circuiting behavior can skip the handler by not invoking <c>next</c>.
+/// and a short-circuiting behavior can skip the handler by not invoking <c>nextStep</c>.
 /// </summary>
 public sealed class PipelineBehaviorTests
 {
@@ -29,10 +29,10 @@ public sealed class PipelineBehaviorTests
     private abstract class TracingBehavior<TRequest, TResponse>(string label) : IPipelineBehavior<TRequest, TResponse>
         where TRequest : notnull
     {
-        public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+        public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> nextStep, CancellationToken cancellationToken)
         {
             _trace.Value!.Add($"{label}:before");
-            var response = await next().ConfigureAwait(false); // await-once
+            var response = await nextStep().ConfigureAwait(false); // await-once
             _trace.Value!.Add($"{label}:after");
             return response;
         }
@@ -44,11 +44,11 @@ public sealed class PipelineBehaviorTests
 
     private sealed class BehaviorThree<TRequest, TResponse>() : TracingBehavior<TRequest, TResponse>("three") where TRequest : notnull;
 
-    // A behavior that short-circuits — never calls next, returns a canned value.
+    // A behavior that short-circuits — never calls nextStep, returns a canned value.
     private sealed class ShortCircuitBehavior<TRequest, TResponse>(TResponse canned) : IPipelineBehavior<TRequest, TResponse>
         where TRequest : notnull
     {
-        public ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+        public ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> nextStep, CancellationToken cancellationToken)
         {
             _trace.Value!.Add("short-circuit");
             return ValueTask.FromResult(canned); // handler never reached

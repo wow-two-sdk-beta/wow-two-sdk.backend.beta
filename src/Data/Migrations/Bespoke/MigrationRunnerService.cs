@@ -4,7 +4,7 @@ using Dapper;
 using Microsoft.Extensions.Logging;
 using WoW.Two.Sdk.Backend.Beta.Data.Dapper; // IDbConnectionFactory — the SDK connection seam (returns BCL DbConnection).
 
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Provides the migration apply, status, rollback, and repair operations behind every host.</summary>
 /// <remarks>

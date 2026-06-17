@@ -11,14 +11,14 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
     where TRequest : notnull
 {
     /// <inheritdoc />
-    public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> nextStep, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(next);
+        ArgumentNullException.ThrowIfNull(nextStep);
 
         foreach (var validator in validators)
             validator.ValidateAndThrow(request);
 
-        return await next().ConfigureAwait(false);
+        return await nextStep().ConfigureAwait(false);
     }
 }
 

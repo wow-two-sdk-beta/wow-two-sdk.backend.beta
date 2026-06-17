@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Options for the SQL migrator, set in code via the <c>AddDatabaseBespokeMigrations</c> configure hook and shared by every host.</summary>
 /// <remarks>This is a mutable options object (not an appsettings-bound settings record) — the CLI flips <see cref="AllowRollback"/> at registration.</remarks>

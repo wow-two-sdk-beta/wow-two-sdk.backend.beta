@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Represents one applied migration recorded in the history table, mapped by Dapper (snake_case).</summary>
 /// <example>An applied baseline migration.</example>

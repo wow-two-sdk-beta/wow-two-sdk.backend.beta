@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Represents a migration as discovered by an <see cref="IMigrationSource"/>, pre-validation.</summary>
 /// <example>A raw baseline migration with its Apply and Rollback SQL.</example>

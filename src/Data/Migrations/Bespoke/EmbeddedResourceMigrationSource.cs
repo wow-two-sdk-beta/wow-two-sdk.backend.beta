@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Provides migrations embedded as assembly resources (logical name <c>Migrations/NNN-name/Apply.sql</c>).</summary>
 /// <remarks>Use at runtime so the schema ships inside the binary — no filesystem dependency at deploy.</remarks>

@@ -72,7 +72,7 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
         }
 
         // No await here — return the head of the pipeline directly so a sync-completing chain stays sync.
-        // Each behavior/handler awaits its own `next()` exactly once (await-once discipline).
+        // Each behavior/handler awaits its own `nextStep()` exactly once (await-once discipline).
         return pipeline();
     }
 

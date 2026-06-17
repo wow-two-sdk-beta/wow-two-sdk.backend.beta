@@ -2,7 +2,7 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using WoW.Two.Sdk.Backend.Beta.Data.Dapper;
 
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Provides registration extensions for the SQL migrator — an embedded-resource source for runtime hosts, a filesystem source for the CLI.</summary>
 public static class MigrationServiceCollectionExtensions

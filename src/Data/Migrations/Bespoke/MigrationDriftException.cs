@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Thrown when an already-applied migration's source content has changed since it was applied.</summary>
 public sealed class MigrationDriftException(IReadOnlyList<string> drifted)

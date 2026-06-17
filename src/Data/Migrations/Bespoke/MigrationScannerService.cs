@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Provides parsing and validation of raw migrations into an ordered, checksummed list.</summary>
 /// <remarks>Reads the source, parses the <c>NNN-name</c> prefix, computes a checksum per Apply script, and rejects malformed or duplicate ordinals.</remarks>

@@ -53,19 +53,19 @@ public sealed class IdempotencyBehavior<TRequest, TResponse>(IIdempotencyStore s
     public static TimeSpan Ttl { get; set; } = TimeSpan.FromHours(24);
 
     /// <inheritdoc />
-    public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> nextStep, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(next);
+        ArgumentNullException.ThrowIfNull(nextStep);
 
         if (request is not IIdempotent ide)
-            return await next().ConfigureAwait(false);
+            return await nextStep().ConfigureAwait(false);
 
         var (acquired, cached) = await store.TryAcquireAsync(ide.IdempotencyKey, typeof(TResponse), cancellationToken).ConfigureAwait(false);
         if (!acquired)
             return cached is TResponse t ? t : default!;
 
-        var response = await next().ConfigureAwait(false);
+        var response = await nextStep().ConfigureAwait(false);
         await store.StoreAsync(ide.IdempotencyKey, response, Ttl, cancellationToken).ConfigureAwait(false);
         return response;
     }

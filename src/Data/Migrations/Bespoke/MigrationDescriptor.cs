@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Represents a validated, ordered migration with parsed ordinal, name, checksum, and execution flags.</summary>
 /// <example>The baseline migration ready to apply.</example>

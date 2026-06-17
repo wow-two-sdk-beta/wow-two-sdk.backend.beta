@@ -8,7 +8,7 @@
     tool. Instead this project:
       * references ONLY the BCL-only Data.Abstractions (IDbConnectionFactory + DataSourceConnectionFactory,
         namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper),
-      * LINK-compiles the SQL migrator engine sources from ../../Migrations/Sql/ (no mono-lib reference),
+      * LINK-compiles the SQL migrator engine sources from ../../Migrations/Bespoke/ (no mono-lib reference),
       * brings its own concrete DI container + logging + Npgsql + Dapper via PackageReferences.
 
     NO FrameworkReference. NO mono-lib ProjectReference. Verified web-free via the transitive package
@@ -25,7 +25,7 @@
   <PropertyGroup>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>wow-migrate</ToolCommandName>
-    <PackageId>WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli</PackageId>
+    <PackageId>WoW2.Sdk.Backend.Beta.Data.Migrations.Cli</PackageId>
     <CreateRidSpecificToolPackages>false</CreateRidSpecificToolPackages>
     <Description>Web-free SQL migrator CLI (`wow-migrate`) over the WoW Two backend SDK bespoke migrator — status, apply, new, promote, rollback, verify (+--repair) against a Postgres database.</Description>
     <PackageTags>wow-two; backend; beta; sdk; data; migrations; cli; dotnet-tool; postgres</PackageTags>
@@ -40,7 +40,7 @@
 
   <!-- Link (do NOT reference) the SQL migrator engine — compiles it web-free into this tool. -->
   <ItemGroup>
-    <Compile Include="../../Migrations/Sql/**/*.cs" />
+    <Compile Include="../../Migrations/Bespoke/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>

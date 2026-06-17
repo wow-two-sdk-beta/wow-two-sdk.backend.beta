@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using WoW.Two.Sdk.Backend.Beta.Data.Dapper;
-using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli;
 

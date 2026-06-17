@@ -77,7 +77,7 @@ A closed discriminated union every handler/endpoint returns — typed success **
 | `AppResult<,>.Failure` | `sealed record Failure(TFailure Error, IApplicationFailureContext? Context = null)`. |
 | `ISuccessResult` / `IFailureResult` | Empty markers constraining the payloads. |
 | `IApplicationSuccessContext` / `IApplicationFailureContext` | Empty markers — per-side optional context. |
-| `AppResultExtensions.Match<…, TOut>(onSuccess, onFailure)` | Collapse to one `TOut`. **Two overloads** — `Func<Success, TOut>` (payload) and `Func<TOut>` (no-arg, for void-ish commands → `NoContent`); failure arm is always `Func<Failure, TOut>`. |
+| `AppResult<,>.Match<TOut>(onSuccess, onFailure)` | Instance method — collapse to one `TOut` (`TSuccess`/`TFailure` from the instance, only `TOut` explicit). **Two overloads** — `Func<Success, TOut>` (payload) and `Func<TOut>` (no-arg, for void-ish commands → `NoContent`); failure arm is always `Func<Failure, TOut>`. |
 
 ## Quick start
 

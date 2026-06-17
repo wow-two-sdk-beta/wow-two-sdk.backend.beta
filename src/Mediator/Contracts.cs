@@ -33,8 +33,8 @@ public interface INotificationHandler<in TNotification> where TNotification : IN
 /// <summary>Pipeline behavior wrapping a request handler.</summary>
 public interface IPipelineBehavior<in TRequest, TResponse> where TRequest : notnull
 {
-    /// <summary>Invoke the next behavior or the handler. Await <paramref name="next"/> exactly once.</summary>
-    ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken);
+    /// <summary>Invoke the next behavior or the handler. Await <paramref name="nextStep"/> exactly once.</summary>
+    ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> nextStep, CancellationToken cancellationToken);
 }
 
 /// <summary>Continuation in a pipeline — invokes the next behavior or the handler. Await exactly once.</summary>

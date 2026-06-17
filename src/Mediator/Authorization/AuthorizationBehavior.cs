@@ -24,10 +24,10 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
     where TRequest : notnull
 {
     /// <inheritdoc />
-    public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> nextStep, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(next);
+        ArgumentNullException.ThrowIfNull(nextStep);
 
         if (request is IRequireAuthorization authReq)
         {
@@ -46,7 +46,7 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
                 throw new AuthorizationException(result.Failure);
         }
 
-        return await next().ConfigureAwait(false);
+        return await nextStep().ConfigureAwait(false);
     }
 }
 

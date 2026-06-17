@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Defines the contract for parsing and validating raw migrations into an ordered, checksummed list.</summary>
 public interface IMigrationScanner

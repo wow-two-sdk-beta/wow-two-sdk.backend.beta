@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Sql;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Provides migrations read from <c>{root}/NNN-name/{Apply,Rollback}.sql</c> on disk for the CLI and dev.</summary>
 public sealed class FileSystemMigrationSource(string migrationsRoot) : IMigrationSource
