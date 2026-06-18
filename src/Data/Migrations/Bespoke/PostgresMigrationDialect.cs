@@ -49,9 +49,8 @@ public sealed class PostgresMigrationDialect : IMigrationDialect
     /// <inheritdoc />
     public Task EnsureHistoryTableAsync(DbConnection connection, string schemaName, string tableName, CancellationToken ct = default)
     {
-        var qualified = $"\"{schemaName}\".\"{tableName}\"";
         var sql = $"""
-            CREATE TABLE IF NOT EXISTS {qualified} (
+            CREATE TABLE IF NOT EXISTS {QualifyHistoryTable(schemaName, tableName)} (
                 ordinal       integer      NOT NULL,
                 version       varchar(20)  NOT NULL,
                 name          varchar(120) NOT NULL,
@@ -64,4 +63,7 @@ public sealed class PostgresMigrationDialect : IMigrationDialect
             """;
         return connection.ExecuteAsync(new CommandDefinition(sql, cancellationToken: ct));
     }
+
+    /// <inheritdoc />
+    public string QualifyHistoryTable(string schemaName, string tableName) => $"\"{schemaName}\".\"{tableName}\"";
 }

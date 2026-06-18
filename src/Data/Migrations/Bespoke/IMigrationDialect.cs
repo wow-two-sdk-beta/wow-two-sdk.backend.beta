@@ -28,4 +28,9 @@ public interface IMigrationDialect
     /// <param name="tableName">The history table name.</param>
     /// <param name="ct">Token to cancel the operation.</param>
     Task EnsureHistoryTableAsync(DbConnection connection, string schemaName, string tableName, CancellationToken ct = default);
+
+    /// <summary>Returns the history-table reference, quoted and schema-qualified per the provider's identifier rules.</summary>
+    /// <param name="schemaName">The schema that owns the history table; ignored by providers without schemas (e.g. SQLite).</param>
+    /// <param name="tableName">The history table name.</param>
+    string QualifyHistoryTable(string schemaName, string tableName);
 }

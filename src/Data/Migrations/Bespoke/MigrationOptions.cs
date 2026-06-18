@@ -21,6 +21,7 @@ public sealed class MigrationOptions
     public DatabaseProvider Provider { get; set; } = DatabaseProvider.Postgres;
 
     /// <summary>Gets or sets the schema that owns the migration-history table.</summary>
+    /// <remarks>Ignored by providers without schemas, such as SQLite.</remarks>
     /// <example>public</example>
     public string SchemaName { get; set; } = "public";
 
@@ -29,6 +30,7 @@ public sealed class MigrationOptions
     public string TableName { get; set; } = "migration_history";
 
     /// <summary>Gets or sets the advisory-lock id shared by every host so only one apply loop runs at a time.</summary>
+    /// <remarks>Used only by providers with advisory locks (Postgres); SQLite serializes via a busy-timeout instead.</remarks>
     /// <example>4855178001</example>
     public long AdvisoryLockId { get; set; } = 4_855_178_001L;
 }

@@ -48,9 +48,10 @@ public static class MigrationServiceCollectionExtensions
     /// <summary>Selects the dialect implementation for the configured provider.</summary>
     /// <param name="provider">The database provider to resolve a dialect for.</param>
     /// <exception cref="ArgumentOutOfRangeException">The provider has no registered dialect.</exception>
-    private static PostgresMigrationDialect CreateDialect(DatabaseProvider provider) => provider switch
+    private static IMigrationDialect CreateDialect(DatabaseProvider provider) => provider switch
     {
         DatabaseProvider.Postgres => new PostgresMigrationDialect(),
+        DatabaseProvider.Sqlite => new SqliteMigrationDialect(),
         _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "No migration dialect for this provider."),
     };
 }

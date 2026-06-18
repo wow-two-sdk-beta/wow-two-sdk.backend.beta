@@ -46,6 +46,7 @@
   <ItemGroup>
     <PackageReference Include="System.CommandLine" />
     <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Dapper" />
     <!-- DI host + logging: the engine references only the abstractions; the CLI brings the concrete container. -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
