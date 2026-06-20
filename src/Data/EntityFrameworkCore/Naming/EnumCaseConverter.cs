@@ -16,6 +16,16 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Naming;
 public sealed class EnumCaseConverter<TEnum> : ValueConverter<TEnum, string>
     where TEnum : struct, Enum
 {
+    /// <summary>
+    /// Creates a Snake-case converter. This parameterless overload is what EF Core needs to build the converter
+    /// model-level via <c>Properties&lt;TEnum&gt;().HaveConversion&lt;EnumCaseConverter&lt;TEnum&gt;&gt;()</c>
+    /// (which instantiates it reflectively and so requires a parameterless constructor).
+    /// </summary>
+    public EnumCaseConverter()
+        : this(CaseStyle.Snake)
+    {
+    }
+
     /// <summary>Creates a converter emitting <paramref name="style"/> labels (default <see cref="CaseStyle.Snake"/>).</summary>
     public EnumCaseConverter(CaseStyle style = CaseStyle.Snake)
         : base(

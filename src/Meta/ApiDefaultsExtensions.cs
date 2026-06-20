@@ -130,7 +130,9 @@ public static class ApiDefaultsExtensions
             app.MapOpenApiEndpoint();
         }
 
-        app.MapHealthChecks(options.HealthEndpointPath);
+        // Liveness must be reachable by unauthenticated probes (load balancers, Docker HEALTHCHECK, uptime monitors),
+        // including under a host with a default-deny fallback authorization policy.
+        app.MapHealthChecks(options.HealthEndpointPath).AllowAnonymous();
 
         return app;
     }
