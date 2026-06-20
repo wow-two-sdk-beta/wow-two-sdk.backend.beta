@@ -102,6 +102,10 @@ public static class ApiDefaultsExtensions
 
         var options = app.Services.GetService<ApiDefaultsOptions>() ?? new ApiDefaultsOptions();
 
+        // Outermost: turn unhandled exceptions into RFC-7807 ProblemDetails via the handlers AddApiDefaults
+        // registers (e.g. the validation handler → 400). Without this the registered handlers never run.
+        app.UseExceptionHandler();
+
         app.UseProxyAwareHosting();
         app.UseOwaspSecureHeaders();
 
