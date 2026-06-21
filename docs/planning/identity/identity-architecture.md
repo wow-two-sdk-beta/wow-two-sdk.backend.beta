@@ -207,6 +207,14 @@ From the security backlog (`../platform-planning.md`):
 - **Breached-password check** ⇒ a password-validator slice.
 - Still separate (not identity-owned): request-limits, CSRF, HTTPS/HSTS, SSRF guard, OpenAPI env-gate.
 
+## Backlog — OAuth / claims primitives (post-baseline, 2026-06-21)
+
+The external-login baseline (uniform OAuth×17 + X · claim normalizer · cookie API/MVC mode · allowlist + default-deny) shipped `10.0.29-beta`. Follow-ups:
+
+- **Verify 6 uncertain claim profiles** — Twitter/X · Yandex · VKontakte · Amazon · Slack · Notion — against each lib's actual `ClaimActions` (the profiles are best-effort URNs; verification-only, no new code).
+- **Settable-options sweep** — `CookieAuthOptions` was `init`-only so `AddCookieAuthentication(configure)` couldn't set it (`CS8852`); fixed (`init`→`set`). Audit `AllowlistOptions` · `ClaimNormalizationOptions` · `OtpOptions` for the same `configure`-can't-set trap.
+- **Sync `targets.md`** — register the OAuth-baseline / claim-normalizer / cookie-mode / authorization vectors (paired source-of-truth rule).
+
 ## 12. See also
 
 - `system/sessions/backend-beta-build/auth-extraction-analysis.md` — the v1 "no user model" decision this reverses (§4) + the OTP/issuance/policies seams now reused.
