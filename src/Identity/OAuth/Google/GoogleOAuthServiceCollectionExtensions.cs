@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Google;
@@ -6,10 +7,13 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Google;
 /// <summary>Google OAuth provider registration.</summary>
 public static class GoogleOAuthServiceCollectionExtensions
 {
-    /// <summary>
-    /// Register Google as an OAuth provider. Pair with `AddCookieAuthentication` for the sign-in cookie.
-    /// </summary>
-    public static AuthenticationBuilder AddGoogleAuthentication(this AuthenticationBuilder auth, string clientId, string clientSecret)
+    /// <summary>Register Google as an OAuth provider. Pair with <c>AddCookieAuthentication</c> for the sign-in cookie.</summary>
+    /// <param name="auth">The authentication builder.</param>
+    /// <param name="clientId">The OAuth client id.</param>
+    /// <param name="clientSecret">The OAuth client secret.</param>
+    /// <param name="configure">Optional hook to further configure the provider options.</param>
+    /// <param name="scopes">Additional scopes to request.</param>
+    public static AuthenticationBuilder AddGoogleAuthentication(this AuthenticationBuilder auth, string clientId, string clientSecret, Action<GoogleOptions>? configure = null, params string[] scopes)
     {
         ArgumentNullException.ThrowIfNull(auth);
         ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
@@ -19,7 +23,9 @@ public static class GoogleOAuthServiceCollectionExtensions
         {
             o.ClientId = clientId;
             o.ClientSecret = clientSecret;
-            o.SaveTokens = true;
+            OAuthBaseline.ApplyBaseline(o, scopes);
+            configure?.Invoke(o);
+            OAuthBaseline.StampProvider(o);
         });
     }
 }

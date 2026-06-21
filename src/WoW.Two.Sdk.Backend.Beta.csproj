@@ -112,6 +112,7 @@
     <PackageReference Include="AspNet.Security.OAuth.Slack" />
     <PackageReference Include="AspNet.Security.OAuth.Spotify" />
     <PackageReference Include="AspNet.Security.OAuth.Twitch" />
+    <PackageReference Include="AspNet.Security.OAuth.Twitter" />
     <PackageReference Include="AspNet.Security.OAuth.Vkontakte" />
     <PackageReference Include="AspNet.Security.OAuth.Yandex" />
     <PackageReference Include="Telegram.Bot" />

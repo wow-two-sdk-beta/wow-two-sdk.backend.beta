@@ -1,6 +1,6 @@
 # WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Microsoft
 
-> Microsoft Account / Entra ID OAuth provider.
+> Microsoft Account / Entra ID OAuth provider via built-in `Microsoft.AspNetCore.Authentication.MicrosoftAccount`. Scheme `Microsoft`.
 
 ## Install
 
@@ -18,4 +18,20 @@ builder.Services
         builder.Configuration["OAuth:Microsoft:ClientSecret"]!);
 ```
 
-For full Entra ID integration (Graph API, OBO, etc.), use `Microsoft.Identity.Web` directly instead.
+Single-tenant — point the endpoints at your tenant via `configure`:
+
+```csharp
+.AddMicrosoftAuthentication(id, secret, o =>
+{
+    o.AuthorizationEndpoint = $"https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/authorize";
+    o.TokenEndpoint = $"https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token";
+});
+```
+
+## Baseline
+
+`SaveTokens=true` + scope merge + `wt:provider` stamp applied automatically — see [`../oauth.md`](../oauth.md).
+
+## Quirk
+
+- Multi-tenant by default. For full Entra ID integration (Graph API, OBO), use `Microsoft.Identity.Web` directly instead.

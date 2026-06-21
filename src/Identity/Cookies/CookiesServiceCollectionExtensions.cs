@@ -4,6 +4,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Cookies;
 
+/// <summary>How the cookie handler challenges an unauthenticated/unauthorized request.</summary>
+public enum AuthChallengeMode
+{
+    /// <summary>Server-rendered MVC: 302 redirect to <see cref="CookieAuthOptions.LoginPath"/> / access-denied page.</summary>
+    Mvc,
+
+    /// <summary>SPA + API: raw 401/403, no redirect — client renders its own sign-in.</summary>
+    Api,
+}
+
 /// <summary>Cookie authentication options.</summary>
 public sealed record CookieAuthOptions
 {
@@ -21,6 +31,9 @@ public sealed record CookieAuthOptions
 
     /// <summary>Logout path. Default <c>/auth/logout</c>.</summary>
     public PathString LogoutPath { get; init; } = "/auth/logout";
+
+    /// <summary>Challenge style. Default <see cref="AuthChallengeMode.Mvc"/>.</summary>
+    public AuthChallengeMode Mode { get; init; } = AuthChallengeMode.Mvc;
 }
 
 /// <summary>Cookie auth registration helpers.</summary>
@@ -45,6 +58,21 @@ public static class CookiesServiceCollectionExtensions
                 b.SlidingExpiration = opts.SlidingExpiration;
                 b.LoginPath = opts.LoginPath;
                 b.LogoutPath = opts.LogoutPath;
+
+                if (opts.Mode == AuthChallengeMode.Api)
+                {
+                    // fetch auto-follows 3xx and never sees a 302 — emit raw status instead.
+                    b.Events.OnRedirectToLogin = ctx =>
+                    {
+                        ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return Task.CompletedTask;
+                    };
+                    b.Events.OnRedirectToAccessDenied = ctx =>
+                    {
+                        ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        return Task.CompletedTask;
+                    };
+                }
             });
 
         return services;

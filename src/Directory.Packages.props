@@ -170,6 +170,7 @@
     <PackageVersion Include="AspNet.Security.OAuth.Slack" Version="10.0.0" />
     <PackageVersion Include="AspNet.Security.OAuth.Spotify" Version="10.0.0" />
     <PackageVersion Include="AspNet.Security.OAuth.Twitch" Version="10.0.0" />
+    <PackageVersion Include="AspNet.Security.OAuth.Twitter" Version="10.0.0" />
     <PackageVersion Include="AspNet.Security.OAuth.Vkontakte" Version="10.0.0" />
     <PackageVersion Include="AspNet.Security.OAuth.Yandex" Version="10.0.0" />
     <PackageVersion Include="Telegram.Bot" Version="22.10.0.1" />
