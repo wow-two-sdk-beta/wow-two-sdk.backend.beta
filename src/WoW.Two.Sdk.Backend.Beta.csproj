@@ -119,6 +119,7 @@
     <PackageReference Include="Fido2.AspNet" />
     <PackageReference Include="Konscious.Security.Cryptography.Argon2" />
     <PackageReference Include="Otp.NET" />
+    <PackageReference Include="Google.Apis.Auth" />
   </ItemGroup>
 
   <ItemGroup Label="Comms — email">

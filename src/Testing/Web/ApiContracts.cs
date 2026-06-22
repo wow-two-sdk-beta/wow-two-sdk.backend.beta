@@ -43,7 +43,10 @@ public static class TestJson
 
         // Match JsonOptionsPresets.Default exactly — register the NodaTime converters (Instant, LocalDate, …).
         options.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
-        options.MakeReadOnly();
+        // populateMissingResolver: true is REQUIRED on .NET 10 — parameterless MakeReadOnly() throws
+        // ("JsonSerializerOptions instance must specify a TypeInfoResolver setting…") when no resolver
+        // was set explicitly, which fails this type's static initializer the moment a test touches Options.
+        options.MakeReadOnly(populateMissingResolver: true);
         return options;
     }
 }
