@@ -18,7 +18,7 @@
 | P5 | SaaS-shaped (tenancy + AI + flags) | planned |
 | P6 | heavy domain extensions | planned |
 
-Ships as a **mono-lib** — one NuGet (`WoW2.Sdk.Backend.Beta`) + a separate `.Testing` lib; per-area subpaths inside. Area-by-area status: [`docs/conventions/package-registry.md`](./docs/conventions/package-registry.md).
+Ships as a **mono-lib** — one NuGet (`WoW2.Sdk.Backend.Beta`) + a separate `.Testing` lib; per-area subpaths inside. Area-by-area status: [`docs/package-registry.md`](./docs/package-registry.md).
 
 OAuth sign-in providers (16): Google, Microsoft, GitHub, Apple, Facebook, LinkedIn, Discord, Slack, GitLab, Amazon, Twitch, Spotify, Yandex, Reddit, Notion, VK. Passwordless: `AddOtpService` + `AddTelegramOtpDelivery` + `AddJwtTokenIssuance` + `AddRolePolicy`.
 
@@ -66,8 +66,7 @@ directly — the expansion is listed in [`src/Meta/Meta.md`](./src/Meta/Meta.md)
 
 - [`docs/analysis/philosophy/ideas.md`](./docs/analysis/philosophy/ideas.md) — encyclopedia of the .NET ecosystem (no verdicts)
 - [`docs/analysis/philosophy/targets.md`](./docs/analysis/philosophy/targets.md) — verdicts (DONE / NOW / NEXT / LATER / MAYBE / SKIP / LOCKED)
-- [`docs/conventions/package-layout.md`](./docs/conventions/package-layout.md) — repo + per-package shape
-- [`docs/conventions/documentation.md`](./docs/conventions/documentation.md) — three-layer doc strategy
+- [`docs/architecture/package-layout.md`](./docs/architecture/package-layout.md) — repo + per-package shape + three-layer doc strategy
 
 ## Build
 

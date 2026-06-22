@@ -3,10 +3,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Json;
 
-/// <summary>
-/// Value converter that serializes a CLR type to JSON for storage and deserializes on read.
-/// Use for storing complex objects as Postgres <c>jsonb</c> or SqlServer <c>nvarchar(max)</c>.
-/// </summary>
+/// <summary>Value converter that serializes a CLR type to JSON for storage and deserializes on read — use for storing complex objects as Postgres <c>jsonb</c> or SqlServer <c>nvarchar(max)</c>.</summary>
 /// <typeparam name="T">The CLR type being converted.</typeparam>
 public sealed class JsonValueConverter<T> : ValueConverter<T, string>
 {
@@ -16,6 +13,7 @@ public sealed class JsonValueConverter<T> : ValueConverter<T, string>
     }
 
     /// <summary>Initializes the converter with a custom <see cref="JsonSerializerOptions"/>.</summary>
+    /// <param name="options">The serializer options used for serialization and deserialization.</param>
     public JsonValueConverter(JsonSerializerOptions options)
         : base(
             v => JsonSerializer.Serialize(v, options),

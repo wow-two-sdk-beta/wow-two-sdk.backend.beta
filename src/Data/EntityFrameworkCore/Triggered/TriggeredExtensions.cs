@@ -5,26 +5,20 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Triggered;
 
-/// <summary>
-/// Convenience extensions over <c>EntityFrameworkCore.Triggered</c> — assembly scan registration
-/// + DbContextOptionsBuilder pass-through.
-/// </summary>
+/// <summary>Convenience extensions over <c>EntityFrameworkCore.Triggered</c> — assembly-scan registration plus a <see cref="DbContextOptionsBuilder"/> pass-through.</summary>
 public static class TriggeredExtensions
 {
-    /// <summary>
-    /// Wires triggers into a <see cref="DbContextOptionsBuilder"/>. Triggers themselves are registered
-    /// via DI (use <see cref="AddTriggersFromAssemblies"/> or the underlying lib's APIs).
-    /// </summary>
+    /// <summary>Wires triggers into a <see cref="DbContextOptionsBuilder"/>; trigger implementations are registered via DI (use <see cref="AddTriggersFromAssemblies"/> or the underlying lib's APIs).</summary>
+    /// <param name="builder">The DbContext options builder to configure.</param>
     public static DbContextOptionsBuilder UseTriggersConventional(this DbContextOptionsBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
         return builder.UseTriggers();
     }
 
-    /// <summary>
-    /// Scans the given assemblies for trigger implementations and registers them.
-    /// Convention method names: <c>IBeforeSaveTrigger&lt;T&gt;</c>, <c>IAfterSaveTrigger&lt;T&gt;</c>, etc.
-    /// </summary>
+    /// <summary>Scans the given assemblies for trigger implementations (<c>IBeforeSaveTrigger&lt;T&gt;</c>, <c>IAfterSaveTrigger&lt;T&gt;</c>, etc.) and registers them.</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="assemblies">The assemblies scanned for trigger implementations.</param>
     public static IServiceCollection AddTriggersFromAssemblies(
         this IServiceCollection services,
         params Assembly[] assemblies)

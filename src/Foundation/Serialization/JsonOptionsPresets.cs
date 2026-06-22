@@ -6,19 +6,13 @@ using NodaTime.Serialization.SystemTextJson;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Serialization;
 
-/// <summary>
-/// Conventional <see cref="JsonSerializerOptions"/> presets for the Wow Two backend SDK.
-/// </summary>
+/// <summary>Provides conventional <see cref="JsonSerializerOptions"/> presets for the Wow Two backend SDK.</summary>
 public static class JsonOptionsPresets
 {
-    /// <summary>
-    /// Default options: camelCase, ignore null on writes, NodaTime support, relaxed escaping.
-    /// </summary>
+    /// <summary>Gets the default options: camelCase, ignore null on writes, NodaTime support, relaxed escaping.</summary>
     public static JsonSerializerOptions Default { get; } = Build();
 
-    /// <summary>
-    /// Same as <see cref="Default"/> but with indented output. Use for human-readable dumps.
-    /// </summary>
+    /// <summary>Gets the <see cref="Default"/> options with indented output, for human-readable dumps.</summary>
     public static JsonSerializerOptions Indented { get; } = Build(opt => opt.WriteIndented = true);
 
     private static JsonSerializerOptions Build(Action<JsonSerializerOptions>? customize = null)

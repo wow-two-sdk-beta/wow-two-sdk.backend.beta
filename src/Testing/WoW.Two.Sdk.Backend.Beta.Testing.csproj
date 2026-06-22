@@ -32,6 +32,11 @@
     <PackageReference Include="Shouldly" />
     <PackageReference Include="Bogus" />
     <PackageReference Include="Respawn" />
+    <!-- Respawn drives DB reset over an open ADO.NET connection — Npgsql supplies the Postgres provider for PostgresFixture. -->
+    <PackageReference Include="Npgsql" />
+    <!-- NodaTime converters so TestJson matches JsonOptionsPresets.Default (ConfigureForNodaTime) 1:1 — for tests asserting NodaTime wire types. -->
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="NodaTime.Serialization.SystemTextJson" />
     <PackageReference Include="WireMock.Net" />
     <PackageReference Include="Verify.Xunit" />
     <PackageReference Include="Verify.AspNetCore" />

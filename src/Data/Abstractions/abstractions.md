@@ -133,4 +133,4 @@ public sealed record Order : IKeyedEntity<OrderId>, IAuditable
 - `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore` — base DbContext + scanner
 - `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit` — wires the audit interfaces
 - `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SoftDelete` — wires the soft-delete interfaces
-- `wow-two-ws/conventions/entities.md` — entity-level documentation + trait usage rules
+- `wow-two-ws/conventions/development/backend/persistence/entities.md` — entity-level documentation + trait usage rules

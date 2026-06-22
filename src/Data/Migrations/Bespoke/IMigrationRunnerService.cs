@@ -4,7 +4,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 public interface IMigrationRunnerService
 {
     /// <summary>Applies all pending migrations under the advisory lock, returning the labels applied (empty when up to date).</summary>
-    /// <remarks>No-transaction migrations are recorded separately from their apply, so their Apply SQL must be idempotent (a crash mid-apply re-runs it).</remarks>
     /// <param name="appliedBy">The host stamp recorded on each applied row, such as <c>startup</c>, <c>endpoint</c>, or <c>cli</c>.</param>
     /// <param name="ct">Token to cancel the operation.</param>
     /// <exception cref="MigrationDriftException">An applied migration's checksum no longer matches its source.</exception>

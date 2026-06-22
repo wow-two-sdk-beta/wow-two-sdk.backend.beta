@@ -7,10 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire;
 /// <summary>Hangfire dashboard wiring.</summary>
 public static class HangfireDashboardApplicationBuilderExtensions
 {
-    /// <summary>
-    /// Maps the Hangfire dashboard. Locked to local requests by default — pass
-    /// <paramref name="localRequestsOnly"/> <c>false</c> only behind your own auth.
-    /// </summary>
+    /// <summary>Maps the Hangfire dashboard, locked to local requests unless <paramref name="localRequestsOnly"/> is <c>false</c> behind your own auth.</summary>
     /// <param name="app">The application pipeline.</param>
     /// <param name="path">Dashboard path. Default <c>/jobs</c>.</param>
     /// <param name="localRequestsOnly">Restrict to loopback requests. Default <c>true</c>.</param>

@@ -3,14 +3,11 @@ using NodaTime;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Time;
 
-/// <summary>
-/// Registration helpers for time abstractions.
-/// </summary>
+/// <summary>Provides registration helpers for time abstractions.</summary>
 public static class TimeServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers the system-default <see cref="TimeProvider"/> and a NodaTime <see cref="IClock"/>.
-    /// </summary>
+    /// <summary>Registers the system-default <see cref="TimeProvider"/> and a NodaTime <see cref="IClock"/>.</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddTimeProviders(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -21,9 +18,9 @@ public static class TimeServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// Registers a specific <see cref="TimeProvider"/> instance — useful for tests passing <c>FakeTimeProvider</c>.
-    /// </summary>
+    /// <summary>Registers a specific <see cref="TimeProvider"/> instance — useful for tests passing <c>FakeTimeProvider</c>.</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="timeProvider">The time provider instance to register.</param>
     public static IServiceCollection AddTimeProviders(this IServiceCollection services, TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(services);

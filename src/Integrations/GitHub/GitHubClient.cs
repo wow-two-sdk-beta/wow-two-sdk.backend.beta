@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace WoW.Two.Sdk.Backend.Beta.Integrations.GitHub;
 
-/// <summary>Typed <see cref="HttpClient"/> adapter over the GitHub REST API. Authorizes each call with the token from <see cref="IAccessTokenProvider"/>, so repo visibility (public + private) matches that token.</summary>
+/// <summary>Integrates with the GitHub REST API over a typed <see cref="HttpClient"/>, authorizing each call with the token from <see cref="IAccessTokenProvider"/> so repo visibility matches that token.</summary>
 internal sealed class GitHubClient(
     HttpClient http,
     IAccessTokenProvider tokenProvider,

@@ -5,16 +5,8 @@ using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper.Repositories;
 
-/// <summary>
-/// Dapper implementation of <see cref="IRepository{TEntity, TId}"/> for the hot read/CRUD path.
-/// SQL is generated from <see cref="IHasTableName"/> + <see cref="SqlNaming"/> + the entity's public
-/// read-write properties. Intended for straightforward tables; complex queries are hand-written SQL.
-/// </summary>
-/// <remarks>
-/// Column set defaults to every public instance property with a getter and setter, mapped to columns via
-/// <see cref="SqlNaming.ColumnCase"/>. Override <see cref="ExcludedOnInsert"/> / <see cref="ExcludedOnUpdate"/>
-/// to omit identity / computed / store-generated columns. The id column is taken from <c>nameof(IKeyedEntity&lt;TId&gt;.Id)</c>.
-/// </remarks>
+/// <summary>Dapper implementation of <see cref="IRepository{TEntity, TId}"/> for the hot read/CRUD path. SQL is generated from <see cref="IHasTableName"/> + <see cref="SqlNaming"/> + the entity's public read-write properties; intended for straightforward tables, complex queries are hand-written SQL.</summary>
+/// <remarks>Column set defaults to every public instance property with a getter and setter, mapped to columns via <see cref="SqlNaming.ColumnCase"/>. Override <see cref="ExcludedOnInsert"/> / <see cref="ExcludedOnUpdate"/> to omit identity / computed / store-generated columns. The id column is taken from <c>nameof(IKeyedEntity&lt;TId&gt;.Id)</c>.</remarks>
 /// <typeparam name="TEntity">The entity type — must declare <see cref="IHasTableName"/>.</typeparam>
 /// <typeparam name="TId">The primary-key type.</typeparam>
 public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
@@ -34,6 +26,7 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
     protected IDbConnectionFactory ConnectionFactory { get; }
 
     /// <summary>Initializes the repository over <paramref name="connectionFactory"/>.</summary>
+    /// <param name="connectionFactory">The connection factory used for every operation.</param>
     public DapperRepository(IDbConnectionFactory connectionFactory)
     {
         ArgumentNullException.ThrowIfNull(connectionFactory);

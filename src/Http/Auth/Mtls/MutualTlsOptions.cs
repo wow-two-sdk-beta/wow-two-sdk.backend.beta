@@ -2,10 +2,7 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.Mtls;
 
-/// <summary>
-/// Client-certificate settings for mutual-TLS HTTP clients. Provide either a loaded
-/// <see cref="ClientCertificate"/> or a <see cref="CertificatePath"/> (PKCS#12 / .pfx) to load from disk.
-/// </summary>
+/// <summary>Configuration for mutual-TLS HTTP clients; provide either <see cref="ClientCertificate"/> or a <see cref="CertificatePath"/> (PKCS#12 / .pfx).</summary>
 public sealed class MutualTlsOptions
 {
     /// <summary>Pre-loaded client certificate (takes precedence over <see cref="CertificatePath"/>).</summary>
@@ -17,9 +14,6 @@ public sealed class MutualTlsOptions
     /// <summary>Password for the PKCS#12 file, if any.</summary>
     public string? CertificatePassword { get; set; }
 
-    /// <summary>
-    /// Accept any server certificate (skips chain + name validation). Dev/test loopback only —
-    /// never enable against real endpoints.
-    /// </summary>
+    /// <summary>Gets or sets whether to accept any server certificate (skips chain and name validation). Dev/test loopback only — never enable against real endpoints.</summary>
     public bool DangerousAcceptAnyServerCertificate { get; set; }
 }

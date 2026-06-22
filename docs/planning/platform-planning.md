@@ -6,7 +6,7 @@
 > `conventions/planning/platform-planning/`. This is the durable home for everything we intend to
 > build "lego-style" — orthogonal slices composed in host extensions. Deep-dives for non-trivial
 > features live under `docs/planning/<feature>/`; phase verdicts stay in
-> `docs/analysis/philosophy/targets.md`; shipped status stays in `docs/conventions/package-registry.md`.
+> `docs/analysis/philosophy/targets.md`; shipped status stays in `docs/package-registry.md`.
 
 ## How this works
 

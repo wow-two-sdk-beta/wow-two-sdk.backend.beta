@@ -9,7 +9,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 public static class ValidationServiceCollectionExtensions
 {
     /// <summary>Registers FluentValidation validators from the calling assembly behind the <see cref="IValidator{T}"/> wrapper.</summary>
-    /// <param name="services">The service collection.</param>
+    /// <param name="services">The service collection to configure.</param>
     /// <returns>The same service collection, for chaining.</returns>
     public static IServiceCollection AddFluentValidatorsFromAssemblies(this IServiceCollection services)
     {
@@ -20,7 +20,7 @@ public static class ValidationServiceCollectionExtensions
     }
 
     /// <summary>Registers FluentValidation validators from the supplied assemblies behind the <see cref="IValidator{T}"/> wrapper.</summary>
-    /// <param name="services">The service collection.</param>
+    /// <param name="services">The service collection to configure.</param>
     /// <param name="assemblies">The assemblies to scan for validators.</param>
     /// <returns>The same service collection, for chaining.</returns>
     public static IServiceCollection AddFluentValidatorsFromAssemblies(this IServiceCollection services, params Assembly[] assemblies)

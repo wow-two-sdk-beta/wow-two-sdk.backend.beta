@@ -3,10 +3,7 @@ using Dapper;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper;
 
-/// <summary>
-/// Bridges <see cref="DateOnly"/> CLR properties to providers that return <see cref="DateTime"/>
-/// for <c>DATE</c> columns (e.g. Npgsql).
-/// </summary>
+/// <summary>Bridges <see cref="DateOnly"/> CLR properties to providers that return <see cref="DateTime"/> for <c>DATE</c> columns (e.g. Npgsql).</summary>
 public sealed class DateOnlyTypeHandler : SqlMapper.TypeHandler<DateOnly>
 {
     /// <inheritdoc />

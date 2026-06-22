@@ -5,11 +5,7 @@ using Telegram.Bot.Exceptions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp.Telegram;
 
-/// <summary>
-/// Delivers OTP codes as Telegram messages. <see cref="OtpDeliveryEnvelope.DeliveryAddress"/> must be
-/// the numeric Telegram chat id — the consumer owns the bot-link flow that captures it.
-/// The consumer must register <see cref="ITelegramBotClient"/> (the SDK doesn't take the bot token).
-/// </summary>
+/// <summary>Delivers OTP codes as Telegram messages; <see cref="OtpDeliveryEnvelope.DeliveryAddress"/> must be the numeric chat id and the consumer must register <see cref="ITelegramBotClient"/> (the SDK takes no bot token).</summary>
 public sealed class TelegramOtpDeliveryHandler : IOtpDeliveryHandler
 {
     private readonly ITelegramBotClient _botClient;

@@ -8,11 +8,11 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Google;
 public static class GoogleOAuthServiceCollectionExtensions
 {
     /// <summary>Register Google as an OAuth provider. Pair with <c>AddCookieAuthentication</c> for the sign-in cookie.</summary>
-    /// <param name="auth">The authentication builder.</param>
+    /// <param name="auth">The authentication builder to extend.</param>
     /// <param name="clientId">The OAuth client id.</param>
     /// <param name="clientSecret">The OAuth client secret.</param>
-    /// <param name="configure">Optional hook to further configure the provider options.</param>
-    /// <param name="scopes">Additional scopes to request.</param>
+    /// <param name="configure">Optional tweak of the provider options.</param>
+    /// <param name="scopes">Additional OAuth scopes to request.</param>
     public static AuthenticationBuilder AddGoogleAuthentication(this AuthenticationBuilder auth, string clientId, string clientSecret, Action<GoogleOptions>? configure = null, params string[] scopes)
     {
         ArgumentNullException.ThrowIfNull(auth);

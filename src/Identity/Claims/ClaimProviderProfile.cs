@@ -2,7 +2,7 @@ using System.Security.Claims;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Claims;
 
-/// <summary>Maps one OAuth provider's raw claims onto the canonical <c>wt:*</c> set; each field lists accepted source claim types in priority order (first match wins) to absorb the OAuth2 (<see cref="ClaimTypes"/> URIs) vs OIDC (short names) duality.</summary>
+/// <summary>Maps one provider's raw claims onto the canonical <c>wt:*</c> set; each field lists source claim types in priority order (first match wins).</summary>
 /// <param name="Scheme">Auth scheme this profile applies to (e.g. <c>"GitHub"</c>); matched case-insensitively.</param>
 /// <param name="UserIdClaims">Priority-ordered sources for <see cref="NormalizedClaimTypes.UserId"/>.</param>
 /// <param name="EmailClaims">Priority-ordered sources for <see cref="NormalizedClaimTypes.Email"/>.</param>

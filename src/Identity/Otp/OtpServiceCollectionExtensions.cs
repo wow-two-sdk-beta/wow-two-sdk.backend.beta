@@ -6,13 +6,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 /// <summary>OTP service registration.</summary>
 public static class OtpServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers <see cref="IOtpService"/> with the numeric code generator and the in-memory store.
-    /// Override the store for production multi-instance setups by registering your own
-    /// <see cref="IOtpStore"/> before this call; pair with a delivery package
-    /// (e.g. <c>AddTelegramOtpDelivery</c>) or your own <see cref="IOtpDeliveryHandler"/>.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
+    /// <summary>Registers <see cref="IOtpService"/> with the numeric code generator and in-memory store; register your own <see cref="IOtpStore"/> before this call for multi-instance, and pair with a delivery package or <see cref="IOtpDeliveryHandler"/>.</summary>
+    /// <param name="services">The service collection to configure.</param>
     /// <param name="configure">Optional override of code length / lifetime / rate limit / attempts.</param>
     public static IServiceCollection AddOtpService(
         this IServiceCollection services,

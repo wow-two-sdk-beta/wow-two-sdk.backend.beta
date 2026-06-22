@@ -35,4 +35,4 @@ decisions (keys, assemblies, connection strings). Add them between the two calls
 ## See also
 
 - Root [README.md](../../README.md) — per-area composition when you need more control
-- [Package registry](../../docs/conventions/package-registry.md)
+- [Package registry](../../docs/package-registry.md)

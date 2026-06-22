@@ -6,17 +6,14 @@ using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit;
 
 /// <summary>Stamps creation and modification audit fields on entities implementing the audit interfaces.</summary>
-/// <remarks>
-/// Registered as a singleton via <see cref="AuditServiceCollectionExtensions.AddEfCoreAuditInterceptor"/>.
-/// Uses <see cref="TimeProvider"/> for timestamps (falls back to <see cref="TimeProvider.System"/>
-/// when not registered) and the optional <see cref="IAuditCurrentUserAccessor"/> for user ids.
-/// </remarks>
 public sealed class AuditInterceptor : SaveChangesInterceptor
 {
     private readonly TimeProvider _timeProvider;
     private readonly IAuditCurrentUserAccessor? _userAccessor;
 
     /// <summary>Initializes a new instance of the <see cref="AuditInterceptor"/> class.</summary>
+    /// <param name="timeProvider">The clock used for audit timestamps; falls back to the system clock when null.</param>
+    /// <param name="userAccessor">The accessor resolving the current user id for <c>CreatedBy</c> and <c>UpdatedBy</c> stamping.</param>
     public AuditInterceptor(TimeProvider timeProvider, IAuditCurrentUserAccessor? userAccessor = null)
     {
         _timeProvider = timeProvider ?? TimeProvider.System;

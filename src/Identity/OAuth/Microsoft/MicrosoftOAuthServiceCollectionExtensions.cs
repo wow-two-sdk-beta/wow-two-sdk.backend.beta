@@ -8,11 +8,11 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Microsoft;
 public static class MicrosoftOAuthServiceCollectionExtensions
 {
     /// <summary>Register Microsoft Account as an OAuth provider. Pair with <c>AddCookieAuthentication</c> for the sign-in cookie.</summary>
-    /// <param name="auth">The authentication builder.</param>
+    /// <param name="auth">The authentication builder to extend.</param>
     /// <param name="clientId">The OAuth client id.</param>
     /// <param name="clientSecret">The OAuth client secret.</param>
-    /// <param name="configure">Optional options hook (e.g. tenant-specific endpoints).</param>
-    /// <param name="scopes">Extra scopes to request.</param>
+    /// <param name="configure">Optional tweak of the provider options.</param>
+    /// <param name="scopes">Additional OAuth scopes to request.</param>
     public static AuthenticationBuilder AddMicrosoftAuthentication(this AuthenticationBuilder auth, string clientId, string clientSecret, Action<MicrosoftAccountOptions>? configure = null, params string[] scopes)
     {
         ArgumentNullException.ThrowIfNull(auth);

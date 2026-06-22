@@ -19,17 +19,10 @@ using WoW.Two.Sdk.Backend.Beta.Web.SecureHeaders;
 
 namespace WoW.Two.Sdk.Backend.Beta.Meta;
 
-/// <summary>
-/// The one-import boot floor — wires the SDK's P1 baseline (logging, tracing, metrics, health,
-/// proxy-aware hosting, OpenAPI, problem details, rate limit, output cache, compression) so a
-/// production-shaped <c>Program.cs</c> is two calls instead of twenty.
-/// Auth, mediator, and data stay explicit — they need per-app decisions.
-/// </summary>
+/// <summary>Provides the one-import P1 boot floor (logging, tracing, metrics, health, proxy-aware hosting, OpenAPI, problem details, rate limit, output cache, compression); auth, mediator, and data stay explicit.</summary>
 public static class ApiDefaultsExtensions
 {
-    /// <summary>
-    /// Registers the SDK service baseline. Pair with <see cref="UseApiDefaults"/> after <c>Build()</c>.
-    /// </summary>
+    /// <summary>Registers the SDK service baseline; pair with <see cref="UseApiDefaults"/> after <c>Build()</c>.</summary>
     /// <param name="builder">The web application builder.</param>
     /// <param name="configure">Optional flags / service name / validator assemblies / CORS origins.</param>
     public static WebApplicationBuilder AddApiDefaults(
@@ -90,11 +83,7 @@ public static class ApiDefaultsExtensions
         return builder;
     }
 
-    /// <summary>
-    /// Adds the matching middleware pipeline (forwarded headers, secure headers, CORS, rate limiter,
-    /// output cache, compression) and maps the OpenAPI + health endpoints. Add auth middleware and
-    /// your endpoints after this call.
-    /// </summary>
+    /// <summary>Adds the matching middleware pipeline (forwarded headers, secure headers, CORS, rate limiter, output cache, compression) and maps the OpenAPI and health endpoints; add auth and your endpoints after this call.</summary>
     /// <param name="app">The built application.</param>
     public static WebApplication UseApiDefaults(this WebApplication app)
     {
@@ -102,8 +91,7 @@ public static class ApiDefaultsExtensions
 
         var options = app.Services.GetService<ApiDefaultsOptions>() ?? new ApiDefaultsOptions();
 
-        // Outermost: turn unhandled exceptions into RFC-7807 ProblemDetails via the handlers AddApiDefaults
-        // registers (e.g. the validation handler → 400). Without this the registered handlers never run.
+        // Outermost: route unhandled exceptions through the registered ProblemDetails handlers.
         app.UseExceptionHandler();
 
         app.UseProxyAwareHosting();
@@ -134,8 +122,7 @@ public static class ApiDefaultsExtensions
             app.MapOpenApiEndpoint();
         }
 
-        // Liveness must be reachable by unauthenticated probes (load balancers, Docker HEALTHCHECK, uptime monitors),
-        // including under a host with a default-deny fallback authorization policy.
+        // Liveness must stay reachable by unauthenticated probes, even under a default-deny fallback policy.
         app.MapHealthChecks(options.HealthEndpointPath).AllowAnonymous();
 
         return app;

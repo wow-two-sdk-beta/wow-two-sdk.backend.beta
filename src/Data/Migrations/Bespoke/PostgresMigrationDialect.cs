@@ -4,14 +4,12 @@ using Npgsql;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
-/// <summary>Provides the PostgreSQL dialect: maintenance-DB create, advisory locking, and history-table DDL.</summary>
-/// <remarks>Use as the <see cref="IMigrationDialect"/> when <see cref="MigrationOptions.Provider"/> is <see cref="DatabaseProvider.Postgres"/>.</remarks>
+/// <summary>Provides the PostgreSQL migration dialect for maintenance-database create, advisory locking, and history-table DDL.</summary>
 public sealed class PostgresMigrationDialect : IMigrationDialect
 {
     private const string MaintenanceDatabase = "postgres";
 
     /// <inheritdoc />
-    /// <remarks>Connects to the <c>postgres</c> maintenance database, since the pinned data source cannot create its own target database.</remarks>
     public async Task<bool> EnsureDatabaseExistsAsync(string connectionString, CancellationToken ct = default)
     {
         var builder = new NpgsqlConnectionStringBuilder(connectionString);
@@ -19,7 +17,7 @@ public sealed class PostgresMigrationDialect : IMigrationDialect
         if (string.IsNullOrWhiteSpace(databaseName))
             return false;
 
-        // Switch to the maintenance database — the target database may not exist yet.
+        // Switch to the maintenance database — the target may not exist yet.
         builder.Database = MaintenanceDatabase;
 
         await using var connection = new NpgsqlConnection(builder.ConnectionString);

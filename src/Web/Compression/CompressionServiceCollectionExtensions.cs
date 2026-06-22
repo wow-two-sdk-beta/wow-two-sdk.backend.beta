@@ -5,14 +5,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.Compression;
 
-/// <summary>
-/// Response compression — Brotli + Gzip with quality `Fastest`.
-/// </summary>
+/// <summary>Provides Brotli and Gzip response compression at <c>Fastest</c> level.</summary>
 public static class CompressionServiceCollectionExtensions
 {
-    /// <summary>
-    /// Register response compression. Pair with `app.UseResponseCompression()`.
-    /// </summary>
+    /// <summary>Registers response compression. Pair with <c>app.UseResponseCompression()</c>.</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddBrotliGzipCompression(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

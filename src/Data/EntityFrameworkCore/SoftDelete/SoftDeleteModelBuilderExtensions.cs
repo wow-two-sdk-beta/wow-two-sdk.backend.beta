@@ -4,18 +4,11 @@ using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SoftDelete;
 
-/// <summary>
-/// Model-builder extensions that install a global query filter on every
-/// <see cref="ISoftDeletable"/> entity type, excluding rows where
-/// <see cref="ISoftDeletable.IsDeleted"/> is <c>true</c>.
-/// </summary>
+/// <summary>Model-builder extensions that install a global query filter on every <see cref="ISoftDeletable"/> entity type, excluding rows where <see cref="ISoftDeletable.IsDeleted"/> is <c>true</c>.</summary>
 public static class SoftDeleteModelBuilderExtensions
 {
-    /// <summary>
-    /// Applies <c>HasQueryFilter(e =&gt; !e.IsDeleted)</c> to every CLR entity type that
-    /// implements <see cref="ISoftDeletable"/>. Call inside <c>OnModelCreating</c> after
-    /// <c>base.OnModelCreating(modelBuilder)</c>.
-    /// </summary>
+    /// <summary>Applies <c>HasQueryFilter(e =&gt; !e.IsDeleted)</c> to every CLR entity type implementing <see cref="ISoftDeletable"/>; call inside <c>OnModelCreating</c> after <c>base.OnModelCreating(modelBuilder)</c>.</summary>
+    /// <param name="modelBuilder">The EF Core model builder.</param>
     public static ModelBuilder ApplySoftDeleteFilter(this ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

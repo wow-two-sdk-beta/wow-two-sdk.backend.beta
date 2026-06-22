@@ -2,9 +2,7 @@ using OtpNet;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Mfa.Totp;
 
-/// <summary>
-/// TOTP helpers (RFC 6238) — generate secrets, compute codes, verify.
-/// </summary>
+/// <summary>Provides TOTP helpers (RFC 6238) — generate secrets, compute codes, verify.</summary>
 public static class TotpService
 {
     /// <summary>Step in seconds. RFC 6238 default is 30.</summary>
@@ -21,6 +19,7 @@ public static class TotpService
     }
 
     /// <summary>Encode a secret as base32 for the standard `otpauth://` URI.</summary>
+    /// <param name="secret">The raw secret to encode.</param>
     public static string ToBase32(byte[] secret)
     {
         ArgumentNullException.ThrowIfNull(secret);
@@ -28,6 +27,9 @@ public static class TotpService
     }
 
     /// <summary>Build a standard `otpauth://totp/...` URI suitable for QR codes.</summary>
+    /// <param name="issuer">Issuer label shown in the authenticator app.</param>
+    /// <param name="accountName">Account label shown in the authenticator app.</param>
+    /// <param name="secret">The shared secret to embed.</param>
     public static Uri BuildOtpAuthUri(string issuer, string accountName, byte[] secret)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(issuer);
@@ -41,15 +43,16 @@ public static class TotpService
     }
 
     /// <summary>Compute the current TOTP for a secret.</summary>
+    /// <param name="secret">The shared secret to compute the code from.</param>
     public static string ComputeCode(byte[] secret)
     {
         ArgumentNullException.ThrowIfNull(secret);
         return new OtpNet.Totp(secret, step: StepSeconds, totpSize: CodeDigits).ComputeTotp();
     }
 
-    /// <summary>
-    /// Verify a TOTP code with ±1 step tolerance (90s window centered on now).
-    /// </summary>
+    /// <summary>Verify a TOTP code with ±1 step tolerance (90s window centered on now).</summary>
+    /// <param name="secret">The shared secret to verify against.</param>
+    /// <param name="code">The code the user entered.</param>
     public static bool VerifyCode(byte[] secret, string code)
     {
         ArgumentNullException.ThrowIfNull(secret);

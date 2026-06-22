@@ -4,22 +4,17 @@ using Serilog;
 
 namespace WoW.Two.Sdk.Backend.Beta.Observability.Logging;
 
-/// <summary>
-/// Conventional Serilog → ILogger wiring. Public seam stays `ILogger&lt;T&gt;`; Serilog is the under-the-hood provider.
-/// </summary>
+/// <summary>Provides conventional Serilog wiring behind the <c>ILogger&lt;T&gt;</c> seam.</summary>
 public static class LoggingHostExtensions
 {
-    /// <summary>
-    /// Wire Serilog with sane defaults: console + rolling file in <c>logs/</c>, enriched with machine/process/thread context.
-    /// Honors `Serilog:*` configuration if present (overrides programmatic defaults).
-    /// </summary>
+    /// <summary>Uses Serilog with defaults (console and rolling file in <c>logs/</c>, enriched context); <c>Serilog:*</c> configuration overrides.</summary>
+    /// <param name="host">The host builder to configure.</param>
     public static IHostBuilder UseSerilogConventional(this IHostBuilder host)
     {
         ArgumentNullException.ThrowIfNull(host);
 
         return host.UseSerilog((ctx, sp, lc) =>
         {
-            // Programmatic defaults
             lc.ReadFrom.Configuration(ctx.Configuration)
               .ReadFrom.Services(sp)
               .Enrich.FromLogContext()

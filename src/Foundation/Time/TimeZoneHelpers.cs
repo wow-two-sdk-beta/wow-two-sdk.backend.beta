@@ -2,18 +2,11 @@ using TimeZoneConverter;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Time;
 
-/// <summary>
-/// Cross-platform time-zone resolution.
-/// </summary>
-/// <remarks>
-/// Wraps <see cref="TimeZoneConverter"/> so consumers can pass either Windows or IANA time-zone IDs
-/// and get a <see cref="TimeZoneInfo"/> regardless of the host OS.
-/// </remarks>
+/// <summary>Provides cross-platform time-zone resolution — accepts Windows or IANA IDs on any host OS.</summary>
 public static class TimeZoneHelpers
 {
-    /// <summary>
-    /// Resolve any time-zone identifier (Windows or IANA) to a <see cref="TimeZoneInfo"/>.
-    /// </summary>
+    /// <summary>Resolves any time-zone identifier (Windows or IANA) to a <see cref="TimeZoneInfo"/>.</summary>
+    /// <param name="anyZoneId">The Windows or IANA time-zone identifier to resolve.</param>
     /// <exception cref="TimeZoneNotFoundException">If the id is not recognized.</exception>
     public static TimeZoneInfo ResolveTimeZone(string anyZoneId)
     {
@@ -22,6 +15,7 @@ public static class TimeZoneHelpers
     }
 
     /// <summary>Convert an IANA time-zone id to its Windows equivalent.</summary>
+    /// <param name="ianaId">The IANA time-zone identifier to convert.</param>
     public static string IanaToWindows(string ianaId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ianaId);
@@ -29,6 +23,7 @@ public static class TimeZoneHelpers
     }
 
     /// <summary>Convert a Windows time-zone id to its IANA equivalent.</summary>
+    /// <param name="windowsId">The Windows time-zone identifier to convert.</param>
     public static string WindowsToIana(string windowsId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(windowsId);

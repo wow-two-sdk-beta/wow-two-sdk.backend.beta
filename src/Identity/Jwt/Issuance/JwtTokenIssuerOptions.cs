@@ -1,9 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Jwt.Issuance;
 
-/// <summary>
-/// Settings for symmetric JWT issuance. Pair with the sibling <c>AddJwtBearerAuthentication</c>
-/// (validation) using the same key so issued tokens validate across services.
-/// </summary>
+/// <summary>Configuration for symmetric JWT issuance; pair with the sibling <c>AddJwtBearerAuthentication</c> on the same key so issued tokens validate across services.</summary>
 public sealed class JwtTokenIssuerOptions
 {
     /// <summary>Value of the <c>iss</c> claim.</summary>
@@ -15,10 +12,7 @@ public sealed class JwtTokenIssuerOptions
     /// <summary>Default token lifetime (overridable per call). Default 1h.</summary>
     public TimeSpan Lifetime { get; set; } = TimeSpan.FromHours(1);
 
-    /// <summary>
-    /// Symmetric signing key. Source from a secret store — never hard-code.
-    /// HS256 needs at least 32 bytes of key material.
-    /// </summary>
+    /// <summary>Gets or sets the symmetric signing key (HS256 needs at least 32 bytes) — source from a secret store, never hard-code.</summary>
     public string SigningKey { get; set; } = "";
 
     /// <summary>Signing algorithm: <c>HS256</c> (default), <c>HS384</c>, or <c>HS512</c>. Asymmetric (RS*/ES*) is a future extension.</summary>

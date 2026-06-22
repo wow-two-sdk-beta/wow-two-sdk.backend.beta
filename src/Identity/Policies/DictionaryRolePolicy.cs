@@ -2,10 +2,7 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Policies;
 
-/// <summary>
-/// Default <see cref="IRolePolicy"/> backed by the <see cref="RolePolicyOptions.Map"/> dictionary.
-/// Unknown scopes deny everyone.
-/// </summary>
+/// <summary>Default <see cref="IRolePolicy"/> backed by the <see cref="RolePolicyOptions.Map"/> dictionary; unknown scopes deny everyone.</summary>
 public sealed class DictionaryRolePolicy : IRolePolicy
 {
     private readonly IDictionary<string, IReadOnlySet<string>> _map;

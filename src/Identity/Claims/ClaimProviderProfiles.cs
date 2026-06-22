@@ -2,8 +2,8 @@ using System.Security.Claims;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Claims;
 
-/// <summary>Built-in <see cref="ClaimProviderProfile"/> registry keyed by auth scheme, covering the OAuth providers under <c>Identity/OAuth</c>; hosts may add or override via <see cref="ClaimNormalizationOptions"/>.</summary>
-/// <remarks><see cref="ClaimTypes.Name"/> is a <em>handle</em> for GitHub/GitLab/Twitch/Discord/Twitter/Reddit/Yandex but a <em>display name</em> for Google/Microsoft/Facebook/Spotify/LinkedIn/Amazon, so it feeds different canonical fields per provider — never treated uniformly.</remarks>
+/// <summary>Built-in <see cref="ClaimProviderProfile"/> registry keyed by auth scheme; hosts add or override via <see cref="ClaimNormalizationOptions"/>.</summary>
+/// <remarks><see cref="ClaimTypes.Name"/> is a handle for GitHub/GitLab/Twitch/Discord/Twitter/Reddit/Yandex but a display name for Google/Microsoft/Facebook/Spotify/LinkedIn/Amazon, so it feeds a different canonical field per provider.</remarks>
 public static class ClaimProviderProfiles
 {
     // Short OIDC names that survive when MapInboundClaims = false. Listed after the long ClaimTypes.* URI so an

@@ -6,10 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Ef;
 
-/// <summary>
-/// Hosted service that applies pending EF Core migrations on application startup
-/// for the configured <typeparamref name="TContext"/>.
-/// </summary>
+/// <summary>Hosted service that applies pending EF Core migrations on application startup for the configured <typeparamref name="TContext"/>.</summary>
 public sealed class EfMigrationsHostedService<TContext> : IHostedService
     where TContext : DbContext
 {
@@ -18,6 +15,9 @@ public sealed class EfMigrationsHostedService<TContext> : IHostedService
     private readonly ILogger<EfMigrationsHostedService<TContext>> _logger;
 
     /// <summary>Initializes a new instance.</summary>
+    /// <param name="services">The root provider used to create a scope for the context.</param>
+    /// <param name="options">The EF migrations runner options.</param>
+    /// <param name="logger">The logger for migration progress and retries.</param>
     public EfMigrationsHostedService(
         IServiceProvider services,
         IOptions<EfMigrationsOptions> options,

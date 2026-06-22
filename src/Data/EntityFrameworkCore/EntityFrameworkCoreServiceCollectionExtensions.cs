@@ -9,6 +9,8 @@ public static class EntityFrameworkCoreServiceCollectionExtensions
 {
     /// <summary>Registers a DbContext with SDK defaults (pooling on; dev logging auto by environment).</summary>
     /// <typeparam name="TContext">The concrete DbContext type. Must inherit <see cref="AppDbContextBase"/>.</typeparam>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configureProvider">The callback that configures the database provider.</param>
     public static IServiceCollection AddEntityFrameworkCore<TContext>(
         this IServiceCollection services,
         Action<DbContextOptionsBuilder> configureProvider)
@@ -16,6 +18,9 @@ public static class EntityFrameworkCoreServiceCollectionExtensions
         => services.AddEntityFrameworkCore<TContext>(static _ => { }, (_, builder) => configureProvider(builder));
 
     /// <summary>Registers a DbContext with SDK defaults and a service-provider-aware provider configurator.</summary>
+    /// <typeparam name="TContext">The concrete DbContext type. Must inherit <see cref="AppDbContextBase"/>.</typeparam>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configureProvider">The callback that configures the database provider, with access to the service provider.</param>
     public static IServiceCollection AddEntityFrameworkCore<TContext>(
         this IServiceCollection services,
         Action<IServiceProvider, DbContextOptionsBuilder> configureProvider)
@@ -23,6 +28,10 @@ public static class EntityFrameworkCoreServiceCollectionExtensions
         => services.AddEntityFrameworkCore<TContext>(static _ => { }, configureProvider);
 
     /// <summary>Registers a DbContext with SDK defaults overridden via <see cref="EntityFrameworkCoreOptions"/>.</summary>
+    /// <typeparam name="TContext">The concrete DbContext type. Must inherit <see cref="AppDbContextBase"/>.</typeparam>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configureOptions">The callback that overrides the SDK defaults.</param>
+    /// <param name="configureProvider">The callback that configures the database provider.</param>
     public static IServiceCollection AddEntityFrameworkCore<TContext>(
         this IServiceCollection services,
         Action<EntityFrameworkCoreOptions> configureOptions,
@@ -31,6 +40,10 @@ public static class EntityFrameworkCoreServiceCollectionExtensions
         => services.AddEntityFrameworkCore<TContext>(configureOptions, (_, builder) => configureProvider(builder));
 
     /// <summary>Registers a DbContext with SDK defaults overridden via options and a service-provider-aware provider configurator.</summary>
+    /// <typeparam name="TContext">The concrete DbContext type. Must inherit <see cref="AppDbContextBase"/>.</typeparam>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configureOptions">The callback that overrides the SDK defaults.</param>
+    /// <param name="configureProvider">The callback that configures the database provider, with access to the service provider.</param>
     public static IServiceCollection AddEntityFrameworkCore<TContext>(
         this IServiceCollection services,
         Action<EntityFrameworkCoreOptions> configureOptions,

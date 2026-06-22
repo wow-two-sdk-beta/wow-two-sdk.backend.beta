@@ -4,15 +4,8 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper;
 
-/// <summary>
-/// Maps an enum to and from a case-styled string column, reversibly, across any provider.
-/// Use this when the database stores enums as text (the portable default). For Postgres native
-/// enum types, prefer Npgsql's driver-level <c>MapEnum</c> instead.
-/// </summary>
-/// <remarks>
-/// Register per enum: <c>SqlMapper.AddTypeHandler(new EnumTypeHandler&lt;OrderStatus&gt;());</c>.
-/// Reads accept any casing of the label (case-insensitive); writes emit <see cref="Style"/>.
-/// </remarks>
+/// <summary>Maps an enum to and from a case-styled string column reversibly, across any provider.</summary>
+/// <remarks>Register per enum: <c>SqlMapper.AddTypeHandler(new EnumTypeHandler&lt;OrderStatus&gt;());</c>.</remarks>
 /// <typeparam name="TEnum">The enum type stored as text.</typeparam>
 public sealed class EnumTypeHandler<TEnum> : SqlMapper.TypeHandler<TEnum>
     where TEnum : struct, Enum
@@ -21,6 +14,7 @@ public sealed class EnumTypeHandler<TEnum> : SqlMapper.TypeHandler<TEnum>
     public CaseStyle Style { get; }
 
     /// <summary>Creates a handler emitting <paramref name="style"/> labels (default <see cref="CaseStyle.Snake"/>).</summary>
+    /// <param name="style">The casing emitted for enum labels. Default <see cref="CaseStyle.Snake"/>.</param>
     public EnumTypeHandler(CaseStyle style = CaseStyle.Snake) => Style = style;
 
     /// <inheritdoc />

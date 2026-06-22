@@ -4,15 +4,16 @@ using Microsoft.Extensions.Logging;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Logging;
 
-/// <summary>
-/// Pipeline behavior that logs the request name + elapsed time at <see cref="LogLevel.Information"/>.
-/// Logs failures at <see cref="LogLevel.Error"/>.
-/// </summary>
+/// <summary>Logs the request name and elapsed time at <see cref="LogLevel.Information"/>, failures at <see cref="LogLevel.Error"/>.</summary>
+/// <param name="logger">The logger that records request start, completion, and failure.</param>
 public sealed partial class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
     /// <inheritdoc />
+    /// <param name="request">The request flowing through the pipeline.</param>
+    /// <param name="nextStep">The continuation that invokes the next behavior or the handler.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> nextStep, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(nextStep);
@@ -48,6 +49,7 @@ public sealed partial class LoggingBehavior<TRequest, TResponse>(ILogger<Logging
 public static class LoggingBehaviorServiceCollectionExtensions
 {
     /// <summary>Register the logging pipeline behavior.</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddMediatorLoggingBehavior(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

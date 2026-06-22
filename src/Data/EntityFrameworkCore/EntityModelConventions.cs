@@ -8,6 +8,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 public static class EntityModelConventions
 {
     /// <summary>Applies the SDK conventions to every entity type that implements the relevant contract. Owned types are skipped.</summary>
+    /// <param name="modelBuilder">The EF Core model builder.</param>
     public static ModelBuilder ApplyConventions(this ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

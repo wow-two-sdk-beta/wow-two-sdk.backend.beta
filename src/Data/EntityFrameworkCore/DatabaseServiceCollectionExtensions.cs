@@ -7,6 +7,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 public static class DatabaseServiceCollectionExtensions
 {
     /// <summary>Binds <see cref="DatabaseOptions"/> from the given configuration section (default <c>Database</c>).</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configuration">The configuration the options are bound from.</param>
+    /// <param name="sectionName">The configuration section name. Default <c>Database</c>.</param>
     public static IServiceCollection AddDatabaseOptions(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -23,6 +26,8 @@ public static class DatabaseServiceCollectionExtensions
     }
 
     /// <summary>Registers <see cref="DatabaseOptions"/> from an inline configurator.</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configure">The callback that populates the options.</param>
     public static IServiceCollection AddDatabaseOptions(
         this IServiceCollection services,
         Action<DatabaseOptions> configure)

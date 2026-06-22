@@ -5,11 +5,7 @@ using WoW.Two.Sdk.Backend.Beta.Comms.Email;
 
 namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.Ses;
 
-/// <summary>
-/// <see cref="IEmailSender"/> over Amazon SES v2 simple send.
-/// Attachments are not supported by simple send — messages carrying them fail with
-/// <c>attachments_not_supported_by_ses_simple_send</c> (raw-MIME support is a future extension).
-/// </summary>
+/// <summary>Wraps Amazon SES v2 simple send to deliver email; attachments are rejected with <c>attachments_not_supported_by_ses_simple_send</c>.</summary>
 public sealed class SesEmailSender : IEmailSender
 {
     private readonly IAmazonSimpleEmailServiceV2 _client;

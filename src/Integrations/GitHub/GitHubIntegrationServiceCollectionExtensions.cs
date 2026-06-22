@@ -11,7 +11,7 @@ public static class GitHubIntegrationServiceCollectionExtensions
     private const string AcceptMediaType = "application/vnd.github+json";
 
     /// <summary>Registers a typed <see cref="HttpClient"/> for the GitHub REST API (base <c>https://api.github.com/</c>) bound to <see cref="IGitHubClient"/>. Each call carries a Bearer token from <see cref="IAccessTokenProvider"/> — register one (e.g. <c>AddHttpContextAccessTokenProvider</c>).</summary>
-    /// <param name="services">The service collection.</param>
+    /// <param name="services">The service collection to configure.</param>
     public static IHttpClientBuilder AddGitHubIntegration(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

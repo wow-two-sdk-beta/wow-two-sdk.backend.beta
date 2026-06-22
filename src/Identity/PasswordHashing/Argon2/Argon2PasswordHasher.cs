@@ -6,10 +6,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.PasswordHashing.Argon2;
 
-/// <summary>
-/// Argon2id password hasher (OWASP-recommended for new applications).
-/// Compatible with <see cref="IPasswordHasher{TUser}"/> so it slots into ASP.NET Core Identity.
-/// </summary>
+/// <summary>Argon2id password hasher (OWASP-recommended); implements <see cref="IPasswordHasher{TUser}"/> so it slots into ASP.NET Core Identity.</summary>
 /// <typeparam name="TUser">User type (any class).</typeparam>
 public sealed class Argon2PasswordHasher<TUser> : IPasswordHasher<TUser> where TUser : class
 {
@@ -72,9 +69,8 @@ public sealed class Argon2PasswordHasher<TUser> : IPasswordHasher<TUser> where T
 /// <summary>Registration helpers.</summary>
 public static class Argon2ServiceCollectionExtensions
 {
-    /// <summary>
-    /// Replace the default `IPasswordHasher&lt;TUser&gt;` with Argon2id. Must run AFTER `AddIdentityCore` / `AddDefaultIdentity`.
-    /// </summary>
+    /// <summary>Replaces the default <c>IPasswordHasher&lt;TUser&gt;</c> with Argon2id; must run after <c>AddIdentityCore</c> / <c>AddDefaultIdentity</c>.</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection UseArgon2PasswordHasher<TUser>(this IServiceCollection services)
         where TUser : class
     {

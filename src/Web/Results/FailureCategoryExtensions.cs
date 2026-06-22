@@ -7,7 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Web.Results;
 public static class FailureCategoryExtensions
 {
     /// <summary>Maps <paramref name="category"/> to its conventional HTTP status code (unknown → 500).</summary>
-    /// <param name="category">The failure category.</param>
+    /// <param name="category">The failure category to translate.</param>
     public static int ToStatusCode(this FailureCategory category)
     {
         return category switch

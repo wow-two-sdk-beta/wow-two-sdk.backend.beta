@@ -4,9 +4,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper;
 
-/// <summary>
-/// Registration helpers for Dapper conventions.
-/// </summary>
+/// <summary>Registration helpers for Dapper conventions.</summary>
 public static class DapperServiceCollectionExtensions
 {
     private static int _conventionsApplied;
@@ -20,6 +18,7 @@ public static class DapperServiceCollectionExtensions
     /// </list>
     /// Idempotent — safe to call multiple times.
     /// </summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddDapperConventions(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -34,11 +33,10 @@ public static class DapperServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// Registers a string-backed <see cref="EnumTypeHandler{TEnum}"/> so <typeparamref name="TEnum"/>
-    /// maps to/from a case-styled text column (default <see cref="CaseStyle.Snake"/>). Portable across
-    /// providers — for Postgres native enum types, use Npgsql's <c>MapEnum</c> instead.
-    /// </summary>
+    /// <summary>Registers a string-backed <see cref="EnumTypeHandler{TEnum}"/> so <typeparamref name="TEnum"/> maps to/from a case-styled text column (default <see cref="CaseStyle.Snake"/>); portable across providers — for Postgres native enum types, use Npgsql's <c>MapEnum</c> instead.</summary>
+    /// <typeparam name="TEnum">The enum type mapped to and from a text column.</typeparam>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="style">The casing emitted for enum labels. Default <see cref="CaseStyle.Snake"/>.</param>
     public static IServiceCollection AddEnumTypeHandler<TEnum>(this IServiceCollection services, CaseStyle style = CaseStyle.Snake)
         where TEnum : struct, Enum
     {

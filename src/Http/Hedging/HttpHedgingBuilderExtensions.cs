@@ -3,19 +3,13 @@ using Microsoft.Extensions.Http.Resilience;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Hedging;
 
-/// <summary>
-/// Applies the SDK's standard hedging pipeline to an outbound <see cref="IHttpClientBuilder"/>.
-/// </summary>
+/// <summary>Applies the SDK's standard hedging pipeline to an outbound <see cref="IHttpClientBuilder"/>.</summary>
 public static class HttpHedgingBuilderExtensions
 {
-    /// <summary>
-    /// Adds the standard hedging handler (parallel attempt racing + per-endpoint circuit breaker +
-    /// per-attempt and total timeouts) tuned from <see cref="HttpHedgingOptions"/>.
-    /// Alternative to <c>AddSdkResilience</c> — use hedging for latency-sensitive idempotent calls,
-    /// sequential retry for everything else. Don't stack both on one client.
-    /// </summary>
-    /// <param name="builder">The HTTP client builder.</param>
-    /// <param name="configure">Optional override of the SDK defaults.</param>
+    /// <summary>Adds the standard hedging handler (parallel attempt racing, per-endpoint circuit breaker, and timeouts) tuned from <see cref="HttpHedgingOptions"/>.</summary>
+    /// <remarks>Alternative to <c>AddSdkResilience</c>: use hedging for latency-sensitive idempotent calls, sequential retry otherwise; don't stack both on one client.</remarks>
+    /// <param name="builder">The HTTP client builder to extend.</param>
+    /// <param name="configure">Optional override of the SDK hedging defaults.</param>
     public static IStandardHedgingHandlerBuilder AddSdkHedging(
         this IHttpClientBuilder builder,
         Action<HttpHedgingOptions>? configure = null)

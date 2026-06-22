@@ -7,11 +7,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.Postgres;
 /// <summary>PostgreSQL storage preset for Hangfire jobs.</summary>
 public static class PostgresHangfireServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers Hangfire client + server on PostgreSQL storage (schema auto-created in
-    /// the <c>hangfire</c> schema on first run).
-    /// </summary>
-    /// <param name="services">The service collection.</param>
+    /// <summary>Registers the Hangfire client and server on PostgreSQL storage (the <c>hangfire</c> schema is auto-created on first run).</summary>
+    /// <param name="services">The service collection to configure.</param>
     /// <param name="connectionString">PostgreSQL connection string.</param>
     /// <param name="configure">Optional worker-count / queue tuning.</param>
     public static IServiceCollection AddPostgresHangfireJobs(

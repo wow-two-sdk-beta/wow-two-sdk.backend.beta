@@ -3,14 +3,13 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SqlServer;
 
-/// <summary>
-/// SDK-conventional SqlServer provider helpers — retry-on-failure default + command timeout.
-/// </summary>
+/// <summary>SDK-conventional SqlServer provider helpers — retry-on-failure default + command timeout.</summary>
 public static class SqlServerExtensions
 {
-    /// <summary>
-    /// Configures SqlServer with SDK defaults: 6 retries on transient errors, 30-second command timeout.
-    /// </summary>
+    /// <summary>Configures SqlServer with SDK defaults: 6 retries on transient errors, 30-second command timeout.</summary>
+    /// <param name="builder">The DbContext options builder to configure.</param>
+    /// <param name="connectionString">The SqlServer connection string.</param>
+    /// <param name="extra">An optional callback for further provider configuration.</param>
     public static DbContextOptionsBuilder UseSqlServerConventional(
         this DbContextOptionsBuilder builder,
         string connectionString,

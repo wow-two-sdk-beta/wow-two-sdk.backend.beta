@@ -6,7 +6,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper;
 public static class SqliteConnectionFactoryServiceCollectionExtensions
 {
     /// <summary>Registers a <see cref="SqliteConnectionFactory"/> over <paramref name="connectionString"/> as the <see cref="IDbConnectionFactory"/>.</summary>
-    /// <param name="services">The service collection to register into.</param>
+    /// <param name="services">The service collection to configure.</param>
     /// <param name="connectionString">The SQLite connection string (e.g. <c>Data Source=app.db</c>).</param>
     public static IServiceCollection AddSqliteConnectionFactory(this IServiceCollection services, string connectionString)
     {

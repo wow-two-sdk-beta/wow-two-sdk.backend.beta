@@ -4,15 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails;
 
-/// <summary>
-/// Conventional ProblemDetails registration — builds on the built-in `AddProblemDetails` and
-/// enriches with `traceId` automatically.
-/// </summary>
+/// <summary>Provides ProblemDetails registration enriched with <c>traceId</c>.</summary>
 public static class ProblemDetailsServiceCollectionExtensions
 {
-    /// <summary>
-    /// Register ProblemDetails with `traceId` enrichment.
-    /// </summary>
+    /// <summary>Adds ProblemDetails with <c>traceId</c> enrichment.</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddTraceAwareProblemDetails(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

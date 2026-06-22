@@ -2,11 +2,7 @@ using System.Collections.Concurrent;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 
-/// <summary>
-/// In-memory <see cref="IOtpStore"/> — dev / test / single-instance only. Register as a singleton
-/// so records survive across requests. Multi-instance deployments need a shared store
-/// (Postgres, Redis) or verification will fail on the instance that didn't create the code.
-/// </summary>
+/// <summary>In-memory <see cref="IOtpStore"/> — single-instance only; register as a singleton so records survive across requests. Multi-instance deployments need a shared store or verification fails on the instance that didn't create the code.</summary>
 public sealed class MemoryOtpStore : IOtpStore
 {
     private static readonly TimeSpan PruneGrace = TimeSpan.FromHours(1);

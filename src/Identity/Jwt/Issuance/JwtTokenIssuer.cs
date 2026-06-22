@@ -6,10 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Jwt.Issuance;
 
-/// <summary>
-/// Default <see cref="ITokenIssuer"/> — symmetric (HMAC) JWTs via <see cref="JsonWebTokenHandler"/>.
-/// Pure library: usable from workers and console apps without ASP.NET Core.
-/// </summary>
+/// <summary>Default <see cref="ITokenIssuer"/> — symmetric (HMAC) JWTs via <see cref="JsonWebTokenHandler"/>; usable from workers and console apps without ASP.NET Core.</summary>
 public sealed class JwtTokenIssuer : ITokenIssuer
 {
     private static readonly JsonWebTokenHandler Handler = new() { SetDefaultTimesOnTokenCreation = false };

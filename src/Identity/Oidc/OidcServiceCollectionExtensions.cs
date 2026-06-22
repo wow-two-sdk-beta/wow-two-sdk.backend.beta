@@ -28,6 +28,8 @@ public sealed record OidcOptions
 public static class OidcServiceCollectionExtensions
 {
     /// <summary>Register OIDC with Authorization Code + PKCE — pairs with <c>AddCookieAuthentication</c> for the sign-in cookie.</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configure">Configuration of the OIDC options.</param>
     public static IServiceCollection AddOpenIdConnectAuthentication(this IServiceCollection services, Action<OidcOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(services);

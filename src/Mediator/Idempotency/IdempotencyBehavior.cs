@@ -15,16 +15,27 @@ public interface IIdempotent
 public interface IIdempotencyStore
 {
     /// <summary>Try to acquire a slot for the given key. Returns the cached response if already processed.</summary>
+    /// <param name="key">The idempotency key to acquire.</param>
+    /// <param name="responseType">The expected response type for the cached entry.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     Task<(bool Acquired, object? CachedResponse)> TryAcquireAsync(string key, Type responseType, CancellationToken cancellationToken);
 
     /// <summary>Persist the response for a previously acquired key.</summary>
+    /// <param name="key">The idempotency key to store under.</param>
+    /// <param name="response">The response payload to cache.</param>
+    /// <param name="ttl">The lifetime of the cached entry.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     Task StoreAsync(string key, object? response, TimeSpan ttl, CancellationToken cancellationToken);
 }
 
 /// <summary>Default in-memory <see cref="IIdempotencyStore"/> — single-instance only.</summary>
+/// <param name="cache">The backing memory cache for stored responses.</param>
 public sealed class InMemoryIdempotencyStore(IMemoryCache cache) : IIdempotencyStore
 {
     /// <inheritdoc />
+    /// <param name="key">The idempotency key to acquire.</param>
+    /// <param name="responseType">The expected response type for the cached entry.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     public Task<(bool Acquired, object? CachedResponse)> TryAcquireAsync(string key, Type responseType, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
@@ -34,6 +45,10 @@ public sealed class InMemoryIdempotencyStore(IMemoryCache cache) : IIdempotencyS
     }
 
     /// <inheritdoc />
+    /// <param name="key">The idempotency key to store under.</param>
+    /// <param name="response">The response payload to cache.</param>
+    /// <param name="ttl">The lifetime of the cached entry.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     public Task StoreAsync(string key, object? response, TimeSpan ttl, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
@@ -42,10 +57,8 @@ public sealed class InMemoryIdempotencyStore(IMemoryCache cache) : IIdempotencyS
     }
 }
 
-/// <summary>
-/// Pipeline behavior — dedupes requests marked with <see cref="IIdempotent"/>.
-/// First call executes the handler and caches the response; subsequent calls with the same key return the cached response.
-/// </summary>
+/// <summary>Dedupes requests marked with <see cref="IIdempotent"/> — first call executes and caches, repeat keys return the cached response.</summary>
+/// <param name="store">The store that tracks and caches idempotent responses.</param>
 public sealed class IdempotencyBehavior<TRequest, TResponse>(IIdempotencyStore store) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
@@ -53,6 +66,9 @@ public sealed class IdempotencyBehavior<TRequest, TResponse>(IIdempotencyStore s
     public static TimeSpan Ttl { get; set; } = TimeSpan.FromHours(24);
 
     /// <inheritdoc />
+    /// <param name="request">The request flowing through the pipeline.</param>
+    /// <param name="nextStep">The continuation that invokes the next behavior or the handler.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> nextStep, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -75,6 +91,7 @@ public sealed class IdempotencyBehavior<TRequest, TResponse>(IIdempotencyStore s
 public static class IdempotencyBehaviorServiceCollectionExtensions
 {
     /// <summary>Register idempotency pipeline behavior with the in-memory store (single-instance).</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddMediatorIdempotencyBehavior(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

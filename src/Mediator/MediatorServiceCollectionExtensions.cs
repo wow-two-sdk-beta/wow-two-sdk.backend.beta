@@ -4,22 +4,17 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator;
 
-/// <summary>
-/// DI registration for the mediator + handler scanning.
-/// </summary>
+/// <summary>Provides DI registration for the mediator and handler scanning.</summary>
 public static class MediatorServiceCollectionExtensions
 {
-    /// <summary>
-    /// Register <see cref="IMediator"/> and scan the calling assembly for handlers.
-    /// </summary>
+    /// <summary>Registers <see cref="IMediator"/> and scans the calling assembly for handlers.</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddMediator(this IServiceCollection services)
         => services.AddMediator(Assembly.GetCallingAssembly());
 
-    /// <summary>
-    /// Register <see cref="IMediator"/> and scan the supplied assemblies for handlers.
-    /// Discovered: closed implementations of <see cref="IRequestHandler{TRequest,TResponse}"/>
-    /// and <see cref="INotificationHandler{TNotification}"/>.
-    /// </summary>
+    /// <summary>Registers <see cref="IMediator"/> and scans the supplied assemblies for closed <see cref="IRequestHandler{TRequest,TResponse}"/> and <see cref="INotificationHandler{TNotification}"/> implementations.</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="assemblies">Assemblies scanned for handlers.</param>
     public static IServiceCollection AddMediator(this IServiceCollection services, params Assembly[] assemblies)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -58,9 +53,9 @@ public static class MediatorServiceCollectionExtensions
         }
     }
 
-    /// <summary>
-    /// Register an open-generic pipeline behavior. Multiple registrations stack — execution order is registration order.
-    /// </summary>
+    /// <summary>Registers an open-generic pipeline behavior. Multiple registrations stack in registration order.</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="openGenericBehavior">The open-generic behavior type to register (e.g. <c>typeof(LoggingBehavior&lt;,&gt;)</c>).</param>
     public static IServiceCollection AddMediatorBehavior(this IServiceCollection services, Type openGenericBehavior)
     {
         ArgumentNullException.ThrowIfNull(services);

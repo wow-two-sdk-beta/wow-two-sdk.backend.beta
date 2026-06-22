@@ -6,17 +6,14 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.RateLimit;
 
-/// <summary>
-/// Conventional rate-limit policies. The "default" policy partitions per-IP with a sliding window of 100/min.
-/// </summary>
+/// <summary>Provides conventional rate-limit policies; the default partitions per-IP with a sliding window of 100/min.</summary>
 public static class RateLimitServiceCollectionExtensions
 {
     /// <summary>Policy name applied to every endpoint by default.</summary>
     public const string DefaultPolicyName = "default";
 
-    /// <summary>
-    /// Register a default sliding-window per-IP rate limiter (100 requests / 60 seconds).
-    /// </summary>
+    /// <summary>Adds a default sliding-window per-IP rate limiter (100 requests / 60 seconds).</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddPerIpSlidingWindowRateLimit(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

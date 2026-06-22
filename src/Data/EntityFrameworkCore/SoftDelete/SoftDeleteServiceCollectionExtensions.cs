@@ -9,6 +9,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SoftDelete;
 public static class SoftDeleteServiceCollectionExtensions
 {
     /// <summary>Registers the <see cref="SoftDeleteInterceptor"/> as a singleton. Wire into a DbContext via <see cref="UseSoftDeleteInterceptor"/>.</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddEfCoreSoftDeleteFilter(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -18,6 +19,8 @@ public static class SoftDeleteServiceCollectionExtensions
     }
 
     /// <summary>Registers the soft-delete interceptor and a singleton current-user accessor for <c>DeletedBy</c> stamping.</summary>
+    /// <typeparam name="TAccessor">The current-user accessor implementation to register.</typeparam>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddEfCoreSoftDeleteFilter<TAccessor>(this IServiceCollection services)
         where TAccessor : class, IAuditCurrentUserAccessor
     {
@@ -27,6 +30,8 @@ public static class SoftDeleteServiceCollectionExtensions
     }
 
     /// <summary>Wires the soft-delete interceptor into a <see cref="DbContextOptionsBuilder"/>.</summary>
+    /// <param name="builder">The DbContext options builder to configure.</param>
+    /// <param name="serviceProvider">The application service provider the interceptor is resolved from.</param>
     public static DbContextOptionsBuilder UseSoftDeleteInterceptor(
         this DbContextOptionsBuilder builder,
         IServiceProvider serviceProvider)

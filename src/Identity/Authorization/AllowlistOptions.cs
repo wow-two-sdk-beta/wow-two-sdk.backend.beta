@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Authorization;
 
-/// <summary>Configures the principal allowlist — the matched claim and allowed values; empty <see cref="Allowed"/> ⇒ OPEN (any authenticated principal passes, the self-hosted single-admin default).</summary>
+/// <summary>Configuration for the principal allowlist; empty <see cref="Allowed"/> ⇒ OPEN (any authenticated principal passes, the single-admin default).</summary>
 public sealed record AllowlistOptions
 {
     /// <summary>Claim type the allowlist is keyed on; defaults to the normalized username claim from the <c>Identity/Claims</c> normalizer.</summary>

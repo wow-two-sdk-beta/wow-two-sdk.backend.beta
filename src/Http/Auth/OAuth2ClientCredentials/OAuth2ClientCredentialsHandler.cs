@@ -3,10 +3,7 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.OAuth2ClientCredentials;
 
-/// <summary>
-/// Delegating handler that attaches a cached client-credentials bearer token to every outgoing
-/// request that doesn't already carry an <c>Authorization</c> header.
-/// </summary>
+/// <summary>Delegating handler attaching a cached client-credentials bearer token to outgoing requests lacking an <c>Authorization</c> header.</summary>
 internal sealed class OAuth2ClientCredentialsHandler : DelegatingHandler
 {
     private readonly string _clientName;

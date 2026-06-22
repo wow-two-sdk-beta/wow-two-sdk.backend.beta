@@ -1,6 +1,9 @@
 # Package layout
 
-*Last updated: 2026-05-04*
+*Last updated: 2026-06-22*
+
+> SDK-internal architecture — the repo/package shape, layering rule, package-id grammar, and the three-layer doc strategy for this mono-lib.
+> Code-style conventions (naming, documentation) are **centralized** in `wow-two-ws/conventions/` and apply to this repo too; only layout/registry live here.
 
 ## Repo structure
 
@@ -63,7 +66,8 @@ wow-two-sdk.backend.beta/
 │
 ├── docs/
 │   ├── analysis/philosophy/               ← ideas.md + targets.md
-│   ├── conventions/                       ← this folder
+│   ├── architecture/                      ← this folder (SDK-internal architecture)
+│   ├── package-registry.md               ← per-area shipped-status lookup table
 │   └── templates/                         ← reusable templates
 │
 ├── apps/
@@ -90,14 +94,16 @@ src/<area>/<package>/
 > No `tests/` separate folder. Test files live next to the wrapper they document.
 > Folder lead doc is `{Folder}.md` (PascalCase, matching the folder), never a per-folder `README.md` — see `repo-structure.md` §3.
 
-## Naming
+## Package-id grammar
 
-- **NuGet package id**: `WoW.Two.Sdk.Backend.Beta.<Domain>` (PascalCase, dotted)
-- **Folder name**: `PascalCase`, matching the package-id/namespace segment 1:1 (`Time/`, `OutputCache/`, `FeatureFlags/`)
-- **Repo namespace**: `WoW.Two.Sdk.Backend.Beta.<Domain>` matches package id
-- **Public extension class**: `<Domain>ServiceCollectionExtensions` (XxxServiceCollectionExtensions pattern Microsoft uses)
-- **Public extension method**: `Add<Domain>(this IServiceCollection services, …)` returning `IServiceCollection`
-- **Public options type**: `<Domain>Options` (record with init-only properties)
+The package-id / folder / namespace shape is SDK-architecture and lives here. **Symbol-level naming** (extension-class / registration-method / options / predicates / data-verbs / acronyms / banned symbols) is centralized in `wow-two-ws/conventions/development/backend/code-style/naming.md` and applies to this repo.
+
+- **NuGet package id**: `WoW.Two.Sdk.Backend.Beta.<Area>[.<SubArea>]` — PascalCase, dotted, no abbreviations except established ones (`OAuth`, `Sql`, `Http`)
+- **Folder name**: `PascalCase`, matching the package-id / namespace segment 1:1 (`Time/`, `OutputCache/`, `FeatureFlags/`). Provider leaves nest under their concept parent — `Comms/Email/MailKit/` → `…Comms.Email.MailKit`, not a flat `Comms/EmailMailKit/`
+- **Namespace**: matches the package id 1:1, file-scoped (`namespace WoW.Two.Sdk.Backend.Beta.Time;`)
+- **Linux CI is case-sensitive** — build-file path globs (`DefaultItemExcludes`, `.slnx` paths, workflow `dotnet pack` paths) must match the on-disk PascalCase exactly; a lowercased path silently no-ops on `ubuntu-latest`
+
+Examples: `WoW.Two.Sdk.Backend.Beta` (meta) · `…Beta.Caching.Redis` · `…Beta.Identity.OAuth.Google` · `…Beta.Testing.Containers.Postgres`.
 
 ## Layering rule
 
@@ -127,7 +133,16 @@ For consumers and IDE perf at scale, plan to add `.slnf` filters per phase (e.g.
 - All packages ship as `0.x.y`
 - Single version across all packages — bumped together by CI on push to `main`
 - Consumers should pin exact versions for stability
-- See `docs/conventions/versioning.md` (TBD)
+
+## Doc strategy (three layers)
+
+We wrap the .NET ecosystem (~10K+ packages reachable via composition). We can't maintain samples for every underlying lib — they change weekly. We maintain docs for **our wrappers**, whose cadence is our cadence. (The wrapper-doc *format* — `*.standard.md` / `*.spec.md` / xUnit-as-docs — is in `wow-two-ws/conventions/.../code-style/documentation.md`; the *strategy* is here.)
+
+- **Layer 1 — wrapper code (always)**: each wrapper folder ships its `<Module>.standard.md` (RFC 2119 contract), `<Module>.spec.md` (API + usage), `<Module>.tests.cs` (runnable xUnit examples — the "Storybook for backend"), and the `{folder}.md` lead doc (1-screen quickstart + see-also)
+- **Layer 2 — playground (one per repo)**: `apps/playground/` — a single .NET Aspire AppHost booting the meta-package end-to-end (DB, cache, messaging, identity, OTel dashboard). For onboarding, pre-release smoke, and cross-package debugging. Updated per major release, not per-wrapper
+- **Layer 3 — underlying-lib reference (lazy)**: we do **not** maintain showcase content for EF Core / Polly / Serilog etc. — the wrapper's XML `<remarks>` and `spec.md` `## See also` link to canonical lib docs; subtle findings land **reactively** in the `wow-two-kb` org, never preemptively
+
+**Cadence rule** — doc churn = *our* wrapper churn. If a wrapper doesn't change this month, its docs don't either; an underlying lib shipping 12 patch releases is irrelevant unless one breaks our wrapper (then bump the wrapper + update its spec). **Never write a sample app per underlying lib** — that's the 10K-packages trap.
 
 ## Build / pack
 

@@ -7,6 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SqlServer;
 public static class SqlServerModelBuilderExtensions
 {
     /// <summary>Maps the <c>rowversion</c> concurrency token for every <see cref="IRowVersioned"/> entity. Owned types are skipped.</summary>
+    /// <param name="modelBuilder">The EF Core model builder.</param>
     public static ModelBuilder ApplySqlServerConventions(this ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

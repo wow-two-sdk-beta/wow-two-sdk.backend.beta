@@ -3,18 +3,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.Mtls;
 
-/// <summary>
-/// Configures an outbound HTTP client to present a client certificate (mutual TLS).
-/// </summary>
+/// <summary>Provides client-certificate (mutual TLS) configuration for an outbound HTTP client.</summary>
 public static class MutualTlsHttpClientBuilderExtensions
 {
-    /// <summary>
-    /// Presents the configured client certificate on every TLS handshake this client performs.
-    /// Replaces the client's primary handler with a certificate-bearing <see cref="SocketsHttpHandler"/> —
-    /// apply before resilience/hedging handlers if combining.
-    /// </summary>
-    /// <param name="builder">The HTTP client builder.</param>
-    /// <param name="configure">Certificate source (loaded instance or PKCS#12 path + password).</param>
+    /// <summary>Presents the configured client certificate on every TLS handshake, replacing the primary handler; apply before resilience/hedging handlers if combining.</summary>
+    /// <param name="builder">The HTTP client builder to extend.</param>
+    /// <param name="configure">Configures the client certificate source and TLS behavior.</param>
     public static IHttpClientBuilder AddMutualTls(
         this IHttpClientBuilder builder,
         Action<MutualTlsOptions> configure)
@@ -45,9 +39,9 @@ public static class MutualTlsHttpClientBuilderExtensions
         });
     }
 
-    /// <summary>Overload taking an already-loaded client certificate.</summary>
-    /// <param name="builder">The HTTP client builder.</param>
-    /// <param name="clientCertificate">The certificate (with private key) to present.</param>
+    /// <summary>Overload taking an already-loaded client certificate (with private key) to present.</summary>
+    /// <param name="builder">The HTTP client builder to extend.</param>
+    /// <param name="clientCertificate">The pre-loaded client certificate, including its private key.</param>
     public static IHttpClientBuilder AddMutualTls(this IHttpClientBuilder builder, X509Certificate2 clientCertificate)
     {
         ArgumentNullException.ThrowIfNull(builder);

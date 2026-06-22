@@ -2,5 +2,5 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Authorization;
 
-/// <summary>Requirement satisfied when the principal's allowlist claim is in the allowed set — or unconditionally when the set is empty (OPEN); paired with <see cref="AllowlistAuthorizationHandler"/>.</summary>
+/// <summary>Authorization requirement evaluated by <see cref="AllowlistAuthorizationHandler"/> against the configured allowlist.</summary>
 public sealed class AllowlistRequirement : IAuthorizationRequirement;

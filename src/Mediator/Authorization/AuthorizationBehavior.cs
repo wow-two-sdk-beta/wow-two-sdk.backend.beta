@@ -4,19 +4,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Authorization;
 
-/// <summary>
-/// Marker — requests implementing this interface are authorized via ASP.NET Core's <see cref="IAuthorizationService"/>.
-/// </summary>
+/// <summary>Marks a request for authorization via ASP.NET Core's <see cref="IAuthorizationService"/>.</summary>
 public interface IRequireAuthorization
 {
     /// <summary>Optional policy name. If <c>null</c>, default policy is used.</summary>
     string? PolicyName => null;
 }
 
-/// <summary>
-/// Pipeline behavior — runs ASP.NET Core authorization on requests implementing <see cref="IRequireAuthorization"/>.
-/// Throws <see cref="UnauthorizedAccessException"/> if not authenticated, <see cref="AuthorizationException"/> if not authorized.
-/// </summary>
+/// <summary>Runs ASP.NET Core authorization on requests implementing <see cref="IRequireAuthorization"/>.</summary>
+/// <remarks>Throws <see cref="UnauthorizedAccessException"/> if not authenticated, <see cref="AuthorizationException"/> if not authorized.</remarks>
 public sealed class AuthorizationBehavior<TRequest, TResponse>(
     IHttpContextAccessor httpContextAccessor,
     IAuthorizationService authorizationService)
@@ -24,6 +20,9 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
     where TRequest : notnull
 {
     /// <inheritdoc />
+    /// <param name="request">The request flowing through the pipeline.</param>
+    /// <param name="nextStep">The continuation that invokes the next behavior or the handler.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> nextStep, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -51,6 +50,7 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
 }
 
 /// <summary>Thrown when the user is authenticated but lacks permission.</summary>
+/// <param name="failure">The underlying authorization failure, if any.</param>
 public sealed class AuthorizationException(AuthorizationFailure? failure) : Exception("Forbidden")
 {
     /// <summary>The underlying authorization failure, if any.</summary>
@@ -61,6 +61,7 @@ public sealed class AuthorizationException(AuthorizationFailure? failure) : Exce
 public static class AuthorizationBehaviorServiceCollectionExtensions
 {
     /// <summary>Register the authorization pipeline behavior. Requires <c>AddHttpContextAccessor()</c>.</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddMediatorAuthorizationBehavior(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

@@ -10,12 +10,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.Ses;
 /// <summary>Amazon SES sender registration.</summary>
 public static class SesEmailServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers <see cref="IEmailSender"/> backed by Amazon SES v2. Credentials resolve through the
-    /// standard AWS chain (env vars, profile, IMDS). Combine with <c>AddEmailDefaults</c> for the
-    /// default From address.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
+    /// <summary>Registers <see cref="IEmailSender"/> backed by Amazon SES v2 (credentials via the standard AWS chain); combine with <c>AddEmailDefaults</c> for the default From address.</summary>
+    /// <param name="services">The service collection to configure.</param>
     /// <param name="configure">Optional region override.</param>
     public static IServiceCollection AddSesEmailSender(
         this IServiceCollection services,

@@ -4,29 +4,33 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator;
 
-/// <summary>
-/// Default <see cref="IMediator"/> implementation. Resolves handlers and pipeline behaviors via DI.
-/// Caches the closed-generic dispatcher delegate per request type for hot-path perf.
-/// </summary>
+/// <summary>Provides the default <see cref="IMediator"/> — resolves handlers and pipeline behaviors via DI, caching the dispatcher delegate per request type.</summary>
+/// <param name="serviceProvider">The provider that resolves handlers and pipeline behaviors.</param>
 public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
 {
     private static readonly ConcurrentDictionary<Type, RequestDispatcher> _requestDispatchers = new();
     private static readonly ConcurrentDictionary<Type, PublishDispatcher> _publishDispatchers = new();
 
     /// <inheritdoc />
+    /// <param name="request">The request to dispatch.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     public ValueTask<TResponse> SendAsync<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         var dispatcher = _requestDispatchers.GetOrAdd(request.GetType(), BuildRequestDispatcher);
-        // The dispatcher boxes the ValueTask<TResponse> once (reflection erases the static type); unbox and return.
+        // Dispatcher boxes the ValueTask<TResponse> once; unbox and return.
         return (ValueTask<TResponse>)dispatcher(serviceProvider, request, cancellationToken);
     }
 
     /// <inheritdoc />
+    /// <param name="request">The request to dispatch.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     public ValueTask<Unit> SendAsync(IRequest request, CancellationToken cancellationToken = default)
         => SendAsync<Unit>(request, cancellationToken);
 
     /// <inheritdoc />
+    /// <param name="notification">The notification to dispatch.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     public ValueTask PublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken = default)
         where TNotification : INotification
     {
@@ -41,7 +45,7 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
 
     private static RequestDispatcher BuildRequestDispatcher(Type requestType)
     {
-        // Find IRequest<TResponse> the request implements.
+        // Find the IRequest<TResponse> the request implements.
         var iface = requestType
             .GetInterfaces()
             .FirstOrDefault(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IRequest<>))
@@ -53,8 +57,7 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
             .GetMethod(nameof(DispatchTyped), BindingFlags.NonPublic | BindingFlags.Static)!
             .MakeGenericMethod(requestType, responseType);
 
-        // method returns ValueTask<TResponse>; reflection boxes it to object (the closed return type is
-        // unknown to the cache). SendAsync<TResponse> unboxes it back — one box per dispatch, no Task wrap.
+        // Returns ValueTask<TResponse> boxed to object; SendAsync<TResponse> unboxes it — one box per dispatch, no Task wrap.
         return (sp, req, ct) => method.Invoke(null, [sp, req, ct])!;
     }
 
@@ -71,8 +74,7 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
             pipeline = () => behavior.HandleAsync(request, current, ct);
         }
 
-        // No await here — return the head of the pipeline directly so a sync-completing chain stays sync.
-        // Each behavior/handler awaits its own `nextStep()` exactly once (await-once discipline).
+        // Return the pipeline head directly (no await) so a sync-completing chain stays sync; each step awaits nextStep() once.
         return pipeline();
     }
 
@@ -89,7 +91,7 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
         where TNotification : INotification
     {
         var handlers = sp.GetServices<INotificationHandler<TNotification>>();
-        // Sequential by default — predictable order, simpler error handling. A throwing handler aborts the rest.
+        // Sequential by default; a throwing handler aborts the rest.
         foreach (var h in handlers)
             await h.HandleAsync(notification, ct).ConfigureAwait(false);
     }

@@ -4,10 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 
-/// <summary>
-/// Default <see cref="IOtpService"/> — rate-limits creation, stores via <see cref="IOtpStore"/>,
-/// verifies with a fixed-time code comparison, and consumes codes on success.
-/// </summary>
+/// <summary>Default <see cref="IOtpService"/> — rate-limits creation, stores via <see cref="IOtpStore"/>, verifies with a fixed-time comparison, and consumes codes on success.</summary>
 public sealed class OtpService : IOtpService
 {
     private readonly IOtpStore _store;

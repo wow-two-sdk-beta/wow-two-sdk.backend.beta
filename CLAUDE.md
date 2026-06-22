@@ -12,7 +12,8 @@ The `WoW.Two.Sdk.Backend.Beta.*` family — beta-forever .NET 9 backend SDK aggr
 
 - **[`docs/analysis/philosophy/ideas.md`](./docs/analysis/philosophy/ideas.md)** — encyclopedic catalog of every .NET tech / pattern / library / runtime API. **No verdicts** — pure inventory. Source of ideas; read when considering scope expansion.
 - **[`docs/analysis/philosophy/targets.md`](./docs/analysis/philosophy/targets.md)** — verdict per item: **DONE / NOW / NEXT / LATER / MAYBE / SKIP / LOCKED**. Mirrors `ideas.md`'s structure. Read when deciding what to ship next.
-- **[`docs/conventions/`](./docs/conventions/)** — package layout, naming, documentation strategy, package registry (lookup table).
+- **[`docs/architecture/package-layout.md`](./docs/architecture/package-layout.md)** — SDK-internal architecture: repo + per-package shape, layering, package-id grammar, three-layer doc strategy. Code-style conventions (naming, documentation) are centralized in `wow-two-ws/conventions/`.
+- **[`docs/package-registry.md`](./docs/package-registry.md)** — per-area shipped-status lookup table.
 - **[`docs/templates/`](./docs/templates/)** — copy-paste templates for new packages (`csproj`, `Module.cs`, `Options.cs`, `standard.md`, `spec.md`, `Tests.cs`, `folder-doc.md` — the folder lead doc, copied to `{folder}.md`).
 - **[`docs/planning/platform-planning.md`](./docs/planning/platform-planning.md)** — standing roadmap + backlog of lego features to build; deep-dives under `docs/planning/<feature>/` (e.g. [`identity/identity-architecture.md`](./docs/planning/identity/identity-architecture.md)). Format follows `conventions/planning/platform-planning/`.
 
@@ -60,7 +61,8 @@ wow-two-sdk.backend.beta/
 │   └── testing/                       ← P0 (parallel track)
 ├── docs/
 │   ├── analysis/philosophy/           ← ideas.md + targets.md (source-of-truth)
-│   ├── conventions/                   ← layout, naming, doc-strategy, package-registry
+│   ├── architecture/                  ← package-layout (SDK-internal architecture + doc strategy)
+│   ├── package-registry.md           ← per-area shipped-status lookup table
 │   └── templates/                     ← reusable per-package templates
 └── apps/playground/                   ← (planned) Aspire AppHost end-to-end smoke
 ```
@@ -79,11 +81,11 @@ src/<area>/<package>/
 └── <folder>.md                              ← folder lead doc (kebab folder name, e.g. `time.md`) — 1-screen quickstart + see-also. NOT `README.md` below the repo root
 ```
 
-**Naming**: package id carries the brand (`WoW.Two.Sdk.Backend.Beta.<Area>`), but **method/class names do NOT have a `WowTwo` prefix** — they describe what they actually do (e.g. `AddJwtBearerAuthentication`, `AddOpenTelemetryTracing`, `UseOwaspSecureHeaders`, `JsonOptionsPresets`, `WebApiTestBase<T>`). Mirrors the older `Backbone.Language.Features.Serialization` package convention. See [`docs/conventions/naming.md`](./docs/conventions/naming.md).
+**Naming**: package id carries the brand (`WoW.Two.Sdk.Backend.Beta.<Area>`), but **method/class names do NOT have a `WowTwo` prefix** — they describe what they actually do (e.g. `AddJwtBearerAuthentication`, `AddOpenTelemetryTracing`, `UseOwaspSecureHeaders`, `JsonOptionsPresets`, `WebApiTestBase<T>`). Mirrors the older `Backbone.Language.Features.Serialization` package convention. Symbol-level naming is centralized in `wow-two-ws/conventions/development/backend/code-style/naming.md` (§Registration and extension-method naming); package-id grammar lives in [`docs/architecture/package-layout.md`](./docs/architecture/package-layout.md).
 
 Tiny adapter packages (e.g. each container engine) ship just csproj + main file + the folder lead doc `{folder}.md`. Standard/spec are reserved for packages where the API has non-trivial shape.
 
-See [`docs/conventions/package-layout.md`](./docs/conventions/package-layout.md).
+See [`docs/architecture/package-layout.md`](./docs/architecture/package-layout.md).
 
 ## Dependency model
 
@@ -104,15 +106,15 @@ Set `MSBUILDDISABLENODEREUSE=1` and `ulimit -n 65535` if you hit "too many open 
 
 ## Package naming
 
-`WoW.Two.Sdk.Backend.Beta.<Area>[.<SubArea>]` — see [`docs/conventions/naming.md`](./docs/conventions/naming.md).
+`WoW.Two.Sdk.Backend.Beta.<Area>[.<SubArea>]` — package-id grammar in [`docs/architecture/package-layout.md`](./docs/architecture/package-layout.md).
 
-Registration: descriptive method names without `WowTwo` prefix — `services.AddJwtBearerAuthentication(...)`, `services.AddPerIpSlidingWindowRateLimit()`, `services.AddOpenTelemetryTracing(...)`. The package name carries the brand; the method name carries the meaning.
+Registration: descriptive method names without `WowTwo` prefix — `services.AddJwtBearerAuthentication(...)`, `services.AddPerIpSlidingWindowRateLimit()`, `services.AddOpenTelemetryTracing(...)`. The package name carries the brand; the method name carries the meaning. Full rule: `wow-two-ws/conventions/development/backend/code-style/naming.md` (§Registration and extension-method naming).
 
 ## Documentation strategy
 
 **Wrappers** ship docs (`spec.md`, `standard.md`, the folder lead doc `{folder}.md`, `Tests.cs` examples). **Underlying libs** are NOT documented by us — we link to their official docs.
 
-See [`docs/conventions/documentation.md`](./docs/conventions/documentation.md).
+Three-layer strategy + cadence: [`docs/architecture/package-layout.md`](./docs/architecture/package-layout.md) §Doc strategy. Wrapper-doc format (`*.standard.md` / `*.spec.md` / xUnit-as-docs): `wow-two-ws/conventions/development/backend/code-style/documentation.md` §Wrapper / package docs.
 
 ## Working rules
 

@@ -218,6 +218,6 @@ The external-login baseline (uniform OAuth×17 + X · claim normalizer · cookie
 ## 12. See also
 
 - `system/sessions/backend-beta-build/auth-extraction-analysis.md` — the v1 "no user model" decision this reverses (§4) + the OTP/issuance/policies seams now reused.
-- `docs/conventions/package-registry.md` — shipped identity packages the slices plug into.
+- `docs/package-registry.md` — shipped identity packages the slices plug into.
 - `docs/analysis/philosophy/targets.md` — add the `identity/core` vector under P2 when this starts (paired source-of-truth rule).
 - `../platform-planning.md` — backlog + roadmap home.

@@ -3,18 +3,15 @@ using WoW.Two.Sdk.Backend.Beta.Http.Resilience;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Core;
 
-/// <summary>
-/// Registration helpers for plain <see cref="HttpClient"/>-based typed clients (no Refit),
-/// with the SDK resilience pipeline applied.
-/// </summary>
+/// <summary>Provides registration for plain <see cref="HttpClient"/> typed clients (no Refit) with the SDK resilience pipeline.</summary>
 public static class TypedClientServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers a typed client <typeparamref name="TClient"/> with <paramref name="baseAddress"/> and the
-    /// SDK resilience pipeline (retry + circuit breaker + timeouts). The client receives an injected
-    /// <see cref="HttpClient"/> via its constructor.
-    /// </summary>
+    /// <summary>Registers typed client <typeparamref name="TClient"/> with <paramref name="baseAddress"/> and the SDK resilience pipeline (retry, circuit breaker, and timeouts).</summary>
     /// <typeparam name="TClient">The typed-client class.</typeparam>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="baseAddress">The API base address.</param>
+    /// <param name="configureResilience">Optional override of the SDK resilience defaults.</param>
+    /// <param name="configureClient">Optional further configuration of the underlying client.</param>
     public static IHttpClientBuilder AddResilientClient<TClient>(
         this IServiceCollection services,
         Uri baseAddress,
@@ -34,10 +31,12 @@ public static class TypedClientServiceCollectionExtensions
             .AddSdkResilience(configureResilience);
     }
 
-    /// <summary>
-    /// Registers a named <see cref="HttpClient"/> with <paramref name="baseAddress"/> and the SDK
-    /// resilience pipeline. Resolve via <see cref="IHttpClientFactory.CreateClient(string)"/>.
-    /// </summary>
+    /// <summary>Registers a named <see cref="HttpClient"/> with <paramref name="baseAddress"/> and the SDK resilience pipeline. Resolve via <see cref="IHttpClientFactory.CreateClient(string)"/>.</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="name">The logical name of the client.</param>
+    /// <param name="baseAddress">The API base address.</param>
+    /// <param name="configureResilience">Optional override of the SDK resilience defaults.</param>
+    /// <param name="configureClient">Optional further configuration of the underlying client.</param>
     public static IHttpClientBuilder AddResilientClient(
         this IServiceCollection services,
         string name,

@@ -10,7 +10,7 @@ public enum AuthChallengeMode
     /// <summary>Server-rendered MVC: 302 redirect to <see cref="CookieAuthOptions.LoginPath"/> / access-denied page.</summary>
     Mvc,
 
-    /// <summary>SPA + API: raw 401/403, no redirect — client renders its own sign-in.</summary>
+    /// <summary>SPA and API: raw 401/403, no redirect — client renders its own sign-in.</summary>
     Api,
 }
 
@@ -40,6 +40,8 @@ public sealed record CookieAuthOptions
 public static class CookiesServiceCollectionExtensions
 {
     /// <summary>Register cookie authentication with secure defaults (HTTP-only, SameSite=Lax, HTTPS-only).</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configure">Optional override of cookie name, expiration, paths, and challenge mode.</param>
     public static IServiceCollection AddCookieAuthentication(this IServiceCollection services, Action<CookieAuthOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(services);

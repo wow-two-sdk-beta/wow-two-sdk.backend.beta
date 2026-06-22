@@ -5,31 +5,21 @@ using WoW.Two.Sdk.Backend.Beta.Http.Resilience;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Refit;
 
-/// <summary>
-/// Registration helpers for declarative Refit API clients with SDK conventions baked in:
-/// SDK JSON serialization, a base address, and the standard resilience pipeline.
-/// </summary>
+/// <summary>Provides registration for declarative Refit API clients with SDK JSON, a base address, and the standard resilience pipeline.</summary>
 public static class RefitClientServiceCollectionExtensions
 {
-    /// <summary>
-    /// Builds SDK-conventional Refit settings — System.Text.Json using <see cref="JsonOptionsPresets.Default"/>.
-    /// A factory (not a cached static) so any failure surfaces at the call site rather than poisoning the type's
-    /// static initializer, and so callers always get a fresh, independently-configurable instance.
-    /// </summary>
+    /// <summary>Builds SDK-conventional Refit settings (System.Text.Json using <see cref="JsonOptionsPresets.Default"/>); returns a fresh instance per call.</summary>
     public static RefitSettings CreateDefaultRefitSettings() => new()
     {
         ContentSerializer = new SystemTextJsonContentSerializer(JsonOptionsPresets.Default),
     };
 
-    /// <summary>
-    /// Registers a Refit typed client <typeparamref name="TApi"/> pointed at <paramref name="baseAddress"/>,
-    /// using SDK JSON settings and the SDK resilience pipeline (retry + circuit breaker + timeouts).
-    /// </summary>
+    /// <summary>Registers Refit typed client <typeparamref name="TApi"/> at <paramref name="baseAddress"/> using SDK JSON and the SDK resilience pipeline (retry, circuit breaker, and timeouts).</summary>
     /// <typeparam name="TApi">The Refit API interface.</typeparam>
-    /// <param name="services">The service collection.</param>
+    /// <param name="services">The service collection to configure.</param>
     /// <param name="baseAddress">The API base address.</param>
-    /// <param name="configureResilience">Optional override of the resilience defaults.</param>
-    /// <param name="configureClient">Optional additional <see cref="HttpClient"/> configuration (headers, timeout, …).</param>
+    /// <param name="configureResilience">Optional override of the SDK resilience defaults.</param>
+    /// <param name="configureClient">Optional further configuration of the underlying client.</param>
     public static IHttpClientBuilder AddRefitApiClient<TApi>(
         this IServiceCollection services,
         Uri baseAddress,
@@ -50,9 +40,12 @@ public static class RefitClientServiceCollectionExtensions
             .AddSdkResilience(configureResilience);
     }
 
-    /// <summary>
-    /// Overload taking a base address as a string. Throws if it is not a valid absolute URI.
-    /// </summary>
+    /// <summary>Overload taking a base address as a string; throws if it is not a valid absolute URI.</summary>
+    /// <typeparam name="TApi">The Refit API interface.</typeparam>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="baseAddress">The API base address.</param>
+    /// <param name="configureResilience">Optional override of the SDK resilience defaults.</param>
+    /// <param name="configureClient">Optional further configuration of the underlying client.</param>
     public static IHttpClientBuilder AddRefitApiClient<TApi>(
         this IServiceCollection services,
         string baseAddress,

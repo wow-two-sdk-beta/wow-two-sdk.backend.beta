@@ -11,6 +11,8 @@ public static class PostgresServiceCollectionExtensions
 {
     /// <summary>Registers a shared <see cref="NpgsqlDataSource"/> built from <see cref="DatabaseOptions"/>, consumable by EF Core and Dapper.</summary>
     /// <remarks>Register Npgsql enum mappings inside the optional configurator.</remarks>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configure">An optional callback for further data-source configuration.</param>
     public static IServiceCollection AddNpgsqlDataSource(
         this IServiceCollection services,
         Action<NpgsqlDataSourceBuilder>? configure = null)

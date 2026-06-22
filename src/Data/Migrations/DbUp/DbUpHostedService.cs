@@ -5,15 +5,15 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.DbUp;
 
-/// <summary>
-/// Hosted service that runs DbUp at startup, applying any pending <c>.sql</c> scripts.
-/// </summary>
+/// <summary>Hosted service that runs DbUp at startup, applying any pending <c>.sql</c> scripts.</summary>
 public sealed class DbUpHostedService : IHostedService
 {
     private readonly DbUpOptions _options;
     private readonly ILogger<DbUpHostedService> _logger;
 
     /// <summary>Initializes a new instance.</summary>
+    /// <param name="options">The DbUp runner options.</param>
+    /// <param name="logger">The logger for run progress and failures.</param>
     public DbUpHostedService(IOptions<DbUpOptions> options, ILogger<DbUpHostedService> logger)
     {
         _options = options.Value;

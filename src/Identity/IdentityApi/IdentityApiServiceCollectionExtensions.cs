@@ -4,22 +4,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.IdentityApi;
 
-/// <summary>
-/// ASP.NET Core Identity registration with bearer-token API endpoints.
-/// </summary>
+/// <summary>Provides ASP.NET Core Identity registration with bearer-token API endpoints.</summary>
 public static class IdentityApiServiceCollectionExtensions
 {
-    /// <summary>
-    /// Register Identity with `IdentityUser` over the supplied EF Core context, plus bearer-token endpoints.
-    /// After build, call `app.MapIdentityApi&lt;IdentityUser&gt;()`.
-    /// </summary>
+    /// <summary>Registers Identity with <c>IdentityUser</c> over the supplied EF Core context plus bearer-token endpoints; after build, call <c>app.MapIdentityApi&lt;IdentityUser&gt;()</c>.</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddIdentityApiEndpoints<TContext>(this IServiceCollection services)
         where TContext : DbContext
         => services.AddIdentityApiEndpoints<IdentityUser, TContext>();
 
-    /// <summary>
-    /// Register Identity with a custom user type and EF Core context, plus bearer-token endpoints.
-    /// </summary>
+    /// <summary>Registers Identity with a custom user type and EF Core context plus bearer-token endpoints.</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddIdentityApiEndpoints<TUser, TContext>(this IServiceCollection services)
         where TUser : class, new()
         where TContext : DbContext

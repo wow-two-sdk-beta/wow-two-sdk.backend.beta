@@ -4,23 +4,11 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Postgres;
 
-/// <summary>
-/// Bulk registration of CLR enums as PostgreSQL enum types on an <see cref="NpgsqlDataSourceBuilder"/>.
-/// The PG type name is derived from the enum type name via the SDK casing engine, and each member's
-/// label via the same style — so the driver-level mapping and any string-based mapping agree by construction.
-/// </summary>
-/// <remarks>
-/// Replaces the hand-maintained "list every enum twice" registry pattern: call <see cref="MapEnums"/> once
-/// with the assembly (or assemblies) that hold your enums. Npgsql requires enum mappings at the data-source
-/// (driver) level, so this runs on the builder before <c>Build()</c>.
-/// </remarks>
+/// <summary>Bulk registration of CLR enums as PostgreSQL enum types on an <see cref="NpgsqlDataSourceBuilder"/> — the PG type name and each member label are derived from the enum via the SDK casing engine, so the driver-level mapping and any string-based mapping agree by construction.</summary>
+/// <remarks>Replaces the hand-maintained "list every enum twice" registry pattern: call <see cref="MapEnums"/> once with the assembly (or assemblies) holding your enums; Npgsql requires enum mappings at the data-source (driver) level, so this runs on the builder before <c>Build()</c>.</remarks>
 public static class NpgsqlEnumMappingExtensions
 {
-    /// <summary>
-    /// Maps every enum in <paramref name="assemblies"/> whose namespace passes <paramref name="namespaceFilter"/>
-    /// (default: all) as a PG enum. Type name and member labels use <paramref name="style"/> (default <see cref="CaseStyle.Snake"/>).
-    /// PG type name can be customized per enum via <paramref name="pgTypeName"/>.
-    /// </summary>
+    /// <summary>Maps every enum in <paramref name="assemblies"/> whose namespace passes <paramref name="namespaceFilter"/> (default: all) as a PG enum, with type name and member labels using <paramref name="style"/> (default <see cref="CaseStyle.Snake"/>) and the PG type name customizable per enum via <paramref name="pgTypeName"/>.</summary>
     /// <param name="builder">The data-source builder to register mappings on.</param>
     /// <param name="style">Casing for the PG type name and member labels. Default <see cref="CaseStyle.Snake"/>.</param>
     /// <param name="namespaceFilter">Optional predicate on the enum's namespace — return <c>true</c> to include. Default includes all.</param>

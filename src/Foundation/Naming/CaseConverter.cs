@@ -1,15 +1,12 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
-/// <summary>
-/// Converts identifiers between <see cref="CaseStyle"/>s. Tokenizes the input with
-/// <see cref="WordTokenizer"/> (so the source style does not matter), then re-joins.
-/// Conversions are style-stable: <c>ToCase(ToCase(x, A), B)</c> equals <c>ToCase(x, B)</c>
-/// for any well-formed identifier, because every conversion re-derives words from scratch.
-/// </summary>
+/// <summary>Converts identifiers between <see cref="CaseStyle"/>s by tokenizing with <see cref="WordTokenizer"/> (source style does not matter) then re-joining.</summary>
 public static class CaseConverter
 {
     /// <summary>Converts <paramref name="value"/> to <paramref name="style"/>. Returns the input unchanged when null/empty.</summary>
     /// <example><c>ToCase("OrderLineItem", CaseStyle.Snake)</c> → <c>"order_line_item"</c>.</example>
+    /// <param name="value">The identifier to convert.</param>
+    /// <param name="style">The target casing style.</param>
     public static string ToCase(string? value, CaseStyle style)
     {
         if (string.IsNullOrEmpty(value))
@@ -36,15 +33,19 @@ public static class CaseConverter
     }
 
     /// <summary>Shorthand for <c>ToCase(value, CaseStyle.Snake)</c>.</summary>
+    /// <param name="value">The identifier to convert.</param>
     public static string ToSnakeCase(string? value) => ToCase(value, CaseStyle.Snake);
 
     /// <summary>Shorthand for <c>ToCase(value, CaseStyle.Camel)</c>.</summary>
+    /// <param name="value">The identifier to convert.</param>
     public static string ToCamelCase(string? value) => ToCase(value, CaseStyle.Camel);
 
     /// <summary>Shorthand for <c>ToCase(value, CaseStyle.Pascal)</c>.</summary>
+    /// <param name="value">The identifier to convert.</param>
     public static string ToPascalCase(string? value) => ToCase(value, CaseStyle.Pascal);
 
     /// <summary>Shorthand for <c>ToCase(value, CaseStyle.Kebab)</c>.</summary>
+    /// <param name="value">The identifier to convert.</param>
     public static string ToKebabCase(string? value) => ToCase(value, CaseStyle.Kebab);
 
     private static string Camel(IReadOnlyList<string> words)

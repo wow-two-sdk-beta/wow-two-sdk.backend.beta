@@ -4,13 +4,13 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Claims;
 
-/// <summary>Per-request <see cref="IClaimsTransformation"/> that adds the canonical <c>wt:*</c> claims by reading <see cref="NormalizedClaimTypes.Provider"/>, looking up that provider's <see cref="ClaimProviderProfile"/>, and copying/deriving from the raw claims already on the principal. Idempotent and non-fabricating.</summary>
+/// <summary>Per-request <see cref="IClaimsTransformation"/> that adds the canonical <c>wt:*</c> claims from the provider's <see cref="ClaimProviderProfile"/> and the principal's raw claims; idempotent and non-fabricating.</summary>
 public sealed class ClaimNormalizer : IClaimsTransformation
 {
     private readonly ClaimNormalizationOptions _options;
 
     /// <summary>Creates the normalizer from configured options.</summary>
-    /// <param name="options">Normalization options (profiles + avatar toggle).</param>
+    /// <param name="options">Normalization options (profiles and avatar toggle).</param>
     public ClaimNormalizer(IOptions<ClaimNormalizationOptions> options)
     {
         ArgumentNullException.ThrowIfNull(options);

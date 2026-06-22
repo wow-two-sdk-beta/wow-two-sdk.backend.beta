@@ -17,6 +17,8 @@ public interface INotification;
 public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse>
 {
     /// <summary>Handle the request. Sync-completing handlers may return a completed <see cref="ValueTask{TResult}"/>.</summary>
+    /// <param name="request">The request to handle.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     ValueTask<TResponse> HandleAsync(TRequest request, CancellationToken cancellationToken);
 }
 
@@ -27,6 +29,8 @@ public interface IRequestHandler<in TRequest> : IRequestHandler<TRequest, Unit> 
 public interface INotificationHandler<in TNotification> where TNotification : INotification
 {
     /// <summary>Handle the notification.</summary>
+    /// <param name="notification">The notification to handle.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     ValueTask HandleAsync(TNotification notification, CancellationToken cancellationToken);
 }
 
@@ -34,6 +38,9 @@ public interface INotificationHandler<in TNotification> where TNotification : IN
 public interface IPipelineBehavior<in TRequest, TResponse> where TRequest : notnull
 {
     /// <summary>Invoke the next behavior or the handler. Await <paramref name="nextStep"/> exactly once.</summary>
+    /// <param name="request">The request flowing through the pipeline.</param>
+    /// <param name="nextStep">The continuation that invokes the next behavior or the handler.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> nextStep, CancellationToken cancellationToken);
 }
 
@@ -44,9 +51,13 @@ public delegate ValueTask<TResponse> RequestHandlerDelegate<TResponse>();
 public interface ISender
 {
     /// <summary>Send a strongly-typed request.</summary>
+    /// <param name="request">The request to dispatch.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     ValueTask<TResponse> SendAsync<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default);
 
     /// <summary>Send a request with no response.</summary>
+    /// <param name="request">The request to dispatch.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     ValueTask<Unit> SendAsync(IRequest request, CancellationToken cancellationToken = default);
 }
 
@@ -54,10 +65,12 @@ public interface ISender
 public interface IPublisher
 {
     /// <summary>Publish a notification.</summary>
+    /// <param name="notification">The notification to dispatch.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     ValueTask PublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken = default) where TNotification : INotification;
 }
 
-/// <summary>Combined sender + publisher.</summary>
+/// <summary>Combined sender and publisher.</summary>
 public interface IMediator : ISender, IPublisher;
 
 /// <summary>Void-equivalent type for `IRequest` (no response). Mirrors MediatR's `Unit`.</summary>

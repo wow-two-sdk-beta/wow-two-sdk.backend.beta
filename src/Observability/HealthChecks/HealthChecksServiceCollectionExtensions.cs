@@ -2,14 +2,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Observability.HealthChecks;
 
-/// <summary>
-/// Health-check registration helpers. Wraps the built-in `IHealthChecksBuilder` so consumers don't need to discover the right extension method package.
-/// </summary>
+/// <summary>Provides health-check registration helpers over the built-in <c>IHealthChecksBuilder</c>.</summary>
 public static class HealthChecksServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers `IHealthChecksBuilder` with no checks attached. Add provider checks via the returned builder.
-    /// </summary>
+    /// <summary>Adds <c>IHealthChecksBuilder</c> with no checks attached. Add provider checks via the returned builder.</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IHealthChecksBuilder AddHealthChecksBuilder(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

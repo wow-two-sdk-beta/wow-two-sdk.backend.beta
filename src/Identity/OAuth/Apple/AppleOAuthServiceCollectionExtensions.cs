@@ -8,14 +8,14 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Apple;
 /// <summary>Apple Sign-In OAuth provider.</summary>
 public static class AppleOAuthServiceCollectionExtensions
 {
-    /// <summary>Register Sign-In with Apple (services id + team id + key id + .p8 key). Pair with <c>AddCookieAuthentication</c> for the sign-in cookie.</summary>
-    /// <param name="auth">Authentication builder.</param>
-    /// <param name="clientId">Apple services id (client id).</param>
-    /// <param name="teamId">Apple developer team id.</param>
-    /// <param name="keyId">Apple sign-in key id.</param>
-    /// <param name="privateKeyPath">Path to the .p8 private key file.</param>
-    /// <param name="configure">Optional options hook.</param>
-    /// <param name="scopes">Extra scopes to request.</param>
+    /// <summary>Register Sign-In with Apple (services id, team id, key id, and .p8 key). Pair with <c>AddCookieAuthentication</c> for the sign-in cookie.</summary>
+    /// <param name="auth">The authentication builder to extend.</param>
+    /// <param name="clientId">The Apple services id (client id).</param>
+    /// <param name="teamId">The Apple developer team id.</param>
+    /// <param name="keyId">The Apple sign-in key id.</param>
+    /// <param name="privateKeyPath">The path to the .p8 private key file.</param>
+    /// <param name="configure">Optional tweak of the provider options.</param>
+    /// <param name="scopes">Additional OAuth scopes to request.</param>
     public static AuthenticationBuilder AddAppleAuthentication(
         this AuthenticationBuilder auth,
         string clientId,

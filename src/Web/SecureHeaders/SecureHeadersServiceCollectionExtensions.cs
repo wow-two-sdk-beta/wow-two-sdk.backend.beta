@@ -2,20 +2,11 @@ using Microsoft.AspNetCore.Builder;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.SecureHeaders;
 
-/// <summary>
-/// OWASP secure-headers middleware presets.
-/// </summary>
+/// <summary>Provides OWASP secure-headers middleware presets.</summary>
 public static class SecureHeadersExtensions
 {
-    /// <summary>
-    /// Apply a hardened secure-headers preset suitable for APIs:
-    /// - HSTS (1 year, preload, includeSubDomains)
-    /// - X-Content-Type-Options: nosniff
-    /// - X-Frame-Options: DENY
-    /// - Referrer-Policy: strict-origin-when-cross-origin
-    /// - Permissions-Policy: minimal
-    /// - Cross-Origin-{Opener,Embedder,Resource}-Policy
-    /// </summary>
+    /// <summary>Uses a hardened API secure-headers preset (HSTS, nosniff, frame-deny, referrer, permissions, and cross-origin policies).</summary>
+    /// <param name="app">The application request pipeline.</param>
     public static IApplicationBuilder UseOwaspSecureHeaders(this IApplicationBuilder app)
     {
         ArgumentNullException.ThrowIfNull(app);

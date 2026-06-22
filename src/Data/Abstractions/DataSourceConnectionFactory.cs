@@ -3,6 +3,7 @@ using System.Data.Common;
 namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper;
 
 /// <summary>Creates connections from a registered <see cref="DbDataSource"/> — e.g. a shared NpgsqlDataSource.</summary>
+/// <param name="dataSource">The data source connections are opened from.</param>
 public sealed class DataSourceConnectionFactory(DbDataSource dataSource) : IDbConnectionFactory
 {
     /// <inheritdoc />

@@ -5,20 +5,12 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit;
 
-/// <summary>
-/// Registration helpers for the audit interceptor.
-/// </summary>
+/// <summary>Registration helpers for the audit interceptor.</summary>
 public static class AuditServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers the <see cref="AuditInterceptor"/> as a singleton. To wire it into a DbContext,
-    /// resolve the interceptor in the context's configuration and call
-    /// <see cref="DbContextOptionsBuilder.AddInterceptors(IEnumerable{IInterceptor})"/>.
-    /// </summary>
-    /// <remarks>
-    /// <c>TimeProvider</c> falls back to <see cref="TimeProvider.System"/> if not registered.
-    /// Register <see cref="IAuditCurrentUserAccessor"/> if you want <c>CreatedBy</c>/<c>UpdatedBy</c> stamping.
-    /// </remarks>
+    /// <summary>Registers the <see cref="AuditInterceptor"/> as a singleton; to wire it into a DbContext, resolve the interceptor in the context's configuration and call <see cref="DbContextOptionsBuilder.AddInterceptors(IEnumerable{IInterceptor})"/>.</summary>
+    /// <remarks><c>TimeProvider</c> falls back to <see cref="TimeProvider.System"/> if not registered; register <see cref="IAuditCurrentUserAccessor"/> if you want <c>CreatedBy</c>/<c>UpdatedBy</c> stamping.</remarks>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddEfCoreAuditInterceptor(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -27,10 +19,9 @@ public static class AuditServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// Registers the audit interceptor and a custom <typeparamref name="TAccessor"/> implementation
-    /// for the current-user resolution.
-    /// </summary>
+    /// <summary>Registers the audit interceptor and a custom <typeparamref name="TAccessor"/> implementation for current-user resolution.</summary>
+    /// <typeparam name="TAccessor">The current-user accessor implementation to register.</typeparam>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddEfCoreAuditInterceptor<TAccessor>(this IServiceCollection services)
         where TAccessor : class, IAuditCurrentUserAccessor
     {
@@ -39,10 +30,9 @@ public static class AuditServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// Convenience extension for wiring the audit interceptor into a <see cref="DbContextOptionsBuilder"/>.
-    /// Resolves the interceptor from the application service provider.
-    /// </summary>
+    /// <summary>Convenience extension for wiring the audit interceptor into a <see cref="DbContextOptionsBuilder"/>, resolving it from the application service provider.</summary>
+    /// <param name="builder">The DbContext options builder to configure.</param>
+    /// <param name="serviceProvider">The application service provider the interceptor is resolved from.</param>
     public static DbContextOptionsBuilder UseAuditInterceptor(
         this DbContextOptionsBuilder builder,
         IServiceProvider serviceProvider)

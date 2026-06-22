@@ -7,6 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Postgres;
 public static class PostgresModelBuilderExtensions
 {
     /// <summary>Maps the Postgres <c>xmin</c> system column as the concurrency token for every <see cref="IHasXmin"/> entity. Owned types are skipped.</summary>
+    /// <param name="modelBuilder">The EF Core model builder.</param>
     public static ModelBuilder ApplyNpgsqlConventions(this ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

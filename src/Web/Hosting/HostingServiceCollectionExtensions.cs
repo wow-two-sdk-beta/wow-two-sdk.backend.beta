@@ -4,15 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.Hosting;
 
-/// <summary>
-/// Conventional hosting defaults: forwarded headers (so `X-Forwarded-For` etc. are honored behind a proxy),
-/// request decompression, and a polite default for host filtering.
-/// </summary>
+/// <summary>Provides proxy-aware hosting defaults: forwarded headers, request decompression, and host filtering.</summary>
 public static class HostingServiceCollectionExtensions
 {
-    /// <summary>
-    /// Configure forwarded-headers + request decompression. Pair with <see cref="UseProxyAwareHosting"/> in the pipeline.
-    /// </summary>
+    /// <summary>Configures forwarded headers and request decompression. Pair with <see cref="UseProxyAwareHosting"/>.</summary>
+    /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddProxyAwareHosting(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -28,10 +24,8 @@ public static class HostingServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// Pipeline counterpart: invoke forwarded headers + request decompression.
-    /// Call early in the pipeline.
-    /// </summary>
+    /// <summary>Uses forwarded headers and request decompression. Call early in the pipeline.</summary>
+    /// <param name="app">The application request pipeline.</param>
     public static IApplicationBuilder UseProxyAwareHosting(this IApplicationBuilder app)
     {
         ArgumentNullException.ThrowIfNull(app);

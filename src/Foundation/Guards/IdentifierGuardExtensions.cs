@@ -3,9 +3,7 @@ using Ardalis.GuardClauses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Guards;
 
-/// <summary>
-/// Custom guard extensions on top of <see cref="IGuardClause"/>.
-/// </summary>
+/// <summary>Provides custom guard extensions on top of <see cref="IGuardClause"/>.</summary>
 public static partial class IdentifierGuardExtensions
 {
     [GeneratedRegex(@"^[a-z0-9]+(-[a-z0-9]+)*$", RegexOptions.CultureInvariant)]
@@ -14,9 +12,10 @@ public static partial class IdentifierGuardExtensions
     [GeneratedRegex(@"^[0-9A-HJKMNP-TV-Z]{26}$", RegexOptions.CultureInvariant)]
     private static partial Regex UlidRegex();
 
-    /// <summary>
-    /// Throws if <paramref name="input"/> isn't a valid slug (kebab-case, no leading/trailing hyphens).
-    /// </summary>
+    /// <summary>Adds a guard that throws if <paramref name="input"/> isn't a valid slug (kebab-case, no leading/trailing hyphens).</summary>
+    /// <param name="guard">The guard-clause entry point being extended.</param>
+    /// <param name="input">The candidate slug to validate.</param>
+    /// <param name="parameterName">The name of the guarded argument, reported on failure.</param>
     public static string NotSlug(this IGuardClause guard, string input, string parameterName)
     {
         ArgumentNullException.ThrowIfNull(guard);
@@ -26,9 +25,10 @@ public static partial class IdentifierGuardExtensions
         return input;
     }
 
-    /// <summary>
-    /// Throws if <paramref name="input"/> isn't a Crockford-base32 ULID (26 chars).
-    /// </summary>
+    /// <summary>Adds a guard that throws if <paramref name="input"/> isn't a Crockford-base32 ULID (26 chars).</summary>
+    /// <param name="guard">The guard-clause entry point being extended.</param>
+    /// <param name="input">The candidate ULID to validate.</param>
+    /// <param name="parameterName">The name of the guarded argument, reported on failure.</param>
     public static string NotUlid(this IGuardClause guard, string input, string parameterName)
     {
         ArgumentNullException.ThrowIfNull(guard);

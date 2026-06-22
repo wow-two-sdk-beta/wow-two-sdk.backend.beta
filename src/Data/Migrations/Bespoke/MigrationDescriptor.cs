@@ -24,7 +24,6 @@ public sealed record MigrationDescriptor
     public required string Checksum { get; init; }
 
     /// <summary>Gets whether the Apply script runs outside a transaction, declared via a leading no-transaction directive.</summary>
-    /// <remarks>When true the script is recorded in a separate statement, so a crash mid-apply re-runs it — the Apply SQL MUST be idempotent (e.g. <c>CREATE INDEX CONCURRENTLY IF NOT EXISTS</c>, guarded <c>DO</c> blocks).</remarks>
     /// <example>true for a CREATE INDEX CONCURRENTLY migration</example>
     public required bool NoTransaction { get; init; }
 

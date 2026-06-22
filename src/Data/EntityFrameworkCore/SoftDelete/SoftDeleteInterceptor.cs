@@ -12,6 +12,8 @@ public sealed class SoftDeleteInterceptor : SaveChangesInterceptor
     private readonly IAuditCurrentUserAccessor? _userAccessor;
 
     /// <summary>Initializes a new instance of the <see cref="SoftDeleteInterceptor"/> class.</summary>
+    /// <param name="timeProvider">The clock used for the <c>DeletedAt</c> timestamp; falls back to the system clock when null.</param>
+    /// <param name="userAccessor">The accessor resolving the current user id for <c>DeletedBy</c> stamping.</param>
     public SoftDeleteInterceptor(TimeProvider timeProvider, IAuditCurrentUserAccessor? userAccessor = null)
     {
         _timeProvider = timeProvider ?? TimeProvider.System;

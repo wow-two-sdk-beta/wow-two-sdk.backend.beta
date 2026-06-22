@@ -1,8 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
-/// <summary>
-/// Canonical error category — opinionated mapping to HTTP status codes.
-/// </summary>
+/// <summary>Defines the canonical error category, mapped to an HTTP status code.</summary>
 public enum DomainErrorCategory
 {
     /// <summary>Caller sent invalid input. Maps to 400.</summary>
@@ -33,9 +31,7 @@ public enum DomainErrorCategory
     Unavailable = 503,
 }
 
-/// <summary>
-/// Domain error record. Lightweight, immutable, and intentionally HTTP-aware.
-/// </summary>
+/// <summary>Represents an immutable, HTTP-aware domain error.</summary>
 /// <param name="Code">Stable code (e.g. <c>orders.not_found</c>).</param>
 /// <param name="Message">Human-readable message. Localized when possible.</param>
 /// <param name="Category">Category controlling default HTTP mapping.</param>
@@ -50,34 +46,58 @@ public sealed record DomainError(
     public int StatusCode => (int)Category;
 
     /// <summary>Convenience factory — validation error.</summary>
+    /// <param name="code">The stable error code.</param>
+    /// <param name="message">The human-readable message.</param>
+    /// <param name="detail">Optional additional context.</param>
     public static DomainError Validation(string code, string message, string? detail = null) =>
         new(code, message, DomainErrorCategory.Validation, detail);
 
     /// <summary>Convenience factory — not-found.</summary>
+    /// <param name="code">The stable error code.</param>
+    /// <param name="message">The human-readable message.</param>
+    /// <param name="detail">Optional additional context.</param>
     public static DomainError NotFound(string code, string message, string? detail = null) =>
         new(code, message, DomainErrorCategory.NotFound, detail);
 
     /// <summary>Convenience factory — conflict.</summary>
+    /// <param name="code">The stable error code.</param>
+    /// <param name="message">The human-readable message.</param>
+    /// <param name="detail">Optional additional context.</param>
     public static DomainError Conflict(string code, string message, string? detail = null) =>
         new(code, message, DomainErrorCategory.Conflict, detail);
 
     /// <summary>Convenience factory — forbidden.</summary>
+    /// <param name="code">The stable error code.</param>
+    /// <param name="message">The human-readable message.</param>
+    /// <param name="detail">Optional additional context.</param>
     public static DomainError Forbidden(string code, string message, string? detail = null) =>
         new(code, message, DomainErrorCategory.Forbidden, detail);
 
     /// <summary>Convenience factory — unauthorized.</summary>
+    /// <param name="code">The stable error code.</param>
+    /// <param name="message">The human-readable message.</param>
+    /// <param name="detail">Optional additional context.</param>
     public static DomainError Unauthorized(string code, string message, string? detail = null) =>
         new(code, message, DomainErrorCategory.Unauthorized, detail);
 
     /// <summary>Convenience factory — business-rule violation.</summary>
+    /// <param name="code">The stable error code.</param>
+    /// <param name="message">The human-readable message.</param>
+    /// <param name="detail">Optional additional context.</param>
     public static DomainError BusinessRule(string code, string message, string? detail = null) =>
         new(code, message, DomainErrorCategory.BusinessRule, detail);
 
     /// <summary>Convenience factory — unexpected server error.</summary>
+    /// <param name="code">The stable error code.</param>
+    /// <param name="message">The human-readable message.</param>
+    /// <param name="detail">Optional additional context.</param>
     public static DomainError Unexpected(string code, string message, string? detail = null) =>
         new(code, message, DomainErrorCategory.Unexpected, detail);
 
     /// <summary>Convenience factory — service unavailable (dependency down, resource locked/sealed).</summary>
+    /// <param name="code">The stable error code.</param>
+    /// <param name="message">The human-readable message.</param>
+    /// <param name="detail">Optional additional context.</param>
     public static DomainError Unavailable(string code, string message, string? detail = null) =>
         new(code, message, DomainErrorCategory.Unavailable, detail);
 }

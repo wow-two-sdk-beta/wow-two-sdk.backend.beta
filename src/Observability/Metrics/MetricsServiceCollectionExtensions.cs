@@ -4,15 +4,12 @@ using OpenTelemetry.Resources;
 
 namespace WoW.Two.Sdk.Backend.Beta.Observability.Metrics;
 
-/// <summary>
-/// OpenTelemetry meter registration with conventional auto-instrumentation.
-/// </summary>
+/// <summary>Provides OpenTelemetry meter registration with conventional auto-instrumentation.</summary>
 public static class MetricsServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers OpenTelemetry metrics with auto-instrumentation for ASP.NET Core, HttpClient, runtime, and process.
-    /// Exporters are NOT registered here — pair with `Observability.Otlp`, `.Prometheus`, etc.
-    /// </summary>
+    /// <summary>Adds OpenTelemetry metrics auto-instrumented for ASP.NET Core, HttpClient, runtime, and process; no exporters (pair with <c>Observability.Otlp</c>, <c>.Prometheus</c>, etc.).</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="serviceName">Logical service name for the resource.</param>
     public static IServiceCollection AddOpenTelemetryMetrics(this IServiceCollection services, string serviceName)
     {
         ArgumentNullException.ThrowIfNull(services);

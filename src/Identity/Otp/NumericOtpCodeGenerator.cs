@@ -3,10 +3,7 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 
-/// <summary>
-/// Default <see cref="IOtpCodeGenerator"/> — cryptographically random digits,
-/// <see cref="OtpOptions.CodeLength"/> long (leading zeros included).
-/// </summary>
+/// <summary>Default <see cref="IOtpCodeGenerator"/> — cryptographically random digits, <see cref="OtpOptions.CodeLength"/> long (leading zeros included).</summary>
 public sealed class NumericOtpCodeGenerator : IOtpCodeGenerator
 {
     private readonly int _length;

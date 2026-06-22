@@ -31,6 +31,8 @@ public sealed record JwtOptions
 public static class JwtServiceCollectionExtensions
 {
     /// <summary>Register JWT bearer authentication using the supplied options.</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configure">Configures the JWT bearer options (issuer, audience, signing key, lifetime).</param>
     public static IServiceCollection AddJwtBearerAuthentication(this IServiceCollection services, Action<JwtOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(services);

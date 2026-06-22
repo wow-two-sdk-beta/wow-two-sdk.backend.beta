@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Authorization;
 
-/// <summary>Evaluates <see cref="AllowlistRequirement"/> against <see cref="AllowlistOptions"/>: succeeds iff the allowed set is empty (OPEN — any authenticated principal) or the principal carries an allowlisted <see cref="AllowlistOptions.ClaimType"/> claim.</summary>
+/// <summary>Evaluates <see cref="AllowlistRequirement"/>; succeeds when the allowed set is empty (OPEN) or the principal carries an allowlisted <see cref="AllowlistOptions.ClaimType"/> claim.</summary>
 public sealed class AllowlistAuthorizationHandler : AuthorizationHandler<AllowlistRequirement>
 {
     private readonly AllowlistOptions _options;

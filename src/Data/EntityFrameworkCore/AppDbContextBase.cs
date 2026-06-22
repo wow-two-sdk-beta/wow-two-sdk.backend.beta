@@ -8,6 +8,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 public abstract class AppDbContextBase : DbContext
 {
     /// <summary>Initializes the context with the given options.</summary>
+    /// <param name="options">The options configuring this context.</param>
     protected AppDbContextBase(DbContextOptions options) : base(options)
     {
     }
@@ -35,6 +36,7 @@ public abstract class AppDbContextBase : DbContext
     }
 
     /// <summary>Override to apply additional model conventions — value converters, default precision, and similar.</summary>
+    /// <param name="configurationBuilder">The model configuration builder.</param>
     protected virtual void ConfigureConventionsCore(ModelConfigurationBuilder configurationBuilder)
     {
         // Default: no-op. Provider preset packages may override.

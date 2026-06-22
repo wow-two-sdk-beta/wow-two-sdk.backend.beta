@@ -4,10 +4,7 @@ using System.Text.Json;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.OAuth2ClientCredentials;
 
-/// <summary>
-/// Singleton per-client-name access-token cache. Single-flights token-endpoint calls so concurrent
-/// requests on a cold cache trigger exactly one fetch.
-/// </summary>
+/// <summary>Singleton per-client-name access-token cache that single-flights token-endpoint calls so a cold cache triggers exactly one fetch.</summary>
 internal sealed class OAuth2TokenCache : IDisposable
 {
     /// <summary>Named <see cref="HttpClient"/> used for token-endpoint calls (no auth handler attached).</summary>

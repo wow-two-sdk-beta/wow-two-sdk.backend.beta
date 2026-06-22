@@ -3,16 +3,8 @@ using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Repositories;
 
-/// <summary>
-/// EF Core implementation of <see cref="IRepository{TEntity, TId}"/>.
-/// Each write persists immediately via <c>SaveChangesAsync</c>. Reads honor any global query filters
-/// configured on the context (e.g. the SDK soft-delete filter).
-/// </summary>
-/// <remarks>
-/// The constructor takes the base <see cref="DbContext"/> so the type stays arity-2 and can be
-/// registered as an open generic. In multi-context apps, subclass per context (or register the
-/// target context as <see cref="DbContext"/>) — see <c>AddEfRepositories</c>.
-/// </remarks>
+/// <summary>EF Core implementation of <see cref="IRepository{TEntity, TId}"/> — each write persists immediately via <c>SaveChangesAsync</c>, and reads honor any global query filters on the context (e.g. the SDK soft-delete filter).</summary>
+/// <remarks>The constructor takes the base <see cref="DbContext"/> so the type stays arity-2 and registers as an open generic; in multi-context apps, subclass per context (or register the target context as <see cref="DbContext"/>) — see <c>AddEfRepositories</c>.</remarks>
 /// <typeparam name="TEntity">The entity type.</typeparam>
 /// <typeparam name="TId">The primary-key type.</typeparam>
 public class EfRepository<TEntity, TId> : IRepository<TEntity, TId>
@@ -26,6 +18,7 @@ public class EfRepository<TEntity, TId> : IRepository<TEntity, TId>
     protected DbSet<TEntity> Set { get; }
 
     /// <summary>Initializes the repository over <paramref name="context"/>.</summary>
+    /// <param name="context">The underlying context backing all reads and writes.</param>
     public EfRepository(DbContext context)
     {
         ArgumentNullException.ThrowIfNull(context);

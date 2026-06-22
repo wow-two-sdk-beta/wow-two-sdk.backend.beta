@@ -1,14 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 
-/// <summary>
-/// Declares the storage table name for an entity type. The name is the single source of truth
-/// for hand-written SQL (Dapper <c>FROM</c>/<c>JOIN</c> clauses) and table-name resolution helpers.
-/// </summary>
-/// <remarks>
-/// Implement on the entity itself as a static abstract member so the name is available without an
-/// instance: <c>public static string TableName => "order_line_items";</c>.
-/// Provide the name in the storage casing your schema uses (typically snake_case for Postgres).
-/// </remarks>
+/// <summary>Declares the storage table name for an entity type, used by hand-written SQL and table-name resolution helpers.</summary>
+/// <remarks>Implement as a static abstract member in the schema's storage casing: <c>public static string TableName => "order_line_items";</c>.</remarks>
 public interface IHasTableName
 {
     /// <summary>Gets the storage table name for the entity type.</summary>

@@ -5,16 +5,13 @@ using WoW.Two.Sdk.Backend.Beta.Comms.Email;
 
 namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.MailKit;
 
-/// <summary>
-/// SMTP <see cref="IEmailSender"/> over MailKit — works against any SMTP relay
-/// (provider SMTP endpoints, self-hosted, mailpit/mailhog in dev). Connects per send.
-/// </summary>
+/// <summary>Wraps MailKit to send email over any SMTP relay, connecting per send.</summary>
 public sealed class MailKitEmailSender : IEmailSender
 {
     private readonly MailKitEmailOptions _smtpOptions;
     private readonly EmailOptions _emailOptions;
 
-    /// <summary>Creates the sender from SMTP + email defaults.</summary>
+    /// <summary>Creates the sender from SMTP and email defaults.</summary>
     /// <param name="smtpOptions">SMTP connection settings.</param>
     /// <param name="emailOptions">Cross-provider defaults (From / Reply-To).</param>
     public MailKitEmailSender(IOptions<MailKitEmailOptions> smtpOptions, IOptions<EmailOptions> emailOptions)

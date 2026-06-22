@@ -2,10 +2,7 @@ using System.Security.Claims;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Jwt.Issuance;
 
-/// <summary>
-/// Issues signed tokens from caller-supplied claims. The SDK never constructs claims —
-/// consumers map their own user model into claims and pass them in.
-/// </summary>
+/// <summary>Issues signed tokens from caller-supplied claims; the SDK never constructs claims.</summary>
 public interface ITokenIssuer
 {
     /// <summary>Issues a signed token carrying <paramref name="claims"/>.</summary>
@@ -14,9 +11,7 @@ public interface ITokenIssuer
     string Issue(IEnumerable<Claim> claims, TokenIssuanceContext? context = null);
 }
 
-/// <summary>
-/// Per-call overrides for one issued token. Unset members fall back to <see cref="JwtTokenIssuerOptions"/>.
-/// </summary>
+/// <summary>Per-call overrides for one issued token; unset members fall back to <see cref="JwtTokenIssuerOptions"/>.</summary>
 /// <param name="Lifetime">Overrides the configured default lifetime.</param>
 /// <param name="Audience">Overrides the configured default audience.</param>
 /// <param name="AdditionalHeaders">Extra JOSE header values (rarely needed).</param>

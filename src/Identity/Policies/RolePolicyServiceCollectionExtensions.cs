@@ -6,11 +6,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.Policies;
 /// <summary>Role-policy registration.</summary>
 public static class RolePolicyServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers <see cref="IRolePolicy"/> backed by a scope → allowed-roles dictionary.
-    /// Swap the implementation by registering your own <see cref="IRolePolicy"/> before this call.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
+    /// <summary>Registers <see cref="IRolePolicy"/> backed by a scope → allowed-roles dictionary; register your own <see cref="IRolePolicy"/> before this call to swap it.</summary>
+    /// <param name="services">The service collection to configure.</param>
     /// <param name="configure">Populates <see cref="RolePolicyOptions.Map"/>.</param>
     public static IServiceCollection AddRolePolicy(
         this IServiceCollection services,
