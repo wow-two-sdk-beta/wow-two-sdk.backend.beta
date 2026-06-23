@@ -17,19 +17,20 @@ public sealed class ValidationBehaviorTests
     // Test-double validator: throws ValidationException from ValidateAndThrow when the predicate fails.
     private sealed class PredicateValidator(Func<Req, bool> isValid) : IValidator<Req>
     {
-        public ValidationResult Validate(Req instance) => isValid(instance)
-            ? new ValidationResult.Success()
-            : new ValidationResult.Failure([new ValidationError(nameof(Req.Age), "invalid", "rule")]);
+        public ValidationError? Validate(Req instance) => isValid(instance)
+            ? null
+            : ValidationError.From([new FieldError { Property = nameof(Req.Age), Message = "invalid", Code = "rule" }]);
 
         public void ValidateAndThrow(Req instance)
         {
-            if (!isValid(instance))
-                throw new ValidationException([new ValidationError(nameof(Req.Age), "invalid", "rule")]);
+            var error = Validate(instance);
+            if (error is not null)
+                throw new ValidationException(error);
         }
     }
 
     [Fact]
-    public async Task Passes_through_to_handler_when_all_validators_pass()
+    public async Task HandleAsync_ShouldPassThroughToHandler_WhenAllValidatorsPass()
     {
         var handlerRan = false;
         var behavior = new ValidationBehavior<Req, string>([new PredicateValidator(r => r.Age >= 0)]);
@@ -44,7 +45,7 @@ public sealed class ValidationBehaviorTests
     }
 
     [Fact]
-    public async Task Throws_and_skips_handler_when_a_validator_fails()
+    public async Task HandleAsync_ShouldThrowAndSkipHandler_WhenValidatorFails()
     {
         var handlerRan = false;
         var behavior = new ValidationBehavior<Req, string>([new PredicateValidator(r => r.Age >= 0)]);
@@ -59,7 +60,7 @@ public sealed class ValidationBehaviorTests
     }
 
     [Fact]
-    public async Task Runs_all_validators_failing_on_any()
+    public async Task HandleAsync_ShouldThrow_WhenAnyValidatorFails()
     {
         // First passes, second fails → still throws.
         var behavior = new ValidationBehavior<Req, string>(
@@ -74,7 +75,7 @@ public sealed class ValidationBehaviorTests
     }
 
     [Fact]
-    public async Task No_validators_registered_passes_through()
+    public async Task HandleAsync_ShouldPassThrough_WhenNoValidatorsRegistered()
     {
         var behavior = new ValidationBehavior<Req, string>([]);
 

@@ -7,14 +7,26 @@ using Microsoft.Extensions.Options;
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Auth;
 
 /// <summary>
-/// Authentication handler that authenticates EVERY request as the fixed identity in <see cref="TestAuthOptions"/> —
+/// Authentication handler that authenticates a request as the fixed identity in <see cref="TestAuthOptions"/> —
 /// no real OAuth / cookie round-trip. Register it via <c>AddTestAuth</c> from a test host so end-to-end tests can
 /// exercise authenticated endpoints deterministically.
 /// </summary>
 /// <remarks>
-/// The principal is stamped with the SDK's canonical <c>wt:*</c> claims (<see cref="TestClaimTypes"/>) plus standard
-/// <see cref="ClaimTypes.Name"/> / <see cref="ClaimTypes.Role"/> claims, so both the SDK's
+/// <para>
+/// Two modes, selected by <see cref="TestAuthOptions.RequiredHeader"/>:
+/// <list type="bullet">
+/// <item><description><b>Always-authenticate</b> (<see cref="TestAuthOptions.RequiredHeader"/> is <c>null</c>, the
+/// default): every request authenticates — the original behavior.</description></item>
+/// <item><description><b>Header-gated</b> (<see cref="TestAuthOptions.RequiredHeader"/> set): only requests carrying
+/// that header authenticate; requests without it yield <see cref="AuthenticateResult.NoResult"/> so they stay
+/// anonymous and <c>[Authorize]</c> endpoints return 401. This lets one host cover both the 200 and 401 paths.</description></item>
+/// </list>
+/// </para>
+/// <para>
+/// When authenticated, the principal is stamped with the SDK's canonical <c>wt:*</c> claims (<see cref="TestClaimTypes"/>)
+/// plus standard <see cref="ClaimTypes.Name"/> / <see cref="ClaimTypes.Role"/> claims, so both the SDK's
 /// <c>ClaimsPrincipalExtensions</c> and framework <c>[Authorize(Roles = …)]</c> checks resolve correctly.
+/// </para>
 /// </remarks>
 public sealed class TestAuthHandler : AuthenticationHandler<TestAuthOptions>
 {
@@ -37,6 +49,11 @@ public sealed class TestAuthHandler : AuthenticationHandler<TestAuthOptions>
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var o = Options;
+
+        // Header-gated mode: when a header is required but absent, stay anonymous so [Authorize] endpoints return 401.
+        // When RequiredHeader is null (default), this is skipped → every request authenticates (back-compat).
+        if (!string.IsNullOrEmpty(o.RequiredHeader) && !Request.Headers.ContainsKey(o.RequiredHeader))
+            return Task.FromResult(AuthenticateResult.NoResult());
 
         var claims = new List<Claim>
         {

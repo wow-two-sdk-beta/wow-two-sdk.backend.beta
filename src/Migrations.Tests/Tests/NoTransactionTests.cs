@@ -11,7 +11,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 public sealed class NoTransactionTests : SqliteMigratorTestBase
 {
     [Fact]
-    public async Task ApplyPending_NoTransactionMigration_AppliesRecordsAndReRunIsNoOp()
+    public async Task ApplyPending_ShouldApplyRecordAndReRunNoOp_WhenNoTransactionMigration()
     {
         // A transactional baseline that creates the table the bare index targets.
         Workspace.Write("001-baseline",

@@ -21,7 +21,7 @@ public sealed class IdempotencyBehaviorTests
         => new(new MemoryCache(new MemoryCacheOptions()));
 
     [Fact]
-    public async Task First_call_executes_handler_second_call_replays_cached_response()
+    public async Task HandleAsync_ShouldExecuteOnceAndReplayCachedResponse_WhenSameKey()
     {
         var store = NewStore();
         var behavior = new IdempotencyBehavior<PayRequest, int>(store);
@@ -38,7 +38,7 @@ public sealed class IdempotencyBehaviorTests
     }
 
     [Fact]
-    public async Task Different_keys_each_execute_the_handler()
+    public async Task HandleAsync_ShouldExecuteHandler_WhenDifferentKeys()
     {
         var store = NewStore();
         var behavior = new IdempotencyBehavior<PayRequest, int>(store);
@@ -51,7 +51,7 @@ public sealed class IdempotencyBehaviorTests
     }
 
     [Fact]
-    public async Task Non_idempotent_request_passes_through_every_time()
+    public async Task HandleAsync_ShouldPassThroughEveryTime_WhenNonIdempotentRequest()
     {
         var store = NewStore();
         var behavior = new IdempotencyBehavior<PlainRequest, int>(store);
@@ -65,7 +65,7 @@ public sealed class IdempotencyBehaviorTests
     }
 
     [Fact]
-    public async Task Store_replays_within_ttl_and_forgets_after_expiry()
+    public async Task Store_ShouldReplayWithinTtlAndForgetAfterExpiry()
     {
         var store = NewStore();
 

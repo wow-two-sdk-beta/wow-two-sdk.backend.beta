@@ -1,27 +1,41 @@
-# WoW.Two.Sdk.Backend.Beta.Errors
+# WoW.Two.Sdk.Backend.Beta.Foundation.Errors
 
-> Canonical `DomainError` record + category-to-HTTP-status mapping. Thin building block consumed by the validation pipeline, mediator behaviors, and ProblemDetails mappers.
+> The transport-agnostic failure model: `AppError` (value) + `AppErrorType` (kind) + `AppException` (throw form), the `AppErrors` catalog, descriptive `ErrorNature`, and the extensible exception→`AppError` mapping seam. Consumed by results, the mediator behaviors, and the ProblemDetails handlers. Part of the core mono-lib (`WoW2.Sdk.Backend.Beta`) — no separate package.
 
-## Install
+## Model
 
-```
-dotnet add package WoW.Two.Sdk.Backend.Beta.Errors
-```
+- **`AppError`** — open `record` carrying `Type` (`AppErrorType`), `Message`, optional `Metadata`, and log-only `Origin`. Authored via `AppError.Of(...)`, `AppError.FromException(...)`, or the `AppErrors` catalog (`AppErrors.NotFound(...)`, `Conflict`, `Validation`, …). `Type` is the wire `code`.
+- **`AppException`** — the throw form; *carries* an `AppError` (one source of truth). Bridge both ways: `error.Throw()` / `error.ToException()`.
+- **`ErrorNature {Transient, Permanent, Defect}`** via `IErrorNatureClassifier` (DI) — consumers derive retry/fallback/log level.
 
-## Usage
+## Returning vs throwing
 
 ```csharp
-using WoW.Two.Sdk.Backend.Beta.Errors;
+// return (expected failure) — see ../Results/results.md
+public Result<User> GetUser(Guid id)
+    => _repo.Find(id) is { } user ? user : AppErrors.NotFound("User not found");
 
-public ErrorOr<User> GetUser(Guid id) =>
-    _repo.Find(id) is { } user
-        ? user
-        : DomainError.NotFound("user.not_found", "User not found");
+// throw (exceptional) — the mediator behavior / global handler turns it into ProblemDetails
+AppErrors.Conflict("Email already registered.").Throw();
 ```
 
-`StatusCode` is derived from the `Category` enum value — no manual mapping needed.
+## Mapping a caught exception → AppError
+
+`IExceptionMapper.Map(Exception)` is the total facade the mediator behavior and global handlers use. The default `ExceptionMapper` unwraps an `AppException`, then walks the registered `IExceptionMappingRule` contributors **last-registered-first**, else falls back to `Unexpected`. The SDK ships `DbExceptionMappingRule` (Npgsql/EF → `AppError`), auto-wired by `AddPostgresPersistence`.
+
+```csharp
+// map an exception the SDK does not know — your rule shadows SDK rules for the same exception
+public sealed class PaymentDeclinedRule : IExceptionMappingRule
+{
+    public AppError? TryMap(Exception ex)
+        => ex is PaymentDeclinedException ? AppErrors.PaymentRequired("Card declined.") : null;
+}
+
+builder.Services.AddExceptionMappingRule<PaymentDeclinedRule>();
+```
 
 ## See also
 
-- [WoW.Two.Sdk.Backend.Beta.Results](../results/results.md) for the result wrappers
-- [WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails](../../web/problemdetails/problem-details.md) (P1) for the HTTP mapper
+- [Foundation.Results](../Results/) — `Result` / `Result<T>` wrappers
+- [Web.ErrorMapping / Web.ExceptionHandling](../../Web/ExceptionHandling/) — `IErrorHttpStatusCodeMapper`, the ProblemDetails factory + handlers
+- [`docs/planning/errors/errors-architecture-investigation.md`](../../../docs/planning/errors/errors-architecture-investigation.md) — full design record

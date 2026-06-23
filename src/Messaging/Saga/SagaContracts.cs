@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
@@ -130,7 +131,7 @@ public sealed class SagaDefinition
         {
             var id = $"s{i}";
             builder.AppendLine();
-            builder.Append($"  {previous} --> {id}[{StepTypes[i].Name}]");
+            builder.Append(CultureInfo.InvariantCulture, $"  {previous} --> {id}[{StepTypes[i].Name}]");
             previous = id;
         }
 

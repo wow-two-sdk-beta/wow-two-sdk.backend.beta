@@ -57,8 +57,14 @@ dotnet_diagnostic.CA1056.severity = silent
 # CA1054 — URI parameters typed as Uri. Same reason.
 dotnet_diagnostic.CA1054.severity = silent
 
-# CA1034 — nested public types. Result/Result<T>/ValidationResult intentionally nest Success/Failure (DU pattern).
+# CA1034 — nested public types. Result/Result<T>/AppResult<TSuccess> intentionally nest Success/Failure (DU pattern).
 dotnet_diagnostic.CA1034.severity = none
+
+# CA1000 — static members on generic types. Intentional factory API (Result<T>.Ok/Fail, AppResult<TSuccess>, ApiResponse<T>, EnumNameConverter<T>, IdempotencyBehavior<T>).
+dotnet_diagnostic.CA1000.severity = none
+
+# CA1716 — param/member name clashes a VB reserved keyword ('error'). C#-only SDK; keep the readable name.
+dotnet_diagnostic.CA1716.severity = none
 
 # Async naming
 dotnet_diagnostic.VSTHRD200.severity = warning

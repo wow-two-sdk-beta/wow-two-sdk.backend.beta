@@ -51,7 +51,7 @@ public sealed class NotificationTests
     }
 
     [Fact]
-    public async Task PublishAsync_with_zero_handlers_is_a_noop()
+    public async Task PublishAsync_ShouldBeNoop_WhenZeroHandlers()
     {
         var publisher = new ServiceCollection()
             .AddMediator(typeof(NotificationTests).Assembly)
@@ -64,7 +64,7 @@ public sealed class NotificationTests
     }
 
     [Fact]
-    public async Task PublishAsync_with_one_handler_invokes_it()
+    public async Task PublishAsync_ShouldInvokeHandler_WhenOneHandler()
     {
         var (publisher, sink) = BuildPublisher(s => [new RecordingHandler(s, "a")]);
 
@@ -74,7 +74,7 @@ public sealed class NotificationTests
     }
 
     [Fact]
-    public async Task PublishAsync_with_many_handlers_invokes_all_in_registration_order()
+    public async Task PublishAsync_ShouldInvokeAllInRegistrationOrder_WhenManyHandlers()
     {
         var (publisher, sink) = BuildPublisher(s =>
         [
@@ -90,7 +90,7 @@ public sealed class NotificationTests
     }
 
     [Fact]
-    public async Task PublishAsync_aborts_remaining_handlers_when_one_throws()
+    public async Task PublishAsync_ShouldAbortRemainingHandlers_WhenOneThrows()
     {
         var (publisher, sink) = BuildPublisher(s =>
         [
@@ -107,7 +107,7 @@ public sealed class NotificationTests
     }
 
     [Fact]
-    public async Task PublishAsync_throws_on_null_notification()
+    public async Task PublishAsync_ShouldThrow_WhenNotificationNull()
     {
         var publisher = new ServiceCollection()
             .AddMediator(typeof(NotificationTests).Assembly)

@@ -33,7 +33,7 @@ public sealed class AddMediatorTests
     }
 
     [Fact]
-    public void AddMediator_registers_the_mediator_trio()
+    public void AddMediator_ShouldRegisterTheMediatorTrio()
     {
         var services = new ServiceCollection().AddMediator(typeof(AddMediatorTests).Assembly);
 
@@ -43,7 +43,7 @@ public sealed class AddMediatorTests
     }
 
     [Fact]
-    public void AddMediator_scans_and_binds_request_handlers()
+    public void AddMediator_ShouldScanAndBindRequestHandlers()
     {
         var provider = new ServiceCollection()
             .AddMediator(typeof(AddMediatorTests).Assembly)
@@ -53,7 +53,7 @@ public sealed class AddMediatorTests
     }
 
     [Fact]
-    public void AddMediator_scans_and_binds_all_notification_handlers()
+    public void AddMediator_ShouldScanAndBindAllNotificationHandlers()
     {
         var provider = new ServiceCollection()
             .AddMediator(typeof(AddMediatorTests).Assembly)
@@ -67,7 +67,7 @@ public sealed class AddMediatorTests
     }
 
     [Fact]
-    public void AddMediator_registers_handlers_as_transient()
+    public void AddMediator_ShouldRegisterHandlersAsTransient()
     {
         var services = new ServiceCollection().AddMediator(typeof(AddMediatorTests).Assembly);
 
@@ -78,7 +78,7 @@ public sealed class AddMediatorTests
     }
 
     [Fact]
-    public void AddMediator_registers_mediator_as_transient()
+    public void AddMediator_ShouldRegisterMediatorAsTransient()
     {
         var services = new ServiceCollection().AddMediator(typeof(AddMediatorTests).Assembly);
 
@@ -87,7 +87,7 @@ public sealed class AddMediatorTests
     }
 
     [Fact]
-    public void AddMediator_resolves_a_fresh_handler_each_time()
+    public void AddMediator_ShouldResolveFreshHandlerEachTime()
     {
         var provider = new ServiceCollection()
             .AddMediator(typeof(AddMediatorTests).Assembly)
@@ -100,7 +100,7 @@ public sealed class AddMediatorTests
     }
 
     [Fact]
-    public void AddMediator_is_idempotent_for_the_mediator_registration()
+    public void AddMediator_ShouldBeIdempotentForTheMediatorRegistration()
     {
         // TryAdd guards the IMediator/ISender/IPublisher registrations — calling twice must not duplicate them.
         var services = new ServiceCollection()
@@ -113,7 +113,7 @@ public sealed class AddMediatorTests
     }
 
     [Fact]
-    public void AddMediator_default_overload_scans_calling_assembly()
+    public void AddMediator_ShouldScanCallingAssembly_WhenDefaultOverload()
     {
         // No assembly argument → scans the assembly that called AddMediator (this test assembly).
         var provider = new ServiceCollection()
@@ -124,7 +124,7 @@ public sealed class AddMediatorTests
     }
 
     [Fact]
-    public void AddMediator_throws_on_null_services()
+    public void AddMediator_ShouldThrow_WhenServicesNull()
     {
         IServiceCollection services = null!;
         var act = () => services.AddMediator(typeof(AddMediatorTests).Assembly);

@@ -16,7 +16,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Integrations.Ghcr;
 ///      (needs <c>read:packages</c>) via GHCR's Bearer realm, then re-HEAD — covers private images.
 ///   3. Still refused → report <see cref="ImageCheck.Unauthorized"/> rather than throwing.
 /// </remarks>
-internal sealed class GhcrClient(
+internal sealed partial class GhcrClient(
     HttpClient http,
     IAccessTokenProvider tokenProvider,
     ILogger<GhcrClient> logger) : IContainerRegistryClient
@@ -73,7 +73,7 @@ internal sealed class GhcrClient(
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "GHCR manifest probe for {Image}:{Tag} failed to reach the registry.", imagePath, tag);
+            LogProbeUnreachable(ex, imagePath, tag);
             return ImageCheck.Failed;
         }
 
@@ -109,7 +109,7 @@ internal sealed class GhcrClient(
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "GHCR token request for {Image} failed.", imagePath);
+            LogTokenRequestFailed(ex, imagePath);
             return null;
         }
 
@@ -125,7 +125,7 @@ internal sealed class GhcrClient(
             }
             catch (Exception ex) when (ex is JsonException or HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
             {
-                logger.LogWarning(ex, "GHCR token for {Image} could not be parsed.", imagePath);
+                LogTokenParseFailed(ex, imagePath);
                 return null;
             }
         }
@@ -133,9 +133,21 @@ internal sealed class GhcrClient(
 
     private ImageCheck Unexpected(string imagePath, string tag, HttpStatusCode status)
     {
-        logger.LogWarning("GHCR manifest probe for {Image}:{Tag} returned an unexpected status {Status}.", imagePath, tag, status);
+        LogUnexpectedStatus(imagePath, tag, status);
         return ImageCheck.Failed;
     }
+
+    [LoggerMessage(EventId = 5001, Level = LogLevel.Warning, Message = "GHCR manifest probe for {Image}:{Tag} failed to reach the registry.")]
+    private partial void LogProbeUnreachable(Exception exception, string image, string tag);
+
+    [LoggerMessage(EventId = 5002, Level = LogLevel.Warning, Message = "GHCR token request for {Image} failed.")]
+    private partial void LogTokenRequestFailed(Exception exception, string image);
+
+    [LoggerMessage(EventId = 5003, Level = LogLevel.Warning, Message = "GHCR token for {Image} could not be parsed.")]
+    private partial void LogTokenParseFailed(Exception exception, string image);
+
+    [LoggerMessage(EventId = 5004, Level = LogLevel.Warning, Message = "GHCR manifest probe for {Image}:{Tag} returned an unexpected status {Status}.")]
+    private partial void LogUnexpectedStatus(string image, string tag, HttpStatusCode status);
 
     /// <summary>The token slice of a GHCR auth response.</summary>
     private sealed record GhcrToken([property: JsonPropertyName("token")] string? Token);

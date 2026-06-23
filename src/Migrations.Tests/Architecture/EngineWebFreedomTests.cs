@@ -12,7 +12,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Architecture;
 public sealed class EngineWebFreedomTests
 {
     [Fact]
-    public void BespokeEngine_DependsOnNoWebHostOrCliFramework()
+    public void BespokeEngine_ShouldNotDependOnWebHostOrCliFramework()
     {
         var result = Types.InAssembly(typeof(MigrationRunnerService).Assembly)
             .That().ResideInNamespace("WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke")

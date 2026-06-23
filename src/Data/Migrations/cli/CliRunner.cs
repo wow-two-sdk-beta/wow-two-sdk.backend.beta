@@ -1,8 +1,9 @@
 using System.Data.Common;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using WoW.Two.Sdk.Backend.Beta.Data.Dapper;
+using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli;
@@ -58,7 +59,7 @@ internal static partial class CliRunner
         }
 
         if (status.Orphaned.Count > 0)
-            Console.WriteLine($"Orphaned (in DB, not in source): {string.Join(", ", status.Orphaned.Select(o => o.ToString("D3")))}");
+            Console.WriteLine($"Orphaned (in DB, not in source): {string.Join(", ", status.Orphaned.Select(o => o.ToString("D3", CultureInfo.InvariantCulture)))}");
 
         return 0;
     }
@@ -255,7 +256,7 @@ internal static partial class CliRunner
         {
             var match = OrdinalPrefix().Match(Path.GetFileName(dir));
             if (match.Success)
-                max = Math.Max(max, int.Parse(match.Groups[1].Value));
+                max = Math.Max(max, int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture));
         }
 
         return max + 1;

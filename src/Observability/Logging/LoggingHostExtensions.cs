@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -22,12 +23,13 @@ public static class LoggingHostExtensions
               .Enrich.WithProcessId()
               .Enrich.WithThreadId()
               .Enrich.WithEnvironmentName()
-              .WriteTo.Async(a => a.Console())
+              .WriteTo.Async(a => a.Console(formatProvider: CultureInfo.InvariantCulture))
               .WriteTo.Async(a => a.File(
                   path: "logs/log-.txt",
                   rollingInterval: RollingInterval.Day,
                   retainedFileCountLimit: 7,
-                  shared: true));
+                  shared: true,
+                  formatProvider: CultureInfo.InvariantCulture));
         });
     }
 }

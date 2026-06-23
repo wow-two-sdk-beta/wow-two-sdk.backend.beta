@@ -6,7 +6,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Google;
 
 /// <summary>Verifies Google ID tokens against Google's published keys, checking the audience matches a configured OAuth client id.</summary>
 /// <remarks>Wraps <see cref="GoogleJsonWebSignature.ValidateAsync(string, GoogleJsonWebSignature.ValidationSettings)"/>; a token with no email, a bad signature, a wrong audience, or expiry resolves to <c>null</c>. Tests swap the seam in.</remarks>
-public sealed class GoogleIdTokenVerifier : IGoogleIdTokenVerifier
+public sealed partial class GoogleIdTokenVerifier : IGoogleIdTokenVerifier
 {
     private readonly GoogleIdTokenVerifierOptions _options;
     private readonly ILogger<GoogleIdTokenVerifier> _logger;
@@ -46,8 +46,11 @@ public sealed class GoogleIdTokenVerifier : IGoogleIdTokenVerifier
         }
         catch (InvalidJwtException ex)
         {
-            _logger.LogWarning(ex, "Google ID token validation failed.");
+            LogValidationFailed(_logger, ex);
             return null;
         }
     }
+
+    [LoggerMessage(EventId = 4001, Level = LogLevel.Warning, Message = "Google ID token validation failed.")]
+    private static partial void LogValidationFailed(ILogger logger, Exception exception);
 }

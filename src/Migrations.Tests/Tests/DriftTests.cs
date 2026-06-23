@@ -11,7 +11,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 public sealed class DriftTests : SqliteMigratorTestBase
 {
     [Fact]
-    public async Task ApplyPending_AfterAppliedSourceEdited_ThrowsDrift_AndRepairClearsIt()
+    public async Task ApplyPending_ShouldThrowDriftAndRepairShouldClearIt_WhenAppliedSourceEdited()
     {
         Workspace.Write("001-baseline",
             applySql: "create table t1(id int primary key);",
@@ -43,7 +43,7 @@ public sealed class DriftTests : SqliteMigratorTestBase
     }
 
     [Fact]
-    public async Task Repair_WithoutAllowRollback_Throws()
+    public async Task Repair_ShouldThrow_WhenAllowRollbackDisabled()
     {
         Workspace.Write("001-baseline",
             applySql: "create table t1(id int primary key);",

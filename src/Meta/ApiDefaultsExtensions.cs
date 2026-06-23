@@ -58,7 +58,7 @@ public static class ApiDefaultsExtensions
             .AddProxyAwareHosting()
             .AddOpenApiDefaults()
             .AddTraceAwareProblemDetails()
-            .AddValidationExceptionHandler();
+            .AddAppExceptionHandling();
 
         if (options.EnableRateLimiting)
         {

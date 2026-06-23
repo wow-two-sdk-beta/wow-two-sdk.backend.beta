@@ -1,8 +1,9 @@
 using System.Data.Common;
 using System.Diagnostics;
+using System.Globalization;
 using Dapper;
 using Microsoft.Extensions.Logging;
-using WoW.Two.Sdk.Backend.Beta.Data.Dapper; // IDbConnectionFactory — the SDK connection seam (returns BCL DbConnection).
+using WoW.Two.Sdk.Backend.Beta.Data.Abstractions; // IDbConnectionFactory — the SDK connection seam (returns BCL DbConnection).
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
@@ -15,7 +16,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 ///   4. Apply each pending migration (per-file transaction unless no-transaction)
 ///   5. Release the lock
 /// </remarks>
-public sealed class MigrationRunnerService(
+public sealed partial class MigrationRunnerService(
     IMigrationScanner scanner,
     IMigrationHistoryRepository history,
     IDbConnectionFactory connections,
@@ -43,7 +44,7 @@ public sealed class MigrationRunnerService(
             var pending = migrations.Where(m => !appliedOrdinals.Contains(m.Ordinal)).ToList();
             if (pending.Count == 0)
             {
-                logger.LogInformation("Migrations up to date ({Count} applied).", applied.Count);
+                LogUpToDate(applied.Count);
                 return [];
             }
 
@@ -52,7 +53,7 @@ public sealed class MigrationRunnerService(
             {
                 var elapsedMs = await ApplyOneAsync(conn, migration, appliedBy, ct);
                 done.Add(migration.Label);
-                logger.LogInformation("Applied {Migration} in {Elapsed}ms.", migration.Label, elapsedMs);
+                LogApplied(migration.Label, elapsedMs);
             }
 
             return done;
@@ -156,7 +157,7 @@ public sealed class MigrationRunnerService(
                     await history.RemoveAsync(conn, tx, row.Ordinal, ct);
                     await tx.CommitAsync(ct);
                     done.Add(migration.Label);
-                    logger.LogInformation("Rolled back {Migration}.", migration.Label);
+                    LogRolledBack(migration.Label);
                 }
                 catch
                 {
@@ -239,8 +240,8 @@ public sealed class MigrationRunnerService(
 
         if (options.AllowOrphanedHistory)
         {
-            logger.LogWarning("Applying over orphaned history (ordinals {Orphaned}) — running binary may be older than the database.",
-                string.Join(", ", orphaned.Select(o => o.ToString("D3"))));
+            if (logger.IsEnabled(LogLevel.Warning))
+                LogOrphanedHistory(string.Join(", ", orphaned.Select(o => o.ToString("D3", CultureInfo.InvariantCulture))));
             return;
         }
 
@@ -261,4 +262,16 @@ public sealed class MigrationRunnerService(
         AppliedBy = appliedBy,
         ExecutionMs = (int)elapsedMs,
     };
+
+    [LoggerMessage(EventId = 3001, Level = LogLevel.Information, Message = "Migrations up to date ({Count} applied).")]
+    private partial void LogUpToDate(int count);
+
+    [LoggerMessage(EventId = 3002, Level = LogLevel.Information, Message = "Applied {Migration} in {Elapsed}ms.")]
+    private partial void LogApplied(string migration, long elapsed);
+
+    [LoggerMessage(EventId = 3003, Level = LogLevel.Information, Message = "Rolled back {Migration}.")]
+    private partial void LogRolledBack(string migration);
+
+    [LoggerMessage(EventId = 3004, Level = LogLevel.Warning, Message = "Applying over orphaned history (ordinals {Orphaned}) — running binary may be older than the database.")]
+    private partial void LogOrphanedHistory(string orphaned);
 }

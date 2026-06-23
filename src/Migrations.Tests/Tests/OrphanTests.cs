@@ -11,7 +11,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 public sealed class OrphanTests : SqliteMigratorTestBase
 {
     [Fact]
-    public async Task ApplyPending_WithDeletedAppliedSource_ThrowsOrphan()
+    public async Task ApplyPending_ShouldThrowOrphan_WhenAppliedSourceDeleted()
     {
         Workspace.Write("001-baseline",
             applySql: "create table t1(id int primary key);",
@@ -37,7 +37,7 @@ public sealed class OrphanTests : SqliteMigratorTestBase
     }
 
     [Fact]
-    public async Task ApplyPending_WithOrphanAllowed_Proceeds()
+    public async Task ApplyPending_ShouldProceed_WhenOrphanAllowed()
     {
         Workspace.Write("001-baseline",
             applySql: "create table t1(id int primary key);",

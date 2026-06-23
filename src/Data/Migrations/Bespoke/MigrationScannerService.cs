@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Provides parsing and validation of raw migrations into an ordered, checksummed list.</summary>
@@ -19,7 +21,7 @@ public sealed class MigrationScannerService(IMigrationSource source) : IMigratio
 
             descriptors.Add(new MigrationDescriptor
             {
-                Ordinal = int.Parse(match.Groups[1].Value),
+                Ordinal = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture),
                 Name = match.Groups[2].Value,
                 ApplySql = raw.ApplySql,
                 RollbackSql = raw.RollbackSql,

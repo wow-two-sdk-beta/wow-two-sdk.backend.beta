@@ -11,7 +11,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 public sealed class FailureMidBatchTests : SqliteMigratorTestBase
 {
     [Fact]
-    public async Task ApplyPending_WithInvalidMiddleMigration_StopsCleanly_AndFixedReRunCompletes()
+    public async Task ApplyPending_ShouldStopCleanlyAndCompleteOnFixedReRun_WhenMiddleMigrationInvalid()
     {
         Workspace.Write("001-first",
             applySql: "create table t1(id int primary key);",

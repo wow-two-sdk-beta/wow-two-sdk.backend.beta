@@ -1,6 +1,7 @@
 using Testcontainers.Azurite;
+using WoW.Two.Sdk.Backend.Beta.Testing.Containers;
 
-namespace WoW.Two.Sdk.Backend.Beta.Testing.Containers;
+namespace WoW.Two.Sdk.Backend.Beta.Testing.Containers.Azurite;
 
 /// <summary>Async fixture spinning up an Azurite (Azure Storage emulator) container.</summary>
 public sealed class AzuriteFixture : ContainerFixtureBase<AzuriteContainer>

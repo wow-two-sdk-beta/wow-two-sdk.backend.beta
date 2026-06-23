@@ -7,7 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 public sealed class ApplyTests : SqliteMigratorTestBase
 {
     [Fact]
-    public async Task ApplyPending_OnFreshDb_AppliesRecordsAndIsIdempotent()
+    public async Task ApplyPending_ShouldApplyRecordAndBeIdempotent_WhenFreshDb()
     {
         Workspace.Write("001-baseline",
             applySql: "create table t1(id int primary key);",

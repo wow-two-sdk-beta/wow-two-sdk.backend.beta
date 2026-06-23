@@ -1,12 +1,16 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
+using WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
 
-/// <summary>Translates a thrown <see cref="ValidationException"/> into a 400 validation ProblemDetails response.</summary>
-public sealed class ValidationExceptionHandler(IProblemDetailsService problemDetailsService) : IExceptionHandler
+/// <summary>Translates a thrown <see cref="ValidationException"/> into a 400 validation ProblemDetails carrying <c>code</c> and <c>errors[]</c>.</summary>
+public sealed class ValidationExceptionHandler(
+    IErrorHttpStatusCodeMapper statusMapper,
+    IErrorMessageResolver messageResolver,
+    IProblemDetailsService problemDetailsService) : IExceptionHandler
 {
     /// <inheritdoc />
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
@@ -14,23 +18,19 @@ public sealed class ValidationExceptionHandler(IProblemDetailsService problemDet
         ArgumentNullException.ThrowIfNull(httpContext);
 
         if (exception is not ValidationException validationException)
+        {
             return false;
+        }
 
-        var errors = validationException.Errors
-            .GroupBy(error => error.Property)
-            .ToDictionary(group => group.Key, group => group.Select(error => error.Message).ToArray());
-
-        httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+        var problem = AppErrorProblemDetailsFactory.Create(
+            validationException.ValidationError, httpContext, statusMapper, messageResolver);
+        problem.Title = "One or more validation errors occurred.";
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
             HttpContext = httpContext,
             Exception = validationException,
-            ProblemDetails = new ValidationProblemDetails(errors)
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "One or more validation errors occurred."
-            }
+            ProblemDetails = problem,
         }).ConfigureAwait(false);
     }
 }

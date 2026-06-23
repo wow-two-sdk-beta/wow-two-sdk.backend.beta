@@ -39,6 +39,32 @@ ConfigureServicesHook = services =>
 
 The handler stamps the SDK's canonical `wt:*` claims (`TestClaimTypes`, mirroring `Identity.Claims.NormalizedClaimTypes`) plus `ClaimTypes.Name` / `ClaimTypes.Role`, so the SDK's `ClaimsPrincipalExtensions` (`GetUserId()`, `GetEmail()`, …) and `[Authorize(Roles = …)]` both resolve. `AddTestAuth` runs after the app's own auth and overrides the default scheme.
 
+### Header-gated mode — test the 401 path too
+
+By default every request authenticates, so the anonymous gate can't be reached. Set `RequiredHeader` to gate authentication on a header — then one host covers **both** the authed (200) and anonymous (401) paths:
+
+```csharp
+ConfigureServicesHook = TestAuthServiceCollectionExtensions.UseTestUser(o =>
+{
+    o.RequiredHeader = "X-Test-Auth"; // present → authenticated; absent → anonymous
+    o.UserId = "u-123";
+    o.Roles  = ["admin"];
+}),
+```
+
+```csharp
+// 200 — header present authenticates as the configured identity
+var authedClient = host.CreateClient();
+authedClient.DefaultRequestHeaders.Add("X-Test-Auth", "1");
+(await authedClient.GetAsync("/api/me")).EnsureSuccessStatusCode();
+
+// 401 — header absent → request stays anonymous → [Authorize] challenges
+var anonResp = await host.CreateClient().GetAsync("/api/me");
+Assert.Equal(HttpStatusCode.Unauthorized, anonResp.StatusCode);
+```
+
+`RequiredHeader = null` (the default) keeps the always-authenticate behavior — existing consumers are unaffected.
+
 ## Cookie extraction
 
 ```csharp

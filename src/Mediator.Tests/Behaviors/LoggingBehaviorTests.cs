@@ -33,7 +33,7 @@ public sealed class LoggingBehaviorTests
     }
 
     [Fact]
-    public async Task Logs_start_and_completion_and_returns_handler_result_on_success()
+    public async Task HandleAsync_ShouldLogStartAndCompletionAndReturnResult_WhenSuccess()
     {
         var logger = new CapturingLogger<LoggingBehavior<Req, string>>();
         var behavior = new LoggingBehavior<Req, string>(logger);
@@ -47,7 +47,7 @@ public sealed class LoggingBehaviorTests
     }
 
     [Fact]
-    public async Task Logs_failure_and_rethrows_when_handler_throws()
+    public async Task HandleAsync_ShouldLogFailureAndRethrow_WhenHandlerThrows()
     {
         var logger = new CapturingLogger<LoggingBehavior<Req, string>>();
         var behavior = new LoggingBehavior<Req, string>(logger);
@@ -64,7 +64,7 @@ public sealed class LoggingBehaviorTests
     }
 
     [Fact]
-    public async Task Throws_on_null_next()
+    public async Task HandleAsync_ShouldThrow_WhenNextNull()
     {
         var logger = new CapturingLogger<LoggingBehavior<Req, string>>();
         var behavior = new LoggingBehavior<Req, string>(logger);

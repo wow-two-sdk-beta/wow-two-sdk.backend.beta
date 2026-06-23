@@ -50,7 +50,7 @@ public sealed class CqrsMediatorTests
     //     a refinement like IQueryHandler<,> is reachable via its base, which is the type dispatch resolves.) ---
 
     [Fact]
-    public void AddMediator_binds_cqrs_handlers_via_their_base_request_handler()
+    public void AddMediator_ShouldBindCqrsHandlersViaTheirBaseRequestHandler()
     {
         var provider = new ServiceCollection()
             .AddMediator(typeof(CqrsMediatorTests).Assembly)
@@ -65,7 +65,7 @@ public sealed class CqrsMediatorTests
     // --- SendAsync (native on ISender) dispatches each CQRS shape; a query IS an IRequest<T> ---
 
     [Fact]
-    public async Task SendAsync_dispatches_a_query()
+    public async Task SendAsync_ShouldDispatchQuery()
     {
         var sender = BuildSender();
 
@@ -75,7 +75,7 @@ public sealed class CqrsMediatorTests
     }
 
     [Fact]
-    public async Task SendAsync_dispatches_a_command_with_result()
+    public async Task SendAsync_ShouldDispatchCommandWithResult()
     {
         var sender = BuildSender();
 
@@ -85,7 +85,7 @@ public sealed class CqrsMediatorTests
     }
 
     [Fact]
-    public async Task SendAsync_dispatches_a_void_command()
+    public async Task SendAsync_ShouldDispatchVoidCommand()
     {
         TouchHandler.Count = 0;
         var sender = BuildSender();
@@ -96,7 +96,7 @@ public sealed class CqrsMediatorTests
     }
 
     [Fact]
-    public async Task SendAsync_void_command_returns_unit()
+    public async Task SendAsync_ShouldReturnUnit_WhenVoidCommand()
     {
         var sender = BuildSender();
 
@@ -106,7 +106,7 @@ public sealed class CqrsMediatorTests
     }
 
     [Fact]
-    public async Task SendAsync_throws_on_null_request()
+    public async Task SendAsync_ShouldThrow_WhenRequestNull()
     {
         var sender = BuildSender();
         var act = async () => await sender.SendAsync<string>(null!);

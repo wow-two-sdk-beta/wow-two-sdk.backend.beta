@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    TESTING.INTEGRATIONS companion (beta-forever) — integration-client test doubles.
+
+    Configurable fakes for the SDK's outbound integration clients (IGitHubClient, IContainerRegistryClient)
+    that the dependency-light base Testing package deliberately CANNOT hold: they implement contracts that
+    live in the CORE mono-lib (WoW.Two.Sdk.Backend.Beta.Integrations.*), so a reference to them would drag
+    the whole core into base Testing. They live here instead — keeping base Testing free of a core dependency
+    (mirrors the Testing.Data split for the data tier).
+
+    Reference from test projects only. Register a fake in place of the real client to short-circuit every
+    GitHub / GHCR probe (no live REST call, no OAuth token) and drive the not-found / unauthorized / failed
+    branches deterministically.
+  -->
+
+  <PropertyGroup>
+    <!-- Published ID uses the OWNED WoW2.* reserved prefix. Assembly + namespaces remain WoW.Two.*. -->
+    <PackageId>WoW2.Sdk.Backend.Beta.Testing.Integrations</PackageId>
+    <Description>WoW Two backend SDK integration-client test doubles (beta-forever) — configurable FakeGitHubClient and FakeContainerRegistryClient implementing the SDK's IGitHubClient / IContainerRegistryClient. Canned per-call outcomes, per-tag image existence, toggleable failure paths. References core; reference from test projects only.</Description>
+    <PackageTags>wow-two; backend; beta; sdk; testing; fakes; integrations; github; ghcr; xunit</PackageTags>
+
+    <!-- Test-HELPER library (not a test SUITE): ships no runner. Tell `dotnet test` to skip it. -->
+    <IsTestProject>false</IsTestProject>
+
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/obj/**;**/bin/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!-- Match the mono-lib's shared framework so Microsoft.Extensions.* + IServiceCollection keep ONE type
+       identity across core + this package (mirrors Testing.Data; without it, restore hits an NU1109 DI
+       downgrade vs the core's transitive HeaderPropagation→DI 10.0.9). -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Core: the IGitHubClient / IContainerRegistryClient contracts and their result types live in the mono-lib. -->
+    <ProjectReference Include="../WoW.Two.Sdk.Backend.Beta.csproj" />
+  </ItemGroup>
+
+</Project>

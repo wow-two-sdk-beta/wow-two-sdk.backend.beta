@@ -4,6 +4,9 @@
   <Project Path="Data/Migrations/cli/WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli.csproj" />
   <Project Path="Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj" />
   <Project Path="Testing.Data/WoW.Two.Sdk.Backend.Beta.Testing.Data.csproj" />
+  <Project Path="Testing.Integrations/WoW.Two.Sdk.Backend.Beta.Testing.Integrations.csproj" />
   <Project Path="Mediator.Tests/WoW.Two.Sdk.Backend.Beta.Mediator.Tests.csproj" />
   <Project Path="Migrations.Tests/WoW.Two.Sdk.Backend.Beta.Migrations.Tests.csproj" />
+  <Project Path="Foundation.Tests/WoW.Two.Sdk.Backend.Beta.Foundation.Tests.csproj" />
+  <Project Path="Web.Tests/WoW.Two.Sdk.Backend.Beta.Web.Tests.csproj" />
 </Solution>

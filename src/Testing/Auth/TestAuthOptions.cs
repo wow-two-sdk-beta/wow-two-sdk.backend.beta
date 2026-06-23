@@ -31,4 +31,20 @@ public sealed class TestAuthOptions : AuthenticationSchemeOptions
 
     /// <summary>Extra raw claims appended verbatim — for provider-specific or app-specific claim types. Default empty.</summary>
     public IReadOnlyList<Claim> ExtraClaims { get; set; } = [];
+
+    /// <summary>
+    /// Optional request header that gates authentication, letting one test host exercise both the authenticated
+    /// path and the anonymous-gate (401) path. Default <c>null</c> — preserving the always-authenticate behavior.
+    /// </summary>
+    /// <remarks>
+    /// <list type="bullet">
+    /// <item><description><c>null</c> (default): every request authenticates as this identity — back-compatible.</description></item>
+    /// <item><description>Set (e.g. <c>"X-Test-Auth"</c>): only requests carrying this header (any value) authenticate;
+    /// requests lacking it stay anonymous, so <see cref="TestAuthHandler.HandleAuthenticateAsync"/> returns
+    /// <see cref="Microsoft.AspNetCore.Authentication.AuthenticateResult.NoResult"/> and <c>[Authorize]</c> endpoints
+    /// challenge with 401.</description></item>
+    /// </list>
+    /// A test sends the header to assert the 200 path and omits it to assert the 401 path, from the same SDK helper.
+    /// </remarks>
+    public string? RequiredHeader { get; set; }
 }

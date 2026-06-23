@@ -45,7 +45,7 @@ public static class DapperServiceCollectionExtensions
         return services;
     }
 
-    // IDbConnectionFactory registration (AddDbConnectionFactory / AddDataSourceConnectionFactory) moved to
+    // IDbConnectionFactory registration (AddDbConnectionFactory / AddDataSourceConnectionFactory) lives in
     // ConnectionFactoryServiceCollectionExtensions in the web-free WoW.Two.Sdk.Backend.Beta.Data.Abstractions
-    // project, alongside IDbConnectionFactory + DataSourceConnectionFactory. Same namespace — no consumer churn.
+    // project, alongside IDbConnectionFactory + DataSourceConnectionFactory (namespace ...Data.Abstractions).
 }

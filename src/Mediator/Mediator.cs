@@ -8,8 +8,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Mediator;
 /// <param name="serviceProvider">The provider that resolves handlers and pipeline behaviors.</param>
 public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
 {
-    private static readonly ConcurrentDictionary<Type, RequestDispatcher> _requestDispatchers = new();
-    private static readonly ConcurrentDictionary<Type, PublishDispatcher> _publishDispatchers = new();
+    private static readonly ConcurrentDictionary<Type, RequestDispatcher> RequestDispatchers = new();
+    private static readonly ConcurrentDictionary<Type, PublishDispatcher> PublishDispatchers = new();
 
     /// <inheritdoc />
     /// <param name="request">The request to dispatch.</param>
@@ -17,7 +17,7 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
     public ValueTask<TResponse> SendAsync<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var dispatcher = _requestDispatchers.GetOrAdd(request.GetType(), BuildRequestDispatcher);
+        var dispatcher = RequestDispatchers.GetOrAdd(request.GetType(), BuildRequestDispatcher);
         // Dispatcher boxes the ValueTask<TResponse> once; unbox and return.
         return (ValueTask<TResponse>)dispatcher(serviceProvider, request, cancellationToken);
     }
@@ -35,7 +35,7 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
         where TNotification : INotification
     {
         ArgumentNullException.ThrowIfNull(notification);
-        var dispatcher = _publishDispatchers.GetOrAdd(notification.GetType(), BuildPublishDispatcher);
+        var dispatcher = PublishDispatchers.GetOrAdd(notification.GetType(), BuildPublishDispatcher);
         return dispatcher(serviceProvider, notification, cancellationToken);
     }
 

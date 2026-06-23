@@ -7,7 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 public sealed class SqliteDialectTests
 {
     [Fact]
-    public async Task EnsureDatabaseExists_CreatesParentDirectory_AndReportsFirstCreate()
+    public async Task EnsureDatabaseExists_ShouldCreateParentDirectoryAndReportFirstCreate()
     {
         var dir = Path.Combine(Path.GetTempPath(), "wow2-mig-sqlite-tests", Guid.NewGuid().ToString("N"));
         var path = Path.Combine(dir, "nested", "app.db");
@@ -34,14 +34,14 @@ public sealed class SqliteDialectTests
     }
 
     [Fact]
-    public async Task EnsureDatabaseExists_ForInMemory_ReportsNoCreate()
+    public async Task EnsureDatabaseExists_ShouldReportNoCreate_WhenInMemory()
     {
         var dialect = new SqliteMigrationDialect();
         (await dialect.EnsureDatabaseExistsAsync("Data Source=:memory:", CancellationToken.None)).Should().BeFalse();
     }
 
     [Fact]
-    public void QualifyHistoryTable_IgnoresSchema_AndQuotesTableOnly()
+    public void QualifyHistoryTable_ShouldIgnoreSchemaAndQuoteTableOnly()
     {
         var dialect = new SqliteMigrationDialect();
         dialect.QualifyHistoryTable("public", "migration_history").Should().Be("\"migration_history\"");

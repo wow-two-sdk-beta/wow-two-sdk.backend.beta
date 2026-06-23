@@ -1,6 +1,6 @@
 using System.Data.Common;
 
-namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 
 /// <summary>Creates connections from a registered <see cref="DbDataSource"/> — e.g. a shared NpgsqlDataSource.</summary>
 /// <param name="dataSource">The data source connections are opened from.</param>

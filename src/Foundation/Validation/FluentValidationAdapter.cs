@@ -8,30 +8,44 @@ public sealed class FluentValidationAdapter<T> : IValidator<T>
 
     /// <summary>Initializes the adapter with the FluentValidation validators registered for <typeparamref name="T"/>.</summary>
     /// <param name="validators">The underlying FluentValidation validators.</param>
-    public FluentValidationAdapter(IEnumerable<FluentValidation.IValidator<T>> validators) =>
+    public FluentValidationAdapter(IEnumerable<FluentValidation.IValidator<T>> validators)
+    {
+        ArgumentNullException.ThrowIfNull(validators);
+
         _validators = validators.ToArray();
+    }
 
     /// <inheritdoc />
-    public ValidationResult Validate(T instance)
+    public ValidationError? Validate(T instance)
     {
         if (_validators.Length == 0)
-            return new ValidationResult.Success();
+        {
+            return null;
+        }
 
         var context = new FluentValidation.ValidationContext<T>(instance);
-        var errors = _validators
+        var failures = _validators
             .SelectMany(validator => validator.Validate(context).Errors)
-            .Select(failure => new ValidationError(failure.PropertyName, failure.ErrorMessage, failure.ErrorCode ?? string.Empty))
+            .Select(failure => new FieldError
+            {
+                Property = failure.PropertyName,
+                Message = failure.ErrorMessage,
+                Code = failure.ErrorCode ?? string.Empty,
+            })
             .ToArray();
 
-        return errors.Length == 0
-            ? new ValidationResult.Success()
-            : new ValidationResult.Failure(errors);
+        return failures.Length == 0
+            ? null
+            : ValidationError.From(failures);
     }
 
     /// <inheritdoc />
     public void ValidateAndThrow(T instance)
     {
-        if (Validate(instance) is ValidationResult.Failure failure)
-            throw new ValidationException(failure.Errors);
+        var error = Validate(instance);
+        if (error is not null)
+        {
+            throw new ValidationException(error);
+        }
     }
 }

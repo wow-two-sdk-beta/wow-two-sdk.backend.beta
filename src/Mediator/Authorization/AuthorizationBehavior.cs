@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Authorization;
 
@@ -12,7 +13,7 @@ public interface IRequireAuthorization
 }
 
 /// <summary>Runs ASP.NET Core authorization on requests implementing <see cref="IRequireAuthorization"/>.</summary>
-/// <remarks>Throws <see cref="UnauthorizedAccessException"/> if not authenticated, <see cref="AuthorizationException"/> if not authorized.</remarks>
+/// <remarks>Throws an <see cref="AppException"/> — <c>Unauthorized</c> (401) if not authenticated, <c>Forbidden</c> (403) if not authorized.</remarks>
 public sealed class AuthorizationBehavior<TRequest, TResponse>(
     IHttpContextAccessor httpContextAccessor,
     IAuthorizationService authorizationService)
@@ -34,7 +35,7 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
                 ?? throw new InvalidOperationException("AuthorizationBehavior requires HttpContext (IHttpContextAccessor returned null).");
 
             if (ctx.User?.Identity?.IsAuthenticated != true)
-                throw new UnauthorizedAccessException("Request requires authentication.");
+                throw AppErrors.Unauthorized("Request requires authentication.").ToException();
 
             var policy = authReq.PolicyName;
             var result = policy is null
@@ -42,19 +43,11 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
                 : await authorizationService.AuthorizeAsync(ctx.User, request, policy).ConfigureAwait(false);
 
             if (!result.Succeeded)
-                throw new AuthorizationException(result.Failure);
+                throw AppErrors.Forbidden("You do not have permission to perform this action.").ToException();
         }
 
         return await nextStep().ConfigureAwait(false);
     }
-}
-
-/// <summary>Thrown when the user is authenticated but lacks permission.</summary>
-/// <param name="failure">The underlying authorization failure, if any.</param>
-public sealed class AuthorizationException(AuthorizationFailure? failure) : Exception("Forbidden")
-{
-    /// <summary>The underlying authorization failure, if any.</summary>
-    public AuthorizationFailure? Failure { get; } = failure;
 }
 
 /// <summary>Registration helper.</summary>

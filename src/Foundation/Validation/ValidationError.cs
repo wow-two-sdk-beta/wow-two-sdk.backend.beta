@@ -1,7 +1,24 @@
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
-/// <summary>Represents a single field-level validation error.</summary>
-/// <param name="Property">Name or path of the offending member; empty for object-level rules.</param>
-/// <param name="Message">Human-readable description of what failed.</param>
-/// <param name="Code">Stable, machine-readable code identifying the violated rule.</param>
-public sealed record ValidationError(string Property, string Message, string Code);
+/// <summary>Represents an aggregate validation failure carrying its per-field failures.</summary>
+public sealed record ValidationError : AppError
+{
+    /// <summary>Gets the per-field failures.</summary>
+    public required IReadOnlyList<FieldError> Failures { get; init; }
+
+    /// <summary>Creates a validation error from <paramref name="failures"/>.</summary>
+    /// <param name="failures">The per-field failures.</param>
+    public static ValidationError From(IReadOnlyList<FieldError> failures)
+    {
+        ArgumentNullException.ThrowIfNull(failures);
+
+        return new ValidationError
+        {
+            Type = AppErrorType.Validation,
+            Message = "One or more validation errors occurred.",
+            Failures = failures,
+        };
+    }
+}

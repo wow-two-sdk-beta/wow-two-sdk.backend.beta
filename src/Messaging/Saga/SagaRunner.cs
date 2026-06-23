@@ -8,7 +8,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 /// (faulted outcome or thrown exception) compensates the completed steps in reverse. The compensation stack
 /// is the Saga Execution Coordinator.
 /// </summary>
-public sealed class SagaRunner(IServiceScopeFactory scopeFactory, ILogger<SagaRunner> logger) : ISagaRunner
+public sealed partial class SagaRunner(IServiceScopeFactory scopeFactory, ILogger<SagaRunner> logger) : ISagaRunner
 {
     /// <inheritdoc />
     public async ValueTask<SagaResult> RunAsync(SagaDefinition definition, SagaContext context, CancellationToken cancellationToken = default)
@@ -34,7 +34,7 @@ public sealed class SagaRunner(IServiceScopeFactory scopeFactory, ILogger<SagaRu
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Saga {Saga} step {Step} threw", definition.Name, step.Name);
+                LogStepThrew(ex, definition.Name, step.Name);
                 outcome = SagaStepOutcome.Faulted(ex.Message);
             }
 
@@ -44,7 +44,7 @@ public sealed class SagaRunner(IServiceScopeFactory scopeFactory, ILogger<SagaRu
                 continue;
             }
 
-            logger.LogWarning("Saga {Saga} failing at step {Step}: {Reason}", definition.Name, step.Name, outcome.FailureReason);
+            LogStepFailing(definition.Name, step.Name, outcome.FailureReason);
             var compensated = await CompensateAsync(definition, completed, context, cancellationToken);
             return new SagaResult(false, step.Name, outcome.FailureReason, compensated);
         }
@@ -65,12 +65,21 @@ public sealed class SagaRunner(IServiceScopeFactory scopeFactory, ILogger<SagaRu
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Saga {Saga} compensation for step {Step} failed", definition.Name, step.Name);
+                LogCompensationFailed(ex, definition.Name, step.Name);
             }
         }
 
         return compensated;
     }
+
+    [LoggerMessage(EventId = 6101, Level = LogLevel.Error, Message = "Saga {Saga} step {Step} threw")]
+    private partial void LogStepThrew(Exception exception, string saga, string step);
+
+    [LoggerMessage(EventId = 6102, Level = LogLevel.Warning, Message = "Saga {Saga} failing at step {Step}: {Reason}")]
+    private partial void LogStepFailing(string saga, string step, string? reason);
+
+    [LoggerMessage(EventId = 6103, Level = LogLevel.Error, Message = "Saga {Saga} compensation for step {Step} failed")]
+    private partial void LogCompensationFailed(Exception exception, string saga, string step);
 }
 
 /// <summary>In-process <see cref="ISagaTransport"/> — routes step-emitted messages through the in-memory <see cref="IMessageBus"/>.</summary>

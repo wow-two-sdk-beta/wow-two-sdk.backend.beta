@@ -47,7 +47,7 @@ extern alias redirecthost;
 
 using ApiProgram      = apihost::Program;
 using RedirectProgram = redirecthost::Program;
-using WoW.Two.Sdk.Backend.Beta.Testing.Containers;
+using WoW.Two.Sdk.Backend.Beta.Testing.Containers.Postgres;
 using WoW.Two.Sdk.Backend.Beta.Testing.MultiHost;
 
 public sealed class AppFixture : MultiHostFixture

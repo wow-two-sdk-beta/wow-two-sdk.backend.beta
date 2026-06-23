@@ -13,7 +13,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 public sealed class ConcurrencyTests : SqliteMigratorTestBase
 {
     [Fact]
-    public async Task ApplyPending_TwoRunnersConcurrently_AppliesEachMigrationExactlyOnce()
+    public async Task ApplyPending_ShouldApplyEachMigrationExactlyOnce_WhenTwoRunnersConcurrent()
     {
         Workspace.Write("001-baseline",
             applySql: "create table t1(id int primary key);",

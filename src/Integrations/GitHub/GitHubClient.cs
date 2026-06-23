@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace WoW.Two.Sdk.Backend.Beta.Integrations.GitHub;
 
 /// <summary>Integrates with the GitHub REST API over a typed <see cref="HttpClient"/>, authorizing each call with the token from <see cref="IAccessTokenProvider"/> so repo visibility matches that token.</summary>
-internal sealed class GitHubClient(
+internal sealed partial class GitHubClient(
     HttpClient http,
     IAccessTokenProvider tokenProvider,
     ILogger<GitHubClient> logger) : IGitHubClient
@@ -160,7 +160,7 @@ internal sealed class GitHubClient(
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "GitHub call {Method} {Path} for {Repo} failed to reach the API.", method, path, repo);
+            LogCallUnreachable(ex, method, path, repo);
             return null;
         }
     }
@@ -174,7 +174,7 @@ internal sealed class GitHubClient(
         }
         catch (Exception ex) when (ex is JsonException or HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "GitHub release for {Repo} could not be parsed.", repo);
+            LogReleaseParseFailed(ex, repo);
             return null;
         }
     }
@@ -199,7 +199,7 @@ internal sealed class GitHubClient(
         }
         catch (Exception ex) when (ex is JsonException or HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "GitHub releases for {Repo} could not be parsed.", repo);
+            LogReleasesParseFailed(ex, repo);
             return null;
         }
     }
@@ -222,7 +222,7 @@ internal sealed class GitHubClient(
         }
         catch (Exception ex) when (ex is JsonException or HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "GitHub workflow runs for {Repo} could not be parsed.", repo);
+            LogWorkflowRunsParseFailed(ex, repo);
             return BuildRunCheck.ProbeFailed;
         }
     }
@@ -237,9 +237,24 @@ internal sealed class GitHubClient(
 
     private T Unexpected<T>(string repo, HttpStatusCode status, T failed)
     {
-        logger.LogWarning("GitHub call for {Repo} returned an unexpected status {Status}.", repo, status);
+        LogUnexpectedStatus(repo, status);
         return failed;
     }
+
+    [LoggerMessage(EventId = 5101, Level = LogLevel.Warning, Message = "GitHub call {Method} {Path} for {Repo} failed to reach the API.")]
+    private partial void LogCallUnreachable(Exception exception, HttpMethod method, string path, string repo);
+
+    [LoggerMessage(EventId = 5102, Level = LogLevel.Warning, Message = "GitHub release for {Repo} could not be parsed.")]
+    private partial void LogReleaseParseFailed(Exception exception, string repo);
+
+    [LoggerMessage(EventId = 5103, Level = LogLevel.Warning, Message = "GitHub releases for {Repo} could not be parsed.")]
+    private partial void LogReleasesParseFailed(Exception exception, string repo);
+
+    [LoggerMessage(EventId = 5104, Level = LogLevel.Warning, Message = "GitHub workflow runs for {Repo} could not be parsed.")]
+    private partial void LogWorkflowRunsParseFailed(Exception exception, string repo);
+
+    [LoggerMessage(EventId = 5105, Level = LogLevel.Warning, Message = "GitHub call for {Repo} returned an unexpected status {Status}.")]
+    private partial void LogUnexpectedStatus(string repo, HttpStatusCode status);
 
     /// <summary>The slice of a GitHub release payload a deployable version is keyed on.</summary>
     private sealed record GitHubRelease(

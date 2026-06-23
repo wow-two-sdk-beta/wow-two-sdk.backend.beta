@@ -3,7 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using WoW.Two.Sdk.Backend.Beta.Data.Dapper;
+using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
+using WoW.Two.Sdk.Backend.Beta.Data.Errors;
 using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit;
 using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Postgres;
@@ -43,6 +44,9 @@ public static class PostgresPersistenceServiceCollectionExtensions
         services.AddNpgsqlDataSource();
         services.AddDataSourceConnectionFactory();
         services.AddEfCoreAuditInterceptor();
+
+        // Npgsql/EF exceptions escaping a handler now map to their AppError (unique-violation -> Conflict, etc.).
+        services.AddDbExceptionMapping();
 
         services.AddDbContext<TContext>((serviceProvider, optionsBuilder) =>
         {

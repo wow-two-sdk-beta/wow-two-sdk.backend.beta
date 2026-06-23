@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.DbUp;
 
 /// <summary>Hosted service that runs DbUp at startup, applying any pending <c>.sql</c> scripts.</summary>
-public sealed class DbUpHostedService : IHostedService
+public sealed partial class DbUpHostedService : IHostedService
 {
     private readonly DbUpOptions _options;
     private readonly ILogger<DbUpHostedService> _logger;
@@ -25,7 +25,7 @@ public sealed class DbUpHostedService : IHostedService
     {
         if (!_options.Enabled)
         {
-            _logger.LogInformation("DbUp runner is disabled — skipping.");
+            LogDisabled(_logger);
             return Task.CompletedTask;
         }
 
@@ -55,15 +55,24 @@ public sealed class DbUpHostedService : IHostedService
         if (!result.Successful)
         {
             var scriptName = result.ErrorScript?.Name ?? "(unknown)";
-            _logger.LogError(result.Error, "DbUp upgrade failed at script {Script}.", scriptName);
+            LogUpgradeFailed(_logger, scriptName, result.Error);
             throw new InvalidOperationException("DbUp upgrade failed.", result.Error);
         }
 
         var scriptCount = result.Scripts.Count();
-        _logger.LogInformation("DbUp upgrade applied {Count} scripts.", scriptCount);
+        LogUpgradeApplied(_logger, scriptCount);
         return Task.CompletedTask;
     }
 
     /// <inheritdoc />
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    [LoggerMessage(EventId = 3101, Level = LogLevel.Information, Message = "DbUp runner is disabled — skipping.")]
+    private static partial void LogDisabled(ILogger logger);
+
+    [LoggerMessage(EventId = 3102, Level = LogLevel.Error, Message = "DbUp upgrade failed at script {Script}.")]
+    private static partial void LogUpgradeFailed(ILogger logger, string script, Exception? exception);
+
+    [LoggerMessage(EventId = 3103, Level = LogLevel.Information, Message = "DbUp upgrade applied {Count} scripts.")]
+    private static partial void LogUpgradeApplied(ILogger logger, int count);
 }

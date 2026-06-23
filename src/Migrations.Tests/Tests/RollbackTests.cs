@@ -10,7 +10,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 public sealed class RollbackTests : SqliteMigratorTestBase
 {
     [Fact]
-    public async Task Rollback_WithAllowRollback_RemovesLatestHistoryRow_AndRunsRollbackSql()
+    public async Task Rollback_ShouldRemoveLatestHistoryRowAndRunRollbackSql_WhenAllowRollback()
     {
         Workspace.Write("001-baseline",
             applySql: "create table t1(id int primary key);",
@@ -37,7 +37,7 @@ public sealed class RollbackTests : SqliteMigratorTestBase
     }
 
     [Fact]
-    public async Task Rollback_WithoutAllowRollback_Throws()
+    public async Task Rollback_ShouldThrow_WhenAllowRollbackDisabled()
     {
         Workspace.Write("001-baseline",
             applySql: "create table t1(id int primary key);",

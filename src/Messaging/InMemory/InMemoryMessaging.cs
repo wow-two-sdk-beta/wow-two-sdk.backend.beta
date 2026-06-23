@@ -140,7 +140,7 @@ internal sealed class InMemoryInboxStore : IInboxStore
 }
 
 /// <summary>In-memory dead-letter store with replay back onto the channel.</summary>
-internal sealed class InMemoryDeadLetterStore(InMemoryMessageChannel channel, ILogger<InMemoryDeadLetterStore> logger) : IDeadLetterStore
+internal sealed partial class InMemoryDeadLetterStore(InMemoryMessageChannel channel, ILogger<InMemoryDeadLetterStore> logger) : IDeadLetterStore
 {
     private readonly ConcurrentDictionary<string, DeadLetterRecord> _records = new(StringComparer.Ordinal);
 
@@ -148,9 +148,12 @@ internal sealed class InMemoryDeadLetterStore(InMemoryMessageChannel channel, IL
     {
         ArgumentNullException.ThrowIfNull(record);
         _records[record.MessageId] = record;
-        logger.LogError("Dead-lettered message {MessageId} from {Destination}: {Reason}", record.MessageId, record.Destination, record.Reason);
+        LogDeadLettered(record.MessageId, record.Destination, record.Reason);
         return ValueTask.CompletedTask;
     }
+
+    [LoggerMessage(EventId = 6001, Level = LogLevel.Error, Message = "Dead-lettered message {MessageId} from {Destination}: {Reason}")]
+    private partial void LogDeadLettered(string messageId, string destination, string reason);
 
     public async IAsyncEnumerable<DeadLetterRecord> ReadAsync(string source, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -174,7 +177,7 @@ internal sealed class InMemoryDeadLetterStore(InMemoryMessageChannel channel, IL
 }
 
 /// <summary>In-memory scheduler — delays via the time provider then enqueues onto the channel.</summary>
-internal sealed class InMemoryMessageScheduler(InMemoryMessageChannel channel, TimeProvider timeProvider, ILogger<InMemoryMessageScheduler> logger) : IMessageScheduler
+internal sealed partial class InMemoryMessageScheduler(InMemoryMessageChannel channel, TimeProvider timeProvider, ILogger<InMemoryMessageScheduler> logger) : IMessageScheduler
 {
     public ValueTask ScheduleAsync(MessageEnvelope envelope, DateTimeOffset notBeforeUtc, CancellationToken cancellationToken)
     {
@@ -200,13 +203,16 @@ internal sealed class InMemoryMessageScheduler(InMemoryMessageChannel channel, T
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Scheduled enqueue failed for message {MessageId}", envelope.MessageId);
+            LogScheduledEnqueueFailed(ex, envelope.MessageId);
         }
     }
+
+    [LoggerMessage(EventId = 6011, Level = LogLevel.Error, Message = "Scheduled enqueue failed for message {MessageId}")]
+    private partial void LogScheduledEnqueueFailed(Exception exception, string messageId);
 }
 
 /// <summary>Drains the channel, dispatches each message inside a fresh DI scope, and applies retry → dead-letter.</summary>
-internal sealed class MessageConsumerHostedService(
+internal sealed partial class MessageConsumerHostedService(
     InMemoryMessageChannel channel,
     IServiceScopeFactory scopeFactory,
     MessageDispatcherRegistry registry,
@@ -235,7 +241,7 @@ internal sealed class MessageConsumerHostedService(
     {
         if (!await inbox.TryBeginAsync(envelope.MessageId, cancellationToken))
         {
-            logger.LogDebug("Skipping duplicate message {MessageId}", envelope.MessageId);
+            LogDuplicateSkipped(envelope.MessageId);
             return;
         }
 
@@ -249,7 +255,7 @@ internal sealed class MessageConsumerHostedService(
                 if (registry.TryGet(envelope.BodyType, out var dispatcher))
                     await dispatcher.DispatchAsync(scope.ServiceProvider, envelope, bus, cancellationToken);
                 else
-                    logger.LogWarning("No handler registered for message type {MessageType}", envelope.BodyType.FullName);
+                    LogNoHandler(envelope.BodyType.FullName);
 
                 return;
             }
@@ -269,9 +275,18 @@ internal sealed class MessageConsumerHostedService(
                     return;
                 }
 
-                logger.LogWarning(ex, "Message {MessageId} ({Destination}) attempt {Attempt} failed; retrying in {Delay}", envelope.MessageId, envelope.Destination, attempt, delay);
+                LogAttemptFailed(ex, envelope.MessageId, envelope.Destination, attempt, delay);
                 await Task.Delay(delay.Value, timeProvider, cancellationToken);
             }
         }
     }
+
+    [LoggerMessage(EventId = 6021, Level = LogLevel.Debug, Message = "Skipping duplicate message {MessageId}")]
+    private partial void LogDuplicateSkipped(string messageId);
+
+    [LoggerMessage(EventId = 6022, Level = LogLevel.Warning, Message = "No handler registered for message type {MessageType}")]
+    private partial void LogNoHandler(string? messageType);
+
+    [LoggerMessage(EventId = 6023, Level = LogLevel.Warning, Message = "Message {MessageId} ({Destination}) attempt {Attempt} failed; retrying in {Delay}")]
+    private partial void LogAttemptFailed(Exception exception, string messageId, string destination, int attempt, TimeSpan? delay);
 }

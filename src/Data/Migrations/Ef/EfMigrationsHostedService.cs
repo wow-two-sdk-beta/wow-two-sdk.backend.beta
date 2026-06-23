@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Ef;
 
 /// <summary>Hosted service that applies pending EF Core migrations on application startup for the configured <typeparamref name="TContext"/>.</summary>
-public sealed class EfMigrationsHostedService<TContext> : IHostedService
+public sealed partial class EfMigrationsHostedService<TContext> : IHostedService
     where TContext : DbContext
 {
     private readonly IServiceProvider _services;
@@ -33,7 +33,7 @@ public sealed class EfMigrationsHostedService<TContext> : IHostedService
     {
         if (!_options.Enabled)
         {
-            _logger.LogInformation("EF migrations runner is disabled — skipping.");
+            LogDisabled(_logger);
             return;
         }
 
@@ -46,20 +46,16 @@ public sealed class EfMigrationsHostedService<TContext> : IHostedService
 
             try
             {
-                _logger.LogInformation(
-                    "Applying EF migrations for {Context} (attempt {Attempt}/{Max})",
-                    typeof(TContext).Name, attempt, _options.MaxConnectAttempts);
+                LogApplying(_logger, typeof(TContext).Name, attempt, _options.MaxConnectAttempts);
 
                 await context.Database.MigrateAsync(cancellationToken);
 
-                _logger.LogInformation("EF migrations applied for {Context}.", typeof(TContext).Name);
+                LogApplied(_logger, typeof(TContext).Name);
                 return;
             }
             catch (Exception ex) when (attempt < _options.MaxConnectAttempts)
             {
-                _logger.LogWarning(ex,
-                    "Migration attempt {Attempt} failed; retrying in {Delay}.",
-                    attempt, _options.ConnectRetryDelay);
+                LogAttemptFailed(_logger, attempt, _options.ConnectRetryDelay, ex);
 
                 await Task.Delay(_options.ConnectRetryDelay, cancellationToken);
             }
@@ -68,4 +64,16 @@ public sealed class EfMigrationsHostedService<TContext> : IHostedService
 
     /// <inheritdoc />
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    [LoggerMessage(EventId = 3201, Level = LogLevel.Information, Message = "EF migrations runner is disabled — skipping.")]
+    private static partial void LogDisabled(ILogger logger);
+
+    [LoggerMessage(EventId = 3202, Level = LogLevel.Information, Message = "Applying EF migrations for {Context} (attempt {Attempt}/{Max})")]
+    private static partial void LogApplying(ILogger logger, string context, int attempt, int max);
+
+    [LoggerMessage(EventId = 3203, Level = LogLevel.Information, Message = "EF migrations applied for {Context}.")]
+    private static partial void LogApplied(ILogger logger, string context);
+
+    [LoggerMessage(EventId = 3204, Level = LogLevel.Warning, Message = "Migration attempt {Attempt} failed; retrying in {Delay}.")]
+    private static partial void LogAttemptFailed(ILogger logger, int attempt, TimeSpan delay, Exception exception);
 }

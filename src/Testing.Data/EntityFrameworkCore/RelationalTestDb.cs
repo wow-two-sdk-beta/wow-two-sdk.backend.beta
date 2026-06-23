@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
-using WoW.Two.Sdk.Backend.Beta.Testing.Containers;
+using WoW.Two.Sdk.Backend.Beta.Testing.Containers.Postgres;
 using Xunit;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Data.EntityFrameworkCore;

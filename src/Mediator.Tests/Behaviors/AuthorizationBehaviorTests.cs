@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Mediator;
 using WoW.Two.Sdk.Backend.Beta.Mediator.Authorization;
 using Xunit;
@@ -11,8 +12,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests.Behaviors;
 
 /// <summary>
 /// <see cref="AuthorizationBehavior{TRequest,TResponse}"/> — requests marked <see cref="IRequireAuthorization"/>
-/// are gated by ASP.NET Core authorization: unmarked passes through, unauthenticated throws
-/// <see cref="UnauthorizedAccessException"/>, authenticated-but-denied throws <see cref="AuthorizationException"/>.
+/// are gated by ASP.NET Core authorization: unmarked passes through, unauthenticated throws an
+/// <see cref="AppException"/> (Unauthorized), authenticated-but-denied throws an <see cref="AppException"/> (Forbidden).
 /// </summary>
 public sealed class AuthorizationBehaviorTests
 {
@@ -48,7 +49,7 @@ public sealed class AuthorizationBehaviorTests
         => new(Accessor(user), BuildAuthService());
 
     [Fact]
-    public async Task Unmarked_request_passes_through_without_auth()
+    public async Task HandleAsync_ShouldPassThroughWithoutAuth_WhenRequestUnmarked()
     {
         // No HttpContext at all → still fine because the request isn't IRequireAuthorization.
         var behavior = new AuthorizationBehavior<Open, string>(new HttpContextAccessor(), BuildAuthService());
@@ -59,7 +60,7 @@ public sealed class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task Authenticated_user_with_no_policy_is_denied_empty_requirements_path()
+    public async Task HandleAsync_ShouldThrowForbidden_WhenAuthenticatedUserHasNoPolicy()
     {
         // ROUGH EDGE: with PolicyName == null the behavior calls AuthorizeAsync(user, resource, <empty requirements>).
         // An empty requirement set yields a non-succeeded result, so even an authenticated user is forbidden.
@@ -69,22 +70,22 @@ public sealed class AuthorizationBehaviorTests
 
         var act = async () => await behavior.HandleAsync(new Secured(), () => ValueTask.FromResult("ok"), CancellationToken.None);
 
-        await act.Should().ThrowAsync<AuthorizationException>();
+        (await act.Should().ThrowAsync<AppException>()).Which.Error.Type.Should().Be(AppErrorType.Forbidden);
     }
 
     [Fact]
-    public async Task Unauthenticated_user_throws_unauthorized()
+    public async Task HandleAsync_ShouldThrowUnauthorized_WhenUserUnauthenticated()
     {
         var anonymous = new ClaimsPrincipal(new ClaimsIdentity()); // IsAuthenticated == false
         var behavior = Behavior<Secured>(anonymous);
 
         var act = async () => await behavior.HandleAsync(new Secured(), () => ValueTask.FromResult("ok"), CancellationToken.None);
 
-        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await act.Should().ThrowAsync<AppException>()).Which.Error.Type.Should().Be(AppErrorType.Unauthorized);
     }
 
     [Fact]
-    public async Task Missing_http_context_throws_invalid_operation()
+    public async Task HandleAsync_ShouldThrowInvalidOperation_WhenHttpContextMissing()
     {
         var behavior = new AuthorizationBehavior<Secured, string>(new HttpContextAccessor { HttpContext = null }, BuildAuthService());
 
@@ -94,7 +95,7 @@ public sealed class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task Authenticated_but_policy_denied_throws_authorization_exception()
+    public async Task HandleAsync_ShouldThrowForbidden_WhenPolicyDenied()
     {
         // Policy "admin" requires the admin role; this user has only "user".
         var behavior = Behavior<SecuredWithPolicy>(Authenticated("user"));
@@ -104,11 +105,11 @@ public sealed class AuthorizationBehaviorTests
             () => ValueTask.FromResult("ok"),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<AuthorizationException>();
+        (await act.Should().ThrowAsync<AppException>()).Which.Error.Type.Should().Be(AppErrorType.Forbidden);
     }
 
     [Fact]
-    public async Task Authenticated_and_policy_satisfied_passes()
+    public async Task HandleAsync_ShouldPass_WhenAuthenticatedAndPolicySatisfied()
     {
         var behavior = Behavior<SecuredWithPolicy>(Authenticated("admin"));
 

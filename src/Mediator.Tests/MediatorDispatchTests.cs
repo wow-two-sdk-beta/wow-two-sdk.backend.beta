@@ -59,7 +59,7 @@ public sealed class MediatorDispatchTests
             .GetRequiredService<IMediator>();
 
     [Fact]
-    public async Task SendAsync_runs_a_synchronously_completing_handler()
+    public async Task SendAsync_ShouldRunSynchronouslyCompletingHandler()
     {
         var mediator = BuildMediator();
 
@@ -69,7 +69,7 @@ public sealed class MediatorDispatchTests
     }
 
     [Fact]
-    public async Task SendAsync_sync_handler_completes_synchronously()
+    public async Task SendAsync_ShouldCompleteSynchronously_WhenSyncHandler()
     {
         var mediator = BuildMediator();
 
@@ -81,7 +81,7 @@ public sealed class MediatorDispatchTests
     }
 
     [Fact]
-    public async Task SendAsync_runs_a_genuinely_async_handler()
+    public async Task SendAsync_ShouldRunGenuinelyAsyncHandler()
     {
         var mediator = BuildMediator();
 
@@ -91,7 +91,7 @@ public sealed class MediatorDispatchTests
     }
 
     [Fact]
-    public async Task SendAsync_void_request_invokes_handler()
+    public async Task SendAsync_ShouldInvokeHandler_WhenVoidRequest()
     {
         DoThingHandler.LastTag = null;
         var mediator = BuildMediator();
@@ -102,7 +102,7 @@ public sealed class MediatorDispatchTests
     }
 
     [Fact]
-    public async Task SendAsync_typed_overload_for_void_request_returns_unit()
+    public async Task SendAsync_ShouldReturnUnit_WhenTypedOverloadForVoidRequest()
     {
         var mediator = BuildMediator();
 
@@ -112,7 +112,7 @@ public sealed class MediatorDispatchTests
     }
 
     [Fact]
-    public void IMediator_resolves_as_both_sender_and_publisher()
+    public void IMediator_ShouldResolveAsBothSenderAndPublisher()
     {
         var provider = new ServiceCollection()
             .AddMediator(typeof(MediatorDispatchTests).Assembly)
@@ -128,7 +128,7 @@ public sealed class MediatorDispatchTests
     }
 
     [Fact]
-    public async Task SendAsync_throws_when_no_handler_registered()
+    public async Task SendAsync_ShouldThrow_WhenNoHandlerRegistered()
     {
         // Mediator registered, but this request type's handler lives in no scanned assembly.
         var sender = new ServiceCollection()
@@ -146,7 +146,7 @@ public sealed class MediatorDispatchTests
     }
 
     [Fact]
-    public async Task SendAsync_passes_cancellation_token_to_handler()
+    public async Task SendAsync_ShouldPassCancellationTokenToHandler()
     {
         var mediator = BuildMediator();
         using var cts = new CancellationTokenSource();

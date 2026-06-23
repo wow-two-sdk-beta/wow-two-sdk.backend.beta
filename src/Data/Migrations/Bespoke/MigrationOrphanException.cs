@@ -1,9 +1,11 @@
+using System.Globalization;
+
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Thrown when the history records applied migrations whose source is absent — the running binary is older than the database, or a migration folder was deleted.</summary>
 public sealed class MigrationOrphanException(IReadOnlyList<int> orphanedOrdinals)
     : Exception($"The database has applied migrations missing from this source (orphaned): " +
-                $"{string.Join(", ", orphanedOrdinals.Select(o => o.ToString("D3")))}. " +
+                $"{string.Join(", ", orphanedOrdinals.Select(o => o.ToString("D3", CultureInfo.InvariantCulture)))}. " +
                 "The running binary is likely older than the database, or a migration folder was deleted. " +
                 "Deploy a binary whose source includes these ordinals, or set MigrationOptions.AllowOrphanedHistory to proceed.")
 {
