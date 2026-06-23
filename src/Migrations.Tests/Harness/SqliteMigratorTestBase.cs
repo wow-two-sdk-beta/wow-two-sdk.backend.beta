@@ -1,10 +1,12 @@
 using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
+using WoW.Two.Sdk.Backend.Beta.Testing.Data.Migrations;
 
 namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Harness;
 
 /// <summary>
 /// Base for SQLite migrator tests — owns a throwaway temp DB file and a fresh <see cref="MigrationsWorkspace"/>,
 /// both deleted on dispose. No shared fixture: SQLite is in-process, so every test gets its own isolated file.
+/// The migrator harness + workspace come from the SDK Testing.Data package (the SDK dogfoods its own extraction).
 /// </summary>
 public abstract class SqliteMigratorTestBase : IAsyncLifetime
 {
@@ -18,8 +20,8 @@ public abstract class SqliteMigratorTestBase : IAsyncLifetime
     protected string ConnectionString => $"Data Source={_databasePath};Pooling=False";
 
     /// <summary>Builds a migrator over this test's workspace + DB file.</summary>
-    protected SqliteMigrator CreateMigrator(Action<MigrationOptions>? configure = null) =>
-        SqliteMigrator.Create(ConnectionString, Workspace.Root, configure);
+    protected MigratorHarness CreateMigrator(Action<MigrationOptions>? configure = null) =>
+        MigratorHarness.CreateSqlite(ConnectionString, Workspace.Root, configure);
 
     /// <inheritdoc />
     public Task InitializeAsync()

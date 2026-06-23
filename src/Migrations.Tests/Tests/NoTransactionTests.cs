@@ -30,7 +30,7 @@ public sealed class NoTransactionTests : SqliteMigratorTestBase
         applied.Should().BeEquivalentTo(["001-baseline", "002-bare-index"]);
 
         // The index exists and the migration is recorded.
-        (await migrator.IndexExistsAsync("ix_t1_name")).Should().BeTrue();
+        (await migrator.HasIndexAsync("ix_t1_name")).Should().BeTrue();
         var history = await migrator.ReadHistoryAsync();
         history.Select(r => r.Ordinal).Should().Equal(1, 2);
 

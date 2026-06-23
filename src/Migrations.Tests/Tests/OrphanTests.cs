@@ -61,7 +61,7 @@ public sealed class OrphanTests : SqliteMigratorTestBase
         var applied = await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None);
 
         applied.Should().Contain("003-third");
-        (await migrator.TableExistsAsync("t3")).Should().BeTrue();
+        (await migrator.HasTableAsync("t3")).Should().BeTrue();
         // Orphan still reported in status, but it no longer blocks apply.
         (await migrator.Runner.GetStatusAsync(CancellationToken.None)).Orphaned.Should().Contain(2);
     }

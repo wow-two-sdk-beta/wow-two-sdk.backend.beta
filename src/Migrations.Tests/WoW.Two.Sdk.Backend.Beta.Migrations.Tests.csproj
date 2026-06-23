@@ -37,6 +37,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../WoW.Two.Sdk.Backend.Beta.csproj" />
+    <!-- Dogfood: the SDK's own migrator suite consumes the extracted Testing.Data harness (MigratorHarness, MigrationsWorkspace). -->
+    <ProjectReference Include="../Testing.Data/WoW.Two.Sdk.Backend.Beta.Testing.Data.csproj" />
   </ItemGroup>
 
   <ItemGroup>

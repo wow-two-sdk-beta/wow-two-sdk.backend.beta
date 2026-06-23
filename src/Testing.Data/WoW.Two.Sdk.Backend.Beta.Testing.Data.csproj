@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    TESTING.DATA companion (beta-forever) — data-tier test helpers.
+
+    The data-tier test helpers that the dependency-light base Testing package deliberately CANNOT hold:
+    the bespoke-migrator harness, the drop-schema migrator fixture, the EF provider-swap, and the no-op
+    migrator wiring. These need the CORE mono-lib (migrator engine + connection factories) and EF Core,
+    so they live here — keeping base Testing free of a core/EF dependency (mirrors the Data.Abstractions
+    / core / migrator-CLI split the SDK already uses for this exact boundary).
+
+    Reference from test projects only. Matches the mono-lib's FrameworkReference so Microsoft.Extensions.*
+    and IServiceCollection keep ONE type identity across base Testing + core.
+  -->
+
+  <PropertyGroup>
+    <!-- Published ID uses the OWNED WoW2.* reserved prefix. Assembly + namespaces remain WoW.Two.*. -->
+    <PackageId>WoW2.Sdk.Backend.Beta.Testing.Data</PackageId>
+    <Description>WoW Two backend SDK data-tier test helpers (beta-forever) — bespoke-migrator harness, drop-schema migrator fixture, EF provider-swap, and no-op migrator wiring. References core + EF; reference from test projects only.</Description>
+    <PackageTags>wow-two; backend; beta; sdk; testing; migrations; ef; postgres; xunit</PackageTags>
+
+    <!-- Test-HELPER library (not a test SUITE): references xunit but ships no runner. Tell `dotnet test` to skip it. -->
+    <IsTestProject>false</IsTestProject>
+
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/obj/**;**/bin/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!-- Match the mono-lib's shared framework so Microsoft.Extensions.* + IServiceCollection keep one type identity. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Base test helpers: IAsyncTestFixture, ContainerFixtureBase. -->
+    <ProjectReference Include="../Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj" />
+    <!-- Core: the bespoke migrator engine, the connection factories, and EF Core. -->
+    <ProjectReference Include="../WoW.Two.Sdk.Backend.Beta.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+
+</Project>

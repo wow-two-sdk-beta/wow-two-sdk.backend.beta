@@ -1,15 +1,7 @@
-namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Harness;
+namespace WoW.Two.Sdk.Backend.Beta.Testing.Data.Migrations;
 
-/// <summary>
-/// A throwaway on-disk migrations root for one test — the <c>{root}/NNN-name/{Apply,Rollback}.sql</c> layout the
-/// filesystem migration source reads. Created under the OS temp dir and deleted on <see cref="Dispose"/>.
-/// </summary>
-/// <remarks>
-/// Mirrors how a real product ships migrations on disk, but every folder is written by the test so the SQL is
-/// trivial (e.g. <c>create table t1(id int primary key)</c>). The source REQUIRES a Rollback.sql in every folder
-/// (it throws otherwise), so <see cref="Write"/> always writes both files; pass an empty rollback only when the
-/// test never rolls that migration back.
-/// </remarks>
+/// <summary>A throwaway on-disk migrations root for one test (the <c>{root}/NNN-name/{Apply,Rollback}.sql</c> layout the filesystem source reads), under the OS temp dir and deleted on dispose.</summary>
+/// <remarks>The source requires a Rollback.sql in every folder, so <see cref="Write"/> always writes both; pass an empty rollback when a migration is never rolled back in the test.</remarks>
 public sealed class MigrationsWorkspace : IDisposable
 {
     private const string ApplyFileName = "Apply.sql";
@@ -21,7 +13,7 @@ public sealed class MigrationsWorkspace : IDisposable
     /// <summary>Creates a fresh, empty migrations root under the OS temp directory.</summary>
     public MigrationsWorkspace()
     {
-        Root = Path.Combine(Path.GetTempPath(), "wow2-mig-sqlite-tests", Guid.NewGuid().ToString("N"));
+        Root = Path.Combine(Path.GetTempPath(), "wow2-migrations-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Root);
     }
 
@@ -31,19 +23,35 @@ public sealed class MigrationsWorkspace : IDisposable
     /// <param name="rollbackSql">The Rollback script body (every folder must ship one).</param>
     public void Write(string folder, string applySql, string rollbackSql)
     {
+        ArgumentException.ThrowIfNullOrEmpty(folder);
+        ArgumentNullException.ThrowIfNull(applySql);
+        ArgumentNullException.ThrowIfNull(rollbackSql);
+
         var dir = Path.Combine(Root, folder);
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, ApplyFileName), applySql);
         File.WriteAllText(Path.Combine(dir, RollbackFileName), rollbackSql);
     }
 
-    /// <summary>Overwrites just the Apply script of an existing folder — used to simulate drift on disk.</summary>
-    public void OverwriteApply(string folder, string applySql) =>
-        File.WriteAllText(Path.Combine(Root, folder, ApplyFileName), applySql);
+    /// <summary>Overwrites just the Apply script of an existing folder to simulate drift on disk.</summary>
+    /// <param name="folder">The existing <c>NNN-name</c> folder to mutate.</param>
+    /// <param name="applySql">The replacement Apply script body.</param>
+    public void OverwriteApply(string folder, string applySql)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(folder);
+        ArgumentNullException.ThrowIfNull(applySql);
 
-    /// <summary>Deletes a migration folder from the source — used to simulate an orphaned history row.</summary>
-    public void DeleteFolder(string folder) =>
+        File.WriteAllText(Path.Combine(Root, folder, ApplyFileName), applySql);
+    }
+
+    /// <summary>Deletes a migration folder from the source to simulate an orphaned history row.</summary>
+    /// <param name="folder">The <c>NNN-name</c> folder to remove.</param>
+    public void DeleteFolder(string folder)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(folder);
+
         Directory.Delete(Path.Combine(Root, folder), recursive: true);
+    }
 
     /// <inheritdoc />
     public void Dispose()

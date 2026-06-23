@@ -36,8 +36,8 @@ public sealed class ConcurrencyTests : SqliteMigratorTestBase
             tb.ContinueWith(static _ => { }, TaskScheduler.Default));
 
         // Each migration applied exactly once: both tables exist, history has no duplicate ordinals.
-        (await a.TableExistsAsync("t1")).Should().BeTrue();
-        (await a.TableExistsAsync("t2")).Should().BeTrue();
+        (await a.HasTableAsync("t1")).Should().BeTrue();
+        (await a.HasTableAsync("t2")).Should().BeTrue();
         var history = await a.ReadHistoryAsync();
         history.Select(h => h.Ordinal).Should().Equal(1, 2);
     }

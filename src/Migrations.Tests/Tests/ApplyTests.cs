@@ -23,8 +23,8 @@ public sealed class ApplyTests : SqliteMigratorTestBase
         applied.Should().BeEquivalentTo(["001-baseline", "002-second"]);
 
         // The tables they declare now exist.
-        (await migrator.TableExistsAsync("t1")).Should().BeTrue();
-        (await migrator.TableExistsAsync("t2")).Should().BeTrue();
+        (await migrator.HasTableAsync("t1")).Should().BeTrue();
+        (await migrator.HasTableAsync("t2")).Should().BeTrue();
 
         // migration_history has one row per migration, stamped with appliedBy (reading applied_at exercises the
         // SQLite DateTimeOffset type handler the dialect registers).

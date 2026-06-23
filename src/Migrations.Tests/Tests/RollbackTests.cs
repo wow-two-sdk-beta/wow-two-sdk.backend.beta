@@ -26,8 +26,8 @@ public sealed class RollbackTests : SqliteMigratorTestBase
         await migrator.Runner.RollbackAsync(targetOrdinal: null, CancellationToken.None);
 
         // 002's Rollback.sql ran (t2 dropped) and its history row is gone; 001 untouched.
-        (await migrator.TableExistsAsync("t2")).Should().BeFalse();
-        (await migrator.TableExistsAsync("t1")).Should().BeTrue();
+        (await migrator.HasTableAsync("t2")).Should().BeFalse();
+        (await migrator.HasTableAsync("t1")).Should().BeTrue();
         (await migrator.ReadHistoryAsync()).Select(h => h.Ordinal).Should().Equal(1);
 
         // 002 is pending again — rollback returned it to the source-but-not-applied state.
@@ -50,7 +50,7 @@ public sealed class RollbackTests : SqliteMigratorTestBase
             () => migrator.Runner.RollbackAsync(targetOrdinal: null, CancellationToken.None));
 
         // The disabled rollback was a no-op: the migration is still applied.
-        (await migrator.TableExistsAsync("t1")).Should().BeTrue();
+        (await migrator.HasTableAsync("t1")).Should().BeTrue();
         (await migrator.ReadHistoryAsync()).Select(h => h.Ordinal).Should().Equal(1);
     }
 }

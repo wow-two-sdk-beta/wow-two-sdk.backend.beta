@@ -30,9 +30,9 @@ public sealed class FailureMidBatchTests : SqliteMigratorTestBase
             () => migrator.Runner.ApplyPendingAsync("test", CancellationToken.None));
 
         // #1 committed; #2 rolled back its per-file tx (no table); #3 never ran.
-        (await migrator.TableExistsAsync("t1")).Should().BeTrue();
-        (await migrator.TableExistsAsync("t2")).Should().BeFalse();
-        (await migrator.TableExistsAsync("t3")).Should().BeFalse();
+        (await migrator.HasTableAsync("t1")).Should().BeTrue();
+        (await migrator.HasTableAsync("t2")).Should().BeFalse();
+        (await migrator.HasTableAsync("t3")).Should().BeFalse();
 
         // History records only #1 — #2's row rolled back with its apply, so table state and history agree.
         var history = await migrator.ReadHistoryAsync();
@@ -49,8 +49,8 @@ public sealed class FailureMidBatchTests : SqliteMigratorTestBase
         var applied = await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None);
 
         applied.Should().BeEquivalentTo(["002-broken", "003-third"]);
-        (await migrator.TableExistsAsync("t2")).Should().BeTrue();
-        (await migrator.TableExistsAsync("t3")).Should().BeTrue();
+        (await migrator.HasTableAsync("t2")).Should().BeTrue();
+        (await migrator.HasTableAsync("t3")).Should().BeTrue();
         (await migrator.ReadHistoryAsync()).Select(h => h.Ordinal).Should().Equal(1, 2, 3);
     }
 }

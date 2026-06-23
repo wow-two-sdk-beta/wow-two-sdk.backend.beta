@@ -1,9 +1,9 @@
 # Package registry
 
-*Last updated: 2026-06-10*
+*Last updated: 2026-06-23*
 
 > **Mono-lib note:** since the mono-lib migration these "packages" are subpath areas of the single
-> `WoW2.Sdk.Backend.Beta` NuGet (plus the separate `.Testing` lib). Rows still track per-area status.
+> `WoW2.Sdk.Backend.Beta` NuGet (plus the separate `.Testing` and `.Testing.Data` libs). Rows still track per-area status.
 
 > Lookup table of every NuGet package this repo produces.
 > Status: **stub** = csproj exists, no impl · **scaffold** = registration + minimal API · **shipped** = real wrapper, tested · **planned** = not yet started.
@@ -30,6 +30,7 @@
 | `WoW.Two.Sdk.Backend.Beta.Testing.Containers.Kafka` | `KafkaFixture` | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Testing.Containers.MongoDb` | `MongoDbFixture` | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Testing.Containers.Azurite` | `AzuriteFixture` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Testing.Data` | Data-tier helpers (companion → core + EF): `MigratorHarness` (PG + SQLite), `MigratorPostgresFixture` (drop-schema reset), `MigratorTestBase`, `MigrationsWorkspace`, `MigrationHistoryRow`, `DisableBespokeMigrator()`, `RemoveAllForDbContext`/`RepointDbContext` | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Testing.Containers.Elasticsearch` | Elasticsearch Testcontainers fixture | planned |
 | `WoW.Two.Sdk.Backend.Beta.Testing.Containers.Localstack` | LocalStack (AWS emulator) fixture | planned |
 
