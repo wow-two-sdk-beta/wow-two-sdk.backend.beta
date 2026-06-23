@@ -8,25 +8,18 @@ using Xunit;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Data.EntityFrameworkCore;
 
-/// <summary>A provider-switchable EF test database — a shared Postgres container (Respawn reset) or an in-memory SQLite database — behind one uniform API, selected by <see cref="TestDatabase.Provider"/>.</summary>
-/// <remarks>Subclass per app to supply the model conventions via <see cref="CreateContext"/>; expose the subclass as an xUnit <c>ICollectionFixture</c> and reset per test with <see cref="ResetAsync"/>.</remarks>
+/// <summary>A provider-switchable EF test database — a Postgres container (Respawn reset) or an in-memory SQLite database — behind one uniform API, selected by <see cref="TestSetupOptions"/>.</summary>
+/// <remarks>Subclass per app to supply the model conventions via <see cref="CreateContext"/>; expose the subclass as an xUnit <c>ICollectionFixture</c> and reset per test with <see cref="ResetAsync"/>. Override <see cref="Provider"/> to pin one suite to a specific provider.</remarks>
 /// <typeparam name="TContext">The application <see cref="DbContext"/> under test.</typeparam>
 [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable", Justification = "Teardown runs in IAsyncLifetime.DisposeAsync, which xUnit invokes.")]
 public abstract class RelationalTestDb<TContext> : IAsyncLifetime
     where TContext : DbContext
 {
-    private readonly PostgresFixture? _postgres;
+    private PostgresFixture? _postgres;
     private SqliteConnection? _sqlite;
 
-    /// <summary>Creates the fixture; in Postgres mode it prepares a pinned container (started on <see cref="InitializeAsync"/>).</summary>
-    protected RelationalTestDb()
-    {
-        if (Provider == DatabaseProvider.Postgres)
-            _postgres = new PostgresFixture(new PostgreSqlBuilder().WithImage("postgres:16-alpine").Build());
-    }
-
-    /// <summary>The provider this run uses, from <see cref="TestDatabase.Provider"/>.</summary>
-    public DatabaseProvider Provider => TestDatabase.Provider;
+    /// <summary>The provider this fixture uses; defaults to <see cref="TestSetupOptions.Current"/>. Override to pin a single suite to a specific provider.</summary>
+    public virtual DatabaseProvider Provider => TestSetupOptions.Current.Database;
 
     /// <summary>The connection string of the active test database.</summary>
     public string ConnectionString => Provider == DatabaseProvider.Sqlite
@@ -49,7 +42,7 @@ public abstract class RelationalTestDb<TContext> : IAsyncLifetime
         return CreateContext(builder);
     }
 
-    /// <summary>Starts the database and creates the schema (Postgres: container + Respawn snapshot; SQLite: in-memory connection).</summary>
+    /// <summary>Starts the database and creates the schema (Postgres: pinned container + Respawn snapshot; SQLite: in-memory connection).</summary>
     public async Task InitializeAsync()
     {
         if (Provider == DatabaseProvider.Sqlite)
@@ -60,9 +53,10 @@ public abstract class RelationalTestDb<TContext> : IAsyncLifetime
         }
         else
         {
-            await RequirePostgres().StartAsync().ConfigureAwait(false);
+            _postgres = new PostgresFixture(new PostgreSqlBuilder().WithImage("postgres:16-alpine").Build());
+            await _postgres.StartAsync().ConfigureAwait(false);
             await CreateSchemaAsync().ConfigureAwait(false);
-            await RequirePostgres().InitializeRespawnerAsync().ConfigureAwait(false);
+            await _postgres.InitializeRespawnerAsync().ConfigureAwait(false);
         }
     }
 
@@ -102,5 +96,5 @@ public abstract class RelationalTestDb<TContext> : IAsyncLifetime
 
     private SqliteConnection RequireSqlite() => _sqlite ?? throw new InvalidOperationException("SQLite test database not initialized — call StartAsync first.");
 
-    private PostgresFixture RequirePostgres() => _postgres ?? throw new InvalidOperationException("Postgres test database not initialized.");
+    private PostgresFixture RequirePostgres() => _postgres ?? throw new InvalidOperationException("Postgres test database not initialized — call StartAsync first.");
 }
