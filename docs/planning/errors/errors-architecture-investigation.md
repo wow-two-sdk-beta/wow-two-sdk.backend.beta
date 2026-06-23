@@ -735,11 +735,241 @@ public sealed class AppExceptionHandler(
   "errors":[{ "property":"email","code":"NotEmptyValidator","message":"Email is required." }] }
 ```
 
-> `ValidationExceptionHandler` is edited to also emit `errors:[{property,code,message}]` (from `ValidationError.Failures`) + `code` — closing the dropped-`code` gap. A fallback `UnhandledExceptionHandler` writes a 500 with `code="Unexpected"` and no internal detail in production.
+> **One PD factory, two callers.** A shared `AppError.ToProblemDetails(httpContext, statusMapper, messageResolver)` is used by **both** the controller failure-arm (`.Match`) and the global handler — identical output. It: sets status/`code`/`type`/`detail`; emits `errors[]` when the error is a `ValidationError`/`AggregateError`; **promotes reserved `Metadata` keys to response headers** (`retryAfter`→`Retry-After`, `wwwAuthenticate`→`WWW-Authenticate`); never emits `Origin`. `ValidationExceptionHandler` becomes the **outside-mediator fallback** (mediator path converts validation throws → `Failure`, §3.9).
+> **Framework errors** (route 404/405/415, model-binding 400) have no `AppError` — `CustomizeProblemDetails` **backfills `code` from the status** (404→`NotFound`) so the wire shape stays uniform; binding-400 already carries `errors`. They simply lack `Origin`/`Metadata`.
 
 ---
 
-### 3.8 i18n groundwork (deferred — hooks only)
+### 3.8 Infra failure classification & policy (external vs internal · retry/fallback)
+
+Generalizes Haven's proven AI model (`AiProviderErrorType` + `AiProviderResponse`/`AiCallAttempt` + `AiFailoverClient`) — but **no new result type**: infra returns `Result<T>` carrying a *classified* `AppError`. External/internal/transient is **derived from `AppErrorType`**, not a parallel enum. Two pieces: **classify** (exception → type) and **policy** (type → disposition).
+
+**`src/Foundation/Errors/ErrorPolicy.cs`**
+```csharp
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+
+/// <summary>Represents how a failure kind should be treated — origin, retryability, and fallback.</summary>
+public sealed record ErrorDisposition
+{
+    /// <summary>Gets a value indicating whether the failure originates outside our code (dependency/network), not an internal bug.</summary>
+    public required bool IsExternal { get; init; }
+
+    /// <summary>Gets a value indicating whether the failure may resolve on retry.</summary>
+    public required bool IsTransient { get; init; }
+
+    /// <summary>Gets a value indicating whether a fallback path is worth attempting.</summary>
+    public required bool AllowsFallback { get; init; }
+}
+
+/// <summary>Provides the disposition for each <see cref="AppErrorType"/>; the retry/fallback/log-level source of truth.</summary>
+public static class ErrorPolicy
+{
+    private static readonly ErrorDisposition Transient = new() { IsExternal = true, IsTransient = true, AllowsFallback = true };
+    private static readonly ErrorDisposition ExternalPermanent = new() { IsExternal = true, IsTransient = false, AllowsFallback = false };
+    private static readonly ErrorDisposition Internal = new() { IsExternal = false, IsTransient = false, AllowsFallback = false };
+
+    /// <summary>Gets the disposition for <paramref name="type"/>.</summary>
+    /// <param name="type">The failure kind.</param>
+    public static ErrorDisposition For(AppErrorType type)
+    {
+        return type switch
+        {
+            AppErrorType.DbTimeout or AppErrorType.OperationTimeout
+                or AppErrorType.ExternalUnavailable or AppErrorType.TooManyRequests => Transient,
+            AppErrorType.ExternalUnauthorized => ExternalPermanent,
+            _ => Internal,
+        };
+    }
+}
+
+/// <summary>Defines the contract for classifying a caught exception into an <see cref="AppErrorType"/>.</summary>
+public interface IExceptionClassifier
+{
+    /// <summary>Classifies <paramref name="exception"/>; returns <c>null</c> when not recognized.</summary>
+    /// <param name="exception">The caught exception.</param>
+    AppErrorType? Classify(Exception exception);
+}
+```
+
+**`src/Data/Errors/NpgsqlExceptionClassifier.cs`** — source-specific classifier (lives in `Data` because it references Npgsql/EF; apps/SDK compose classifiers):
+```csharp
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+
+namespace WoW.Two.Sdk.Backend.Beta.Data.Errors;
+
+/// <summary>Classifies Npgsql and EF Core exceptions into <see cref="AppErrorType"/>.</summary>
+public sealed class NpgsqlExceptionClassifier : IExceptionClassifier
+{
+    /// <inheritdoc/>
+    public AppErrorType? Classify(Exception exception)
+    {
+        return exception switch
+        {
+            TimeoutException => AppErrorType.DbTimeout,
+            DbUpdateConcurrencyException => AppErrorType.Conflict,
+            PostgresException { SqlState: "23505" } => AppErrorType.Conflict,                  // unique violation
+            PostgresException { SqlState: "57P03" or "53300" } => AppErrorType.ExternalUnavailable, // shutting down / too many connections
+            NpgsqlException => AppErrorType.ExternalUnavailable,                               // connection-level
+            _ => null,
+        };
+    }
+}
+```
+
+`Attempt` gains a classifier overload; **both overloads rethrow `OperationCanceledException`** (cancellation is never a failure). Wire `Message` is a safe per-type default (`ErrorMessages.For(type)`), never `ex.Message` (which rides `causeChain`, log-only):
+```csharp
+/// <summary>Invokes <paramref name="operation"/>, classifying any thrown exception via <paramref name="classifier"/>.</summary>
+public static Result<T> Attempt<T>(this Func<T> operation, IExceptionClassifier classifier) where T : notnull
+{
+    ArgumentNullException.ThrowIfNull(operation);
+    ArgumentNullException.ThrowIfNull(classifier);
+
+    try
+    {
+        return Result<T>.Ok(operation());
+    }
+    catch (OperationCanceledException)
+    {
+        throw;
+    }
+    catch (AppException appException)
+    {
+        return Result<T>.Fail(appException.Error);
+    }
+    catch (Exception exception)
+    {
+        var type = classifier.Classify(exception) ?? AppErrorType.Unexpected;
+
+        return Result<T>.Fail(AppError.FromException(type, ErrorMessages.For(type), exception));
+    }
+}
+```
+
+> Retry/fallback stay on **Polly** (`AddStandardResilienceHandler`) — its predicate consults `ErrorPolicy`/the classifier (`IsTransient` → retry; `AllowsFallback` → failover, à la `AiFailoverClient`).
+
+---
+
+### 3.9 Mediator integration — never throw (terminal behavior)
+
+The mediator **always returns `AppResult`** for `AppResult`-returning requests; an exception never escapes `Send`. A terminal `ExceptionToResultBehavior` (registered outermost) converts throws → `Failure`; only **non-mediator** throws reach the ASP.NET global handler.
+
+**`src/Mediator/ExceptionHandling/ExceptionToResultBehavior.cs`**
+```csharp
+using Microsoft.Extensions.Logging;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+
+namespace WoW.Two.Sdk.Backend.Beta.Mediator.ExceptionHandling;
+
+/// <summary>Converts an exception escaping a handler into an <c>AppResult.Failure</c> so the mediator never throws for result-returning requests.</summary>
+/// <typeparam name="TRequest">The request type.</typeparam>
+/// <typeparam name="TResponse">The response type (an <c>AppResult&lt;TSuccess&gt;</c> for the conversion to apply).</typeparam>
+public sealed class ExceptionToResultBehavior<TRequest, TResponse>(
+    IExceptionClassifier classifier,
+    AppErrorObserver observer) : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : notnull
+{
+    /// <inheritdoc/>
+    public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await next().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AppException appException)
+        {
+            if (AppResultFactory.TryCreateFailure<TResponse>(appException.Error, out var failure))
+            {
+                return failure;
+            }
+
+            throw;
+        }
+        catch (Exception exception)
+        {
+            var type = classifier.Classify(exception) ?? AppErrorType.Unexpected;
+            var error = AppError.FromException(type, ErrorMessages.For(type), exception);
+
+            observer.Record(error, exception);
+
+            if (AppResultFactory.TryCreateFailure<TResponse>(error, out var failure))
+            {
+                return failure;
+            }
+
+            throw;
+        }
+    }
+}
+```
+
+- `AppResultFactory.TryCreateFailure<TResponse>` = cached reflection: if `TResponse` is `AppResult<TSuccess>`, builds its `Failure`; else `false` → the original exception rethrows to the global handler.
+- **Validation** flows through: `ValidationBehavior` throws `ValidationException` → caught here → `Failure(ValidationError)`. Controllers always `.Match`; the failure-arm renders ProblemDetails via the shared factory (§3.7), emitting `errors[]`.
+
+---
+
+### 3.10 Logging & observability
+
+Logging abstraction is already correct — consumers use `ILogger<T>`, Serilog is the provider (`UseSerilogConventional` + enrichers). **No abstraction change.** Add error logging + metrics + span status, emitted **once** at the seam (terminal behavior + global handler) via a shared `AppErrorObserver`.
+
+**`src/Observability/Errors/AppErrorObserver.cs`**
+```csharp
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using Microsoft.Extensions.Logging;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+
+namespace WoW.Two.Sdk.Backend.Beta.Observability.Errors;
+
+/// <summary>Records an <see cref="AppError"/> to logs, metrics, and the active trace span — the single error-observability seam.</summary>
+public sealed partial class AppErrorObserver(ILogger<AppErrorObserver> logger)
+{
+    private static readonly Meter Meter = new("WoW.Two.Sdk.Errors");
+    private static readonly Counter<long> ErrorsTotal = Meter.CreateCounter<long>("errors_total");
+
+    /// <summary>Records <paramref name="error"/> (and its optional <paramref name="exception"/>) across logs, metrics, and the span.</summary>
+    /// <param name="error">The error to record.</param>
+    /// <param name="exception">The originating exception, when present.</param>
+    public void Record(AppError error, Exception? exception = null)
+    {
+        ErrorsTotal.Add(1, new KeyValuePair<string, object?>("type", error.Type.ToString()));
+
+        var activity = Activity.Current;
+        activity?.SetStatus(ActivityStatusCode.Error, error.Message);
+        if (exception is not null)
+        {
+            activity?.AddException(exception);
+        }
+
+        if (ErrorPolicy.For(error.Type).IsExternal)
+        {
+            LogExternal(error.Type.ToString(), error.Message, exception);
+        }
+        else
+        {
+            LogInternal(error.Type.ToString(), error.Message, exception);
+        }
+    }
+
+    [LoggerMessage(EventId = 2001, Level = LogLevel.Warning, Message = "External failure {Type}: {Message}")]
+    private partial void LogExternal(string type, string message, Exception? exception);
+
+    [LoggerMessage(EventId = 2002, Level = LogLevel.Error, Message = "Internal failure {Type}: {Message}")]
+    private partial void LogInternal(string type, string message, Exception? exception);
+}
+```
+
+- **Level by policy** (external→`Warning`, internal/`Unexpected`→`Error`; `Validation`/`NotFound` are non-external but low-severity — a finer policy table can split them later).
+- **Correlation:** push `code` + `traceId` (`Activity.Current?.TraceId`) into `LogContext` so every error log links to its ProblemDetails (today `traceId` is PD-only). Exporters (OTLP/Prometheus/Azure Monitor) already wired — `errors_total` flows out; feeds the report/priority parked idea.
+
+---
+
+### 3.11 i18n groundwork (deferred — hooks only)
 
 `IErrorMessageResolver` is the single seam for description **and** translation (a separate "description mapper" is redundant). SDK default = passthrough to `Message`. Always emit `code` so a future `IStringLocalizer`-backed impl (keyed on `Type` + `Metadata` args) translates with no call-site change. Fine-grained messages later → add an optional `MessageKey`.
 
@@ -763,7 +993,7 @@ public interface IErrorMessageResolver
 
 ---
 
-### 3.9 Frontend display (later layer)
+### 3.12 Frontend display (later layer)
 
 | Failure | Surface |
 |---|---|
@@ -778,24 +1008,24 @@ Extend `ApiError` to parse `code` + `errors[]`; standardize toast-for-errors; ad
 
 ---
 
-### 3.10 Cross-cutting & gaps (next to design)
+### 3.13 Cross-cutting & gaps (status)
 
-Concerns surfaced but not yet designed. **Cancellation is a correctness lock**; infra-translation + logging/observability are the next real chunk (that's where `DbTimeout` etc. are actually born).
+Most are now designed (refs); the rest are explicit defers.
 
-| Gap | Why it matters | Pri | Lean |
-|---|---|---|---|
-| **Cancellation** | `OperationCanceledException` must **not** become `Unexpected`/500 (cooperative cancel) | **HIGH** | `Attempt` + global handler **rethrow** OCE; never wrap (optional `Canceled` kind → 499) |
-| **Infra → `AppError` translation** | who *produces* `DbTimeout`/`Conflict`/`ExternalUnavailable`? Npgsql/EF/HttpClient throw raw | **HIGH** | data/http-layer translator: `DbUpdateConcurrencyException`→`Conflict`, timeouts→`DbTimeout`, 5xx→`ExternalUnavailable` |
-| **Logging policy** | level per kind + structured `code`/`Origin`/`causeChain` | **HIGH** | global handler logs; `Validation`/`NotFound`→Debug, `Unexpected`→Error |
-| **Observability** | error counter by `Type`; span status=Error + record-exception | MED-HIGH | handler sets `Activity` status + `errors_total{type}` (feeds the report/priority parked idea) |
-| **Response headers** | `Retry-After` (429/503), `WWW-Authenticate` (401) | MED | handler maps known `Metadata` keys → headers, not only PD extensions |
-| **Serialization** | `AppError` over queues/cache (messaging); `Origin` must never serialize | MED | `[JsonIgnore] Origin`; Metadata wire policy |
-| **Equality** | record `==` includes `Origin`+`Metadata` (dict = ref-equality) → two "same" errors unequal | MED | compare by `Type` (override equality / test helper); don't rely on `==` |
-| **Mediator error behavior** | does a behavior convert handler throws → `Failure`, or only validation throws? | MED | handlers return `Result`; a behavior catches stray `AppException`→`Failure` + logs unexpected |
-| **Multi-error** | batch/aggregate — `Result` carries one `AppError` | MED | `D-multi-error` (open) |
-| **Result combinators** | `Map`/`Bind`/`Tap`/`Ensure`/`Combine` (+async) | LOW | LATER (railway) |
-| **Success-side context** | what rides `IAppSuccessContext` + how surfaced | LOW | success path, spec later |
-| **Framework errors** | route-404/405/binding-400 lack our `code` | LOW | accept, or enrich convention |
+| Gap | Status |
+|---|---|
+| Cancellation | ✅ §3.4 / §3.8 / §3.9 — `OperationCanceledException` rethrown everywhere |
+| Infra → `AppError` translation | ✅ §3.8 — `IExceptionClassifier` + `NpgsqlExceptionClassifier` |
+| Logging policy | ✅ §3.10 — `AppErrorObserver`, level by `ErrorPolicy` |
+| Observability | ✅ §3.10 — `errors_total` Meter + span status / `AddException` |
+| Response headers | ✅ §3.7 — reserved `Metadata` keys → headers in the PD factory |
+| Serialization | ✅ §3.1 — `[JsonIgnore] Origin`; `Metadata` log-only by default |
+| Mediator error behavior | ✅ §3.9 — `ExceptionToResultBehavior` (never throw) |
+| Framework errors | ✅ §3.7 — `CustomizeProblemDetails` backfills `code` from status |
+| Multi-error | ✅ pattern (§3.1) — `AggregateError : AppError`, carrier stays single (`D-multi-error`) |
+| Equality | ◻ open `D-equality` — rec skip custom `==` + `error.Is(AppErrorType)` helper (record `==` is a footgun) |
+| Result combinators | ⏳ LATER — minimal `Map`/`Bind`/`Tap`/`Ensure` when a handler needs it |
+| Success-side context | ⏳ hook only (§3.3) — apps define; spec when used |
 
 ---
 
@@ -835,13 +1065,18 @@ Concerns surfaced but not yet designed. **Cancellation is a correctness lock**; 
 | auth → 403 (throw `AppException`) | 500 bug | fix | NEXT |
 | app error catalogs (`OrderErrors.*`) | inline `new(...)` | convention + ref impl (drydock) | NEXT |
 | FE `code`/`errors[]` parse + per-field map | ❌ | new | NEXT |
+| `IExceptionClassifier` (+ `NpgsqlExceptionClassifier`) · `ErrorPolicy`/`ErrorDisposition` | raw infra throws | new (classify + policy) | NEXT |
+| `ExceptionToResultBehavior` (mediator never-throw) | only validation throws | new | NEXT |
+| `AppErrorObserver` (`errors_total` Meter + span status + level-by-policy log) | none | new | NEXT |
+| shared `AppError.ToProblemDetails` factory (+ headers + framework backfill) | scattered | new | NEXT |
+| `error.Is(AppErrorType)` helper | ❌ | new (small) | NOW |
 | conventions (3 docs) rewrite | contradictory | merge to final model | NEXT |
 | **Deletes** | `DomainError`, `ISuccessResult`/`IFailureResult`, `ValidationResult` | remove | NEXT |
 | **Consumer migration** (apps) | per-app `FailureCategory`/`I{App}Failure`/`ApiResults` | delete; controllers use SDK mapper; handlers → `AppResult<TSuccess>`+`AppError` | NEXT |
 | `IErrorMessageResolver` + FE label-map (i18n) | ❌ | hook NOW, fill | LATER |
 | FE toast-for-errors std + `ErrorBoundary`/page | ad-hoc | standardize | LATER |
 | `MessageKey` (fine-grained i18n) | ❌ | add when needed | LATER |
-| multi-error aggregation on `Result` | single | decide | LATER |
+| `AggregateError : AppError` (multi-error subtype) | single only | new when needed | LATER |
 | error-code analyzer (format/uniqueness) | ❌ | new | LATER |
 | `FieldError` → `ValidationFailure` rename | `FieldError` | rename | LATER |
 
@@ -850,7 +1085,11 @@ Concerns surfaced but not yet designed. **Cancellation is a correctness lock**; 
 ## 6. Open decisions
 
 - **D-validation-result:** retire the standalone `ValidationResult` DU (fold into `Result`/`ValidationError?`) — *rec: yes*.
-- **D-multi-error:** `Result`/`AppError` aggregate `IReadOnlyList<AppError>` or single — *rec: single now*.
+- **D-multi-error (resolved):** carrier stays single `AppError`; multiplicity via an `AggregateError : AppError { IReadOnlyList<AppError> Errors }` subtype (mirrors `ValidationError`), added when first needed.
+- **D-cancellation (resolved):** `OperationCanceledException` is rethrown by `Attempt`, the mediator behavior, and the global handler — never wrapped.
+- **D-mediator (resolved):** the mediator never throws for `AppResult` requests — `ExceptionToResultBehavior` converts throws → `Failure`; only non-mediator throws reach the ASP.NET global handler (§3.9).
+- **D-classify-policy (resolved):** one `AppErrorType` + `IExceptionClassifier` (exception→type) + `ErrorPolicy` (type→disposition); external/transient is derived, not a parallel enum (§3.8).
+- **D-equality (open):** skip custom `AppError` equality + add `error.Is(AppErrorType)`, vs override `==` to `Type`-only — *rec: skip + helper*.
 - **D-type-uri:** ProblemDetails `type` = opaque URN (`urn:wow-two:error:<type>`) vs docs URL — *rec: URN now, URL when docs exist*.
 - **D-base-enum-extent:** confirm the `AppErrorType` value set in §3.1 (esp. which technical kinds ship in v1).
 - **D-conventions-distill:** on approval, rewrite `result-pattern.md` + `validation.md` + `problem-details.md` to this model + add a `targets.md` entry.
