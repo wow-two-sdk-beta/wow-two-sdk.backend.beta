@@ -185,6 +185,16 @@
     <PackageReference Include="Destructurama.Attributed" />
   </ItemGroup>
 
+  <!-- Codes — QR / barcode / SVG raster engine (src/Codes/). Svg.Skia drags SkiaSharp 3.119.2 transitively;
+       SkiaSharp.NativeAssets.Linux ships libSkiaSharp.so into any Linux publish (Docker also needs libfontconfig1).
+       Accepted into the core mono-lib's closure per v0.6 decision (smart-qr extraction). -->
+  <ItemGroup Label="Codes — QR / barcode / SVG raster">
+    <PackageReference Include="QRCoder" />
+    <PackageReference Include="ZXing.Net" />
+    <PackageReference Include="Svg.Skia" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+  </ItemGroup>
+
   <ItemGroup Label="Health checks">
     <PackageReference Include="AspNetCore.HealthChecks.Aws.S3" />
     <PackageReference Include="AspNetCore.HealthChecks.Aws.Sqs" />

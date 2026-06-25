@@ -14,7 +14,9 @@
     <!-- Beta-forever: keep perf/style/design analyzer suggestions + NuGet advisories visible (warnings) but non-blocking.
          Correctness analyzers stay as errors. NU1510 = framework-provided pkg not pruned (net10); NU1902/1903 =
          transitive-dep vulnerability advisories (revisit: Snappier is HIGH). Tighten per-area as the surface matures. -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);CA1848;CA1873;CA1305;CA1000;CA1716;NU1510;NU1902;NU1903</WarningsNotAsErrors>
+    <!-- CA1822 (mark member static) + CA1720 (identifier contains type name, e.g. EmojiSpec.Char): design/perf, not
+         correctness. Renaming would churn the extracted Codes engine + its serialized StyleJson contract — keep non-blocking. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);CA1848;CA1873;CA1305;CA1000;CA1716;CA1822;CA1720;NU1510;NU1902;NU1903</WarningsNotAsErrors>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
