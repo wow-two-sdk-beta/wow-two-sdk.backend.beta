@@ -515,7 +515,7 @@ public sealed class SvgRenderer
         if (gradient.Type == GradientType.Radial)
             sb.Append("<radialGradient id=\"").Append(ForegroundGradientId)
                 .Append("\" gradientUnits=\"userSpaceOnUse\" cx=\"").Append(Num(mid))
-                .Append("\" cy=\"").Append(Num(mid)).Append("\" r=\"").Append(Num(mid)).Append("\">");
+                .Append("\" cy=\"").Append(Num(mid)).Append("\" r=\"").Append(Num(mid * Math.Clamp(gradient.Radius, 0.0, 1.0))).Append("\">");
         else
             sb.Append("<linearGradient id=\"").Append(ForegroundGradientId)
                 .Append("\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"0\" x2=\"").Append(size)

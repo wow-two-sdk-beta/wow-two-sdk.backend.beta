@@ -11,4 +11,7 @@ public sealed record GradientSpec
 
     /// <summary>Gets the linear-gradient angle in degrees (0 = left→right, 90 = top→bottom); ignored for <see cref="GradientType.Radial"/>.</summary>
     public required double Angle { get; init; }
+
+    /// <summary>Gets the radial-gradient extent as a fraction (0..1) of the canvas half-size — smaller pulls the end color toward the center (tighter); ignored for <see cref="GradientType.Linear"/>. Defaults to <c>1.0</c> (full extent).</summary>
+    public double Radius { get; init; } = 1.0;
 }
