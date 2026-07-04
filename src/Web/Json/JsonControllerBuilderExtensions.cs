@@ -8,12 +8,12 @@ namespace WoW.Two.Sdk.Backend.Beta.Web.Json;
 /// <summary>Controller JSON presets — string enums and the SDK <see cref="JsonOptionsPresets.Default"/> options; <c>AddApiDefaults</c> registers no controllers, so a controller host opts in.</summary>
 public static class JsonControllerBuilderExtensions
 {
-    /// <summary>Serializes enums as their string labels by adding a <see cref="JsonStringEnumConverter"/> to the controller JSON options, leaving every other option untouched.</summary>
+    /// <summary>Serializes enums as their <b>camelCase</b> string labels by adding a <see cref="JsonStringEnumConverter"/> (with <see cref="JsonNamingPolicy.CamelCase"/>) to the controller JSON options, leaving every other option untouched. This is the wire enum contract — camelCase strings, never PascalCase names or integer ordinals.</summary>
     /// <param name="builder">The MVC builder to configure.</param>
     public static IMvcBuilder AddJsonStringEnums(this IMvcBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        builder.AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+        builder.AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
         return builder;
     }
 
@@ -44,6 +44,6 @@ public static class JsonControllerBuilderExtensions
         foreach (var converter in preset.Converters)
             target.Converters.Add(converter);
 
-        target.Converters.Add(new JsonStringEnumConverter());
+        target.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
     }
 }
