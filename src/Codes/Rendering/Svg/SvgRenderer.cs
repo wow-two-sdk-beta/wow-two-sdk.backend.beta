@@ -506,27 +506,33 @@ public sealed class SvgRenderer
             .Append(EscapeAttr(emoji.Char)).Append("</text>\n");
     }
 
-    /// <summary>Emits the foreground gradient <c>&lt;defs&gt;</c> in user space spanning the full canvas — linear rotated by <see cref="GradientSpec.Angle"/> about the center, or radial from the center — referenced as <c>url(#sqr-fg)</c> by the data + eye fills.</summary>
+    /// <summary>Emits the foreground gradient <c>&lt;defs&gt;</c> in user space spanning the full canvas — a <see cref="RadialGradientSpec"/> from the center, or a <see cref="LinearGradientSpec"/> rotated by its angle about the center — referenced as <c>url(#sqr-fg)</c> by the data + eye fills.</summary>
     private static void EmitForegroundGradientDefs(StringBuilder sb, GradientSpec gradient, int size)
     {
         var mid = size / 2.0;
+        var radial = gradient is RadialGradientSpec;
         sb.Append("<defs>");
 
-        if (gradient.Type == GradientType.Radial)
-            sb.Append("<radialGradient id=\"").Append(ForegroundGradientId)
-                .Append("\" gradientUnits=\"userSpaceOnUse\" cx=\"").Append(Num(mid))
-                .Append("\" cy=\"").Append(Num(mid)).Append("\" r=\"").Append(Num(mid * Math.Clamp(gradient.Radius, 0.0, 1.0))).Append("\">");
-        else
-            sb.Append("<linearGradient id=\"").Append(ForegroundGradientId)
-                .Append("\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"0\" x2=\"").Append(size)
-                .Append("\" y2=\"0\" gradientTransform=\"rotate(").Append(Num(gradient.Angle))
-                .Append(' ').Append(Num(mid)).Append(' ').Append(Num(mid)).Append(")\">");
+        switch (gradient)
+        {
+            case RadialGradientSpec r:
+                sb.Append("<radialGradient id=\"").Append(ForegroundGradientId)
+                    .Append("\" gradientUnits=\"userSpaceOnUse\" cx=\"").Append(Num(mid))
+                    .Append("\" cy=\"").Append(Num(mid)).Append("\" r=\"").Append(Num(mid * Math.Clamp(r.Radius, 0.0, 1.0))).Append("\">");
+                break;
+            case LinearGradientSpec l:
+                sb.Append("<linearGradient id=\"").Append(ForegroundGradientId)
+                    .Append("\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"0\" x2=\"").Append(size)
+                    .Append("\" y2=\"0\" gradientTransform=\"rotate(").Append(Num(l.Angle))
+                    .Append(' ').Append(Num(mid)).Append(' ').Append(Num(mid)).Append(")\">");
+                break;
+        }
 
         foreach (var stop in gradient.Stops)
             sb.Append("<stop offset=\"").Append(Num(Math.Clamp(stop.Offset, 0.0, 1.0)))
                 .Append("\" stop-color=\"").Append(stop.Color).Append("\"/>");
 
-        sb.Append(gradient.Type == GradientType.Radial ? "</radialGradient>" : "</linearGradient>")
+        sb.Append(radial ? "</radialGradient>" : "</linearGradient>")
             .Append("</defs>\n");
     }
 
