@@ -282,6 +282,13 @@
     <PackageVersion Include="Verify.Xunit" Version="28.5.0" />
     <PackageVersion Include="Verify.AspNetCore" Version="3.0.0" />
     <PackageVersion Include="Verify.Http" Version="6.4.0" />
+    <!-- Transitive-pins (CentralPackageTransitivePinningEnabled) over test-only deps carrying critical advisories
+         (NU1904) that block the audit-gated publish — patched, minimal bumps:
+           · Scriban.Signed 5.5.0 → 7.2.5 (GHSA-5wr9-m6jw-xx44), pulled by Verify.*
+           · System.Drawing.Common 5.0.0 → 6.0.0 (GHSA-rxg9-xrhp-64gj) — the version QRCoder already requires (≥6.0.0);
+             the vulnerable 5.0.0 only surfaced in test projects without QRCoder, so unify everything on the patched 6.0.0. -->
+    <PackageVersion Include="Scriban.Signed" Version="7.2.5" />
+    <PackageVersion Include="System.Drawing.Common" Version="6.0.0" />
     <PackageVersion Include="WireMock.Net" Version="1.6.10" />
     <PackageVersion Include="Testcontainers" Version="4.1.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.1.0" />
