@@ -260,7 +260,7 @@
 |---|---|
 | Realtime | `…Realtime.SignalR`, `…Realtime.SignalR.Redis`, `…Realtime.SignalR.AzureSignalR`, `…Realtime.Sse`, `…Realtime.WebSockets`, `…Realtime.MagicOnion` |
 | Storage | `…Storage`, `…Storage.FluentStorage`, `…Storage.Azure`, `…Storage.S3`, `…Storage.Gcs`, `…Storage.Minio`, `…Storage.Local` |
-| Media | `…Media.ImageSharp`, `…Media.Skia`, `…Media.Magick`, `…Media.FFmpeg`, `…Media.QuestPdf`, `…Media.ClosedXml`, `…Media.OpenXml`, `…Media.CsvHelper`, `…Media.Markdig` |
+| Media | **`…Media.Captions` — shipped** (`VttCaptionParser` + `CaptionSegment`/`CaptionTrack` + `AddVttCaptionParser()`, `src/Media/Captions/`, extracted from the TranscriptForge POC) · planned: `…Media.ImageSharp`, `…Media.Skia`, `…Media.Magick`, `…Media.FFmpeg`, `…Media.QuestPdf`, `…Media.ClosedXml`, `…Media.OpenXml`, `…Media.CsvHelper`, `…Media.Markdig` |
 | Search | `…Search.PostgresFts`, `…Search.Elasticsearch`, `…Search.OpenSearch`, `…Search.Meilisearch`, `…Search.Algolia`, `…Search.Typesense`, `…Search.Lucene` |
 | Workflow | `…Workflow.Stateless`, `…Workflow.Elsa`, `…Workflow.WorkflowCore`, `…Workflow.DurableTask`, `…Workflow.Temporal` |
 | Aspire | `…Aspire.AppHost`, `…Aspire.ServiceDefaults`, `…Aspire.Integrations.Redis`, … (40+ Aspire integrations) |

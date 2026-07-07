@@ -493,7 +493,7 @@ Subpath: `wow-two-sdk.backend.beta.messaging`.
 
 ### 3.6 Real-time / push — see §2.19
 
-### 3.7 Storage / files / media — LATER (P3)
+### 3.7 Storage / files / media — LATER (P3) *(except `Media.Captions`, shipped NOW)*
 
 Subpath: `wow-two-sdk.backend.beta.storage` + `.media`.
 
@@ -517,6 +517,9 @@ Subpath: `wow-two-sdk.backend.beta.storage` + `.media`.
 | MimeKit / MailKit | NEXT | Email |
 | Xabe.FFmpeg / FFMpegCore | LATER | Optional |
 | Tesseract / Aspose.OCR | LATER | OCR companion |
+| **`Media.Captions`** — WebVTT parse (own logic, pure, zero-dep) | **NOW** | Shipped `src/Media/Captions/` — extracted from the TranscriptForge POC (1st proven consumer). VTT-only; SRT/TTML/JSON3 + a multi-format `ICaptionParser` facade when a 2nd format is needed. Own logic, not a lib wrapper — the SDK holds domain logic too |
+| `Media.Audio` — yt-dlp / ffmpeg extraction | LATER | Thin process wrapper; extract alongside STT when a 2nd consumer/impl appears (TranscriptForge-inline now) |
+| `Media.Transcripts` — caption→STT orchestrator | LATER | Composite crown-jewel; gated on Captions + Audio + STT all extracting (TranscriptForge-inline now) |
 
 ### 3.8 AI / ML / LLM / vector — NEXT (P2)
 
@@ -533,6 +536,7 @@ Subpath: `wow-two-sdk.backend.beta.ai`.
 | ONNX Runtime | LATER | Local inference companion |
 | LangChain.NET | SKIP | Less mature than `Microsoft.Extensions.AI` |
 | Whisper.net (local STT) | LATER | Companion |
+| `Ai.SpeechToText` — provider abstraction (`ISpeechToTextProvider`) | LATER | Interface + Groq-Whisper impl live in the TranscriptForge POC; promote when a 2nd provider (OpenAI / Azure / Whisper.net) appears — extract-the-interface-on-2nd-impl rule |
 | Tokenizers (`Microsoft.ML.Tokenizers`) | NEXT | Cost tracking, prompt fitting |
 | Cost tracking + OTel meter for token usage | NEXT | First-class |
 | Embedding cache + semantic-similar response cache | NEXT | Built-in |
