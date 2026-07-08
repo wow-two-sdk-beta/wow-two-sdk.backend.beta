@@ -503,7 +503,7 @@ public sealed class SvgRenderer
         sb.Append("<text x=\"").Append(Num(center)).Append("\" y=\"").Append(Num(center))
             .Append("\" font-size=\"").Append(Num(side))
             .Append("\" text-anchor=\"middle\" dominant-baseline=\"central\">")
-            .Append(EscapeAttr(emoji.Char)).Append("</text>\n");
+            .Append(EscapeAttr(emoji.Glyph)).Append("</text>\n");
     }
 
     /// <summary>Emits the foreground gradient <c>&lt;defs&gt;</c> in user space spanning the full canvas — a <see cref="RadialGradientSpec"/> from the center, or a <see cref="LinearGradientSpec"/> rotated by its angle about the center — referenced as <c>url(#sqr-fg)</c> by the data + eye fills.</summary>
