@@ -1,46 +1,46 @@
 using System.Globalization;
 using System.Text;
 
-namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
+namespace WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga;
 
 /// <summary>
-/// One step in a declarative saga (routing slip). Steps run in order; each may write its result into the
-/// shared <see cref="SagaContext"/> (the "result passed along"). On a downstream failure the runner walks the
+/// One step in a declarative event saga (routing slip). Steps run in order; each may write its result into the
+/// shared <see cref="EventSagaContext"/> (the "result passed along"). On a downstream failure the runner walks the
 /// completed steps in reverse calling <see cref="CompensateAsync"/> — automatic rollback.
 /// </summary>
-public interface ISagaStep
+public interface IEventSagaStep
 {
     /// <summary>Display name (used in logs and the Mermaid diagram).</summary>
     string Name { get; }
 
-    /// <summary>Run the step. Return <see cref="SagaStepOutcome.Faulted"/> (or throw) to trigger compensation.</summary>
+    /// <summary>Run the step. Return <see cref="EventSagaStepOutcome.Faulted"/> (or throw) to trigger compensation.</summary>
     /// <param name="context">The shared saga context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask<SagaStepOutcome> ExecuteAsync(SagaContext context, CancellationToken cancellationToken);
+    ValueTask<EventSagaStepOutcome> ExecuteAsync(EventSagaContext context, CancellationToken cancellationToken);
 
     /// <summary>Undo this step's effect. Invoked in reverse order when a later step fails. No-op by default.</summary>
     /// <param name="context">The shared saga context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask CompensateAsync(SagaContext context, CancellationToken cancellationToken);
+    ValueTask CompensateAsync(EventSagaContext context, CancellationToken cancellationToken);
 }
 
-/// <summary>Convenience base for an <see cref="ISagaStep"/> — names itself after its type and compensates as a no-op.</summary>
-public abstract class SagaStep : ISagaStep
+/// <summary>Convenience base for an <see cref="IEventSagaStep"/> — names itself after its type and compensates as a no-op.</summary>
+public abstract class EventSagaStep : IEventSagaStep
 {
     /// <inheritdoc />
     public virtual string Name => GetType().Name;
 
     /// <inheritdoc />
-    public abstract ValueTask<SagaStepOutcome> ExecuteAsync(SagaContext context, CancellationToken cancellationToken);
+    public abstract ValueTask<EventSagaStepOutcome> ExecuteAsync(EventSagaContext context, CancellationToken cancellationToken);
 
     /// <inheritdoc />
-    public virtual ValueTask CompensateAsync(SagaContext context, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    public virtual ValueTask CompensateAsync(EventSagaContext context, CancellationToken cancellationToken) => ValueTask.CompletedTask;
 }
 
 /// <summary>The result of running a single saga step.</summary>
-public sealed record SagaStepOutcome
+public sealed record EventSagaStepOutcome
 {
-    private SagaStepOutcome(bool succeeded, string? failureReason)
+    private EventSagaStepOutcome(bool succeeded, string? failureReason)
     {
         Succeeded = succeeded;
         FailureReason = failureReason;
@@ -53,27 +53,27 @@ public sealed record SagaStepOutcome
     public string? FailureReason { get; }
 
     /// <summary>A successful outcome — the runner advances to the next step.</summary>
-    public static SagaStepOutcome Completed() => new(true, null);
+    public static EventSagaStepOutcome Completed() => new(true, null);
 
     /// <summary>A failed outcome — the runner compensates completed steps in reverse.</summary>
     /// <param name="reason">Why the step failed.</param>
-    public static SagaStepOutcome Faulted(string reason) => new(false, reason);
+    public static EventSagaStepOutcome Faulted(string reason) => new(false, reason);
 }
 
-/// <summary>Shared, correlated state threaded through every step of a saga run.</summary>
-public sealed class SagaContext
+/// <summary>Shared, correlated state threaded through every step of an event-saga run.</summary>
+public sealed class EventSagaContext
 {
     private readonly Dictionary<string, object?> _items = new(StringComparer.Ordinal);
 
     /// <summary>Create a context with an optional seed value and a fresh correlation id.</summary>
     /// <param name="seed">Optional initial input for the first step.</param>
-    public SagaContext(object? seed = null)
+    public EventSagaContext(object? seed = null)
     {
         Seed = seed;
         CorrelationId = Guid.NewGuid().ToString("N");
     }
 
-    /// <summary>Correlation id shared by every message the saga emits.</summary>
+    /// <summary>Correlation id shared by every event the saga emits.</summary>
     public string CorrelationId { get; }
 
     /// <summary>The seed value supplied at construction.</summary>
@@ -93,21 +93,21 @@ public sealed class SagaContext
     public T? Get<T>(string key) => _items.TryGetValue(key, out var value) && value is T typed ? typed : default;
 }
 
-/// <summary>The outcome of a whole saga run.</summary>
+/// <summary>The outcome of a whole event-saga run.</summary>
 /// <param name="Succeeded">Whether every step completed.</param>
 /// <param name="FailedStep">Name of the step that failed, if any.</param>
 /// <param name="FailureReason">Why the saga failed, if it did.</param>
 /// <param name="CompensatedSteps">Names of steps compensated (reverse order), if the saga rolled back.</param>
-public sealed record SagaResult(
+public sealed record EventSagaResult(
     bool Succeeded,
     string? FailedStep,
     string? FailureReason,
     IReadOnlyList<string> CompensatedSteps);
 
-/// <summary>An immutable, ordered saga definition (the itinerary as data).</summary>
-public sealed class SagaDefinition
+/// <summary>An immutable, ordered event-saga definition (the itinerary as data).</summary>
+public sealed class EventSagaDefinition
 {
-    internal SagaDefinition(string name, IReadOnlyList<Type> stepTypes)
+    internal EventSagaDefinition(string name, IReadOnlyList<Type> stepTypes)
     {
         Name = name;
         StepTypes = stepTypes;
@@ -139,66 +139,66 @@ public sealed class SagaDefinition
     }
 }
 
-/// <summary>Fluent builder for a declarative saga (routing slip). Steps run in the order added.</summary>
-public sealed class SagaBuilder
+/// <summary>Fluent builder for a declarative event saga (routing slip). Steps run in the order added.</summary>
+public sealed class EventSagaBuilder
 {
     private readonly string _name;
     private readonly List<Type> _stepTypes = [];
 
-    private SagaBuilder(string name) => _name = name;
+    private EventSagaBuilder(string name) => _name = name;
 
     /// <summary>Begin a named saga definition.</summary>
     /// <param name="name">The saga name.</param>
-    public static SagaBuilder Named(string name)
+    public static EventSagaBuilder Named(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        return new SagaBuilder(name);
+        return new EventSagaBuilder(name);
     }
 
     /// <summary>Append a step.</summary>
-    /// <typeparam name="TStep">A step type implementing <see cref="ISagaStep"/>.</typeparam>
-    public SagaBuilder Step<TStep>()
-        where TStep : ISagaStep
+    /// <typeparam name="TStep">A step type implementing <see cref="IEventSagaStep"/>.</typeparam>
+    public EventSagaBuilder Step<TStep>()
+        where TStep : IEventSagaStep
     {
         _stepTypes.Add(typeof(TStep));
         return this;
     }
 
     /// <summary>Append a step by type.</summary>
-    /// <param name="stepType">A type implementing <see cref="ISagaStep"/>.</param>
-    public SagaBuilder Step(Type stepType)
+    /// <param name="stepType">A type implementing <see cref="IEventSagaStep"/>.</param>
+    public EventSagaBuilder Step(Type stepType)
     {
         ArgumentNullException.ThrowIfNull(stepType);
-        if (!typeof(ISagaStep).IsAssignableFrom(stepType))
-            throw new ArgumentException($"Step type {stepType.FullName} must implement {nameof(ISagaStep)}.", nameof(stepType));
+        if (!typeof(IEventSagaStep).IsAssignableFrom(stepType))
+            throw new ArgumentException($"Step type {stepType.FullName} must implement {nameof(IEventSagaStep)}.", nameof(stepType));
 
         _stepTypes.Add(stepType);
         return this;
     }
 
     /// <summary>Build the immutable definition.</summary>
-    public SagaDefinition Build() => new(_name, _stepTypes.AsReadOnly());
+    public EventSagaDefinition Build() => new(_name, _stepTypes.AsReadOnly());
 }
 
-/// <summary>Executes a <see cref="SagaDefinition"/>, compensating completed steps in reverse on failure.</summary>
-public interface ISagaRunner
+/// <summary>Executes an <see cref="EventSagaDefinition"/>, compensating completed steps in reverse on failure.</summary>
+public interface IEventSagaRunner
 {
     /// <summary>Run a saga to completion or compensation.</summary>
     /// <param name="definition">The saga to run.</param>
     /// <param name="context">The shared context (carries the seed + accumulated results).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask<SagaResult> RunAsync(SagaDefinition definition, SagaContext context, CancellationToken cancellationToken = default);
+    ValueTask<EventSagaResult> RunAsync(EventSagaDefinition definition, EventSagaContext context, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Transport seam letting a saga step emit a message to a destination — in-process by default, broker via an adapter.</summary>
-public interface ISagaTransport
+/// <summary>Transport seam letting a saga step emit an event to a destination — in-process by default, broker via an adapter.</summary>
+public interface IEventSagaTransport
 {
-    /// <summary>Send a message to a destination, carrying the saga's correlation id.</summary>
-    /// <typeparam name="TMessage">Message type.</typeparam>
+    /// <summary>Send an event to a destination, carrying the saga's correlation id.</summary>
+    /// <typeparam name="TEvent">Event type.</typeparam>
     /// <param name="destination">Destination (queue) name.</param>
-    /// <param name="message">The message.</param>
+    /// <param name="event">The event.</param>
     /// <param name="context">The saga context (for correlation).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask SendAsync<TMessage>(string destination, TMessage message, SagaContext context, CancellationToken cancellationToken = default)
-        where TMessage : class;
+    ValueTask SendAsync<TEvent>(string destination, TEvent @event, EventSagaContext context, CancellationToken cancellationToken = default)
+        where TEvent : class, IEvent;
 }

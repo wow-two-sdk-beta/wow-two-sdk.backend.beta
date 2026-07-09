@@ -19,6 +19,8 @@ public static class TracingServiceCollectionExtensions
             .ConfigureResource(resource => resource.AddService(serviceName))
             .WithTracing(tracing =>
             {
+                // Collect every brand-prefixed ActivitySource (WoW.Two.Messaging, …) — wildcard match.
+                tracing.AddSource("WoW.Two.*");
                 tracing.AddAspNetCoreInstrumentation();
                 tracing.AddHttpClientInstrumentation();
                 tracing.AddGrpcClientInstrumentation();

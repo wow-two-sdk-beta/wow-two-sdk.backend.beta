@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    MESSAGING TESTS (beta-forever exception, like Mediator.Tests / Migrations.Tests).
+    In-memory: round-trip, dedupe, dead-letter (no Docker). RabbitMQ: Testcontainers round-trip + native-DLQ
+    (needs Docker). References the core mono-lib + matches its FrameworkReference so Microsoft.Extensions.*
+    resolve from the shared framework.
+  -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);CA1707;CA2007;CA1062;CA1052;CA1819;CA1515;xUnit1041</WarningsNotAsErrors>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/obj/**;**/bin/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="Testcontainers.RabbitMq" />
+    <PackageReference Include="Testcontainers.Kafka" />
+    <PackageReference Include="RabbitMQ.Client" />
+    <PackageReference Include="Confluent.Kafka" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../WoW.Two.Sdk.Backend.Beta.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

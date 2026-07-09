@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -60,6 +61,11 @@ public static class EntityFrameworkCoreServiceCollectionExtensions
         void Apply(IServiceProvider serviceProvider, DbContextOptionsBuilder builder)
         {
             configureProvider(serviceProvider, builder);
+
+            // Auto-wire every pluggable interceptor registered via AddEfInterceptor / AddEfSaveChangesInterceptor.
+            var interceptors = serviceProvider.GetServices<IInterceptor>().ToArray();
+            if (interceptors.Length > 0)
+                builder.AddInterceptors(interceptors);
 
             var isDevelopment = serviceProvider.GetService<IHostEnvironment>()?.IsDevelopment() ?? false;
 

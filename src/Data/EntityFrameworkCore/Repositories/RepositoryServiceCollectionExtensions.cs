@@ -29,6 +29,23 @@ public static class RepositoryServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the EF Core repository for the <b>write</b> side of a CQRS split — binds the open-generic <see cref="IWriteRepository{TEntity, TId}"/> to <see cref="EfRepository{TEntity, TId}"/>. Pair with <c>AddDapperReadRepository&lt;TEntity, TId&gt;()</c> for the read side. Idempotent (safe to call per entity).</summary>
+    /// <typeparam name="TContext">The DbContext type backing the write repositories.</typeparam>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="lifetime">The service lifetime. Default scoped.</param>
+    public static IServiceCollection AddEfWriteRepositories<TContext>(
+        this IServiceCollection services,
+        ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        where TContext : DbContext
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.TryAdd(new ServiceDescriptor(typeof(DbContext), static sp => sp.GetRequiredService<TContext>(), lifetime));
+        services.TryAdd(new ServiceDescriptor(typeof(IWriteRepository<,>), typeof(EfRepository<,>), lifetime));
+
+        return services;
+    }
+
     /// <summary>Registers a concrete repository <typeparamref name="TRepository"/> (a subclass of <see cref="EfRepository{TEntity, TId}"/>) under its repository interfaces — use when an entity needs custom query methods beyond the generic CRUD surface.</summary>
     /// <typeparam name="TRepository">The concrete repository subclass to register.</typeparam>
     /// <typeparam name="TEntity">The entity type the repository serves.</typeparam>

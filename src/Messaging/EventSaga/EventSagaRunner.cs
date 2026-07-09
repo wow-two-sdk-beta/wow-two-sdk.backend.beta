@@ -1,29 +1,29 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
+namespace WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga;
 
 /// <summary>
-/// Default saga runner — resolves each step from a fresh DI scope, runs steps in order, and on failure
+/// Default event-saga runner — resolves each step from a fresh DI scope, runs steps in order, and on failure
 /// (faulted outcome or thrown exception) compensates the completed steps in reverse. The compensation stack
 /// is the Saga Execution Coordinator.
 /// </summary>
-public sealed partial class SagaRunner(IServiceScopeFactory scopeFactory, ILogger<SagaRunner> logger) : ISagaRunner
+public sealed partial class EventSagaRunner(IServiceScopeFactory scopeFactory, ILogger<EventSagaRunner> logger) : IEventSagaRunner
 {
     /// <inheritdoc />
-    public async ValueTask<SagaResult> RunAsync(SagaDefinition definition, SagaContext context, CancellationToken cancellationToken = default)
+    public async ValueTask<EventSagaResult> RunAsync(EventSagaDefinition definition, EventSagaContext context, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(context);
 
         await using var scope = scopeFactory.CreateAsyncScope();
         var services = scope.ServiceProvider;
-        var completed = new Stack<ISagaStep>();
+        var completed = new Stack<IEventSagaStep>();
 
         foreach (var stepType in definition.StepTypes)
         {
-            var step = (ISagaStep)services.GetRequiredService(stepType);
-            SagaStepOutcome outcome;
+            var step = (IEventSagaStep)services.GetRequiredService(stepType);
+            EventSagaStepOutcome outcome;
             try
             {
                 outcome = await step.ExecuteAsync(context, cancellationToken);
@@ -35,7 +35,7 @@ public sealed partial class SagaRunner(IServiceScopeFactory scopeFactory, ILogge
             catch (Exception ex)
             {
                 LogStepThrew(ex, definition.Name, step.Name);
-                outcome = SagaStepOutcome.Faulted(ex.Message);
+                outcome = EventSagaStepOutcome.Faulted(ex.Message);
             }
 
             if (outcome.Succeeded)
@@ -46,13 +46,13 @@ public sealed partial class SagaRunner(IServiceScopeFactory scopeFactory, ILogge
 
             LogStepFailing(definition.Name, step.Name, outcome.FailureReason);
             var compensated = await CompensateAsync(definition, completed, context, cancellationToken);
-            return new SagaResult(false, step.Name, outcome.FailureReason, compensated);
+            return new EventSagaResult(false, step.Name, outcome.FailureReason, compensated);
         }
 
-        return new SagaResult(true, null, null, Array.Empty<string>());
+        return new EventSagaResult(true, null, null, Array.Empty<string>());
     }
 
-    private async ValueTask<IReadOnlyList<string>> CompensateAsync(SagaDefinition definition, Stack<ISagaStep> completed, SagaContext context, CancellationToken cancellationToken)
+    private async ValueTask<IReadOnlyList<string>> CompensateAsync(EventSagaDefinition definition, Stack<IEventSagaStep> completed, EventSagaContext context, CancellationToken cancellationToken)
     {
         var compensated = new List<string>();
         while (completed.Count > 0)
@@ -82,13 +82,13 @@ public sealed partial class SagaRunner(IServiceScopeFactory scopeFactory, ILogge
     private partial void LogCompensationFailed(Exception exception, string saga, string step);
 }
 
-/// <summary>In-process <see cref="ISagaTransport"/> — routes step-emitted messages through the in-memory <see cref="IMessageBus"/>.</summary>
-internal sealed class InProcessSagaTransport(IMessageBus bus) : ISagaTransport
+/// <summary>In-process <see cref="IEventSagaTransport"/> — routes step-emitted events through the in-memory <see cref="IEventBus"/>.</summary>
+internal sealed class InProcessEventSagaTransport(IEventBus bus) : IEventSagaTransport
 {
-    public ValueTask SendAsync<TMessage>(string destination, TMessage message, SagaContext context, CancellationToken cancellationToken = default)
-        where TMessage : class
+    public ValueTask SendAsync<TEvent>(string destination, TEvent @event, EventSagaContext context, CancellationToken cancellationToken = default)
+        where TEvent : class, IEvent
     {
         ArgumentNullException.ThrowIfNull(context);
-        return bus.SendAsync(destination, message, new SendOptions { CorrelationId = context.CorrelationId }, cancellationToken);
+        return bus.SendAsync(destination, @event, new SendOptions { CorrelationId = context.CorrelationId }, cancellationToken);
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper.Repositories;
@@ -22,6 +23,23 @@ public static class DapperRepositoryServiceCollectionExtensions
         services.AddDapperConventions();
         services.Add(new ServiceDescriptor(typeof(IRepository<TEntity, TId>), typeof(DapperRepository<TEntity, TId>), lifetime));
         services.Add(new ServiceDescriptor(typeof(IReadRepository<TEntity, TId>), typeof(DapperRepository<TEntity, TId>), lifetime));
+        return services;
+    }
+
+    /// <summary>Registers <see cref="DapperRepository{TEntity, TId}"/> for the <b>read</b> side of a CQRS split — binds <see cref="IReadRepository{TEntity, TId}"/> only (not <see cref="IWriteRepository{TEntity, TId}"/>/<see cref="IRepository{TEntity, TId}"/>). Pair with <c>AddEfWriteRepositories&lt;TContext&gt;()</c>. Requires an <see cref="IDbConnectionFactory"/>. Idempotent per entity.</summary>
+    /// <typeparam name="TEntity">The entity type the read repository serves.</typeparam>
+    /// <typeparam name="TId">The primary-key type.</typeparam>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="lifetime">The service lifetime. Default scoped.</param>
+    public static IServiceCollection AddDapperReadRepository<TEntity, TId>(
+        this IServiceCollection services,
+        ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        where TEntity : class, IKeyedEntity<TId>, IHasTableName
+        where TId : notnull, IEquatable<TId>
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddDapperConventions();
+        services.TryAdd(new ServiceDescriptor(typeof(IReadRepository<TEntity, TId>), typeof(DapperRepository<TEntity, TId>), lifetime));
         return services;
     }
 

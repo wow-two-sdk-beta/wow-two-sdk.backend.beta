@@ -1,6 +1,6 @@
 # Messaging — spec
 
-*Last updated: 2026-06-22*
+*Last updated: 2026-07-08*
 
 ## NuGet
 
@@ -14,87 +14,95 @@ WoW.Two.Sdk.Backend.Beta  (mono-lib; namespace WoW.Two.Sdk.Backend.Beta.Messagin
 
 | Type | Notes |
 |---|---|
-| `IMessage` | Optional base marker; POCOs also accepted. |
-| `ICommand : IMessage` | Intent: single owner → `SendAsync`. |
-| `IEvent : IMessage` | Intent: fan-out → `PublishAsync`. |
-| `IMessageHandler<TMessage>` | `ValueTask HandleAsync(MessageContext<TMessage>, CancellationToken)`. Many per message type. Invariant `TMessage` (context is invariant). |
-| `IMessageBus` | `PublishAsync<T>(T, PublishOptions?, ct)` · `SendAsync<T>(string destination, T, SendOptions?, ct)`. |
-| `MessageContext<TMessage>` | `Message` · `Envelope` · `MessageId` · `CorrelationId` · `ConversationId` · `Headers` · `PublishAsync`/`SendAsync` (auto-propagate correlation + set this message as `CausationId`). |
-| `MessageEnvelope` | `record`: `MessageId`, `Body`, `BodyType`, `Destination`, `CorrelationId`, `ConversationId`, `CausationId`, `DeliveryCount`, `NotBeforeUtc`, `PartitionKey`, `Headers`. |
-| `PublishOptions` / `SendOptions` | `MessageId`, `CorrelationId`, `ConversationId`, `CausationId`, `Delay`, `Headers` (+ `PartitionKey` on send). |
+| `IEvent` | Marker for a bus event. **The bus accepts `IEvent` only** — commands/queries stay on the mediator. Topology (in-mem vs broker) and scope (local vs cross-service) are absent from the contract by design. |
+| `IEventHandler<TEvent>` | `ValueTask HandleAsync(EventContext<TEvent>, CancellationToken)`; `where TEvent : class, IEvent`. Many per event type. |
+| `IEventBus` | `PublishAsync<T>(T, PublishOptions?, ct)` (fan-out) · `SendAsync<T>(string destination, T, SendOptions?, ct)` (point-to-point). Both `where T : class, IEvent`. |
+| `EventContext<TEvent>` | `Event` · `Envelope` · `MessageId` · `CorrelationId` · `ConversationId` · `Headers` · `PublishAsync`/`SendAsync` (auto-propagate correlation + set `CausationId`). |
+| `EventEnvelope` | `record`: `MessageId`, `Body`, `BodyType`, `Destination`, `CorrelationId`, `ConversationId`, `CausationId`, `DeliveryCount`, `NotBeforeUtc`, `PartitionKey`, `Durable`, `Priority`, `TimeToLive`, `Headers`. |
+| `PublishOptions` / `SendOptions` | `MessageId`, `CorrelationId`, `ConversationId`, `CausationId`, `Delay`, `PartitionKey`, `Durable`, `Priority`, `TimeToLive`, `Headers`. **Transport-abstract** — adapters map to native primitives or ignore. |
 
 ### Reliability (`…Messaging.Reliability`)
 
 | Type | Notes |
 |---|---|
-| `BackoffKind` | `None` · `Fixed` · `Exponential` · `ExponentialJitter`. |
-| `RetryConfig(MaxAttempts=5, Backoff=ExponentialJitter, BaseDelay?, MaxDelay?)` | `BaseDelay` default 200ms, `MaxDelay` default 30s. |
-| `IRetryPolicy.NextDelay(attempt, config)` | Returns `TimeSpan?`; `null` = stop (dead-letter). |
-| `DefaultRetryPolicy` | Dependency-free exp/jitter impl. |
-| `IDeadLetterStore` | `DeadLetterAsync` · `ReadAsync(source)` · `ReplayAsync(messageId)` (redrive, resets `DeliveryCount`). |
-| `DeadLetterRecord` | `MessageId, Destination, Reason, ExceptionType?, Envelope, DeadLetteredAtUtc` + `From(env, ex, nowUtc)`. |
-| `IInboxStore.TryBeginAsync(messageId)` | `false` ⇒ duplicate (skip). |
-| `IMessageScheduler.ScheduleAsync(envelope, notBeforeUtc)` | Delayed delivery. |
-| `IOutbox` / `IOutboxDispatcher` / `OutboxRecord` | Transactional-outbox ports (EF / CAP adapters implement; not wired by the in-memory default). |
+| `BackoffKind` · `RetryConfig(MaxAttempts=5, Backoff=ExponentialJitter, BaseDelay?, MaxDelay?)` · `IRetryPolicy` · `DefaultRetryPolicy` | Retry schedule. `NextDelay` returns `null` → dead-letter. |
+| `IDeadLetterStore` | `DeadLetterAsync` · `ReadAsync(source)` · `ReplayAsync(messageId)` (redrive). `DeadLetterRecord.From(env, ex, nowUtc)`. |
+| `IInboxProcessor.ProcessOnceAsync(messageId, handler)` | Exactly-once seam: dedupe + (EF) run handler in the **same transaction**. `false` ⇒ duplicate (skip). |
+| `IEventScheduler.ScheduleAsync(envelope, notBeforeUtc)` | Delayed delivery. |
+| `IOutbox` / `OutboxRecord` / `IOutboxDispatcher` | Transactional-outbox ports. |
+
+### EF reliability (`…Messaging.Reliability.Ef`)
+
+| Type | Notes |
+|---|---|
+| `OutboxMessageEntity` · `OutboxModelBuilderExtensions.ApplyOutboxModel()` | Maps `outbox_messages`. |
+| `EfOutbox<TContext>` · `AddEfOutbox<TContext>()` | `IOutbox` — direct-adds a row to `TContext` (atomic on `SaveChanges`). |
+| `OutboxDispatcherOptions` · `AddEfOutboxDispatcher<TContext>()` | Polls pending → deserialize by `type` → publish to `IEventBus` → stamp `ProcessedOnUtc`. |
+| `IOutboxClaimStrategy` · `PollingOutboxClaimStrategy` | Pending-row claim seam. Default polls (single-instance); a Postgres `FOR UPDATE SKIP LOCKED` impl plugs in for multi-instance scale-out. |
+| `InboxMessageEntity` · `ApplyInboxModel()` · `AddEfInbox<TContext>()` | `IInboxProcessor` — inbox row + handler in **one transaction** (true exactly-once). |
+
+Migration SQL + wire-up: [`Reliability/Ef/Ef.md`](./Reliability/Ef/Ef.md).
 
 ### In-memory transport (`…Messaging.InMemory`)
 
 | Type | Notes |
 |---|---|
-| `InMemoryMessagingOptions` | `ChannelCapacity` (default 1024; 0 = unbounded) · `Retry` (`RetryConfig`). |
-| *(internal)* `InMemoryMessageBus`, `MessageConsumerHostedService`, `InMemory{DeadLetterStore,InboxStore,MessageScheduler}` | Registered by `AddInMemoryMessaging`. |
+| `InMemoryEventBusOptions` | `ChannelCapacity` (default 1024; 0 = unbounded) · `Retry` (`RetryConfig`). |
+| *(internal)* `InMemoryEventBus`, `EventConsumerHostedService`, `InMemory{DeadLetterStore,InboxStore,EventScheduler}` | Registered by `AddInMemoryEventBus`. |
 
-### Saga (`…Messaging.Saga`)
+### Event saga (`…Messaging.EventSaga`)
 
 | Type | Notes |
 |---|---|
-| `ISagaStep` | `Name` · `ExecuteAsync(SagaContext, ct) → SagaStepOutcome` · `CompensateAsync(SagaContext, ct)`. |
-| `SagaStep` | Abstract base: `Name` = type name, `CompensateAsync` = no-op. |
-| `SagaStepOutcome` | `Completed()` / `Faulted(reason)`; `Succeeded`, `FailureReason`. |
-| `SagaContext` | `CorrelationId` · `Seed` · `Items` · `Set(key,val)` · `Get<T>(key)`. |
-| `SagaBuilder` | `Named(name)` → `.Step<T>()` / `.Step(Type)` → `.Build()`. |
-| `SagaDefinition` | `Name` · `StepTypes` · `ToMermaid()`. |
-| `ISagaRunner.RunAsync(definition, context, ct)` | → `SagaResult`. Compensates completed steps in reverse on failure. |
-| `SagaResult` | `Succeeded`, `FailedStep?`, `FailureReason?`, `CompensatedSteps`. |
-| `ISagaTransport.SendAsync<T>(destination, message, context, ct)` | Step-emitted message seam (in-proc default; broker adapter later). |
+| `IEventSagaStep` / `EventSagaStep` | `Name` · `ExecuteAsync(EventSagaContext, ct) → EventSagaStepOutcome` · `CompensateAsync`. |
+| `EventSagaStepOutcome` | `Completed()` / `Faulted(reason)`. |
+| `EventSagaContext` | `CorrelationId` · `Seed` · `Items` · `Set` · `Get<T>`. |
+| `EventSagaBuilder` | `Named(name)` → `.Step<T>()` / `.Step(Type)` → `.Build()`. |
+| `EventSagaDefinition` | `Name` · `StepTypes` · `ToMermaid()`. |
+| `IEventSagaRunner.RunAsync(definition, context, ct)` → `EventSagaResult` | Compensates completed steps in reverse on failure. |
+| `IEventSagaTransport.SendAsync<TEvent>(destination, event, context, ct)` | Step-emitted event seam (`where TEvent : class, IEvent`). |
 
-### Registration (`…Messaging`)
+### Resilience (`…Messaging.Reliability` · `.Polly`)
+
+| Type | Notes |
+|---|---|
+| `IEventResiliencePipeline.ExecuteAsync(action, ct)` | Owns the retry loop; throws when exhausted → consumer dead-letters. Default = `IRetryPolicy`-backed. |
+| `PollyEventResilienceOptions` · `AddPollyEventResilience(…)` | Swap in a Polly pipeline (exp+jitter retry + optional circuit breaker + per-attempt timeout). |
+
+### Registration (`…Messaging`) — composable
 
 | Method | Notes |
 |---|---|
-| `AddInMemoryMessaging(params Assembly[])` | Scan given assemblies (default: caller) for handlers; wire bus + reliability + consumer. |
-| `AddInMemoryMessaging(Action<InMemoryMessagingOptions>?, params Assembly[])` | As above with options. |
-| `AddSaga(SagaDefinition)` | Register the runner, in-proc transport, the definition, and each step type (transient). |
+| `AddInMemoryEventBus([Action?], params Assembly[])` | Batteries-included = handlers + reliability + transport. |
+| `AddInMemoryEventTransport(Action?)` | Channel + `IEventBus` + consumer only. |
+| `AddInMemoryReliability()` | In-mem `IRetryPolicy`/`IEventResiliencePipeline`/`IInboxStore`/`IDeadLetterStore`/`IEventScheduler`. |
+| `AddEventHandlersFromAssemblies(params Assembly[])` | Scan + register handlers (incremental; callable repeatedly). |
+| `AddEventSaga(EventSagaDefinition)` | Runner + in-proc transport + definition + step types. |
+
+### Observability
+
+`WoW.Two.Messaging` `ActivitySource` — PRODUCER span on publish/send (injects `traceparent` into `EventEnvelope.Headers`), CONSUMER span on process (extracts it). Auto-collected by `AddOpenTelemetryTracing` via the `WoW.Two.*` wildcard source.
 
 ## Quick start — the user's chain (X → Y → back to X)
 
 ```csharp
-// 1. messaging + handlers
-builder.Services.AddInMemoryMessaging(typeof(Program).Assembly);
+builder.Services.AddInMemoryEventBus(typeof(Program).Assembly);
 
-// 2. declarative saga (routing slip): the linear orchestrated chain with compensation
-var saga = SagaBuilder.Named("checkout")
-    .Step<ProcessOrderStep>()      // message X → X-handler, result → SagaContext
-    .Step<ChargePaymentStep>()     //           → Y queue → Y-handler, result → SagaContext
-    .Step<ConfirmOrderStep>()      //           → back to X (final handler)
+var saga = EventSagaBuilder.Named("checkout")
+    .Step<ProcessOrderStep>()      // event X → X-handler, result → EventSagaContext
+    .Step<ChargePaymentStep>()     //         → Y → Y-handler, result → EventSagaContext
+    .Step<ConfirmOrderStep>()      //         → back to X (final)
     .Build();
-builder.Services.AddSaga(saga);
+builder.Services.AddEventSaga(saga);
 
-// 3. run
-var result = await runner.RunAsync(saga, new SagaContext(seed: cmd));
-if (!result.Succeeded)
-    log.LogWarning("checkout failed at {Step}; compensated {Steps}", result.FailedStep, string.Join(",", result.CompensatedSteps));
+var result = await runner.RunAsync(saga, new EventSagaContext(seed: cmd));
+// a faulting step → reverse-order CompensateAsync on the completed steps.
 ```
-
-Each step reads its predecessors' outputs from `SagaContext` (the "result passed along") and writes its own; a faulting step
-triggers reverse-order `CompensateAsync` on the completed steps (the Saga Execution Coordinator is the runner's stack).
 
 ## Delivery semantics
 
-- **At-least-once** is the contract floor (the in-memory retry path can re-deliver) → consumers MUST be idempotent. `IInboxStore`
-  provides effectively-once by deduping on `MessageId`.
-- **Ordering**: a single bounded channel with FIFO write order; parallel consumers do not preserve order (use `PartitionKey` +
-  per-key serialization when ordering matters — broker adapters map this to native ordering).
+- **At-least-once** floor → consumers MUST be idempotent; `IInboxStore` gives effectively-once by `MessageId`.
+- **Ordering**: single bounded channel = FIFO write order; parallel consumers don't preserve order (use `PartitionKey` — broker adapters map to native ordering).
 
 ## See also
 

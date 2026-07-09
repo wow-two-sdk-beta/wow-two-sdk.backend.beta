@@ -48,14 +48,14 @@ public sealed record DeadLetterRecord(
     string Destination,
     string Reason,
     string? ExceptionType,
-    MessageEnvelope Envelope,
+    EventEnvelope Envelope,
     DateTimeOffset DeadLetteredAtUtc)
 {
     /// <summary>Build a record from a failed delivery.</summary>
     /// <param name="envelope">The envelope being dead-lettered.</param>
     /// <param name="exception">The terminal exception.</param>
     /// <param name="deadLetteredAtUtc">The current UTC time.</param>
-    public static DeadLetterRecord From(MessageEnvelope envelope, Exception exception, DateTimeOffset deadLetteredAtUtc)
+    public static DeadLetterRecord From(EventEnvelope envelope, Exception exception, DateTimeOffset deadLetteredAtUtc)
     {
         ArgumentNullException.ThrowIfNull(envelope);
         ArgumentNullException.ThrowIfNull(exception);
@@ -82,23 +82,28 @@ public interface IDeadLetterStore
     ValueTask ReplayAsync(string messageId, CancellationToken cancellationToken);
 }
 
-/// <summary>Idempotency / dedupe store — turns at-least-once delivery into exactly-once effect.</summary>
-public interface IInboxStore
+/// <summary>
+/// Idempotency seam — processes an event exactly-once. Dedupes by message id and, for durable impls, runs the
+/// handler in the <b>same transaction</b> as the dedupe mark, so both commit or neither (closing the
+/// mark-then-crash window). Returns <c>false</c> if already processed (skip).
+/// </summary>
+public interface IInboxProcessor
 {
-    /// <summary>Reserve a message id. Returns <c>false</c> if the id was already seen (duplicate — skip processing).</summary>
+    /// <summary>Run <paramref name="handler"/> exactly once for <paramref name="messageId"/>; returns <c>false</c> if it was already processed.</summary>
     /// <param name="messageId">The message id (dedupe key).</param>
+    /// <param name="handler">The processing action (dispatch); executed at most once per successful commit.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask<bool> TryBeginAsync(string messageId, CancellationToken cancellationToken);
+    ValueTask<bool> ProcessOnceAsync(string messageId, Func<CancellationToken, ValueTask> handler, CancellationToken cancellationToken);
 }
 
 /// <summary>Schedules an envelope for delayed (future) delivery.</summary>
-public interface IMessageScheduler
+public interface IEventScheduler
 {
     /// <summary>Schedule an envelope to become deliverable at or after <paramref name="notBeforeUtc"/>.</summary>
     /// <param name="envelope">The envelope to schedule.</param>
     /// <param name="notBeforeUtc">Earliest delivery time (UTC).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask ScheduleAsync(MessageEnvelope envelope, DateTimeOffset notBeforeUtc, CancellationToken cancellationToken);
+    ValueTask ScheduleAsync(EventEnvelope envelope, DateTimeOffset notBeforeUtc, CancellationToken cancellationToken);
 }
 
 /// <summary>A staged outgoing message in a transactional outbox.</summary>
