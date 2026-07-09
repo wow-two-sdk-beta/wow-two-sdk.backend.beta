@@ -195,6 +195,7 @@
     <PackageVersion Include="Azure.Messaging.EventHubs" Version="5.11.5" />
     <PackageVersion Include="AWSSDK.SQS" Version="3.7.400.71" />
     <PackageVersion Include="NATS.Client.Core" Version="2.5.5" />
+    <PackageVersion Include="NATS.Client.JetStream" Version="2.5.5" />
     <PackageVersion Include="MQTTnet" Version="5.0.1.1416" />
   </ItemGroup>
 

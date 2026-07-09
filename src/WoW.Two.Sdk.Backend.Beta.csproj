@@ -140,6 +140,7 @@
   <ItemGroup Label="Messaging — broker adapters">
     <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="Confluent.Kafka" />
+    <PackageReference Include="NATS.Client.JetStream" />
   </ItemGroup>
 
   <ItemGroup Label="Data / EF Core / Dapper / migrations">
