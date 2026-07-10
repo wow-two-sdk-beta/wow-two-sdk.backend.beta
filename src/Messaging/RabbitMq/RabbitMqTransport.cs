@@ -1,12 +1,12 @@
 using System.Reflection;
 using System.Text;
-using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq;
@@ -36,8 +36,11 @@ public sealed class RabbitMqOptions
 /// <summary>Well-known RabbitMQ header keys the adapter sets.</summary>
 internal static class RabbitMqHeaders
 {
-    /// <summary>Carries the event's assembly-qualified type name so the consumer can reconstruct the envelope.</summary>
+    /// <summary>Carries the event's stable type token so the consumer can resolve the CLR type.</summary>
     public const string EventType = "wt-event-type";
+
+    /// <summary>Carries the serializer content type so the consumer selects the matching deserializer.</summary>
+    public const string ContentType = "wt-content-type";
 }
 
 /// <summary>Lazily-opened shared RabbitMQ connection (singleton).</summary>
@@ -76,7 +79,11 @@ internal sealed class RabbitMqConnection(IOptions<RabbitMqOptions> options) : IA
 }
 
 /// <summary>RabbitMQ <see cref="ISendTransport"/> — publishes envelopes to a topic exchange (routing key = destination).</summary>
-internal sealed class RabbitMqSendTransport(RabbitMqConnection connection, IOptions<RabbitMqOptions> options) : ISendTransport, IAsyncDisposable
+internal sealed class RabbitMqSendTransport(
+    RabbitMqConnection connection,
+    IOptions<RabbitMqOptions> options,
+    IMessageSerializer serializer,
+    IMessageTypeResolver typeResolver) : ISendTransport, IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private IChannel? _channel;
@@ -86,11 +93,12 @@ internal sealed class RabbitMqSendTransport(RabbitMqConnection connection, IOpti
         ArgumentNullException.ThrowIfNull(envelope);
 
         var channel = await GetChannelAsync(cancellationToken);
-        var body = JsonSerializer.SerializeToUtf8Bytes(envelope.Body, envelope.BodyType);
+        var body = serializer.Serialize(envelope.Body, envelope.BodyType);
 
         var headers = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
-            [RabbitMqHeaders.EventType] = envelope.BodyType.AssemblyQualifiedName,
+            [RabbitMqHeaders.EventType] = typeResolver.ToTypeToken(envelope.BodyType),
+            [RabbitMqHeaders.ContentType] = serializer.ContentType,
         };
         foreach (var (key, value) in envelope.Headers)
             headers[key] = value;
@@ -155,6 +163,8 @@ internal sealed class RabbitMqReceiveContext(EventEnvelope envelope, IChannel ch
 internal sealed partial class RabbitMqReceiveTransport(
     RabbitMqConnection connection,
     IOptions<RabbitMqOptions> options,
+    IMessageSerializer serializer,
+    IMessageTypeResolver typeResolver,
     ILogger<RabbitMqReceiveTransport> logger) : IReceiveTransport, IAsyncDisposable
 {
     private IChannel? _channel;
@@ -207,13 +217,13 @@ internal sealed partial class RabbitMqReceiveTransport(
 
     public ValueTask StopAsync(CancellationToken cancellationToken) => DisposeAsync();
 
-    private static EventEnvelope? TryReconstruct(BasicDeliverEventArgs delivery)
+    private EventEnvelope? TryReconstruct(BasicDeliverEventArgs delivery)
     {
         var headers = DecodeHeaders(delivery.BasicProperties.Headers);
-        if (!headers.TryGetValue(RabbitMqHeaders.EventType, out var typeName) || Type.GetType(typeName) is not { } eventType)
+        if (!headers.TryGetValue(RabbitMqHeaders.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
             return null;
 
-        var body = JsonSerializer.Deserialize(delivery.Body.Span, eventType);
+        var body = serializer.Deserialize(delivery.Body.Span, eventType);
         if (body is null)
             return null;
 
@@ -225,6 +235,7 @@ internal sealed partial class RabbitMqReceiveTransport(
             Destination = delivery.RoutingKey,
             CorrelationId = delivery.BasicProperties.CorrelationId,
             DeliveryCount = delivery.Redelivered ? 2 : 1, // classic queues expose only a redelivered flag; quorum queues' x-delivery-count is a follow-up
+            ContentType = headers.TryGetValue(RabbitMqHeaders.ContentType, out var contentType) ? contentType : "application/json",
             Headers = headers,
         };
     }

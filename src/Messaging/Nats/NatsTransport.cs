@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -7,6 +6,7 @@ using Microsoft.Extensions.Options;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Nats;
@@ -37,6 +37,7 @@ public sealed class NatsOptions
 internal static class NatsHeaderKeys
 {
     public const string EventType = "wt-event-type";
+    public const string ContentType = "wt-content-type";
     public const string MessageId = "wt-message-id";
     public const string DeadLetterReason = "wt-dl-reason";
     public const string DeadLetterExceptionType = "wt-dl-exception-type";
@@ -45,11 +46,12 @@ internal static class NatsHeaderKeys
 /// <summary>Shared JetStream envelope wire-format helpers (serialize body + headers; reconstruct on receive).</summary>
 internal static class NatsWireFormat
 {
-    public static NatsHeaders BuildHeaders(EventEnvelope envelope)
+    public static NatsHeaders BuildHeaders(EventEnvelope envelope, string typeToken, string contentType)
     {
         var headers = new NatsHeaders
         {
-            [NatsHeaderKeys.EventType] = envelope.BodyType.AssemblyQualifiedName ?? envelope.BodyType.FullName ?? string.Empty,
+            [NatsHeaderKeys.EventType] = typeToken,
+            [NatsHeaderKeys.ContentType] = contentType,
             [NatsHeaderKeys.MessageId] = envelope.MessageId,
         };
         foreach (var (key, value) in envelope.Headers)
@@ -83,7 +85,10 @@ internal static class NatsWireFormat
 }
 
 /// <summary>NATS JetStream <see cref="ISendTransport"/> — publishes JSON-serialized events to the stream subject. Ensures the stream exists on first send.</summary>
-internal sealed class NatsSendTransport(IOptions<NatsOptions> options) : ISendTransport, IAsyncDisposable
+internal sealed class NatsSendTransport(
+    IOptions<NatsOptions> options,
+    IMessageSerializer serializer,
+    IMessageTypeResolver typeResolver) : ISendTransport, IAsyncDisposable
 {
     private readonly NatsConnection _connection = new(new NatsOpts { Url = options.Value.Url });
     private readonly SemaphoreSlim _provisionGate = new(1, 1);
@@ -95,8 +100,9 @@ internal sealed class NatsSendTransport(IOptions<NatsOptions> options) : ISendTr
         ArgumentNullException.ThrowIfNull(envelope);
 
         var js = await EnsureStreamAsync(cancellationToken);
-        var body = JsonSerializer.SerializeToUtf8Bytes(envelope.Body, envelope.BodyType);
-        await js.PublishAsync(options.Value.Subject, body, headers: NatsWireFormat.BuildHeaders(envelope), cancellationToken: cancellationToken);
+        var body = serializer.Serialize(envelope.Body, envelope.BodyType);
+        var headers = NatsWireFormat.BuildHeaders(envelope, typeResolver.ToTypeToken(envelope.BodyType), serializer.ContentType);
+        await js.PublishAsync(options.Value.Subject, body, headers: headers, cancellationToken: cancellationToken);
     }
 
     private async ValueTask<NatsJSContext> EnsureStreamAsync(CancellationToken cancellationToken)
@@ -182,7 +188,11 @@ internal sealed class NatsReceiveContext(
 }
 
 /// <summary>NATS JetStream <see cref="IReceiveTransport"/> — provisions the stream + durable consumer, then drives an async consume loop into the pipeline.</summary>
-internal sealed partial class NatsReceiveTransport(IOptions<NatsOptions> options, ILogger<NatsReceiveTransport> logger) : IReceiveTransport, IAsyncDisposable
+internal sealed partial class NatsReceiveTransport(
+    IOptions<NatsOptions> options,
+    IMessageSerializer serializer,
+    IMessageTypeResolver typeResolver,
+    ILogger<NatsReceiveTransport> logger) : IReceiveTransport, IAsyncDisposable
 {
     private readonly NatsConnection _connection = new(new NatsOpts { Url = options.Value.Url });
     private NatsJSContext? _js;
@@ -261,16 +271,16 @@ internal sealed partial class NatsReceiveTransport(IOptions<NatsOptions> options
         await DisposeAsync();
     }
 
-    private static EventEnvelope? TryReconstruct(NatsJSMsg<byte[]> message)
+    private EventEnvelope? TryReconstruct(NatsJSMsg<byte[]> message)
     {
         var headers = NatsWireFormat.DecodeHeaders(message.Headers);
-        if (!headers.TryGetValue(NatsHeaderKeys.EventType, out var typeName) || Type.GetType(typeName) is not { } eventType)
+        if (!headers.TryGetValue(NatsHeaderKeys.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
             return null;
 
         if (message.Data is not { } data)
             return null;
 
-        var body = JsonSerializer.Deserialize(data, eventType);
+        var body = serializer.Deserialize(data, eventType);
         if (body is null)
             return null;
 
@@ -281,6 +291,7 @@ internal sealed partial class NatsReceiveTransport(IOptions<NatsOptions> options
             BodyType = eventType,
             Destination = message.Subject,
             DeliveryCount = (int)(message.Metadata?.NumDelivered ?? 1), // JetStream tracks redelivery natively
+            ContentType = headers.TryGetValue(NatsHeaderKeys.ContentType, out var contentType) ? contentType : "application/json",
             Headers = headers,
         };
     }

@@ -6,18 +6,21 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Transport-agnostic processing of one received message: start a CONSUMER span (extracting trace context), run
-/// dedupe (<see cref="IInboxProcessor"/>) + resilience (<see cref="IEventResiliencePipeline"/>) around handler dispatch,
-/// then settle via the <see cref="ReceiveContext"/> — acknowledge on success, dead-letter on exhaustion. Shared by
-/// every receive transport (in-memory, RabbitMQ, …).
+/// Transport-agnostic processing of one received message: start a CONSUMER span (extracting trace context), run the
+/// ordered <see cref="IConsumeFilter"/> chain around the core (resilience → dedupe via <see cref="IInboxProcessor"/> →
+/// dispatch), then settle via the <see cref="ReceiveContext"/> — acknowledge on success, dead-letter on exhaustion.
+/// Shared by every receive transport (in-memory, RabbitMQ, …). With no filters registered the chain is the bare core.
 /// </summary>
 internal sealed partial class EventProcessingPipeline(
     IServiceScopeFactory scopeFactory,
     EventDispatcherRegistry registry,
     IEventBus bus,
     IEventResiliencePipeline resilience,
+    IEnumerable<IConsumeFilter> filters,
     ILogger<EventProcessingPipeline> logger)
 {
+    private ConsumeDelegate? _chain;
+
     public async ValueTask ProcessAsync(ReceiveContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -33,22 +36,7 @@ internal sealed partial class EventProcessingPipeline(
 
         try
         {
-            await resilience.ExecuteAsync(async attemptToken =>
-            {
-                await using var scope = scopeFactory.CreateAsyncScope();
-                var inbox = scope.ServiceProvider.GetRequiredService<IInboxProcessor>();
-                var processed = await inbox.ProcessOnceAsync(envelope.MessageId, async handlerToken =>
-                {
-                    if (registry.TryGet(envelope.BodyType, out var dispatcher))
-                        await dispatcher.DispatchAsync(scope.ServiceProvider, envelope, bus, handlerToken);
-                    else
-                        LogNoHandler(envelope.BodyType.FullName);
-                }, attemptToken);
-
-                if (!processed)
-                    LogDuplicateSkipped(envelope.MessageId);
-            }, cancellationToken);
-
+            await (_chain ??= BuildChain())(context, cancellationToken);
             await context.AcknowledgeAsync(cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -60,6 +48,40 @@ internal sealed partial class EventProcessingPipeline(
             LogProcessingFailed(ex, envelope.MessageId);
             await context.DeadLetterAsync(ex.Message, ex, cancellationToken);
         }
+    }
+
+    // Build the ordered filter chain once: filters wrap the core (first-registered = outermost), core is innermost.
+    private ConsumeDelegate BuildChain()
+    {
+        ConsumeDelegate chain = CoreConsumeAsync;
+        foreach (var filter in filters.Reverse())
+        {
+            var next = chain;
+            chain = (ctx, token) => filter.InvokeAsync(ctx, next, token);
+        }
+
+        return chain;
+    }
+
+    // The retry/dedupe/dispatch core: resilience wraps a per-attempt scope whose inbox dedupes and runs the dispatch.
+    private async ValueTask CoreConsumeAsync(ReceiveContext context, CancellationToken cancellationToken)
+    {
+        var envelope = context.Envelope;
+        await resilience.ExecuteAsync(async attemptToken =>
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var inbox = scope.ServiceProvider.GetRequiredService<IInboxProcessor>();
+            var processed = await inbox.ProcessOnceAsync(envelope.MessageId, async handlerToken =>
+            {
+                if (registry.TryGet(envelope.BodyType, out var dispatcher))
+                    await dispatcher.DispatchAsync(scope.ServiceProvider, envelope, bus, handlerToken);
+                else
+                    LogNoHandler(envelope.BodyType.FullName);
+            }, attemptToken);
+
+            if (!processed)
+                LogDuplicateSkipped(envelope.MessageId);
+        }, cancellationToken);
     }
 
     private static ActivityContext ExtractParentContext(IReadOnlyDictionary<string, string> headers)

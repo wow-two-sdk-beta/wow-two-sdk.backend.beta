@@ -30,7 +30,7 @@ public static class JsonOptionsPresets
 
         options.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
         customize?.Invoke(options);
-        options.MakeReadOnly();
+        options.MakeReadOnly(populateMissingResolver: true); // populate the reflection resolver when none is set, so the preset works even where JsonSerializerIsReflectionEnabledByDefault=false
         return options;
     }
 }

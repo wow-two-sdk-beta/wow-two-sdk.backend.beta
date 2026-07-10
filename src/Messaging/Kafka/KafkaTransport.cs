@@ -1,11 +1,11 @@
 using System.Reflection;
 using System.Text;
-using System.Text.Json;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Kafka;
@@ -30,6 +30,7 @@ public sealed class KafkaOptions
 internal static class KafkaHeaders
 {
     public const string EventType = "wt-event-type";
+    public const string ContentType = "wt-content-type";
     public const string MessageId = "wt-message-id";
     public const string DeadLetterReason = "wt-dl-reason";
     public const string DeadLetterExceptionType = "wt-dl-exception-type";
@@ -52,7 +53,10 @@ internal static class KafkaDeadLetter
 }
 
 /// <summary>Kafka <see cref="ISendTransport"/> — produces JSON-serialized events to a topic (key = partition/message id).</summary>
-internal sealed class KafkaSendTransport(IOptions<KafkaOptions> options) : ISendTransport, IAsyncDisposable
+internal sealed class KafkaSendTransport(
+    IOptions<KafkaOptions> options,
+    IMessageSerializer serializer,
+    IMessageTypeResolver typeResolver) : ISendTransport, IAsyncDisposable
 {
     private readonly IProducer<string, byte[]> _producer =
         new ProducerBuilder<string, byte[]>(new ProducerConfig { BootstrapServers = options.Value.BootstrapServers }).Build();
@@ -61,10 +65,11 @@ internal sealed class KafkaSendTransport(IOptions<KafkaOptions> options) : ISend
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
-        var body = JsonSerializer.SerializeToUtf8Bytes(envelope.Body, envelope.BodyType);
+        var body = serializer.Serialize(envelope.Body, envelope.BodyType);
         var headers = new Headers
         {
-            { KafkaHeaders.EventType, Encoding.UTF8.GetBytes(envelope.BodyType.AssemblyQualifiedName ?? envelope.BodyType.FullName ?? string.Empty) },
+            { KafkaHeaders.EventType, Encoding.UTF8.GetBytes(typeResolver.ToTypeToken(envelope.BodyType)) },
+            { KafkaHeaders.ContentType, Encoding.UTF8.GetBytes(serializer.ContentType) },
             { KafkaHeaders.MessageId, Encoding.UTF8.GetBytes(envelope.MessageId) },
         };
         foreach (var (key, value) in envelope.Headers)
@@ -111,7 +116,11 @@ internal sealed class KafkaReceiveContext(
 }
 
 /// <summary>Kafka <see cref="IReceiveTransport"/> — subscribes to the topic, polls, reconstructs envelopes, and routes them into the pipeline. Manual offset store (commit on ack).</summary>
-internal sealed partial class KafkaReceiveTransport(IOptions<KafkaOptions> options, ILogger<KafkaReceiveTransport> logger) : IReceiveTransport, IAsyncDisposable
+internal sealed partial class KafkaReceiveTransport(
+    IOptions<KafkaOptions> options,
+    IMessageSerializer serializer,
+    IMessageTypeResolver typeResolver,
+    ILogger<KafkaReceiveTransport> logger) : IReceiveTransport, IAsyncDisposable
 {
     private IConsumer<string, byte[]>? _consumer;
     private IProducer<string, byte[]>? _deadLetterProducer;
@@ -189,13 +198,13 @@ internal sealed partial class KafkaReceiveTransport(IOptions<KafkaOptions> optio
 
     public ValueTask StopAsync(CancellationToken cancellationToken) => DisposeAsync();
 
-    private static EventEnvelope? TryReconstruct(ConsumeResult<string, byte[]> result)
+    private EventEnvelope? TryReconstruct(ConsumeResult<string, byte[]> result)
     {
         var headers = DecodeHeaders(result.Message.Headers);
-        if (!headers.TryGetValue(KafkaHeaders.EventType, out var typeName) || Type.GetType(typeName) is not { } eventType)
+        if (!headers.TryGetValue(KafkaHeaders.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
             return null;
 
-        var body = JsonSerializer.Deserialize(result.Message.Value, eventType);
+        var body = serializer.Deserialize(result.Message.Value, eventType);
         if (body is null)
             return null;
 
@@ -207,6 +216,7 @@ internal sealed partial class KafkaReceiveTransport(IOptions<KafkaOptions> optio
             Destination = result.Topic,
             PartitionKey = result.Message.Key,
             DeliveryCount = 1, // Kafka has no native per-message redelivery count; true tracking needs a bumped header (follow-up)
+            ContentType = headers.TryGetValue(KafkaHeaders.ContentType, out var contentType) ? contentType : "application/json",
             Headers = headers,
         };
     }

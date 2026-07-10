@@ -56,6 +56,9 @@ public sealed record EventEnvelope
     /// <summary>Runtime type of <see cref="Body"/> — drives handler routing.</summary>
     public required Type BodyType { get; init; }
 
+    /// <summary>Content type of the serialized body (e.g. <c>application/json</c>); carried as a wire header and used to select the deserializer on receive.</summary>
+    public string ContentType { get; init; } = "application/json";
+
     /// <summary>Logical destination (queue/topic) name; empty for publish fan-out.</summary>
     public string Destination { get; init; } = string.Empty;
 

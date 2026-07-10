@@ -16,6 +16,22 @@ Cross-agent convergence (same defect found from independent angles) is called ou
 
 ---
 
+## Deferred — conscious pushes (tracked here, nothing lost)
+
+Consciously deferred while shipping Waves 0–1; each remains in the tiered backlog below. Log kept explicit so the analysis isn't lost:
+
+| Deferred item | Ref | Why deferred |
+|---|---|---|
+| A3/A4 — conn auto-recovery + publisher confirms | §1 | need a connection-recovery seam → **Wave 2** |
+| A7/A8 — broker delay/TTL/priority mapping + re-enqueue retry | §1 | need delay-topology + scheduler → **Wave 2** |
+| Kafka true delivery-count | §1 A2 | baseline is `1`; real count needs a bumped redelivery header → **Wave 2** |
+| Outbox + webhooks serializer adoption | §2 | still on direct STJ; thread `IMessageSerializer`/`IMessageTypeResolver` through them |
+| Additional serializers (MessagePack/Protobuf/Avro/CBOR/CloudEvents) | §3.2 | now unblocked by the Wave-1 seam |
+| Remaining Tier-B seams | §2 | concurrency pump · topology/routing · capabilities-expansion · `IMessagingMetrics` · `IMessageSink` · `IBusControl` · `IRequestClient` · state-machine saga (`IMessageSerializer`/`IMessageTypeResolver`/`IConsumeFilter` ✅ done) |
+| Full Tier-C breadth | §3 | ~18 transports · DLQ redrive/2nd-level-retry · EIP patterns · test harness · ops/mgmt |
+
+---
+
 ## 1. Tier A — correctness bugs (fix first)
 
 > **Wave 0 shipped 2026-07-10** — A1 (Kafka/NATS unparseable → re-produce to DLQ, RabbitMQ already nacked→DLX) · A2 (delivery-count: NATS native `NumDelivered`, RabbitMQ `Redelivered` flag, Kafka baseline `1` — true count needs a header-bump, deferred to Wave 2) · A5 (outbox `MaxDispatchAttempts` give-up + retention prune) · A6 (`DeadLetterAsync(reason, exception, ct)` — captures exception type; Kafka/NATS stamp `wt-dl-*` death headers) · A9 (`AddMeter("WoW.Two.*")`). Suite: 15 pass / 1 skip; in-mem dead-letter test asserts exception capture. **Remaining: A3/A4 (conn recovery + publisher confirms) · A7/A8 (broker delay/TTL mapping + re-enqueue retry) → Wave 2.**
@@ -37,6 +53,10 @@ Analysis-flagged; verify each against current code before fixing, but all cite c
 ---
 
 ## 2. Tier B — keystone seams (build the ports)
+
+> **Wave 1 shipped 2026-07-10** — **`IMessageSerializer`** (default `SystemTextJsonMessageSerializer` through `JsonOptionsPresets`) + **`IMessageTypeResolver`** (`DefaultMessageTypeResolver` — stable `FullName` token via `MessageTypeRegistry` populated from the handler/contract scan; AQN fallback; aliases). `ContentType` on the envelope + `wt-content-type` header. Threaded through **all 3 brokers** (RabbitMQ/Kafka/NATS); in-memory doesn't serialize. Override seams: `AddMessageSerializer<T>` / `AddMessageTypeResolver<T>` / `MapMessageType<T>(token)`. Fixed a latent `JsonOptionsPresets` init crash (missing `TypeInfoResolver`). Suite 15/16 + resolver unit tests 4/4.
+>
+> **`IConsumeFilter` consume-pipeline shipped 2026-07-10** — `EventProcessingPipeline` restructured into an ordered filter chain wrapping the resilience→dedupe→dispatch core (`ConsumeDelegate` + `IConsumeFilter` + `AddConsumeFilter<T>`; empty chain = behavior-preserving; filters run once per message, first-registered = outermost). Unblocks fault-publish · wire-tap/audit · claim-check · rate-limit · per-consumer breaker · translator · decorators. Suite 20/21; ordering test green. **Remaining Tier-B:** concurrency pump · topology/routing · capabilities-expansion · `IMessagingMetrics` · `IMessageSink` · `IBusControl` · `IRequestClient` · state-machine saga. **Follow-up:** thread the serializer/resolver through the **outbox** + webhooks (still on direct STJ); add MessagePack/Protobuf/Avro/CloudEvents serializers (now unblocked, §3.2).
 
 Each is a swappable port that (a) removes hard-coded behaviour and (b) unblocks a swathe of Tier C. Ordered by downstream leverage.
 

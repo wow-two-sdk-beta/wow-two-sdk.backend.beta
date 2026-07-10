@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging;
@@ -74,6 +75,9 @@ public static class MessagingServiceCollectionExtensions
         services.TryAddSingleton<IRetryPolicy, DefaultRetryPolicy>();
         services.TryAddSingleton<IEventResiliencePipeline, DefaultEventResiliencePipeline>();
         services.TryAddSingleton<IInboxProcessor, InMemoryInboxProcessor>();
+        services.TryAddSingleton<IMessageSerializer, SystemTextJsonMessageSerializer>();
+        GetOrAddMessageTypeRegistry(services); // ensure the type registry singleton exists (populated by the handler/contract scan)
+        services.TryAddSingleton<IMessageTypeResolver, DefaultMessageTypeResolver>();
         return services;
     }
 
@@ -98,9 +102,13 @@ public static class MessagingServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         var registry = GetOrAddRegistry(services);
+        var typeRegistry = GetOrAddMessageTypeRegistry(services);
         var assemblies = handlerAssemblies is { Length: > 0 } ? handlerAssemblies : [Assembly.GetCallingAssembly()];
         foreach (var assembly in assemblies)
-            ScanHandlers(services, registry, assembly);
+        {
+            ScanHandlers(services, registry, typeRegistry, assembly);
+            RegisterEventContracts(typeRegistry, assembly); // stable wire tokens for every IEvent contract (published + handled)
+        }
 
         return services;
     }
@@ -126,6 +134,52 @@ public static class MessagingServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Replace the default System.Text.Json message serializer with another (MessagePack, Protobuf, …).</summary>
+    /// <typeparam name="TSerializer">The serializer implementation.</typeparam>
+    /// <param name="services">The service collection.</param>
+    public static IServiceCollection AddMessageSerializer<TSerializer>(this IServiceCollection services)
+        where TSerializer : class, IMessageSerializer
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.Replace(ServiceDescriptor.Singleton<IMessageSerializer, TSerializer>());
+        return services;
+    }
+
+    /// <summary>Replace the default message-type resolver (e.g. a URN- or schema-registry-backed one).</summary>
+    /// <typeparam name="TResolver">The resolver implementation.</typeparam>
+    /// <param name="services">The service collection.</param>
+    public static IServiceCollection AddMessageTypeResolver<TResolver>(this IServiceCollection services)
+        where TResolver : class, IMessageTypeResolver
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.Replace(ServiceDescriptor.Singleton<IMessageTypeResolver, TResolver>());
+        return services;
+    }
+
+    /// <summary>Register an explicit stable wire token for an event type — for producer-only contracts, a custom URN, or a rename alias.</summary>
+    /// <typeparam name="TEvent">The event contract type.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <param name="token">The stable wire token.</param>
+    public static IServiceCollection MapMessageType<TEvent>(this IServiceCollection services, string token)
+        where TEvent : class, IEvent
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrEmpty(token);
+        GetOrAddMessageTypeRegistry(services).Register(typeof(TEvent), token);
+        return services;
+    }
+
+    /// <summary>Register a consume-pipeline filter — ordered by registration, runs once per message around the resilience/dedupe/dispatch core (fault-publish, wire-tap, claim-check, rate-limit, …).</summary>
+    /// <typeparam name="TFilter">The filter implementation.</typeparam>
+    /// <param name="services">The service collection.</param>
+    public static IServiceCollection AddConsumeFilter<TFilter>(this IServiceCollection services)
+        where TFilter : class, IConsumeFilter
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddSingleton<IConsumeFilter, TFilter>();
+        return services;
+    }
+
     private static EventDispatcherRegistry GetOrAddRegistry(IServiceCollection services)
     {
         foreach (var descriptor in services)
@@ -137,7 +191,25 @@ public static class MessagingServiceCollectionExtensions
         return registry;
     }
 
-    private static void ScanHandlers(IServiceCollection services, EventDispatcherRegistry registry, Assembly assembly)
+    private static MessageTypeRegistry GetOrAddMessageTypeRegistry(IServiceCollection services)
+    {
+        foreach (var descriptor in services)
+            if (descriptor.ServiceType == typeof(MessageTypeRegistry) && descriptor.ImplementationInstance is MessageTypeRegistry existing)
+                return existing;
+
+        var registry = new MessageTypeRegistry();
+        services.AddSingleton(registry);
+        return registry;
+    }
+
+    private static void RegisterEventContracts(MessageTypeRegistry typeRegistry, Assembly assembly)
+    {
+        foreach (var type in assembly.GetTypes())
+            if (type is { IsAbstract: false, IsInterface: false, IsGenericTypeDefinition: false } && typeof(IEvent).IsAssignableFrom(type))
+                typeRegistry.Register(type);
+    }
+
+    private static void ScanHandlers(IServiceCollection services, EventDispatcherRegistry registry, MessageTypeRegistry typeRegistry, Assembly assembly)
     {
         foreach (var type in assembly.GetTypes())
         {
@@ -149,6 +221,7 @@ public static class MessagingServiceCollectionExtensions
                 services.AddTransient(handlerInterface, type);
 
                 var eventType = handlerInterface.GetGenericArguments()[0];
+                typeRegistry.Register(eventType);
                 if (registry.Contains(eventType))
                     continue;
 
