@@ -17,4 +17,13 @@ public sealed class WebhookOptions
 
     /// <summary>Per-attempt HTTP request timeout; a timeout is treated as a transient failure. Default 30s.</summary>
     public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>Require <c>https</c> delivery URLs; an <c>http</c> target is rejected without a send. Default true.</summary>
+    public bool RequireHttps { get; set; } = true;
+
+    /// <summary>Allow delivery to private / loopback / link-local addresses (disables the SSRF guard). Default false — enable only for trusted internal targets.</summary>
+    public bool AllowPrivateNetworkTargets { get; set; }
+
+    /// <summary>Optional host allowlist; when non-empty, only these hosts may receive deliveries. Empty = any (public) host, subject to the SSRF guard.</summary>
+    public ISet<string> AllowedHosts { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 }

@@ -25,7 +25,7 @@
 | P3 persistence + outbound | data ✅ · http ✅ · caching ⏸️ (pre-fix needed) | 🚧 |
 | **Identity rebuild** | own ASP.NET-Identity-compatible user model, sliced lego stores | ⏳ **next — see [identity/](identity/identity-architecture.md)** |
 | Security batch | request-limits · token revocation · CSRF · HTTPS/HSTS · SSRF guard · lockout | ⏳ planned (partly subsumed by Identity rebuild) |
-| P4 distributed | comms/email ✅ · jobs/hangfire ✅ · messaging/CAP ⏳ · webhooks ⏳ · sms/push ⏳ | 🚧 |
+| P4 distributed | comms/email ✅ · jobs/hangfire ✅ · **messaging ✅** (custom transport-port: in-mem/RabbitMQ/Kafka/NATS + EF outbox(+PG skip-locked) + EventSaga) · **webhooks ✅** (HMAC + SSRF guard) · CAP ⏳ · sms/push ⏳ | 🚧 |
 | P5 SaaS-shaped | tenancy · ai/core + vector · feature-flags | ⏳ planned |
 | P6 heavy domain | realtime · storage · search · workflow · payments · geo | ⏳ planned |
 
@@ -34,18 +34,18 @@
 | Item | Type | Track | Notes |
 |---|---|---|---|
 | Own identity (sliced user model + stores) | feature | Identity | Deep-dive: [identity/identity-architecture.md](identity/identity-architecture.md). Reverses the v1 "no user model" decision. |
-| `web/request-limits` (body/header/timeout + decompression cap) | feature | Security | Closes the unbounded `AddRequestDecompression` we shipped in `AddProxyAwareHosting`. |
-| Env-gate OpenAPI in `UseApiDefaults` | issue | Security | Currently maps OpenAPI flag-default-on → schema leak in Production (API9). |
-| Wire real `AllowedHosts`/host-filtering in `AddProxyAwareHosting` | issue | Security | Doc comment claims host filtering; code never sets it. |
-| HTTPS redirect into `UseApiDefaults` | feature | Security | HSTS ships; redirect does not. |
+| `web/request-limits` (body/header/timeout + decompression cap) | feature | Security | **✅ shipped 2026-07-10** — `Web/RequestLimits` `AddRequestLimits`; called by `AddProxyAwareHosting` so decompression is bounded. Residual: decompressed-output hard cap. |
+| Env-gate OpenAPI in `UseApiDefaults` | issue | Security | **✅ shipped 2026-07-10** — `ExposeOpenApi` now `bool?`; defaults to Development-only. |
+| Wire real `AllowedHosts`/host-filtering in `AddProxyAwareHosting` | issue | Security | **✅ shipped 2026-07-10** — `ProxyAwareHostingOptions.AllowedHosts` → `HostFilteringOptions` + `UseHostFiltering`; doc corrected. |
+| HTTPS redirect into `UseApiDefaults` | feature | Security | **✅ shipped 2026-07-10** — `EnableHttpsRedirection` (default on) → `UseHttpsRedirection` after forwarded-headers. |
 | Token revocation + refresh | feature | Identity | Folds into identity security-stamp; see deep-dive §11. |
 | JWT validation hardening (alg allowlist, mandatory iss/aud/exp) | feature | Security | Harden existing `AddJwtBearerAuthentication`. |
 | SSRF-safe outbound handler (deny-private-IP / allowlist) | feature | Security | On the existing HttpClient stack. |
 | CSRF/antiforgery preset for cookie flows | feature | Security | Pairs with cookie sign-in. |
 | Breached-password check (HIBP k-anonymity) | feature | Identity | Optional password validator slice. |
 | caching slice (HybridCache + Redis L2 / FusionCache) | feature | P3 | Blocked on pre-fix discussion + decision 9.4. |
-| messaging/CAP outbox + RabbitMQ transport | feature | P4 | Decision 9.2 (CAP vs Wolverine). |
-| webhooks (HMAC sign/verify + replay window + SSRF guard) | feature | P4 | Don't ship webhooks unguarded — bundle security from day 1. |
+| messaging transport-port + RabbitMQ/Kafka/NATS + EF outbox | feature | P4 | **✅ shipped 2026-07** — custom `Messaging/Transport` port (not CAP); RabbitMQ (native DLX) · Kafka + NATS (emulated DLQ) · EF outbox(+PG skip-locked) · EventSaga. CAP now positioned as one future adapter under the port (decision 9.2 superseded). |
+| webhooks (HMAC sign/verify + replay window + SSRF guard) | feature | P4 | **✅ shipped 2026-07-10** — `Messaging/Webhooks`: HMAC-SHA256 (`timestamp.body`) + SSRF guard (scheme/host pre-flight + connect-time private-IP block). Replay window is receiver-side (timestamp header shipped). Residual: durable store + mgmt API. |
 | sms/push comms channels | feature | P4 | Twilio/Vonage SMS · FCM/APNS push. |
 | ai/core (Microsoft.Extensions.AI) + SSE streaming + pgvector | feature | P5 | Pulled forward by transcript-forge. |
 | Roslyn analyzer: foundation-can't-import-domain | check | Quality | Decision 9.14 open. |

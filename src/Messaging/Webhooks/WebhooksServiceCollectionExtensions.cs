@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
@@ -26,7 +27,18 @@ public static class WebhooksServiceCollectionExtensions
             .Validate(static o => o.Subscriptions.All(s => !string.IsNullOrEmpty(s.Secret)), "Webhooks: every subscription must have a secret.")
             .ValidateOnStart();
 
-        services.AddHttpClient(WebhookDefaults.HttpClientName);
+        // Delivery client: block targets that resolve to private/loopback/link-local addresses at connect time
+        // (defeats DNS-rebinding), unless the app opts into private targets.
+        services.AddHttpClient(WebhookDefaults.HttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(static sp =>
+            {
+                var webhookOptions = sp.GetRequiredService<IOptions<WebhookOptions>>().Value;
+                var handler = new SocketsHttpHandler();
+                if (!webhookOptions.AllowPrivateNetworkTargets)
+                    handler.ConnectCallback = WebhookAddressPolicy.GuardedConnectAsync;
+                return handler;
+            });
+
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IRetryPolicy, DefaultRetryPolicy>();
         services.TryAddSingleton<IWebhookDeliveryLog, NoopWebhookDeliveryLog>();

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Time;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 using WoW.Two.Sdk.Backend.Beta.Observability.HealthChecks;
@@ -55,7 +56,11 @@ public static class ApiDefaultsExtensions
         }
 
         builder.Services
-            .AddProxyAwareHosting()
+            .AddProxyAwareHosting(hosting =>
+            {
+                foreach (var host in options.AllowedHosts)
+                    hosting.AllowedHosts.Add(host);
+            })
             .AddOpenApiDefaults()
             .AddTraceAwareProblemDetails()
             .AddAppExceptionHandling();
@@ -95,6 +100,10 @@ public static class ApiDefaultsExtensions
         app.UseExceptionHandler();
 
         app.UseProxyAwareHosting();
+
+        if (options.EnableHttpsRedirection)
+            app.UseHttpsRedirection();
+
         app.UseOwaspSecureHeaders();
 
         if (options.CorsOrigins.Count > 0)
@@ -117,7 +126,8 @@ public static class ApiDefaultsExtensions
             app.UseResponseCompression();
         }
 
-        if (options.ExposeOpenApi)
+        // Default-safe: expose the OpenAPI schema only in Development unless explicitly forced — avoids leaking API shape in Production (API9).
+        if (options.ExposeOpenApi ?? app.Environment.IsDevelopment())
         {
             app.MapOpenApiEndpoint();
         }

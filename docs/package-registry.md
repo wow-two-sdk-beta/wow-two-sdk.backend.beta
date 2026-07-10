@@ -68,7 +68,8 @@
 | Package | Niche | Status |
 |---|---|---|
 | `WoW.Two.Sdk.Backend.Beta.Web` | Meta — wires hosting + openapi + problem details + secure-headers + cors + ratelimit + outputcache | planned |
-| `WoW.Two.Sdk.Backend.Beta.Web.Hosting` | `AddProxyAwareHosting` / `UseProxyAwareHosting` — forwarded headers + request decompression | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Web.Hosting` | `AddProxyAwareHosting` / `UseProxyAwareHosting` — forwarded headers + host filtering (`AllowedHosts`) + bounded request limits + request decompression | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Web.RequestLimits` | `AddRequestLimits` — Kestrel body/header/request-line/headers-timeout caps (bounds the decompression input) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Web.OpenApi` | `AddOpenApiDefaults` / `MapOpenApiEndpoint` — `Microsoft.AspNetCore.OpenApi` (.NET 9) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Web.OpenApi.Swashbuckle` | Swashbuckle fallback adapter | planned |
 | `WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails` | `AddTraceAwareProblemDetails` — RFC 7807 + traceId/requestId enrichment | shipped |
@@ -181,14 +182,14 @@
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Cap.RabbitMq` | CAP transport via RabbitMQ | planned |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Cap.Kafka` | CAP transport via Kafka | planned |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Cap.AzureServiceBus` | CAP transport via ASB | planned |
-| `WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq` | RabbitMQ.Client direct use | planned |
-| `WoW.Two.Sdk.Backend.Beta.Messaging.Kafka` | Confluent.Kafka direct use | planned |
+| `WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq` | `AddRabbitMqEventBus` — RabbitMQ transport behind the port (native DLX/DLQ) | shipped (mono-lib) |
+| `WoW.Two.Sdk.Backend.Beta.Messaging.Kafka` | `AddKafkaEventBus` — Kafka transport (emulated DLQ) | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.AzureServiceBus` | Azure.Messaging.ServiceBus direct use | planned |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.AzureEventHubs` | Azure.Messaging.EventHubs direct use | planned |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.AwsSqs` | AWSSDK.SQS direct use | planned |
-| `WoW.Two.Sdk.Backend.Beta.Messaging.Nats` | NATS.Client direct use | planned |
+| `WoW.Two.Sdk.Backend.Beta.Messaging.Nats` | `AddNatsEventBus` — NATS JetStream transport (emulated DLQ, in-context settle) | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Mqtt` | MQTTnet direct use | planned |
-| `WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks` | Outbound webhook delivery (HMAC + retry + DLQ) | planned |
+| `WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks` | `AddWebhooks` — outbound HMAC-signed delivery + SSRF guard + retry | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Jobs` | Meta — Hangfire defaults | planned |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire` | `AddHangfireJobs(storage, opts)` + `AddInMemoryHangfireJobs()` (dev) + `UseHangfireJobsDashboard()` (local-only default). SDK serializer conventions, worker/queue tuning. **Hangfire is LGPL-3.0 — sole exception to permissive-only, per targets.md P4** | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.Postgres` | `AddPostgresHangfireJobs(connStr, opts)` — PostgreSQL storage preset | shipped |

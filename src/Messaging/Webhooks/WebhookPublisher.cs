@@ -52,6 +52,17 @@ internal sealed partial class HttpWebhookDispatcher(
     public async ValueTask DeliverAsync(WebhookSubscription subscription, string eventType, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
         var opt = options.Value;
+
+        // SSRF pre-flight (scheme + host allowlist). Address-level blocking (private/loopback/link-local, incl.
+        // DNS-rebinding) is enforced at connect time by the guarded HttpClient handler; see WebhookAddressPolicy.
+        if (!WebhookAddressPolicy.IsSchemeAllowed(subscription.Url, opt.RequireHttps)
+            || !WebhookAddressPolicy.IsHostAllowed(subscription.Url, opt.AllowedHosts))
+        {
+            LogRejected(subscription.Url, eventType, null);
+            await RecordAsync(subscription, eventType, WebhookDeliveryOutcome.Dropped, 0, null, cancellationToken);
+            return;
+        }
+
         var retryConfig = new RetryConfig(opt.MaxAttempts, BackoffKind.ExponentialJitter, opt.BaseRetryDelay, opt.MaxRetryDelay);
         var client = httpClientFactory.CreateClient(WebhookDefaults.HttpClientName);
 
@@ -132,6 +143,10 @@ internal sealed partial class HttpWebhookDispatcher(
         catch (OperationCanceledException)
         {
             return (SendOutcome.Transient, null); // per-attempt timeout
+        }
+        catch (HttpRequestException ex) when (ex.InnerException is WebhookAddressBlockedException)
+        {
+            return (SendOutcome.Permanent, null); // target resolved to a blocked (private) address — never retry
         }
         catch (HttpRequestException)
         {

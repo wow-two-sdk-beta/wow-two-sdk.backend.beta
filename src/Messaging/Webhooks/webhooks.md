@@ -62,6 +62,17 @@ Receiver verifies: recompute `HMAC(secret, "{X-Webhook-Timestamp}.{rawBody}")`, 
 - **Permanent** failure (any other 4xx) → not retried.
 - On success or terminal drop, a `WebhookDeliveryRecord` is handed to `IWebhookDeliveryLog` (no-op default).
 
+## Security (SSRF guard)
+
+Outbound webhooks POST to caller-supplied URLs — an SSRF vector — so delivery is guarded by default:
+
+- **HTTPS required** (`RequireHttps`, default on) — an `http://` target is rejected without a send.
+- **Private-address block** (`AllowPrivateNetworkTargets`, default off) — targets resolving to private / loopback /
+  link-local / ULA / CGNAT / multicast (incl. cloud metadata `169.254.169.254`) are blocked at **connect time** on the
+  actual resolved IP, so DNS-rebinding is defeated too. Enable only for trusted internal targets.
+- **Host allowlist** (`AllowedHosts`, optional) — when non-empty, only listed hosts may receive deliveries.
+- A blocked target is a permanent drop (no retry) — logged and recorded to `IWebhookDeliveryLog`.
+
 ## See also
 
 - [Webhooks.spec.md](./Webhooks.spec.md) · [Webhooks.standard.md](./Webhooks.standard.md)

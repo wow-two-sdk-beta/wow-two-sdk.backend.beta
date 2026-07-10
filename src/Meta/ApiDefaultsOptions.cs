@@ -26,8 +26,14 @@ public sealed class ApiDefaultsOptions
     /// <summary>Brotli and Gzip response compression. Default on.</summary>
     public bool EnableResponseCompression { get; set; } = true;
 
-    /// <summary>Map the OpenAPI document endpoint. Default on.</summary>
-    public bool ExposeOpenApi { get; set; } = true;
+    /// <summary>Map the OpenAPI document endpoint. <c>null</c> (default) = only in Development; set <c>true</c>/<c>false</c> to force. Exposing the schema in Production leaks API shape (OWASP API9).</summary>
+    public bool? ExposeOpenApi { get; set; }
+
+    /// <summary>Redirect HTTP requests to HTTPS (honors <c>X-Forwarded-Proto</c> behind the proxy-aware forwarded-headers middleware). Default on.</summary>
+    public bool EnableHttpsRedirection { get; set; } = true;
+
+    /// <summary>Host-header allowlist (host filtering). Empty (default) = allow any host; set to lock the app to known hostnames.</summary>
+    public IList<string> AllowedHosts { get; } = [];
 
     /// <summary>Liveness endpoint path. Default <c>/health</c>.</summary>
     public string HealthEndpointPath { get; set; } = "/health";
