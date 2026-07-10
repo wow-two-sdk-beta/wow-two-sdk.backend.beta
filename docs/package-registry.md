@@ -90,6 +90,7 @@
 | `WoW.Two.Sdk.Backend.Beta.Mediator.Authorization` | `AddMediatorAuthorizationBehavior()` + `IRequireAuthorization` marker | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Mediator.Idempotency` | `AddMediatorIdempotencyBehavior()` + `IIdempotent` + pluggable `IIdempotencyStore` | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity` | Meta — JWT + cookies + Identity API endpoints | planned |
+| `WoW.Two.Sdk.Backend.Beta.Identity.Core` | `AddUserAccounts<TUser>()` — own sliced-lego user model: 7 entities + `ApplyIdentitySchema` + `IUserStore`/`EfUserStore` + `UserAccountManager` facade (step 1 of the identity rebuild) | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Jwt` | `AddJwtBearerAuthentication()` — JWT bearer (symmetric or JWKS) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Cookies` | `AddCookieAuthentication()` — secure cookie defaults | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Oidc` | `AddOpenIdConnectAuthentication()` — Authorization Code + PKCE | shipped |

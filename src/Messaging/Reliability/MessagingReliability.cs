@@ -135,6 +135,11 @@ public interface IOutboxDispatcher
     /// <param name="batchSize">Maximum messages to dispatch in this pass.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask<int> DispatchAsync(int batchSize, CancellationToken cancellationToken);
+
+    /// <summary>Prune processed (dispatched or given-up) rows older than <paramref name="retention"/>; returns rows removed. No-op by default.</summary>
+    /// <param name="retention">How long to retain processed rows before pruning.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    ValueTask<int> PruneProcessedAsync(TimeSpan retention, CancellationToken cancellationToken) => ValueTask.FromResult(0);
 }
 
 /// <summary>Default <see cref="IRetryPolicy"/> — fixed / exponential / exponential-with-jitter backoff, dependency-free.</summary>

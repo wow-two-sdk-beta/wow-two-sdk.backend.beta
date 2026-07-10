@@ -23,7 +23,7 @@
 | P1 boot floor | foundation + observability + web + `AddApiDefaults` meta | ✅ shipped |
 | P2 pipeline + auth | mediator + identity (jwt/cookies/oidc/oauth×16/mfa/argon2/otp/issuance/policies) | ✅ shipped |
 | P3 persistence + outbound | data ✅ · http ✅ · caching ⏸️ (pre-fix needed) | 🚧 |
-| **Identity rebuild** | own ASP.NET-Identity-compatible user model, sliced lego stores | ⏳ **next — see [identity/](identity/identity-architecture.md)** |
+| **Identity rebuild** | own ASP.NET-Identity-compatible user model, sliced lego stores | 🚧 **step 1 `identity/core` ✅ (2026-07-10)** — entities + user store + `UserAccountManager` + `ApplyIdentitySchema` + `AddUserAccounts`; steps 2-10 next. See [identity/](identity/identity-architecture.md) |
 | Security batch | request-limits · token revocation · CSRF · HTTPS/HSTS · SSRF guard · lockout | ⏳ planned (partly subsumed by Identity rebuild) |
 | P4 distributed | comms/email ✅ · jobs/hangfire ✅ · **messaging ✅** (custom transport-port: in-mem/RabbitMQ/Kafka/NATS + EF outbox(+PG skip-locked) + EventSaga) · **webhooks ✅** (HMAC + SSRF guard) · CAP ⏳ · sms/push ⏳ | 🚧 |
 | P5 SaaS-shaped | tenancy · ai/core + vector · feature-flags | ⏳ planned |

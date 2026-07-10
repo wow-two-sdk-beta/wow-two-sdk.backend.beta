@@ -145,7 +145,9 @@ internal sealed class RabbitMqReceiveContext(EventEnvelope envelope, IChannel ch
     public override ValueTask AcknowledgeAsync(CancellationToken cancellationToken)
         => channel.BasicAckAsync(deliveryTag, multiple: false, cancellationToken);
 
-    public override ValueTask DeadLetterAsync(string reason, CancellationToken cancellationToken)
+    public override ValueTask DeadLetterAsync(string reason, Exception? exception, CancellationToken cancellationToken)
+        // Native DLX moves the message (RabbitMQ stamps x-death with the attempt count); reason/exception are captured
+        // by the SDK dead-letter store path. Reason-header enrichment on the RabbitMQ DLQ needs a re-publish (follow-up).
         => channel.BasicNackAsync(deliveryTag, multiple: false, requeue: false, cancellationToken);
 }
 
@@ -222,7 +224,7 @@ internal sealed partial class RabbitMqReceiveTransport(
             BodyType = eventType,
             Destination = delivery.RoutingKey,
             CorrelationId = delivery.BasicProperties.CorrelationId,
-            DeliveryCount = 0,
+            DeliveryCount = delivery.Redelivered ? 2 : 1, // classic queues expose only a redelivered flag; quorum queues' x-delivery-count is a follow-up
             Headers = headers,
         };
     }

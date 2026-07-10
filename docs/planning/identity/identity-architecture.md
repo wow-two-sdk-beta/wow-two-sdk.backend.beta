@@ -172,7 +172,7 @@ The rebuild is mostly **glue + the user model + the stores** — ~60% of the sur
 
 ## 9. Build order
 
-1. `identity/core` — entities (§4) + `IUserStore` + normalizer + options + `UserAccountManager` facade. Ship with `AddEntityFrameworkStores` + `ApplyIdentitySchema` + an EF user store. **Smallest end-to-end vertical: create user → find → delete.**
+1. ✅ **DONE 2026-07-10** — `identity/core` (`src/Identity/Core/`): 7 entities + `IUserStore`/`EfUserStore` + normalizer + options + `UserAccountManager` facade + `IdentityResult` + `ApplyIdentitySchema` (EF-owned schema, normalized-name unique indexes). Entry: **`AddUserAccounts<TUser>()`** → `IdentityBuilder.AddEntityFrameworkStores<TContext>()` (renamed from `AddIdentityCore` — collides with ASP.NET's shared-framework extension). Vertical create→find→delete + dup-reject green on SQLite (`Identity.Tests/`).
 2. Password slice — `IUserPasswordStore` + Argon2 wire + set/verify/change.
 3. Email + token slices — `IUserEmailStore` + `IUserTokenStore` + a token provider → confirmation + reset.
 4. Lockout + security-stamp — `IUserLockoutStore` + `IUserSecurityStampStore` (unlocks revocation).

@@ -38,6 +38,8 @@ internal static class NatsHeaderKeys
 {
     public const string EventType = "wt-event-type";
     public const string MessageId = "wt-message-id";
+    public const string DeadLetterReason = "wt-dl-reason";
+    public const string DeadLetterExceptionType = "wt-dl-exception-type";
 }
 
 /// <summary>Shared JetStream envelope wire-format helpers (serialize body + headers; reconstruct on receive).</summary>
@@ -65,6 +67,18 @@ internal static class NatsWireFormat
             decoded[key] = headers[key].ToString();
 
         return decoded;
+    }
+
+    public static NatsHeaders BuildDeadLetterHeaders(NatsHeaders? original, string reason, Exception? exception)
+    {
+        var headers = new NatsHeaders();
+        if (original is not null)
+            foreach (var key in original.Keys)
+                headers[key] = original[key];
+        headers[NatsHeaderKeys.DeadLetterReason] = reason;
+        if (exception is not null)
+            headers[NatsHeaderKeys.DeadLetterExceptionType] = exception.GetType().FullName ?? exception.GetType().Name;
+        return headers;
     }
 }
 
@@ -159,9 +173,10 @@ internal sealed class NatsReceiveContext(
     public override ValueTask AcknowledgeAsync(CancellationToken cancellationToken)
         => message.AckAsync(cancellationToken: cancellationToken);
 
-    public override async ValueTask DeadLetterAsync(string reason, CancellationToken cancellationToken)
+    public override async ValueTask DeadLetterAsync(string reason, Exception? exception, CancellationToken cancellationToken)
     {
-        await js.PublishAsync(deadLetterSubject, message.Data ?? [], headers: message.Headers, cancellationToken: cancellationToken);
+        var headers = NatsWireFormat.BuildDeadLetterHeaders(message.Headers, reason, exception);
+        await js.PublishAsync(deadLetterSubject, message.Data ?? [], headers: headers, cancellationToken: cancellationToken);
         await message.AckAsync(cancellationToken: cancellationToken);
     }
 }
@@ -197,7 +212,10 @@ internal sealed partial class NatsReceiveTransport(IOptions<NatsOptions> options
                 if (envelope is null)
                 {
                     LogUnparseable();
-                    await message.AckAsync(cancellationToken: cancellationToken); // drop — cannot route
+                    // Don't silently drop — re-publish the raw message to the dead-letter subject, then ack.
+                    var deadLetterHeaders = NatsWireFormat.BuildDeadLetterHeaders(message.Headers, "unparseable", null);
+                    await _js!.PublishAsync(options.Value.DeadLetterSubject, message.Data ?? [], headers: deadLetterHeaders, cancellationToken: cancellationToken);
+                    await message.AckAsync(cancellationToken: cancellationToken);
                     continue;
                 }
 
@@ -262,7 +280,7 @@ internal sealed partial class NatsReceiveTransport(IOptions<NatsOptions> options
             Body = body,
             BodyType = eventType,
             Destination = message.Subject,
-            DeliveryCount = 0,
+            DeliveryCount = (int)(message.Metadata?.NumDelivered ?? 1), // JetStream tracks redelivery natively
             Headers = headers,
         };
     }

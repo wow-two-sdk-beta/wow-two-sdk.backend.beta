@@ -19,6 +19,7 @@ public static class MetricsServiceCollectionExtensions
             .ConfigureResource(resource => resource.AddService(serviceName))
             .WithMetrics(metrics =>
             {
+                metrics.AddMeter("WoW.Two.*"); // collect every SDK-owned meter (errors, messaging, …); mirrors tracing's AddSource("WoW.Two.*")
                 metrics.AddAspNetCoreInstrumentation();
                 metrics.AddHttpClientInstrumentation();
                 metrics.AddRuntimeInstrumentation();

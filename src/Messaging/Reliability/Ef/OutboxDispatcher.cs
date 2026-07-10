@@ -72,6 +72,7 @@ internal sealed partial class OutboxDispatcher<TContext>(
     OutboxEventPublisher publisher,
     IOutboxClaimStrategy claimStrategy,
     TimeProvider timeProvider,
+    IOptions<OutboxDispatcherOptions> options,
     ILogger<OutboxDispatcher<TContext>> logger) : IOutboxDispatcher
     where TContext : DbContext
 {
@@ -79,6 +80,7 @@ internal sealed partial class OutboxDispatcher<TContext>(
 
     public async ValueTask<int> DispatchAsync(int batchSize, CancellationToken cancellationToken)
     {
+        var opt = options.Value;
         var pending = await claimStrategy.ClaimPendingAsync(context, batchSize, cancellationToken);
 
         var dispatched = 0;
@@ -89,8 +91,7 @@ internal sealed partial class OutboxDispatcher<TContext>(
             var eventType = TypeCache.GetOrAdd(row.Type, ResolveType);
             if (eventType is null)
             {
-                row.Attempts++;
-                row.Error = $"Unresolved event type '{row.Type}'.";
+                MarkFailed(row, $"Unresolved event type '{row.Type}'.", opt);
                 LogTypeUnresolved(row.Id, row.Type);
                 continue;
             }
@@ -100,8 +101,7 @@ internal sealed partial class OutboxDispatcher<TContext>(
                 var @event = JsonSerializer.Deserialize(row.Payload, eventType);
                 if (@event is null)
                 {
-                    row.Attempts++;
-                    row.Error = "Payload deserialized to null.";
+                    MarkFailed(row, "Payload deserialized to null.", opt);
                     continue;
                 }
 
@@ -116,8 +116,7 @@ internal sealed partial class OutboxDispatcher<TContext>(
             }
             catch (Exception ex)
             {
-                row.Attempts++;
-                row.Error = ex.Message;
+                MarkFailed(row, ex.Message, opt);
                 LogDispatchFailed(ex, row.Id);
             }
         }
@@ -126,6 +125,25 @@ internal sealed partial class OutboxDispatcher<TContext>(
             await context.SaveChangesAsync(cancellationToken);
 
         return dispatched;
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<int> PruneProcessedAsync(TimeSpan retention, CancellationToken cancellationToken)
+    {
+        var cutoff = timeProvider.GetUtcNow() - retention;
+        return await context.Set<OutboxMessageEntity>()
+            .Where(row => row.ProcessedOnUtc != null && row.ProcessedOnUtc < cutoff)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    // Bump the attempt count; once it reaches the cap, give up — stamp ProcessedOnUtc so the poison row stops re-selecting
+    // forever at the head of every batch (Error is retained, marking the row dead) rather than retrying indefinitely.
+    private void MarkFailed(OutboxMessageEntity row, string error, OutboxDispatcherOptions opt)
+    {
+        row.Attempts++;
+        row.Error = error;
+        if (row.Attempts >= opt.MaxDispatchAttempts)
+            row.ProcessedOnUtc = timeProvider.GetUtcNow();
     }
 
     private static Type? ResolveType(string typeName)
@@ -159,6 +177,15 @@ public sealed class OutboxDispatcherOptions
 
     /// <summary>Maximum rows dispatched per pass. Default 100.</summary>
     public int BatchSize { get; set; } = 100;
+
+    /// <summary>Attempts before a poison row is given up on (stamped processed, error retained) so it stops re-selecting forever. Default 10.</summary>
+    public int MaxDispatchAttempts { get; set; } = 10;
+
+    /// <summary>How long processed rows are retained before pruning. Default 7 days.</summary>
+    public TimeSpan RetentionPeriod { get; set; } = TimeSpan.FromDays(7);
+
+    /// <summary>How often the dispatcher prunes old processed rows. Default 15 minutes.</summary>
+    public TimeSpan PruneInterval { get; set; } = TimeSpan.FromMinutes(15);
 }
 
 /// <summary>Background service that polls the outbox and drains pending rows to the bus.</summary>
@@ -173,6 +200,7 @@ internal sealed partial class OutboxDispatcherHostedService<TContext>(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var config = options.Value;
+        var lastPrune = timeProvider.GetUtcNow();
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -180,6 +208,12 @@ internal sealed partial class OutboxDispatcherHostedService<TContext>(
                 await using var scope = scopeFactory.CreateAsyncScope();
                 var dispatcher = scope.ServiceProvider.GetRequiredService<IOutboxDispatcher>();
                 await dispatcher.DispatchAsync(config.BatchSize, stoppingToken);
+
+                if (timeProvider.GetUtcNow() - lastPrune >= config.PruneInterval)
+                {
+                    await dispatcher.PruneProcessedAsync(config.RetentionPeriod, stoppingToken);
+                    lastPrune = timeProvider.GetUtcNow();
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

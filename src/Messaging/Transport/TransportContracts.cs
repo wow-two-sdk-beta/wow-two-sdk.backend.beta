@@ -29,8 +29,9 @@ public abstract class ReceiveContext
 
     /// <summary>Move the message aside after retries are exhausted or it is non-retryable (native DLQ where available, else the SDK dead-letter store).</summary>
     /// <param name="reason">Why the message is being dead-lettered.</param>
+    /// <param name="exception">The terminal exception, if any — carried into the dead-letter record and stamped as death headers on brokers that re-produce.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public abstract ValueTask DeadLetterAsync(string reason, CancellationToken cancellationToken);
+    public abstract ValueTask DeadLetterAsync(string reason, Exception? exception, CancellationToken cancellationToken);
 }
 
 /// <summary>

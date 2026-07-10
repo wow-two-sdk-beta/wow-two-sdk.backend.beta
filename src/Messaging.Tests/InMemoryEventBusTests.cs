@@ -59,23 +59,24 @@ public sealed class InMemoryEventBusTests
 
         await bus.PublishAsync(new BoomEvent("x"), new PublishOptions { MessageId = "boom-1" });
 
-        var found = await WaitForDeadLetterAsync(deadLetters, source: nameof(BoomEvent), messageId: "boom-1", TimeSpan.FromSeconds(5));
-        found.Should().BeTrue();
+        var record = await WaitForDeadLetterAsync(deadLetters, source: nameof(BoomEvent), messageId: "boom-1", TimeSpan.FromSeconds(5));
+        record.Should().NotBeNull();
+        record!.ExceptionType.Should().Contain(nameof(InvalidOperationException)); // terminal exception captured, not null
         await host.StopAsync();
     }
 
-    private static async Task<bool> WaitForDeadLetterAsync(IDeadLetterStore store, string source, string messageId, TimeSpan timeout)
+    private static async Task<DeadLetterRecord?> WaitForDeadLetterAsync(IDeadLetterStore store, string source, string messageId, TimeSpan timeout)
     {
         using var cts = new CancellationTokenSource(timeout);
         while (!cts.IsCancellationRequested)
         {
             await foreach (var record in store.ReadAsync(source, CancellationToken.None))
                 if (record.MessageId == messageId)
-                    return true;
+                    return record;
 
             await Task.Delay(TimeSpan.FromMilliseconds(100));
         }
 
-        return false;
+        return null;
     }
 }

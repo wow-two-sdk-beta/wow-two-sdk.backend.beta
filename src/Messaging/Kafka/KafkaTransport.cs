@@ -31,6 +31,24 @@ internal static class KafkaHeaders
 {
     public const string EventType = "wt-event-type";
     public const string MessageId = "wt-message-id";
+    public const string DeadLetterReason = "wt-dl-reason";
+    public const string DeadLetterExceptionType = "wt-dl-exception-type";
+}
+
+/// <summary>Builds a dead-letter Kafka message — preserves the original key/value/headers and stamps death headers (reason + exception type) for triage.</summary>
+internal static class KafkaDeadLetter
+{
+    public static Message<string, byte[]> Build(Message<string, byte[]> original, string reason, Exception? exception)
+    {
+        var headers = new Headers();
+        if (original.Headers is not null)
+            foreach (var header in original.Headers)
+                headers.Add(header.Key, header.GetValueBytes());
+        headers.Add(KafkaHeaders.DeadLetterReason, Encoding.UTF8.GetBytes(reason));
+        if (exception is not null)
+            headers.Add(KafkaHeaders.DeadLetterExceptionType, Encoding.UTF8.GetBytes(exception.GetType().FullName ?? exception.GetType().Name));
+        return new Message<string, byte[]> { Key = original.Key, Value = original.Value, Headers = headers };
+    }
 }
 
 /// <summary>Kafka <see cref="ISendTransport"/> — produces JSON-serialized events to a topic (key = partition/message id).</summary>
@@ -85,11 +103,10 @@ internal sealed class KafkaReceiveContext(
 
     public override ValueTask AcknowledgeAsync(CancellationToken cancellationToken) => ValueTask.CompletedTask;
 
-    public override async ValueTask DeadLetterAsync(string reason, CancellationToken cancellationToken)
+    public override async ValueTask DeadLetterAsync(string reason, Exception? exception, CancellationToken cancellationToken)
     {
-        // Produce a fresh message (don't re-submit the consumed instance into the producer).
-        var deadLetter = new Message<string, byte[]> { Key = originalMessage.Key, Value = originalMessage.Value };
-        await deadLetterProducer.ProduceAsync(deadLetterTopic, deadLetter, cancellationToken);
+        // Produce a fresh message (don't re-submit the consumed instance) carrying death headers for triage.
+        await deadLetterProducer.ProduceAsync(deadLetterTopic, KafkaDeadLetter.Build(originalMessage, reason, exception), cancellationToken);
     }
 }
 
@@ -144,6 +161,9 @@ internal sealed partial class KafkaReceiveTransport(IOptions<KafkaOptions> optio
             if (envelope is null)
             {
                 LogUnparseable();
+                // Don't silently drop — re-produce the raw message to the DLQ topic (so it's recoverable), then advance.
+                _deadLetterProducer!.ProduceAsync(options.Value.DeadLetterTopic, KafkaDeadLetter.Build(result.Message, "unparseable", null), cancellationToken)
+                    .GetAwaiter().GetResult();
                 _consumer!.StoreOffset(result);
                 continue;
             }
@@ -186,7 +206,7 @@ internal sealed partial class KafkaReceiveTransport(IOptions<KafkaOptions> optio
             BodyType = eventType,
             Destination = result.Topic,
             PartitionKey = result.Message.Key,
-            DeliveryCount = 0,
+            DeliveryCount = 1, // Kafka has no native per-message redelivery count; true tracking needs a bumped header (follow-up)
             Headers = headers,
         };
     }

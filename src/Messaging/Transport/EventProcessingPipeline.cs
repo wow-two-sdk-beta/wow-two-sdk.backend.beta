@@ -58,7 +58,7 @@ internal sealed partial class EventProcessingPipeline(
         catch (Exception ex)
         {
             LogProcessingFailed(ex, envelope.MessageId);
-            await context.DeadLetterAsync(ex.Message, cancellationToken);
+            await context.DeadLetterAsync(ex.Message, ex, cancellationToken);
         }
     }
 

@@ -23,9 +23,9 @@ internal sealed class InMemoryReceiveContext(EventEnvelope envelope, IDeadLetter
 
     public override ValueTask AcknowledgeAsync(CancellationToken cancellationToken) => ValueTask.CompletedTask;
 
-    public override ValueTask DeadLetterAsync(string reason, CancellationToken cancellationToken)
+    public override ValueTask DeadLetterAsync(string reason, Exception? exception, CancellationToken cancellationToken)
     {
-        var record = new DeadLetterRecord(envelope.MessageId, envelope.Destination, reason, ExceptionType: null, envelope, timeProvider.GetUtcNow());
+        var record = new DeadLetterRecord(envelope.MessageId, envelope.Destination, reason, exception?.GetType().FullName, envelope, timeProvider.GetUtcNow());
         return deadLetters.DeadLetterAsync(record, cancellationToken);
     }
 }
