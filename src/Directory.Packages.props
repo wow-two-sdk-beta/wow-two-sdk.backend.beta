@@ -9,7 +9,7 @@
 
   <ItemGroup Label="Microsoft.Extensions.* (.NET 9 baseline)">
     <PackageVersion Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.3" />
-    <PackageVersion Include="Microsoft.Extensions.Caching.Hybrid" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.Hybrid" Version="10.1.0" />
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.3" />

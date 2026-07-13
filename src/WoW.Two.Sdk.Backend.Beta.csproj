@@ -90,6 +90,20 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />
   </ItemGroup>
 
+  <!-- Caching (src/Caching/) — HybridCache (L1+L2+tags+stampede) default + Redis L2 backend. HybridCache and
+       the Redis IDistributedCache are separate NuGets (not in the shared framework), so referencing them is safe. -->
+  <ItemGroup Label="Caching — HybridCache + Redis L2">
+    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <PackageReference Include="StackExchange.Redis" />
+  </ItemGroup>
+
+  <!-- Feature flags (src/FeatureFlags/) — Microsoft.FeatureManagement default + OpenFeature vendor-neutral seam. -->
+  <ItemGroup Label="Feature flags">
+    <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" />
+    <PackageReference Include="OpenFeature" />
+  </ItemGroup>
+
   <ItemGroup Label="Http / outbound — Refit + Polly v8 resilience + header propagation">
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
