@@ -84,6 +84,12 @@
     <PackageReference Include="NetEscapades.AspNetCore.SecurityHeaders" />
   </ItemGroup>
 
+  <!-- Realtime — SignalR/SSE/WebSockets conventions (src/Realtime/). SignalR + WebSockets + .NET 10 SSE
+       come from the Microsoft.AspNetCore.App shared framework; only the Redis backplane is an add-on package. -->
+  <ItemGroup Label="Realtime — SignalR Redis backplane">
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />
+  </ItemGroup>
+
   <ItemGroup Label="Http / outbound — Refit + Polly v8 resilience + header propagation">
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
