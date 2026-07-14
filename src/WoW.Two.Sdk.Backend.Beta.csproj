@@ -104,6 +104,17 @@
     <PackageReference Include="OpenFeature" />
   </ItemGroup>
 
+  <!-- AI (src/Ai/) — Microsoft.Extensions.AI IChatClient/IEmbeddingGenerator seam + provider brokers.
+       Wave 1 (this set, compatible with the pinned M.E.AI 9.0.0-preview.9 / CompleteAsync API): Ollama + ML.Tokenizers.
+       Anthropic/OpenAI/Azure adapters target M.E.AI 9.3.0+ (GetResponseAsync) — they fold into a coordinated
+       M.E.AI-stack version bump (+ newer OllamaSharp), tracked separately. All MIT. -->
+  <ItemGroup Label="AI — Microsoft.Extensions.AI + provider brokers (wave 1)">
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+    <PackageReference Include="OllamaSharp" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" />
+  </ItemGroup>
+
   <ItemGroup Label="Http / outbound — Refit + Polly v8 resilience + header propagation">
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
