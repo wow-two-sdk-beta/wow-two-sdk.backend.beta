@@ -1,98 +1,91 @@
-# Messaging — session handoff
+# Events layer — session handoff
 
-*Last updated: 2026-07-09 · Status: **green build; 11/12 tests pass (1 skip)** · pick up from NEXT*
+*Last updated: 2026-07-19 · Continue the events-layer maturity build in `wow-two-sdk.backend.beta`.*
 
-> Event-messaging layer for `WoW.Two.Sdk.Backend.Beta` (backend-beta SDK). Greenfield → substantial. Full rationale +
-> decision log: [`messaging-architecture-investigation.md`](./messaging-architecture-investigation.md) (read its **Review log** first).
-> Repo: `workbench/wow-two-sdk-beta/wow-two-sdk.backend.beta`. Memory: `project_messaging_layer.md`.
+> **What to build (source of truth):** [`events-maturity-backlog.md`](./events-maturity-backlog.md) — 5-agent gap analysis vs MassTransit/NServiceBus/Wolverine/Rebus/Brighter/CAP/Dapr; 3 tiers (A correctness · B keystone seams · C breadth) + a **Deferred** table. This file = current state + how to continue.
+> Repo: `workbench/wow-two-sdk-beta/wow-two-sdk.backend.beta`. A fresh chat auto-recalls memory `project_messaging_layer`.
 
-## Build & test (do this first to confirm green)
+## Start a new chat with
+
+> "continue the backend-beta events layer — read `docs/planning/messaging/events-maturity-backlog.md` + `handoff.md`; next seam = **<pick from NEXT>**."
+
+## Build & test (do first to confirm green)
 
 ```bash
-cd src
-export MSBUILDDISABLENODEREUSE=1; ulimit -n 65535
-dotnet build WoW.Two.Sdk.Backend.Beta.csproj -m:1                       # mono-lib; expect 0 errors, ~9 allowlisted warns
-dotnet test Messaging.Tests/WoW.Two.Sdk.Backend.Beta.Messaging.Tests.csproj   # needs Docker (Testcontainers RabbitMQ+Kafka)
+cd src; export MSBUILDDISABLENODEREUSE=1; ulimit -n 65535
+dotnet build WoW.Two.Sdk.Backend.Beta.csproj -m:1                                    # 0 errors; 41 allowlisted NU/CA warns (all NuGet advisories, none in Messaging)
+dotnet test Messaging.Tests/WoW.Two.Sdk.Backend.Beta.Messaging.Tests.csproj -m:1     # needs Docker (Rabbit/Kafka/NATS/PG). 29 pass / 1 skip (Kafka DLQ = macOS librdkafka multi-consumer crash; verify on Linux CI)
 ```
-- **CS1591**: every *public* type + member needs XML doc (mono-lib, `GenerateDocumentationFile=true`, warnings-as-errors). Positional records → a `<param>` per param.
-- **IDE0005** (unused using) errors **only** when `GenerateDocumentationFile=true` (⇒ mono-lib yes, test proj no). Types in an *enclosing* namespace need **no** using (e.g. `…Messaging.Kafka` sees `EventEnvelope` in `…Messaging`).
-- Mono-lib globs `src/**`; every `*.Tests/**` is excluded in `DefaultItemExcludes` (`WoW.Two.Sdk.Backend.Beta.csproj:34`) — **add new test folders there**.
-- Git: agents never `commit`/`push` (hook-enforced); the dev commits.
+- **Traps** (warnings-as-errors): CS1591 (XML doc every *public* member), IDE0005 (no unused usings — e.g. drop `System.Text.Json` after adopting `IMessageSerializer`). Test project (beta-forever exception) = `Messaging.Tests/`; **CA2263** → use AwesomeAssertions generic `Be<T>()` for `Type` asserts.
+- **`JsonOptionsPresets`**: keep `MakeReadOnly(populateMissingResolver: true)` — reverting crashes in reflection-JSON-off contexts.
+- Git: agents never `commit`/`push`; the dev commits.
 
-## The model (3 layers, one port)
+## Shipped this session (green, pushed)
 
-```
-IEventBus (TransportEventBus)  →  ISendTransport  →  {in-memory channel | RabbitMQ | Kafka}
-                                                         │
-handler ← EventProcessingPipeline ← ReceiveContext ← IReceiveTransport  (TransportConsumerHostedService drives it)
-          (dedupe → resilience → dispatch → ctx.Ack / ctx.DeadLetter)
-```
-- **Bus carries `IEvent` only** (constraint `where TEvent : class, IEvent`). Commands/queries stay on the in-process `Mediator`; merge deferred (services use the bus, mustn't inject the mediator).
-- **Contract = role, never topology.** No `IIntegrationEvent`. Transport hints (`Durable`/`Priority`/`TimeToLive`/`PartitionKey`) are abstract → adapters map or ignore.
-- **Capability flags** (`ITransportCapabilities`) drive native-vs-emulated: RabbitMQ native DLX; **Kafka `NativeDeadLetter=false` → emulates DLQ by re-producing to a dead-letter topic**.
+**Wave 0 — correctness (backlog §1):**
+- A1 Kafka/NATS unparseable → re-produce to DLQ (`wt-dl-reason`), not silent ack-drop.
+- A2 delivery-count wired — NATS `Metadata.NumDelivered` · RabbitMQ `Redelivered` · Kafka baseline `1` (true count deferred).
+- A5 outbox `MaxDispatchAttempts` give-up + `PruneProcessedAsync` retention sweep.
+- A6 `ReceiveContext.DeadLetterAsync(reason, Exception?, ct)` captures exception type; Kafka/NATS `wt-dl-*` death headers.
+- A9 `AddOpenTelemetryMetrics` → `AddMeter("WoW.Two.*")` (SDK meters were uncollected).
 
-## File map (all under `src/`)
+**Wave 1 — keystone seams (backlog §2):**
+- **Serializer + type-resolver** (`Messaging/Serialization/MessageSerialization.cs`): `IMessageSerializer` (default STJ via `JsonOptionsPresets`) + `IMessageTypeResolver` / `MessageTypeRegistry` / `DefaultMessageTypeResolver` — **stable `FullName` token** from the handler + `IEvent`-contract scan, AQN fallback, aliases → kills the AQN→`Type.GetType` silent-drop. `EventEnvelope.ContentType` + `wt-content-type` header. Threaded RabbitMQ/Kafka/NATS (in-memory doesn't serialize). Seams: `AddMessageSerializer<T>` / `AddMessageTypeResolver<T>` / `MapMessageType<T>(token)`.
+- **Consume-filter pipeline** (`Transport/ConsumeFilter.cs`): `IConsumeFilter` + `ConsumeDelegate` + `AddConsumeFilter<T>()`. `EventProcessingPipeline` is now an ordered filter chain wrapping the resilience→dedupe→dispatch core (empty = behavior-preserving; first-registered = outermost). Unblocks fault-publish / wire-tap / claim-check / rate-limit / per-consumer breaker.
 
-| Area | Path | Key types |
-|---|---|---|
-| Contracts | `Messaging/MessagingContracts.cs` | `IEvent`, `IEventHandler<T>`, `IEventBus`, `EventContext<T>`, `EventEnvelope`, `Publish/SendOptions` |
-| Transport port | `Messaging/Transport/` | `ISendTransport`, `IReceiveTransport`, `ReceiveContext`, `ITransportCapabilities`, `EventProcessingPipeline`, `TransportConsumerHostedService`, `TransportEventBus`, `EventDispatcher`/`Registry` |
-| Reliability | `Messaging/Reliability/MessagingReliability.cs` + `EventResilience.cs` | `IRetryPolicy`/`RetryConfig`/`BackoffKind`/`DefaultRetryPolicy`, `IEventResiliencePipeline`, `IDeadLetterStore`/`DeadLetterRecord`, `IInboxProcessor`, `IEventScheduler`, `IOutbox`/`OutboxRecord`/`IOutboxDispatcher` |
-| Reliability · Polly | `Messaging/Reliability/Polly/` | `AddPollyEventResilience(…)` (retry+breaker+timeout) |
-| Reliability · EF | `Messaging/Reliability/Ef/` | `EfOutbox<T>`, `OutboxDispatcher<T>` + `IOutboxClaimStrategy`, `EfInboxProcessor<T>`, entities, `Ef.md` (migration SQL) |
-| In-memory | `Messaging/InMemory/` | channel, `InMemorySend/ReceiveTransport`, `InMemoryReceiveContext`, `InMemoryInboxProcessor`, `InMemoryDeadLetterStore`, `InMemoryEventScheduler`, `DefaultEventResiliencePipeline`, options |
-| Event saga | `Messaging/EventSaga/` | `EventSagaBuilder`, `IEventSagaStep`/`EventSagaStep`, `EventSagaRunner`, `EventSagaContext`, `IEventSagaTransport` |
-| RabbitMQ | `Messaging/RabbitMq/` (`RabbitMq.md`) | `RabbitMqSend/ReceiveTransport`, `RabbitMqReceiveContext` (native DLX), `RabbitMqCapabilities`, `AddRabbitMqEventBus` |
-| Kafka | `Messaging/Kafka/` (`Kafka.md`) | `KafkaSend/ReceiveTransport`, `KafkaReceiveContext` (emulated DLQ), `KafkaCapabilities`, `AddKafkaEventBus` |
-| DI | `Messaging/MessagingServiceCollectionExtensions.cs` | see Registration |
-| Diagnostics | `Messaging/MessagingDiagnostics.cs` | `WoW.Two.Messaging` `ActivitySource` (OTel; wired via `AddOpenTelemetryTracing` → `AddSource("WoW.Two.*")`) |
-| Docs | `Messaging/Messaging.{md,spec.md,standard.md}` | folder lead + API spec + RFC-2119 contract |
-| Persistence CQRS | `Data/Abstractions/IWriteRepository.cs`, `Data/CqrsRepositoryServiceCollectionExtensions.cs`, `Data/…/Repositories/` | `IWriteRepository`, `AddCqrsRepository<TEntity,TId,TContext>`, `AddEfWriteRepositories`, `AddDapperReadRepository` |
-| Pluggable EF interceptors | `Data/EntityFrameworkCore/Interceptors/` | `AddEfSaveChangesInterceptor<T>()` (auto-wired by `AddEntityFrameworkCore`) |
-| Tests | `Messaging.Tests/` | in-memory + RabbitMQ + Kafka (Testcontainers) |
+## Shipped 2026-07-19 — sequence items 1–3 (suite 24 pass / 1 skip)
 
-## Registration (composable)
+- **Concurrency pump** (`Transport/MessagePump.cs`) — `ConcurrencyOptions` + N workers + bounded per-worker channel (`FullMode.Wait` = backpressure). Default `MaxConcurrentMessages = 1` dispatches inline, behaviour-preserving like the empty filter chain. Per-key ordering routes `PartitionKey` through a stable FNV-1a hash to one worker. `InFlight` counter feeds the drain, the metrics gauge, and (next) `IBusControl`. `AddMessagingConcurrency(...)` is the seam. 4 tests: sequential default · parallel speedup · per-key order · drain-on-stop.
+- **`wt-partition-key`** — the key was previously lost on RabbitMQ and NATS entirely (never stamped, never reconstructed), so per-key ordering would have silently degraded to unordered on 2 of 3 brokers. Kafka keeps the native `Key`.
+- **`ITransportCapabilities` → 13 flags** — added `SettlesInContext` · `ThreadAffineConsume` (both read by the pump) plus `NativePriority` · `NativeTimeToLive` · `NativeScheduling` · `NativeSessions` · `NativePublisherConfirms` · `NativeTransactions` · `NativeRequestReply`. Implemented honestly on all 4 adapters — a conditional capability reports `false` with the reason in a comment.
+- **A7 partial** — RabbitMQ now maps `Priority` (clamped `[0,255]`) and `TimeToLive` → `Expiration` ms. Kafka/NATS have no per-message equivalent and now *say so* via the flags instead of dropping the hint silently.
+- **`IMessagingMetrics`** (`MessagingMetrics.cs`) — meter `WoW.Two.Sdk.Messaging`, collected by the existing `AddMeter("WoW.Two.*")`. Sent/consumed counters, process-duration histogram, dead-lettered (tagged `error.type` only), retried, in-flight observable gauge. `NoOpMessagingMetrics` opts out. Never tags message/correlation/partition id.
+- **Outbox on the serializer seam** — `OutboxDispatcher` moved off direct STJ + `Type.GetType` onto `IMessageSerializer` / `IMessageTypeResolver`; rows carry `content_type` and a mismatch now fails the row instead of feeding it mismatched bytes. **Schema:** `outbox_messages` needs `content_type varchar(100) NOT NULL DEFAULT 'application/json'`.
+- **`wt-` is a reserved header namespace** (`MessageHeaders.IsReserved`) — caller headers previously overwrote every control header, so forwarding a received envelope's `Headers` on a re-publish stamped the *previous* message's type token onto the new body. Control headers now write last, on all 3 brokers.
+- **Kafka key no longer fabricated** — `Key = envelope.PartitionKey ?? envelope.MessageId` meant a consumer got back a `PartitionKey` nobody chose, and a unique key per message defeats the sticky partitioner. Now null when unset.
 
-```csharp
-services.AddInMemoryEventBus([o => o.Retry = …], asm);        // = handlers + reliability + transport (batteries-included)
-services.AddRabbitMqEventBus(o => { o.ConnectionString=…; o.Queue=…; }, asm);
-services.AddKafkaEventBus(o => { o.BootstrapServers=…; o.Topic=…; o.GroupId=…; o.DeadLetterTopic=…; }, asm);
-services.AddEventSaga(EventSagaBuilder.Named("x").Step<A>().Step<B>().Build());
-// granular: AddInMemoryEventTransport / AddInMemoryReliability / AddEventResilienceDefaults / AddEventHandlersFromAssemblies
-// polly:  AddPollyEventResilience(o => o.UseCircuitBreaker = true);
-// outbox: db.OnModelCreating → modelBuilder.ApplyOutboxModel().ApplyInboxModel();
-//         AddEfOutbox<Db>() + AddEfOutboxDispatcher<Db>() + AddEfInbox<Db>();  (migration SQL in Reliability/Ef/Ef.md)
-// repo:   AddCqrsRepository<Product, Guid, Db>();   // reads→Dapper, writes→EF (additive, non-enforcing)
-```
-Handler contract is identical across every transport: `class H : IEventHandler<TEvent> { ValueTask HandleAsync(EventContext<TEvent>, CancellationToken); }`.
+## Shipped 2026-07-19 (second batch) — Tier-B complete + A3/A4
 
-## Verified (tests, Docker)
+- **`IBusControl`** (`Transport/BusControl.cs`) — `BusState` (Stopped/Running/Paused/Draining) · `Pause`/`Resume`/`Stop` · `InFlight`. Pause is an `AsyncGate` at the top of `MessagePump.DispatchAsync`, upstream of both pump modes: a paused bus makes the consume loop *wait*, so messages stay unacked at the broker and prefetch is the backpressure. Open path is one `Volatile.Read` returning a completed `ValueTask` — no allocation when nobody pauses. Gate sits before the in-flight increment, so an admitted message always completes.
+- **Observers** (`Transport/MessageObservers.cs`) — `IPublishObserver` · `IReceiveObserver` · `IConsumeObserver` + `AddMessageObserver<T>()`. Distinct from `IConsumeFilter`: a filter wraps and may short-circuit, an observer only watches and cannot change settlement. Every hook is per-observer try/caught (`EventId 6041`); zero registered observers costs a `.Length` check, no async state machine.
+- **Exception classification** (`Reliability/EventFaultClassification.cs`) — `FaultDisposition { Retry, DeadLetter, Ignore }` + `IEventFaultClassifier`, configured by type (`DeadLetterOn<T>` / `IgnoreOn<T>` / `RetryOn<T>`) or predicate. Fixes "every exception burns `MaxAttempts`". Needed **zero** `Transport/` changes: a `DeadLetter` verdict propagates into the pipeline's existing catch, `Ignore` returns normally onto the ack path. Applied to both the Polly and default pipelines so behaviour can't diverge by which is registered; `Retry` is the zero value, so unconfigured = today's behaviour.
+- **A3 connection recovery** — the receiver's `Task.Delay(Timeout.Infinite)` is now a supervisor loop on `ChannelShutdownAsync` + consumer `UnregisteredAsync` **plus** a 10s `IsOpen`/`IsRunning` poll, which is the only thing that catches A3's actual failure: recovery reopens the connection but never re-subscribes, raising no event at all. `GetConnectionAsync` no longer gates on `IsOpen` — with recovery on, closed means "reconnecting", and the old check opened a second connection per blip.
+- **A4 publisher confirms** — channel opened with `CreateChannelOptions(publisherConfirmationsEnabled, publisherConfirmationTrackingEnabled)`; in 7.x `BasicPublishAsync` itself completes only on broker ack and throws `PublishException` on nack, so awaiting the publish *is* the confirm wait. No retry loop (would double-publish). **`SendAsync` now costs a broker round-trip and surfaces failures that were silently swallowed.**
+- 5 more tests: non-retryable dead-letters immediately · ignored acks · unclassified still retries · pause holds then resume releases · stop drains to zero in-flight.
 
-- ✅ in-memory: round-trip · dedupe (`IInboxProcessor`) · dead-letter (retry-exhausted → `IDeadLetterStore`).
-- ✅ RabbitMQ: round-trip · **native DLX/DLQ** over a real broker.
-- ✅ Kafka: round-trip (publish→consume→handle).
-- ⏭ Kafka DLQ: `Skip`'d — native librdkafka crash with multiple in-process consumers on **macOS**; unskip + verify on Linux CI.
+## NEXT — agreed sequence (work top-down, backlog §2)
 
-## Gotchas (learned the hard way)
+1. **Topology + per-type routing** ← *start here* — replaces the RabbitMQ `#` catch-all; unblocks per-endpoint DLQ + subscriptions. Also the prerequisite for RabbitMQ priority actually *ranking* (needs `x-max-priority` at declare — see traps).
+2. **`IRequestClient`** — request/response; needs `ReplyTo` on the envelope + temp-queue topology (1). `NativeRequestReply` is already true for RabbitMQ + NATS.
+3. **State-machine saga + `ISagaRepository`** (epic) — correlate-by-key, timeouts, durability.
+4. **Consumer-facing test harness** (§3.12) — now unblocked by the observer seam; every test still re-rolls `EventCollector`.
+5. **A8 re-enqueue delayed retry** — in-proc `Task.Delay` still holds the message unsettled through the whole backoff.
 
-- **Kafka / librdkafka is NOT thread-safe.** The consume loop is **synchronous** (`onMessage(...).GetAwaiter().GetResult()`), `StoreOffset` runs on the consume thread, `ctx.Ack` is a no-op (offset advanced by the loop). `TransportConsumerHostedService.StopAsync` calls `base.StopAsync` (drain loop) **before** `receiveTransport.StopAsync` (dispose) — reversing it closes the native consumer mid-`Consume` → crash. Don't "simplify" either.
-- **CAP is a framework, not a transport** — peer to this layer (over a transport + DB). It plugs UNDER our port later; don't invert it. Its `[CapSubscribe]` is compile-time (no catch-all) — the consume bridge is the hard part.
-- Options configured via `Action<T>` use **mutable** `{ get; set; }` (records with `init` break `Configure`). Retry config lives on `InMemoryEventBusOptions.Retry`.
+Tier-B is complete. Then Tier-C breadth (§3), starting with adapter breadth (ASB → SQS → Redis Streams).
 
-## NEXT (pick up here)
+### Open follow-ups from this batch
 
-1. **Kafka DLQ on Linux CI** — unskip `KafkaEventBusTests.Dead_letters_failing_message_to_dlq_topic`; should pass off-macOS. (NATS DLQ already passes on macOS — managed client, no librdkafka crash.)
-2. **Next broker behind the port** — **CAP** (publish + its outbox/dashboard; consume-bridge is the fork) or **ASB** (native DLQ, clean; rounds out the matrix — RabbitMQ-native · Kafka+NATS-emulated). Mirror `Kafka/` or `Nats/`.
-3. **Per-type routing/binding + consumer groups** (RabbitMQ binds `#`, Kafka/NATS one subject today).
-4. **Webhooks +1** — durable subscription store + management API + delivery/DLQ persistence (`Webhooks/Webhooks.spec.md` §Future).
-5. **Repo split enforcement** (user's call — currently additive/non-enforcing).
+- **Kafka pause evicts from the group** — pause parks the dedicated consume thread, so a long pause risks `max.poll.interval.ms`. Real fix is native `Consumer.Pause(partitions)` behind an `ITransportCapabilities` branch.
+- **`Ignore` records no consumed metric** — the `RecordConsumed` call sits inside the action lambda that threw. Needs a `ConsumeOutcome.Ignored` plus a `Transport/` call site.
+- **`Messaging.spec.md:69` understates the retry contract** now that classification exists.
+- RabbitMQ.Client 7.0.0 skews publish seq numbers on concurrent publish failure (fixed in 7.1.x) — reason to bump the pin.
 
-## Shipped 2026-07-09 (3-lane parallel batch — agents + lead)
+### Traps learned building the pump
 
-- **NATS JetStream adapter** (`Nats/`) — 3rd broker; emulated DLQ (re-publish to dead-letter subject) like Kafka but **settles in-context like RabbitMQ** (NATS.Net managed/thread-safe → no librdkafka sync-loop hack). Auto-provisions stream + durable consumer (`FilterSubject`=events subject). `AddNatsEventBus`; `NATS.Client.JetStream 2.5.5`. Round-trip + **DLQ tests green on macOS**. Test gotcha: shell-less `nats` image → Testcontainers `UntilMessageIsLogged("Server is ready")`, **not** an exec/port-probe (which hangs `StartAsync` forever).
-- **PG SKIP-LOCKED outbox claim** (`Reliability/Ef/PostgresSkipLockedOutboxClaimStrategy.cs`) — `SELECT … FOR UPDATE SKIP LOCKED`, tx bridged onto `DbContext.SavedChanges` for exactly-once across instances; `ReplaceWithPostgresSkipLockedOutboxClaim<TContext>()`. Stateless singleton; real-Postgres 2-dispatcher exactly-once test. (closes `task_7ec0a681`)
-- **Webhooks** (`Webhooks/`) — outbound HMAC-SHA256-signed (`timestamp.body`, Stripe-style) delivery via `IHttpClientFactory`, transient-only retry, in-memory subscription store, `IWebhookDeliveryLog` seam. `AddWebhooks`. P4.
+- **Drain must not run on the transport's stopping token.** `base.StopAsync` cancels it before draining, so handing it to the handler abandons exactly the in-flight work the drain exists to finish. Workers run on the pump's own token, cancelled only at dispose.
+- `TransportConsumerHostedService.StopAsync` order is load-bearing and now three-step: stop the loop → `pump.DrainAsync` → release the transport. Releasing earlier disposes the channel a worker is about to ack on.
+- **Kafka is thread-affine** — `Consume`/`StoreOffset` must stay on the consume thread. `ThreadAffineConsume = true` makes the pump degrade to sequential and log it. Parallelising Kafka needs offsets marshalled back to the loop; don't "simplify" the flag away.
+- **RabbitMQ priority rides the wire but is not ranked** — ranking needs `x-max-priority` on the queue, and adding it to a live queue fails redeclare with `PRECONDITION_FAILED`. Needs the topology work (item 2) plus a migration, not a code tweak.
+- `PrefetchCount` must be ≥ `MaxConcurrentMessages` or it becomes the effective concurrency limit.
+- **Webhooks deliberately did NOT adopt the serializer seam** — `JsonOptionsPresets` is camelCase/null-omitting where the current path is `JsonSerializerOptions.Default`, so every signed byte and every property name would change and break existing subscribers. Needs an opt-in switch or a v2 signature scheme.
+- **`EventId` 6401/6402/6403 collide** between `Kafka/KafkaTransport.cs` and `Webhooks/WebhookPublisher.cs` — pre-existing, unrenumbered.
 
-## Done this session (don't redo)
+## Deferred — analysis preserved (backlog "Deferred" table)
 
-event-centric rename · transport-abstract options · `EventSaga` routing-slip · pluggable EF interceptors · EF outbox (stage + dispatcher + `IOutboxClaimStrategy` seam) · exactly-once `EfInboxProcessor` (same-tx) · read/write repo split (non-enforcing) · Polly resilience seam · OTel producer/consumer spans (traceparent on headers) · transport port + in-memory re-seat · RabbitMQ adapter · Kafka adapter · test suite.
+A3/A4 conn auto-recovery + publisher confirms · A7/A8 broker delay/TTL/priority mapping + re-enqueue retry (**Wave 2**) · Kafka true delivery-count · outbox/webhooks serializer adoption · MessagePack/Protobuf/Avro/CloudEvents serializers · **per-consumer inbox scoping** (inbox is `message_id`-only; mature = composite `(consumer_id, message_id)` — backlog §3.6).
+
+## Other
+
+- **Shelved: `identity/core`** — own sliced-lego user model, step 1 of a 10-step epic ([`identity/identity-architecture.md`](../identity/identity-architecture.md); memory `project_identity_rebuild`). SEPARATE batch — check git for whether it's committed.
+- **Parallelization that worked**: lead builds the seam core + one reference adapter; disjoint adapter files (Kafka/NATS) fan out to agents with the reference pattern + a preserve-existing-logic guard.
+- Full architecture/decision log: [`messaging-architecture-investigation.md`](./messaging-architecture-investigation.md).
