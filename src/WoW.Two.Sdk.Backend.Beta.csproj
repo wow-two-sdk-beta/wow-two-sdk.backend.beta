@@ -115,6 +115,12 @@
     <PackageReference Include="Microsoft.ML.Tokenizers" />
   </ItemGroup>
 
+  <!-- Media — tabular document export (src/Media/Csv, src/Media/Excel). CsvHelper (MS-PL/Apache-2.0) + ClosedXML (MIT). -->
+  <ItemGroup Label="Media — CSV + Excel export">
+    <PackageReference Include="CsvHelper" />
+    <PackageReference Include="ClosedXML" />
+  </ItemGroup>
+
   <ItemGroup Label="Http / outbound — Refit + Polly v8 resilience + header propagation">
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
