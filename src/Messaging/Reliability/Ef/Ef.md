@@ -27,8 +27,16 @@ builder.Services.AddEfInbox<AppDbContext>();                // IInboxStore (dedu
 await _outbox.EnqueueAsync(
     new OutboxRecord(Guid.NewGuid().ToString(), typeof(OrderPlaced).FullName!, payloadBytes, now, headers), ct);
 await _db.SaveChangesAsync(ct);               // order row + outbox row commit together
-// → OutboxDispatcher polls, deserializes by `type`, publishes to IEventBus, stamps processed_on_utc.
+// → OutboxDispatcher polls, resolves `type` via IMessageTypeResolver, deserializes `payload` via IMessageSerializer,
+//   publishes to IEventBus, stamps processed_on_utc.
 ```
+
+Staging records the registered serializer's content type on the row (`content_type`), the same way a transport stamps it
+on the wire envelope; dispatch fails a row loudly if that format no longer matches the registered `IMessageSerializer`
+rather than deserializing it to garbage. `type` is whatever token the caller passes — `typeof(T).FullName!` above.
+Resolution goes through `IMessageTypeResolver`, so a registered stable token, a plain full name, and an
+assembly-qualified name written by an older build all still resolve; an unresolvable one fails the row (error retained,
+`Attempts` bumped) instead of being dropped.
 
 ## Migration (author for the bespoke migrator — `Migrations/NNN-add-outbox/`)
 
@@ -39,6 +47,7 @@ CREATE TABLE outbox_messages (
     id               uuid         NOT NULL,
     type             varchar(500) NOT NULL,
     payload          bytea        NOT NULL,
+    content_type     varchar(100) NOT NULL DEFAULT 'application/json',
     occurred_on_utc  timestamptz  NOT NULL,
     headers_json     text         NOT NULL DEFAULT '{}',
     processed_on_utc timestamptz  NULL,
@@ -62,13 +71,25 @@ DROP TABLE IF EXISTS inbox_messages;
 DROP TABLE IF EXISTS outbox_messages;
 ```
 
+### Already have an `outbox_messages` table? Add `content_type`
+
+`content_type` is newer than the original DDL above. Existing deployments need a follow-up migration — every pre-existing
+row was staged by the System.Text.Json serializer, so backfill it as such:
+
+```sql
+ALTER TABLE outbox_messages ADD COLUMN content_type varchar(100) NOT NULL DEFAULT 'application/json';
+```
+
+Without it the dispatcher's `SELECT *` claim (and the EF materializer) fails on the missing column. Leaving the column
+empty rather than backfilling is also valid — dispatch then skips the format check for those rows.
+
 ## Types
 
 | Type | Role |
 |---|---|
 | `OutboxMessageEntity` · `ApplyOutboxModel()` | maps `outbox_messages` |
 | `EfOutbox<TContext>` · `AddEfOutbox<TContext>()` | `IOutbox` — adds the row to `TContext` (atomic staging) |
-| `OutboxDispatcher<TContext>` · `AddEfOutboxDispatcher<TContext>(…)` | claims a batch (`IOutboxClaimStrategy`) → typed-publish to `IEventBus` → stamps `processed_on_utc`; polling hosted service |
+| `OutboxDispatcher<TContext>` · `AddEfOutboxDispatcher<TContext>(…)` | claims a batch (`IOutboxClaimStrategy`) → resolves `type` (`IMessageTypeResolver`) → deserializes `payload` (`IMessageSerializer`) → typed-publish to `IEventBus` → stamps `processed_on_utc`; polling hosted service |
 | `IOutboxClaimStrategy` · `PollingOutboxClaimStrategy` · `PostgresSkipLockedOutboxClaimStrategy` | pending-row claim seam — default polls (single-instance); `ReplaceWithPostgresSkipLockedOutboxClaim<TContext>()` swaps in the Postgres `FOR UPDATE SKIP LOCKED` claim for multi-instance |
 | `InboxMessageEntity` · `ApplyInboxModel()` · `EfInboxProcessor<TContext>` · `AddEfInbox<TContext>()` | `IInboxProcessor` — inbox row + handler in **one transaction** (true exactly-once) |
 

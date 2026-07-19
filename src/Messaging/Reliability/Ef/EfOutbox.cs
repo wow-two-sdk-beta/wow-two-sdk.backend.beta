@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
@@ -12,7 +13,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 /// rows to the event bus.
 /// </summary>
 /// <typeparam name="TContext">The application's DbContext.</typeparam>
-internal sealed class EfOutbox<TContext>(TContext context) : IOutbox
+internal sealed class EfOutbox<TContext>(TContext context, IMessageSerializer serializer) : IOutbox
     where TContext : DbContext
 {
     public ValueTask EnqueueAsync(OutboxRecord record, CancellationToken cancellationToken)
@@ -24,7 +25,12 @@ internal sealed class EfOutbox<TContext>(TContext context) : IOutbox
             Id = Guid.TryParse(record.Id, out var id) ? id : Guid.NewGuid(),
             Type = record.Type,
             Payload = record.Payload.ToArray(),
+            // The record arrives already serialized, so stamp the format the registered serializer produces — the same
+            // content type the transport carries on the wire envelope. Dispatch checks it before deserializing.
+            ContentType = serializer.ContentType,
             OccurredOnUtc = record.OccurredOnUtc,
+            // Deliberately System.Text.Json, not IMessageSerializer: headers_json is a text metadata column, not the
+            // event body — a binary serializer (MessagePack, Protobuf) has no lossless representation in it.
             HeadersJson = JsonSerializer.Serialize(record.Headers),
         };
 
@@ -47,6 +53,10 @@ public static class EfOutboxServiceCollectionExtensions
         where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        // Default serializer, in case the outbox is registered for staging only (no transport/bus registration, which
+        // is what normally supplies it via AddEventResilienceDefaults). TryAdd → a registered serializer still wins.
+        services.TryAddSingleton<IMessageSerializer, SystemTextJsonMessageSerializer>();
         services.TryAddScoped<IOutbox, EfOutbox<TContext>>();
         return services;
     }

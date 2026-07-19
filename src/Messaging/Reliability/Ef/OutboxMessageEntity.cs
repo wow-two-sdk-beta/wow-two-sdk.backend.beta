@@ -19,6 +19,14 @@ public sealed class OutboxMessageEntity : IKeyedEntity<Guid>, IHasTableName
     /// <summary>Serialized event body.</summary>
     public byte[] Payload { get; set; } = [];
 
+    /// <summary>
+    /// Format of <see cref="Payload"/> — the staging <c>IMessageSerializer</c>'s content type (e.g. <c>application/json</c>),
+    /// mirroring the content type the transport carries on the wire envelope. Dispatch compares it against the registered
+    /// serializer so a payload written in another format fails loudly instead of deserializing to garbage. Empty on rows
+    /// written before the column existed (comparison is then skipped).
+    /// </summary>
+    public string ContentType { get; set; } = string.Empty;
+
     /// <summary>When the event was produced (UTC).</summary>
     public DateTimeOffset OccurredOnUtc { get; set; }
 

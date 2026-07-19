@@ -24,6 +24,16 @@ internal sealed class WebhookPublisher(IWebhookSubscriptionStore store, HttpWebh
     {
         ArgumentNullException.ThrowIfNull(@event);
 
+        // Deliberately NOT routed through IMessageSerializer / IMessageTypeResolver, unlike the transports and the outbox:
+        // both seams change bytes that leave the process and that subscribers already depend on.
+        //   - Body: the seam's default serializer uses JsonOptionsPresets (camelCase, null-omitting, relaxed escaping,
+        //     NodaTime converters); this call uses JsonSerializerOptions.Default (PascalCase, nulls written, strict
+        //     escaping). Different bytes mean a different signed body (WebhookSignature signs the payload verbatim) and
+        //     a renamed JSON property on every field, breaking every existing subscriber's parser.
+        //   - Event type: the resolver emits a FullName token ("MyApp.Events.OrderPlaced"); this sends Type.Name
+        //     ("OrderPlaced"), which is what subscribers' EventTypeFilter globs and X-Webhook-Event routing match on.
+        // Either swap is a subscriber-visible contract break, so it needs an opt-in switch or a v2 signature scheme.
+        // Callers wanting another format serialize themselves and use the raw-payload overload.
         var payload = JsonSerializer.SerializeToUtf8Bytes(@event, @event.GetType());
         return PublishAsync(typeof(TEvent).Name, payload, cancellationToken);
     }

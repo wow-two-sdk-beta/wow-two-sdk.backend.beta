@@ -35,6 +35,7 @@ public sealed class OutboxSkipLockedTests : IAsyncLifetime
                 id               uuid         NOT NULL,
                 type             varchar(500) NOT NULL,
                 payload          bytea        NOT NULL,
+                content_type     varchar(100) NOT NULL DEFAULT 'application/json',
                 occurred_on_utc  timestamptz  NOT NULL,
                 headers_json     text         NOT NULL DEFAULT '{}',
                 processed_on_utc timestamptz  NULL,

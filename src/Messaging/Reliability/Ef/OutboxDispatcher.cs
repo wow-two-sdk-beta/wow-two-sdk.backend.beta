@@ -1,12 +1,12 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
@@ -64,20 +64,21 @@ internal sealed class PollingOutboxClaimStrategy : IOutboxClaimStrategy
 
 /// <summary>
 /// Drains pending <see cref="OutboxMessageEntity"/> rows to the event bus: claim a batch (via <see cref="IOutboxClaimStrategy"/>),
-/// resolve the CLR type, deserialize the payload, publish, then stamp <c>ProcessedOnUtc</c> (or bump <c>Attempts</c> + record the error).
+/// resolve the CLR type (via <see cref="IMessageTypeResolver"/>), deserialize the payload (via <see cref="IMessageSerializer"/>),
+/// publish, then stamp <c>ProcessedOnUtc</c> (or bump <c>Attempts</c> + record the error).
 /// </summary>
 /// <typeparam name="TContext">The application's DbContext.</typeparam>
 internal sealed partial class OutboxDispatcher<TContext>(
     TContext context,
     OutboxEventPublisher publisher,
     IOutboxClaimStrategy claimStrategy,
+    IMessageSerializer serializer,
+    IMessageTypeResolver typeResolver,
     TimeProvider timeProvider,
     IOptions<OutboxDispatcherOptions> options,
     ILogger<OutboxDispatcher<TContext>> logger) : IOutboxDispatcher
     where TContext : DbContext
 {
-    private static readonly ConcurrentDictionary<string, Type?> TypeCache = new(StringComparer.Ordinal);
-
     public async ValueTask<int> DispatchAsync(int batchSize, CancellationToken cancellationToken)
     {
         var opt = options.Value;
@@ -88,7 +89,8 @@ internal sealed partial class OutboxDispatcher<TContext>(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var eventType = TypeCache.GetOrAdd(row.Type, ResolveType);
+            // Stable token first, assembly-qualified-name fallback — the resolver owns both (and caches the fallback).
+            var eventType = string.IsNullOrEmpty(row.Type) ? null : typeResolver.ResolveType(row.Type);
             if (eventType is null)
             {
                 MarkFailed(row, $"Unresolved event type '{row.Type}'.", opt);
@@ -96,9 +98,18 @@ internal sealed partial class OutboxDispatcher<TContext>(
                 continue;
             }
 
+            // A row staged by a different serializer than the one now registered would deserialize to garbage (or throw
+            // opaquely) — fail it explicitly. Rows written before content_type existed are empty, so the check is skipped.
+            if (!string.IsNullOrEmpty(row.ContentType) && !string.Equals(row.ContentType, serializer.ContentType, StringComparison.OrdinalIgnoreCase))
+            {
+                MarkFailed(row, $"Payload content type '{row.ContentType}' does not match the registered serializer '{serializer.ContentType}'.", opt);
+                LogContentTypeMismatch(row.Id, row.ContentType, serializer.ContentType);
+                continue;
+            }
+
             try
             {
-                var @event = JsonSerializer.Deserialize(row.Payload, eventType);
+                var @event = serializer.Deserialize(row.Payload, eventType);
                 if (@event is null)
                 {
                     MarkFailed(row, "Payload deserialized to null.", opt);
@@ -146,27 +157,14 @@ internal sealed partial class OutboxDispatcher<TContext>(
             row.ProcessedOnUtc = timeProvider.GetUtcNow();
     }
 
-    private static Type? ResolveType(string typeName)
-    {
-        var type = Type.GetType(typeName);
-        if (type is not null)
-            return type;
-
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            type = assembly.GetType(typeName);
-            if (type is not null)
-                return type;
-        }
-
-        return null;
-    }
-
     [LoggerMessage(EventId = 6201, Level = LogLevel.Error, Message = "Outbox dispatch failed for message {Id}")]
     private partial void LogDispatchFailed(Exception exception, Guid id);
 
     [LoggerMessage(EventId = 6202, Level = LogLevel.Warning, Message = "Outbox message {Id} has unresolved event type {Type}")]
     private partial void LogTypeUnresolved(Guid id, string type);
+
+    [LoggerMessage(EventId = 6204, Level = LogLevel.Error, Message = "Outbox message {Id} was staged as {RowContentType} but the registered serializer produces {SerializerContentType}")]
+    private partial void LogContentTypeMismatch(Guid id, string rowContentType, string serializerContentType);
 }
 
 /// <summary>Options for the outbox dispatcher hosted service.</summary>
