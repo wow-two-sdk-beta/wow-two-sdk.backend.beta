@@ -19,6 +19,14 @@ public enum ConsumeOutcome
 
     /// <summary>No handler is registered for the event type; the message was settled without dispatch.</summary>
     NoHandler,
+
+    /// <summary>
+    /// The attempt threw, the registered <c>IEventFaultClassifier</c> returned <c>FaultDisposition.Ignore</c>, and the
+    /// resilience pipeline swallowed the fault — so the message was acknowledged without any attempt completing.
+    /// Distinct from <see cref="Success"/> (the handler never finished) and from <see cref="Faulted"/> (nothing was
+    /// dead-lettered); an ignored message would otherwise leave the pipeline with no consumed count at all.
+    /// </summary>
+    Ignored,
 }
 
 /// <summary>
@@ -213,6 +221,7 @@ internal sealed class DefaultMessagingMetrics : IMessagingMetrics, IDisposable
         ConsumeOutcome.Faulted => "faulted",
         ConsumeOutcome.Duplicate => "duplicate",
         ConsumeOutcome.NoHandler => "no_handler",
+        ConsumeOutcome.Ignored => "ignored",
         _ => "unknown",
     };
 

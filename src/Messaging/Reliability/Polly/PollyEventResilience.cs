@@ -27,12 +27,19 @@ public sealed class PollyEventResilienceOptions
 /// timeout, gated by the same <see cref="IEventFaultClassifier"/> the default pipeline uses: a non-retryable failure
 /// never enters Polly's retry loop, an ignored one is swallowed here.
 /// </summary>
+/// <remarks>
+/// Under <see cref="DelayedRetryOptions"/> the retry strategy is left out of the pipeline entirely — the wait belongs
+/// on the re-enqueue path, not in the consume slot — while the timeout and circuit breaker stay, since neither holds a
+/// message through a backoff. The retry <i>schedule</i> then comes from <see cref="DelayedRetryOptions.Retry"/> (or the
+/// shared <see cref="RetryConfig"/>): <see cref="PollyEventResilienceOptions.MaxRetryAttempts"/> and
+/// <see cref="PollyEventResilienceOptions.BaseDelay"/> describe a loop that is no longer running.
+/// </remarks>
 internal sealed class PollyEventResiliencePipeline : IEventResiliencePipeline
 {
     private readonly ResiliencePipeline _pipeline;
     private readonly IEventFaultClassifier _classifier;
 
-    public PollyEventResiliencePipeline(PollyEventResilienceOptions options, IEventFaultClassifier classifier)
+    public PollyEventResiliencePipeline(PollyEventResilienceOptions options, IEventFaultClassifier classifier, bool delayedRetryActive = false)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(classifier);
@@ -43,18 +50,21 @@ internal sealed class PollyEventResiliencePipeline : IEventResiliencePipeline
         if (options.AttemptTimeout is { } timeout)
             builder.AddTimeout(timeout);
 
-        builder.AddRetry(new RetryStrategyOptions
+        if (!delayedRetryActive)
         {
-            MaxRetryAttempts = options.MaxRetryAttempts,
-            BackoffType = DelayBackoffType.Exponential,
-            UseJitter = true,
-            Delay = options.BaseDelay,
+            builder.AddRetry(new RetryStrategyOptions
+            {
+                MaxRetryAttempts = options.MaxRetryAttempts,
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true,
+                Delay = options.BaseDelay,
 
-            // Replaces Polly's default "handle every exception": only a Retry verdict is handled, so a DeadLetter or
-            // Ignore verdict leaves the loop unhandled and surfaces to ExecuteAsync on the first failure. With no rules
-            // configured every exception classifies as Retry, which is the default predicate's behaviour exactly.
-            ShouldHandle = arguments => ValueTask.FromResult(ShouldRetry(arguments.Outcome.Exception)),
-        });
+                // Replaces Polly's default "handle every exception": only a Retry verdict is handled, so a DeadLetter or
+                // Ignore verdict leaves the loop unhandled and surfaces to ExecuteAsync on the first failure. With no rules
+                // configured every exception classifies as Retry, which is the default predicate's behaviour exactly.
+                ShouldHandle = arguments => ValueTask.FromResult(ShouldRetry(arguments.Outcome.Exception)),
+            });
+        }
 
         if (options.UseCircuitBreaker)
         {
@@ -101,7 +111,8 @@ public static class PollyEventResilienceServiceCollectionExtensions
     /// <remarks>
     /// Exception classification is <b>not</b> configured here — it is shared with the default pipeline via
     /// <c>AddEventFaultClassification</c>. Registered as a factory rather than an instance so the classifier is
-    /// resolved when the pipeline is first used, which makes the two calls order-independent.
+    /// resolved when the pipeline is first used, which makes the two calls order-independent. The same lateness lets
+    /// <c>AddDelayedEventRetry</c> be called on either side of this one and still drop the retry strategy.
     /// </remarks>
     public static IServiceCollection AddPollyEventResilience(this IServiceCollection services, Action<PollyEventResilienceOptions>? configure = null)
     {
@@ -110,7 +121,10 @@ public static class PollyEventResilienceServiceCollectionExtensions
         var options = new PollyEventResilienceOptions();
         configure?.Invoke(options);
         services.Replace(ServiceDescriptor.Singleton<IEventResiliencePipeline>(provider =>
-            new PollyEventResiliencePipeline(options, provider.GetService<IEventFaultClassifier>() ?? DefaultEventFaultClassifier.RetryAll)));
+            new PollyEventResiliencePipeline(
+                options,
+                provider.GetService<IEventFaultClassifier>() ?? DefaultEventFaultClassifier.RetryAll,
+                provider.GetService<DelayedRetryCoordinator>() is { IsActive: true })));
         return services;
     }
 }

@@ -16,6 +16,14 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 /// </list>
 /// Cancellation is not classified: an <see cref="OperationCanceledException"/> raised by a cancelled
 /// <c>cancellationToken</c> always propagates as shutdown, never as a message fault.
+/// <para>
+/// An implementation MUST also stop after a <b>single attempt</b> while <see cref="DelayedRetryOptions.Enabled"/> is in
+/// effect, propagating the fault instead of looping: the wait then happens between deliveries, on the consume
+/// pipeline's re-enqueue path, rather than in this loop with the message unsettled. Classification is unaffected — a
+/// <see cref="FaultDisposition.DeadLetter"/> verdict still propagates and an <see cref="FaultDisposition.Ignore"/>
+/// verdict is still swallowed. An implementation that keeps looping does not corrupt the redelivery cap (the
+/// coordinator bounds re-enqueues on its own), but the message pays both budgets.
+/// </para>
 /// </remarks>
 public interface IEventResiliencePipeline
 {

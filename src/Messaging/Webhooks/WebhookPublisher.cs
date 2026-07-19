@@ -169,13 +169,17 @@ internal sealed partial class HttpWebhookDispatcher(
             new WebhookDeliveryRecord(subscription.Id, eventType, subscription.Url, outcome, attempts, statusCode, timeProvider.GetUtcNow()),
             cancellationToken);
 
-    [LoggerMessage(EventId = 6401, Level = LogLevel.Debug, Message = "Webhook delivery to {Url} for {EventType} failed (attempt {Attempt}, status {StatusCode}); retrying")]
+    // EventIds 6901–6999 are the webhooks block. Messaging owns 6xxx and the broker adapters march up it one hundred at
+    // a time (6301 RabbitMQ · 6401 Kafka · 6501 NATS · 6601+ free for the next adapter), so webhooks — not an adapter —
+    // sits at the top of the range, clear of that march and below Foundation.Security at 7001. The block was 6401–6403,
+    // which collided with KafkaTransport.
+    [LoggerMessage(EventId = 6901, Level = LogLevel.Debug, Message = "Webhook delivery to {Url} for {EventType} failed (attempt {Attempt}, status {StatusCode}); retrying")]
     private partial void LogRetrying(Uri url, string eventType, int attempt, int? statusCode);
 
-    [LoggerMessage(EventId = 6402, Level = LogLevel.Warning, Message = "Webhook delivery to {Url} for {EventType} rejected with status {StatusCode}; not retrying")]
+    [LoggerMessage(EventId = 6902, Level = LogLevel.Warning, Message = "Webhook delivery to {Url} for {EventType} rejected with status {StatusCode}; not retrying")]
     private partial void LogRejected(Uri url, string eventType, int? statusCode);
 
-    [LoggerMessage(EventId = 6403, Level = LogLevel.Warning, Message = "Webhook delivery to {Url} for {EventType} exhausted after {Attempts} attempts; dropping")]
+    [LoggerMessage(EventId = 6903, Level = LogLevel.Warning, Message = "Webhook delivery to {Url} for {EventType} exhausted after {Attempts} attempts; dropping")]
     private partial void LogExhausted(Uri url, string eventType, int attempts);
 }
 

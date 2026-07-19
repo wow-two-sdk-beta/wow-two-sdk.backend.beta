@@ -38,6 +38,32 @@ Resolution goes through `IMessageTypeResolver`, so a registered stable token, a 
 assembly-qualified name written by an older build all still resolve; an unresolvable one fails the row (error retained,
 `Attempts` bumped) instead of being dropped.
 
+## Headers on dispatch (`headers_json`)
+
+The record's `Headers` are staged to `headers_json` and rebuilt into `PublishOptions` at dispatch — the outbox hop is
+header-transparent. Reserved (`wt-`) control headers are **lifted onto their typed field** rather than passed through
+raw, because every adapter drops caller-supplied reserved keys when writing wire headers and re-stamps its own from the
+envelope:
+
+| Staged header | Dispatched as |
+|---|---|
+| `wt-message-id` | `PublishOptions.MessageId` — else the row `id`, so a redelivery after a crash reuses the id the consumer's inbox dedupes on |
+| `wt-reply-to` | `PublishOptions.ReplyTo` |
+| `wt-conversation-id` | `PublishOptions.ConversationId` |
+| `wt-partition-key` | `PublishOptions.PartitionKey` |
+| `wt-event-type` · `wt-content-type` · `wt-dl-*` | dropped — the row's `type` / `content_type` columns own the first two, death headers describe a past dead-letter |
+| everything else (`traceparent`, `tracestate`, app metadata) | `PublishOptions.Headers`, verbatim |
+
+**W3C trace context survives the hop.** The bus stamps `traceparent` from the ambient `Activity`, which inside the
+dispatcher's background loop is the dispatcher's — not the producer's. So dispatch first starts an `outbox dispatch`
+activity parented to the row's staged `traceparent`/`tracestate`, and the publish it wraps lands in the producer's trace
+instead of starting an orphan one. With no `ActivitySource` listener the staged header simply passes through untouched
+and carries the trace by itself.
+
+A caller id that is not a `Guid` cannot be the row's `Guid` primary key; staging carries it through `wt-message-id` so
+it is not lost to the generated one. Malformed `headers_json` fails the row loudly (error retained, `Attempts` bumped)
+rather than dispatching it without its headers.
+
 ## Migration (author for the bespoke migrator — `Migrations/NNN-add-outbox/`)
 
 `Apply.sql`:
@@ -89,7 +115,7 @@ empty rather than backfilling is also valid — dispatch then skips the format c
 |---|---|
 | `OutboxMessageEntity` · `ApplyOutboxModel()` | maps `outbox_messages` |
 | `EfOutbox<TContext>` · `AddEfOutbox<TContext>()` | `IOutbox` — adds the row to `TContext` (atomic staging) |
-| `OutboxDispatcher<TContext>` · `AddEfOutboxDispatcher<TContext>(…)` | claims a batch (`IOutboxClaimStrategy`) → resolves `type` (`IMessageTypeResolver`) → deserializes `payload` (`IMessageSerializer`) → typed-publish to `IEventBus` → stamps `processed_on_utc`; polling hosted service |
+| `OutboxDispatcher<TContext>` · `AddEfOutboxDispatcher<TContext>(…)` | claims a batch (`IOutboxClaimStrategy`) → resolves `type` (`IMessageTypeResolver`) → deserializes `payload` (`IMessageSerializer`) → rebuilds `PublishOptions` from `headers_json` (`OutboxDispatchHeaders`) → typed-publish to `IEventBus` → stamps `processed_on_utc`; polling hosted service |
 | `IOutboxClaimStrategy` · `PollingOutboxClaimStrategy` · `PostgresSkipLockedOutboxClaimStrategy` | pending-row claim seam — default polls (single-instance); `ReplaceWithPostgresSkipLockedOutboxClaim<TContext>()` swaps in the Postgres `FOR UPDATE SKIP LOCKED` claim for multi-instance |
 | `InboxMessageEntity` · `ApplyInboxModel()` · `EfInboxProcessor<TContext>` · `AddEfInbox<TContext>()` | `IInboxProcessor` — inbox row + handler in **one transaction** (true exactly-once) |
 

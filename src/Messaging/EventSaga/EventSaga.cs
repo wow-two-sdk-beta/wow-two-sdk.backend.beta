@@ -140,6 +140,12 @@ public sealed class EventSagaDefinition
 }
 
 /// <summary>Fluent builder for a declarative event saga (routing slip). Steps run in the order added.</summary>
+/// <remarks>
+/// An itinerary this process drives start to finish, in memory: it does not survive a crash, and it does not wait for
+/// the world. For a flow that lives between messages — correlated by a business key, persisted, woken by timeouts —
+/// use <see cref="WoW.Two.Sdk.Backend.Beta.Messaging.Saga.SagaStateMachine{TState}"/> instead. Both are supported; they
+/// answer different questions.
+/// </remarks>
 public sealed class EventSagaBuilder
 {
     private readonly string _name;
@@ -195,7 +201,11 @@ public interface IEventSagaTransport
 {
     /// <summary>Send an event to a destination, carrying the saga's correlation id.</summary>
     /// <typeparam name="TEvent">Event type.</typeparam>
-    /// <param name="destination">Destination (queue) name.</param>
+    /// <param name="destination">
+    /// Destination (queue) name. On a key-routed transport this must be a <b>bound</b> address — an endpoint queue name
+    /// or a consumed type's key — because an unbound key is dropped rather than refused. The default transport checks
+    /// it against the local topology and logs an unbound destination once.
+    /// </param>
     /// <param name="event">The event.</param>
     /// <param name="context">The saga context (for correlation).</param>
     /// <param name="cancellationToken">Cancellation token.</param>

@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga;
 
@@ -82,13 +84,58 @@ public sealed partial class EventSagaRunner(IServiceScopeFactory scopeFactory, I
     private partial void LogCompensationFailed(Exception exception, string saga, string step);
 }
 
-/// <summary>In-process <see cref="IEventSagaTransport"/> — routes step-emitted events through the in-memory <see cref="IEventBus"/>.</summary>
-internal sealed class InProcessEventSagaTransport(IEventBus bus) : IEventSagaTransport
+/// <summary>
+/// Default <see cref="IEventSagaTransport"/> — routes step-emitted events through the registered
+/// <see cref="IEventBus"/>, which is the in-memory channel unless a broker adapter is wired.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Addressing, since topology (B4).</b> <see cref="IEventBus.SendAsync{TEvent}"/> addresses a message by its
+/// <c>destination</c>, and on RabbitMQ that string is now the routing key: the <c>#</c> catch-all binding
+/// is gone, and a publish is <c>mandatory: false</c>, so a destination nothing bound is accepted by the broker and
+/// dropped. The bound keys are the endpoint queue names and the consumed types' keys — <b>not</b> arbitrary logical
+/// names. The in-memory transport is unaffected (it dispatches by body type and only records the destination), and
+/// Kafka/NATS ignore the destination entirely, publishing to their one configured topic/subject.
+/// </para>
+/// <para>
+/// So the send below is checked against the local topology and an unbound destination is logged once — a silently
+/// dropped saga message is otherwise invisible. State-machine sagas avoid the question by construction: they publish
+/// by type, which always lands on a bound key.
+/// </para>
+/// </remarks>
+internal sealed partial class InProcessEventSagaTransport(
+    IEventBus bus,
+    ILogger<InProcessEventSagaTransport> logger,
+    ITopologyProvider? topology = null) : IEventSagaTransport
 {
+    private readonly ConcurrentDictionary<string, byte> _warnedDestinations = new(StringComparer.Ordinal);
+
     public ValueTask SendAsync<TEvent>(string destination, TEvent @event, EventSagaContext context, CancellationToken cancellationToken = default)
         where TEvent : class, IEvent
     {
         ArgumentNullException.ThrowIfNull(context);
+        WarnIfUnroutable(destination, @event, typeof(TEvent));
         return bus.SendAsync(destination, @event, new SendOptions { CorrelationId = context.CorrelationId }, cancellationToken);
     }
+
+    private void WarnIfUnroutable(string destination, object body, Type bodyType)
+    {
+        // No topology registered means no key-based routing to get wrong (in-memory, Kafka, NATS).
+        if (topology is null || string.IsNullOrEmpty(destination) || _warnedDestinations.ContainsKey(destination))
+            return;
+
+        // Resolved exactly the way the send transport will resolve it, rather than re-deriving the rule here.
+        var key = topology.ResolveRoutingKey(new EventEnvelope { MessageId = string.Empty, Body = body, BodyType = bodyType, Destination = destination });
+        foreach (var endpoint in topology.ConsumeEndpoints)
+            if (endpoint.RoutingKeys.Contains(key, StringComparer.Ordinal))
+                return;
+
+        // Once per destination: a saga step in a loop would otherwise log per message. A destination consumed by
+        // another process is legitimate and lands here too — hence "verify", not "broken".
+        if (_warnedDestinations.TryAdd(destination, 0))
+            LogUnboundDestination(destination, key);
+    }
+
+    [LoggerMessage(EventId = 6104, Level = LogLevel.Warning, Message = "Saga destination {Destination} resolves to routing key {RoutingKey}, which no endpoint in this process binds; verify a consumer binds it or the message is dropped unrouted")]
+    private partial void LogUnboundDestination(string destination, string routingKey);
 }

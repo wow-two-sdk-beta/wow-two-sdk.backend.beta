@@ -36,6 +36,19 @@ public interface IRetryPolicy
     TimeSpan? NextDelay(int attempt, RetryConfig config);
 }
 
+/// <summary>Where a dead-lettered message sits in the administration lifecycle.</summary>
+public enum DeadLetterState
+{
+    /// <summary>Awaiting triage — visible to <see cref="IDeadLetterAdmin.BrowseAsync"/> and eligible for redrive. Every record starts here.</summary>
+    DeadLettered,
+
+    /// <summary>
+    /// Held back by an operator. Still stored and still readable, but hidden from a browse that does not ask for it and
+    /// refused by redrive — the state for a message that must not go back on the wire until someone decides otherwise.
+    /// </summary>
+    Quarantined,
+}
+
 /// <summary>A message that exhausted retries (or was rejected as non-retryable) and was moved aside.</summary>
 /// <param name="MessageId">The dead-lettered message id.</param>
 /// <param name="Destination">The source destination/queue.</param>
@@ -51,6 +64,33 @@ public sealed record DeadLetterRecord(
     EventEnvelope Envelope,
     DateTimeOffset DeadLetteredAtUtc)
 {
+    /// <summary>
+    /// How many times an operator has already redriven this message; 0 for one that has never been replayed. Stamped by
+    /// <see cref="IDeadLetterAdmin"/> on each redrive, and the number the redrive cap is measured against.
+    /// </summary>
+    /// <remarks>
+    /// This field is the store's copy. The authoritative one for a message that came back and died again is
+    /// <see cref="EffectiveRedriveCount"/>, because a fresh record is built by the transport with this at 0.
+    /// </remarks>
+    public int RedriveCount { get; init; }
+
+    /// <summary>When the message was last redriven, or <c>null</c> if it never has been.</summary>
+    public DateTimeOffset? LastRedrivenAtUtc { get; init; }
+
+    /// <summary>Administration state. <see cref="DeadLetterState.Quarantined"/> holds the record back from redrive.</summary>
+    public DeadLetterState State { get; init; } = DeadLetterState.DeadLettered;
+
+    /// <summary>
+    /// Redrive count including the marker carried on the envelope itself — the number the infinite-redrive guard uses.
+    /// </summary>
+    /// <remarks>
+    /// A redriven message that fails again is dead-lettered by the transport, which builds a brand-new record with
+    /// <see cref="RedriveCount"/> at 0; only the <c>wt-dl-redrive-count</c> header survived the round trip. Taking the
+    /// larger of the two means the cap holds across replays, across a restart, and across a store that persists nothing
+    /// but the envelope — without every adapter having to know the field exists.
+    /// </remarks>
+    public int EffectiveRedriveCount => Math.Max(RedriveCount, DeadLetterHeaders.ReadRedriveCount(Envelope));
+
     /// <summary>Build a record from a failed delivery.</summary>
     /// <param name="envelope">The envelope being dead-lettered.</param>
     /// <param name="exception">The terminal exception.</param>
@@ -59,11 +99,21 @@ public sealed record DeadLetterRecord(
     {
         ArgumentNullException.ThrowIfNull(envelope);
         ArgumentNullException.ThrowIfNull(exception);
-        return new DeadLetterRecord(envelope.MessageId, envelope.Destination, exception.Message, exception.GetType().FullName, envelope, deadLetteredAtUtc);
+        return new DeadLetterRecord(envelope.MessageId, envelope.Destination, exception.Message, exception.GetType().FullName, envelope, deadLetteredAtUtc)
+        {
+            // Recovered from the envelope so a message dying on its Nth replay is stored knowing it, rather than
+            // presenting to an operator as a first-time failure.
+            RedriveCount = DeadLetterHeaders.ReadRedriveCount(envelope),
+        };
     }
 }
 
 /// <summary>Poison-message terminus with replay (redrive). Native broker DLQs back this on adapters; in-memory by default.</summary>
+/// <remarks>
+/// This is the floor: enough to park a message and put it back. Browse-by-criteria, by-id lookup, purge and quarantine
+/// need <see cref="IDeadLetterQueryStore"/>; <see cref="IDeadLetterAdmin"/> uses it where a store offers it and falls
+/// back to this interface where it does not.
+/// </remarks>
 public interface IDeadLetterStore
 {
     /// <summary>Move a message into the dead-letter store.</summary>
@@ -79,6 +129,11 @@ public interface IDeadLetterStore
     /// <summary>Replay (redrive) a dead-lettered message back to its source with a reset delivery count.</summary>
     /// <param name="messageId">The dead-lettered message id.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    /// <remarks>
+    /// An implementation MUST replay the record as currently stored, not a cached copy taken at dead-letter time:
+    /// <see cref="IDeadLetterAdmin"/> writes the redrive marker onto the stored record and then calls this, so the
+    /// counter reaches the wire through the store's own replay rather than through a second publish path.
+    /// </remarks>
     ValueTask ReplayAsync(string messageId, CancellationToken cancellationToken);
 }
 
@@ -97,6 +152,12 @@ public interface IInboxProcessor
 }
 
 /// <summary>Schedules an envelope for delayed (future) delivery.</summary>
+/// <remarks>
+/// Also the medium for delayed retry (<see cref="DelayedRetryOptions"/>), where it carries a failed message's next
+/// attempt: an implementation that drops a scheduled envelope drops a retry with it, so a durable one is what makes
+/// re-enqueued retries survive a restart. It is used only on a transport that reports
+/// <c>NativeDelay</c>/<c>NativeScheduling</c>, so the schedule and the consumer sit on the same medium.
+/// </remarks>
 public interface IEventScheduler
 {
     /// <summary>Schedule an envelope to become deliverable at or after <paramref name="notBeforeUtc"/>.</summary>
