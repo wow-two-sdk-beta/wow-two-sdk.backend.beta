@@ -241,7 +241,10 @@
     <PackageVersion Include="Microsoft.KernelMemory.Core" Version="0.95.241129.2" />
     <PackageVersion Include="Microsoft.ML.Tokenizers" Version="0.22.0" />
     <PackageVersion Include="Anthropic.SDK" Version="5.1.0" />
-    <PackageVersion Include="OllamaSharp" Version="4.0.21" />
+    <!-- PINNED 4.0.7: last version whose Microsoft.Extensions.AI.Abstractions floor is 9.0.0-preview.9.24556.5 (the pin above).
+         4.0.8+ raise that floor to 9.0.1-preview.1.24570.5 → NU1109 under CPM (an error; NoWarn does not demote it).
+         Raising the M.E.AI pin instead breaks src/Ai/ against the newer ChatClientBuilder API. Bump both together or not at all. -->
+    <PackageVersion Include="OllamaSharp" Version="4.0.7" />
     <PackageVersion Include="LLamaSharp" Version="0.19.0" />
     <PackageVersion Include="Pinecone.NET" Version="3.0.0" />
     <PackageVersion Include="Qdrant.Client" Version="1.12.0" />
