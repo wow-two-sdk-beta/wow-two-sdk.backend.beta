@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
@@ -21,14 +22,43 @@ public sealed class RabbitMqOptions
     /// <summary>Topic exchange events are published to. Default <c>wt.events</c>.</summary>
     public string Exchange { get; set; } = "wt.events";
 
-    /// <summary>This service's queue. Default <c>wt.events.queue</c>.</summary>
+    /// <summary>
+    /// This service's queue under <see cref="TopologyStyle.SharedEndpoint"/>. Default <c>wt.events.queue</c>.
+    /// Ignored under <see cref="TopologyStyle.EndpointPerMessageType"/>, where every queue is named by
+    /// <see cref="IEndpointNameFormatter"/>.
+    /// </summary>
     public string Queue { get; set; } = "wt.events.queue";
 
-    /// <summary>Dead-letter exchange (native DLQ). Default <c>wt.events.dlx</c>.</summary>
+    /// <summary>
+    /// Dead-letter exchange (native DLQ). Default <c>wt.events.dlx</c>. Declared <c>fanout</c> under
+    /// <see cref="TopologyStyle.SharedEndpoint"/> and <c>direct</c> under
+    /// <see cref="TopologyStyle.EndpointPerMessageType"/>, which needs to key each dead letter to one DLQ. An exchange
+    /// cannot change type, so switching style against an existing exchange needs a new name here.
+    /// </summary>
     public string DeadLetterExchange { get; set; } = "wt.events.dlx";
 
-    /// <summary>Dead-letter queue. Default <c>wt.events.dlq</c>.</summary>
+    /// <summary>Dead-letter queue for the shared endpoint. Default <c>wt.events.dlq</c>. Per-type endpoints derive theirs from <see cref="IEndpointNameFormatter.DeadLetter"/> instead.</summary>
     public string DeadLetterQueue { get; set; } = "wt.events.dlq";
+
+    /// <summary>
+    /// Declare consume queues with <c>x-max-priority</c>, so the broker actually ranks the AMQP <c>priority</c>
+    /// property the send path already stamps. Null (default) leaves queues unranked: priority rides the wire and is
+    /// ignored, and <see cref="ITransportCapabilities.NativePriority"/> reports false to match.
+    /// <para>
+    /// Opt-in because the argument is fixed at queue creation — RabbitMQ answers a redeclare that adds it with
+    /// <c>PRECONDITION_FAILED</c>. Turning it on against a queue that predates the setting is detected and logged, and
+    /// that queue stays unranked rather than failing startup; recreate the queue during a drain window to rank it.
+    /// RabbitMQ recommends a small ceiling (1–5) — each band costs a sub-queue with its own memory and CPU.
+    /// </para>
+    /// </summary>
+    public byte? MaxPriority { get; set; }
+
+    /// <summary>
+    /// On start, drop the <c>#</c> catch-all binding from each consume queue. Default false. Migration aid only: a
+    /// queue created before per-type bindings existed still carries <c>#</c>, so it keeps receiving every type on the
+    /// exchange until that binding goes. Leave it off once the migration has run.
+    /// </summary>
+    public bool UnbindCatchAllBinding { get; set; }
 
     /// <summary>
     /// Consumer prefetch (unacked in flight). Default 10. Keep it at least
@@ -42,19 +72,6 @@ public sealed class RabbitMqOptions
     /// indefinitely at this interval, so this is the floor on how long a recovered broker stays unnoticed.
     /// </summary>
     public TimeSpan NetworkRecoveryInterval { get; set; } = TimeSpan.FromSeconds(5);
-}
-
-/// <summary>Well-known RabbitMQ header keys the adapter sets.</summary>
-internal static class RabbitMqHeaders
-{
-    /// <summary>Carries the event's stable type token so the consumer can resolve the CLR type.</summary>
-    public const string EventType = "wt-event-type";
-
-    /// <summary>Carries the serializer content type so the consumer selects the matching deserializer.</summary>
-    public const string ContentType = "wt-content-type";
-
-    /// <summary>Carries the ordering / partition key so the consumer can preserve per-key ordering.</summary>
-    public const string PartitionKey = "wt-partition-key";
 }
 
 /// <summary>Lazily-opened shared RabbitMQ connection (singleton), with automatic connection + topology recovery.</summary>
@@ -110,14 +127,17 @@ internal sealed class RabbitMqConnection(IOptions<RabbitMqOptions> options) : IA
 }
 
 /// <summary>
-/// RabbitMQ <see cref="ISendTransport"/> — publishes envelopes to a topic exchange (routing key = destination) on a
-/// channel running in publisher-confirm mode, so a send completes only once the broker has durably accepted it.
+/// RabbitMQ <see cref="ISendTransport"/> — publishes envelopes to a topic exchange on a channel running in
+/// publisher-confirm mode, so a send completes only once the broker has durably accepted it. The routing key comes
+/// from <see cref="ITopologyProvider"/>: the message type's stable token for a publish, the caller's address for an
+/// explicit send.
 /// </summary>
 internal sealed partial class RabbitMqSendTransport(
     RabbitMqConnection connection,
     IOptions<RabbitMqOptions> options,
     IMessageSerializer serializer,
     IMessageTypeResolver typeResolver,
+    ITopologyProvider topology,
     ILogger<RabbitMqSendTransport> logger) : ISendTransport, IAsyncDisposable
 {
     /// <summary>
@@ -147,25 +167,37 @@ internal sealed partial class RabbitMqSendTransport(
         ArgumentNullException.ThrowIfNull(envelope);
 
         var channel = await GetChannelAsync(cancellationToken);
-        var body = serializer.Serialize(envelope.Body, envelope.BodyType);
+        var body = envelope.ToWireBody(serializer);
 
         // Caller headers first, minus the reserved namespace, then the control headers — the adapter owns wt-*. A received
         // envelope's Headers carry the wt-* keys of THAT message, so forwarding them on a re-publish would otherwise stamp
         // the previous message's type token onto the new body and misroute it on the consumer.
         var headers = new Dictionary<string, object?>(StringComparer.Ordinal);
         foreach (var (key, value) in envelope.Headers)
-            if (!MessageHeaders.IsReserved(key))
+            if (!MessageHeaders.IsAdapterOwned(key))
                 headers[key] = value;
 
-        headers[RabbitMqHeaders.EventType] = typeResolver.ToTypeToken(envelope.BodyType);
-        headers[RabbitMqHeaders.ContentType] = serializer.ContentType;
+        // WireBodyType, not BodyType: a send-path transformation that substituted the wire bytes decodes as a different
+        // shape, and this token is what the receiver deserializes into. Routing below stays on BodyType.
+        headers[MessageHeaders.EventType] = typeResolver.ToTypeToken(envelope.WireBodyType);
+        headers[MessageHeaders.ContentType] = serializer.ContentType;
         if (!string.IsNullOrEmpty(envelope.PartitionKey))
-            headers[RabbitMqHeaders.PartitionKey] = envelope.PartitionKey;
+            headers[MessageHeaders.PartitionKey] = envelope.PartitionKey;
+
+        // The conversation id has no AMQP property of its own, and correlation-id is already spoken for by
+        // EventEnvelope.CorrelationId — the business flow, which spans many exchanges. Overloading one property with
+        // both would make a reply indistinguishable from any other message in the same flow, so this rides a header.
+        if (!string.IsNullOrEmpty(envelope.ConversationId))
+            headers[MessageHeaders.ConversationId] = envelope.ConversationId;
 
         var properties = new BasicProperties
         {
             MessageId = envelope.MessageId,
             CorrelationId = envelope.CorrelationId,
+
+            // Native AMQP reply-to. Null for a one-way message, which leaves the property absent from the frame rather
+            // than present-and-empty — the receive side treats those the same, but a non-SDK consumer may not.
+            ReplyTo = string.IsNullOrEmpty(envelope.ReplyTo) ? null : envelope.ReplyTo,
             Persistent = envelope.Durable,
             Headers = headers,
         };
@@ -188,7 +220,11 @@ internal sealed partial class RabbitMqSendTransport(
         //
         // mandatory stays false: confirms attest that the broker accepted the message, not that a queue was bound to
         // receive it. Publishing before any consumer has declared its queue is normal here and must not throw.
-        await channel.BasicPublishAsync(options.Value.Exchange, envelope.Destination, mandatory: false, properties, body, cancellationToken);
+        //
+        // The routing key is the topology's, not the raw destination: a publish routes by the stable type token that
+        // consumers bind, so only services handling that type receive it. The old catch-all binding made the key
+        // irrelevant — every consumer got every message and filtered in-process.
+        await channel.BasicPublishAsync(options.Value.Exchange, topology.ResolveRoutingKey(envelope), mandatory: false, properties, body, cancellationToken);
     }
 
     private async ValueTask<IChannel> GetChannelAsync(CancellationToken cancellationToken)
@@ -258,17 +294,27 @@ internal sealed class RabbitMqReceiveContext(EventEnvelope envelope, IChannel ch
 }
 
 /// <summary>
-/// RabbitMQ <see cref="IReceiveTransport"/> — declares topology (exchange + DLX/DLQ + queue), consumes, and routes each
-/// message into the pipeline. Supervises its own consumer: a dropped connection, a closed channel, or a consumer the
-/// broker cancelled is detected and the subscription re-established.
+/// RabbitMQ <see cref="IReceiveTransport"/> — declares the topology <see cref="ITopologyProvider"/> describes (exchange
+/// + DLX, and per endpoint a queue, its dead-letter queue, and one binding per consumed message type), consumes every
+/// endpoint, and routes each message into the pipeline. Supervises its own consumers: a dropped connection, a closed
+/// channel, or a consumer the broker cancelled is detected and the subscriptions re-established.
 /// </summary>
 internal sealed partial class RabbitMqReceiveTransport(
     RabbitMqConnection connection,
     IOptions<RabbitMqOptions> options,
+    IOptions<TopologyOptions> topologyOptions,
+    ITopologyProvider topology,
     IMessageSerializer serializer,
     IMessageTypeResolver typeResolver,
-    ILogger<RabbitMqReceiveTransport> logger) : IReceiveTransport, IAsyncDisposable
+    ILogger<RabbitMqReceiveTransport> logger,
+    MessageSerializerRegistry? serializerRegistry = null) : IReceiveTransport, IAsyncDisposable
 {
+    /// <summary>The binding this adapter used to declare — every routing key on the exchange, so every consumer saw every message.</summary>
+    private const string CatchAllRoutingKey = "#";
+
+    /// <summary>The endpoint queue names, for log lines. Built once: the topology is fixed for the life of the process.</summary>
+    private readonly string _endpointDescription = string.Join(", ", topology.ConsumeEndpoints.Select(static endpoint => endpoint.Queue));
+
     /// <summary>
     /// Upper bound on how long a consumer that stopped without raising an event stays dead. Client auto-recovery can
     /// reopen the connection and channel yet leave the consumer unsubscribed — nothing signals that, so only reading
@@ -285,13 +331,33 @@ internal sealed partial class RabbitMqReceiveTransport(
     private static readonly TimeSpan RecoveryProbeInterval = TimeSpan.FromSeconds(1);
 
     private IChannel? _channel;
-    private AsyncEventingBasicConsumer? _consumer;
+
+    // Replaced wholesale, never mutated in place — the supervisor reads it from its own loop while EstablishAsync
+    // rebuilds, and a reference swap is the cheapest way to keep that read consistent.
+    private IReadOnlyList<AsyncEventingBasicConsumer> _consumers = [];
     private IConnection? _hookedConnection;
     private volatile TaskCompletionSource _consumerLost = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private volatile bool _stopping;
 
-    /// <summary>True only while a live channel carries a consumer the broker still recognises.</summary>
-    private bool IsConsuming => !_stopping && _channel is { IsOpen: true } && _consumer is { IsRunning: true };
+    /// <summary>True only while a live channel carries a consumer the broker still recognises on every endpoint.</summary>
+    private bool IsConsuming
+    {
+        get
+        {
+            if (_stopping || _channel is not { IsOpen: true })
+                return false;
+
+            var consumers = _consumers;
+            if (consumers.Count == 0)
+                return false;
+
+            foreach (var consumer in consumers)
+                if (!consumer.IsRunning)
+                    return false;
+
+            return true;
+        }
+    }
 
     public async ValueTask StartAsync(Func<ReceiveContext, CancellationToken, ValueTask> onMessage, CancellationToken cancellationToken)
     {
@@ -299,6 +365,16 @@ internal sealed partial class RabbitMqReceiveTransport(
 
         try
         {
+            // No endpoints means no handler is registered and the topology is per-type, so there is nothing to declare
+            // and nothing to consume. Park instead of looping: the supervisor below treats "not consuming" as a fault
+            // and would rebuild a subscription that can never exist.
+            if (topology.ConsumeEndpoints.Count == 0)
+            {
+                LogNoConsumeEndpoints();
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                return;
+            }
+
             // The first establish is deliberately not retried: a broker unreachable at startup is a configuration
             // fault and still surfaces through the hosted service, as before. Only a loss after a working start
             // recovers — an outage mid-flight is not a reason to take the process down.
@@ -311,13 +387,13 @@ internal sealed partial class RabbitMqReceiveTransport(
                 if (cancellationToken.IsCancellationRequested || _stopping || IsConsuming)
                     continue;
 
-                LogConsumeStopped(options.Value.Queue);
+                LogConsumeStopped(_endpointDescription);
 
                 // Let the client's automatic recovery restore the subscription first — that is the normal path and it
                 // keeps the recorded consumer tag. Rebuilding is the fallback for the case it cannot cover.
                 if (await WaitUntilConsumingAsync(RecoveryGracePeriod, cancellationToken))
                 {
-                    LogRecoveredByClient(options.Value.Queue);
+                    LogRecoveredByClient(_endpointDescription);
                     continue;
                 }
 
@@ -333,7 +409,7 @@ internal sealed partial class RabbitMqReceiveTransport(
                 {
                     // Broker still unreachable. Retried on the next poll tick rather than faulting the host, which
                     // would take the whole process down over an outage the broker will recover from.
-                    LogReestablishFailed(options.Value.Queue, ex);
+                    LogReestablishFailed(_endpointDescription, ex);
                 }
             }
         }
@@ -377,10 +453,17 @@ internal sealed partial class RabbitMqReceiveTransport(
         return IsConsuming;
     }
 
-    /// <summary>Open a channel, declare the topology, and subscribe. Replaces whatever channel was there before.</summary>
+    /// <summary>Open a channel, declare the topology, and subscribe to every endpoint. Replaces whatever channel was there before.</summary>
     private async ValueTask EstablishAsync(Func<ReceiveContext, CancellationToken, ValueTask> onMessage, bool isRecovery, CancellationToken cancellationToken)
     {
         var opt = options.Value;
+        var endpoints = topology.ConsumeEndpoints;
+
+        // A fanout dead-letter exchange copies every dead letter into every bound queue, which is only correct while
+        // exactly one dead-letter queue exists. Per-type endpoints each own one, so they need a direct exchange keyed
+        // by dead-letter queue name. An exchange's type is immutable, hence the name warning on the option.
+        var perEndpointDeadLetter = topologyOptions.Value.Style == TopologyStyle.EndpointPerMessageType;
+        var deadLetterExchangeType = perEndpointDeadLetter ? ExchangeType.Direct : ExchangeType.Fanout;
 
         // Close the previous channel before opening the replacement. Closing cancels its consumer broker-side and
         // drops it from the client's recovery list, so a channel that auto-recovery restores in parallel cannot leave
@@ -389,6 +472,10 @@ internal sealed partial class RabbitMqReceiveTransport(
 
         var conn = await connection.GetConnectionAsync(cancellationToken);
         HookConnection(conn);
+
+        // Runs before the consume channel exists on purpose — a rejected declare closes the channel it ran on, and
+        // the only argument here that a live queue can reject is the priority ceiling.
+        var priorityCapableQueues = await ResolvePriorityCapableQueuesAsync(conn, endpoints, perEndpointDeadLetter, cancellationToken);
 
         // Armed before anything can fail, so a death during setup signals the next wait rather than one already consumed.
         _consumerLost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -402,47 +489,172 @@ internal sealed partial class RabbitMqReceiveTransport(
         _channel = channel;
 
         await channel.ExchangeDeclareAsync(opt.Exchange, ExchangeType.Topic, durable: true, autoDelete: false, cancellationToken: cancellationToken);
-        await channel.ExchangeDeclareAsync(opt.DeadLetterExchange, ExchangeType.Fanout, durable: true, autoDelete: false, cancellationToken: cancellationToken);
-        await channel.QueueDeclareAsync(opt.DeadLetterQueue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
-        await channel.QueueBindAsync(opt.DeadLetterQueue, opt.DeadLetterExchange, routingKey: string.Empty, cancellationToken: cancellationToken);
+        await channel.ExchangeDeclareAsync(opt.DeadLetterExchange, deadLetterExchangeType, durable: true, autoDelete: false, cancellationToken: cancellationToken);
 
-        var mainArguments = new Dictionary<string, object?>(StringComparer.Ordinal) { ["x-dead-letter-exchange"] = opt.DeadLetterExchange };
-        await channel.QueueDeclareAsync(opt.Queue, durable: true, exclusive: false, autoDelete: false, arguments: mainArguments, cancellationToken: cancellationToken);
-        await channel.QueueBindAsync(opt.Queue, opt.Exchange, routingKey: "#", cancellationToken: cancellationToken);
+        foreach (var endpoint in endpoints)
+        {
+            await channel.QueueDeclareAsync(endpoint.DeadLetterQueue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
+            await channel.QueueBindAsync(
+                endpoint.DeadLetterQueue,
+                opt.DeadLetterExchange,
+                routingKey: perEndpointDeadLetter ? endpoint.DeadLetterQueue : string.Empty,
+                cancellationToken: cancellationToken);
+
+            var arguments = QueueArguments(opt, endpoint, perEndpointDeadLetter, withPriority: priorityCapableQueues.Contains(endpoint.Queue));
+            await channel.QueueDeclareAsync(endpoint.Queue, durable: true, exclusive: false, autoDelete: false, arguments: arguments, cancellationToken: cancellationToken);
+
+            // One binding per consumed message type, replacing the '#' catch-all. Everything this service does not
+            // handle is now filtered by the broker instead of being delivered and silently acked in-process.
+            foreach (var routingKey in endpoint.RoutingKeys)
+                await channel.QueueBindAsync(endpoint.Queue, opt.Exchange, routingKey, cancellationToken: cancellationToken);
+        }
+
+        // global: false makes this per-consumer, so each endpoint gets its own prefetch window.
         await channel.BasicQosAsync(prefetchSize: 0, prefetchCount: opt.PrefetchCount, global: false, cancellationToken: cancellationToken);
 
-        var consumer = new AsyncEventingBasicConsumer(channel);
-        consumer.ReceivedAsync += async (_, delivery) =>
+        var consumers = new List<AsyncEventingBasicConsumer>(endpoints.Count);
+        foreach (var endpoint in endpoints)
         {
-            var envelope = TryReconstruct(delivery);
-            if (envelope is null)
+            var consumer = new AsyncEventingBasicConsumer(channel);
+            consumer.ReceivedAsync += async (_, delivery) =>
             {
-                LogUnparseable(delivery.BasicProperties.MessageId);
-                await channel.BasicNackAsync(delivery.DeliveryTag, multiple: false, requeue: false, cancellationToken);
-                return;
-            }
+                var envelope = TryReconstruct(delivery);
+                if (envelope is null)
+                {
+                    LogUnparseable(delivery.BasicProperties.MessageId);
+                    await channel.BasicNackAsync(delivery.DeliveryTag, multiple: false, requeue: false, cancellationToken);
+                    return;
+                }
 
-            await onMessage(new RabbitMqReceiveContext(envelope, channel, delivery.DeliveryTag), cancellationToken);
-        };
+                await onMessage(new RabbitMqReceiveContext(envelope, channel, delivery.DeliveryTag), cancellationToken);
+            };
 
-        consumer.UnregisteredAsync += OnConsumerUnregisteredAsync;
+            consumer.UnregisteredAsync += OnConsumerUnregisteredAsync;
 
-        await channel.BasicConsumeAsync(opt.Queue, autoAck: false, consumer, cancellationToken);
+            await channel.BasicConsumeAsync(endpoint.Queue, autoAck: false, consumer, cancellationToken);
+            consumers.Add(consumer);
+        }
 
-        _consumer = consumer;
+        _consumers = consumers;
+
+        if (opt.UnbindCatchAllBinding)
+            await UnbindCatchAllAsync(conn, endpoints, opt, cancellationToken);
 
         if (isRecovery)
-            LogConsumerReestablished(opt.Queue);
+            LogConsumerReestablished(_endpointDescription);
+    }
+
+    /// <summary>Queue arguments for one endpoint — where its dead letters go, and whether the broker ranks priority on it.</summary>
+    private static Dictionary<string, object?> QueueArguments(RabbitMqOptions opt, EndpointTopology endpoint, bool perEndpointDeadLetter, bool withPriority)
+    {
+        var arguments = new Dictionary<string, object?>(StringComparer.Ordinal) { ["x-dead-letter-exchange"] = opt.DeadLetterExchange };
+
+        // A direct dead-letter exchange routes on the key the message carries, and a dead-lettered message keeps its
+        // original routing key unless the queue overrides it — which would land it in whichever DLQ happens to bind
+        // that type's key rather than this endpoint's.
+        if (perEndpointDeadLetter)
+            arguments["x-dead-letter-routing-key"] = endpoint.DeadLetterQueue;
+
+        // AMQP encodes queue arguments as a field table; the ceiling has to go on the wire as a signed integer.
+        if (withPriority && opt.MaxPriority is { } maxPriority)
+            arguments["x-max-priority"] = (int)maxPriority;
+
+        return arguments;
+    }
+
+    /// <summary>
+    /// Decide, per endpoint queue, whether it can carry <c>x-max-priority</c>. The argument is fixed at queue
+    /// creation: RabbitMQ answers a redeclare that adds it with <c>PRECONDITION_FAILED</c> and closes the channel, so
+    /// a queue that predates the setting would otherwise take startup down every time. Probing on a throwaway channel
+    /// keeps that rejection off the consume channel and degrades the queue to unranked priority — exactly the
+    /// behaviour before the option existed — with a log line naming what to recreate.
+    /// </summary>
+    private async ValueTask<HashSet<string>> ResolvePriorityCapableQueuesAsync(
+        IConnection conn,
+        IReadOnlyList<EndpointTopology> endpoints,
+        bool perEndpointDeadLetter,
+        CancellationToken cancellationToken)
+    {
+        var capable = new HashSet<string>(StringComparer.Ordinal);
+        var opt = options.Value;
+        if (opt.MaxPriority is not { } maxPriority)
+            return capable;
+
+        foreach (var endpoint in endpoints)
+        {
+            var arguments = QueueArguments(opt, endpoint, perEndpointDeadLetter, withPriority: true);
+            if (await TryDeclareQueueAsync(conn, endpoint.Queue, arguments, cancellationToken))
+                capable.Add(endpoint.Queue);
+            else
+                LogPriorityQueueRejected(endpoint.Queue, maxPriority);
+        }
+
+        return capable;
+    }
+
+    /// <summary>Declare a queue on a throwaway channel; false when the broker rejected the arguments as incompatible with the existing queue.</summary>
+    private async ValueTask<bool> TryDeclareQueueAsync(IConnection conn, string queue, IDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var probe = await conn.CreateChannelAsync(cancellationToken: cancellationToken);
+        try
+        {
+            await probe.QueueDeclareAsync(queue, durable: true, exclusive: false, autoDelete: false, arguments: arguments, cancellationToken: cancellationToken);
+            return true;
+        }
+        catch (OperationInterruptedException ex) when (ex.ShutdownReason?.ReplyCode == Constants.PreconditionFailed)
+        {
+            return false;
+        }
+        finally
+        {
+            try
+            {
+                await probe.DisposeAsync();
+            }
+            catch (Exception ex)
+            {
+                // A rejected declare already closed this channel broker-side; disposing it politely is best-effort.
+                LogProbeChannelDisposeFailed(ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Drop the '#' binding a pre-topology deployment still carries, so its queue stops receiving types it does not
+    /// handle. On a throwaway channel: an unbind that fails must not take the consume channel down with it.
+    /// </summary>
+    private async ValueTask UnbindCatchAllAsync(IConnection conn, IReadOnlyList<EndpointTopology> endpoints, RabbitMqOptions opt, CancellationToken cancellationToken)
+    {
+        var channel = await conn.CreateChannelAsync(cancellationToken: cancellationToken);
+        try
+        {
+            foreach (var endpoint in endpoints)
+                await channel.QueueUnbindAsync(endpoint.Queue, opt.Exchange, CatchAllRoutingKey, cancellationToken: cancellationToken);
+        }
+        catch (RabbitMQClientException ex)
+        {
+            LogCatchAllUnbindFailed(ex);
+        }
+        finally
+        {
+            try
+            {
+                await channel.DisposeAsync();
+            }
+            catch (Exception ex)
+            {
+                LogProbeChannelDisposeFailed(ex);
+            }
+        }
     }
 
     /// <summary>Detach handlers and close the current channel. Detaching first keeps our own close from reading as a fault.</summary>
     private async ValueTask CloseChannelAsync()
     {
-        if (_consumer is { } consumer)
-        {
+        foreach (var consumer in _consumers)
             consumer.UnregisteredAsync -= OnConsumerUnregisteredAsync;
-            _consumer = null;
-        }
+
+        _consumers = [];
 
         if (_channel is { } channel)
         {
@@ -530,10 +742,13 @@ internal sealed partial class RabbitMqReceiveTransport(
     private EventEnvelope? TryReconstruct(BasicDeliverEventArgs delivery)
     {
         var headers = DecodeHeaders(delivery.BasicProperties.Headers);
-        if (!headers.TryGetValue(RabbitMqHeaders.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
+        if (!headers.TryGetValue(MessageHeaders.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
             return null;
 
-        var body = serializer.Deserialize(delivery.Body.Span, eventType);
+        // Decoded by whoever encoded it. Selection reads "declared or nothing", never the "application/json" the
+        // envelope below falls back to: a producer that stamped no content type is one whose format we do not know, and
+        // guessing JSON for it would route a legacy body to the wrong deserializer wherever the default is not JSON.
+        var body = SerializerFor(ReadOptional(headers, MessageHeaders.ContentType)).Deserialize(delivery.Body.Span, eventType);
         if (body is null)
             return null;
 
@@ -545,11 +760,22 @@ internal sealed partial class RabbitMqReceiveTransport(
             Destination = delivery.RoutingKey,
             CorrelationId = delivery.BasicProperties.CorrelationId,
             DeliveryCount = delivery.Redelivered ? 2 : 1, // classic queues expose only a redelivered flag; quorum queues' x-delivery-count is a follow-up
-            ContentType = headers.TryGetValue(RabbitMqHeaders.ContentType, out var contentType) ? contentType : "application/json",
-            PartitionKey = headers.TryGetValue(RabbitMqHeaders.PartitionKey, out var partitionKey) && !string.IsNullOrEmpty(partitionKey) ? partitionKey : null,
+            ContentType = headers.TryGetValue(MessageHeaders.ContentType, out var contentType) ? contentType : "application/json",
+            PartitionKey = headers.TryGetValue(MessageHeaders.PartitionKey, out var partitionKey) && !string.IsNullOrEmpty(partitionKey) ? partitionKey : null,
+
+            // The native property is what this adapter writes, so it is read first; the header is accepted as a
+            // fallback so a message bridged in from a broker with no reply-address property still correlates.
+            ReplyTo = delivery.BasicProperties.ReplyTo is { Length: > 0 } replyTo ? replyTo : ReadOptional(headers, MessageHeaders.ReplyTo),
+            ConversationId = ReadOptional(headers, MessageHeaders.ConversationId),
             Headers = headers,
         };
     }
+
+    private static string? ReadOptional(Dictionary<string, string> headers, string key)
+        => headers.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value) ? value : null;
+
+    /// <summary>The deserializer for a received content type. Falls back to the injected serializer whenever no registry is wired, which is what keeps a single-serializer container behaving exactly as it did.</summary>
+    private IMessageSerializer SerializerFor(string? contentType) => serializerRegistry?.Resolve(contentType) ?? serializer;
 
     private static Dictionary<string, string> DecodeHeaders(IDictionary<string, object?>? headers)
     {
@@ -613,20 +839,32 @@ internal sealed partial class RabbitMqReceiveTransport(
     [LoggerMessage(EventId = 6307, Level = LogLevel.Warning, Message = "RabbitMQ broker cancelled consumer {ConsumerTags}")]
     private partial void LogConsumerCancelled(string consumerTags);
 
-    [LoggerMessage(EventId = 6308, Level = LogLevel.Warning, Message = "No longer consuming from RabbitMQ queue {Queue}; waiting for automatic recovery before rebuilding")]
-    private partial void LogConsumeStopped(string queue);
+    [LoggerMessage(EventId = 6308, Level = LogLevel.Warning, Message = "No longer consuming from RabbitMQ queues {Queues}; waiting for automatic recovery before rebuilding")]
+    private partial void LogConsumeStopped(string queues);
 
-    [LoggerMessage(EventId = 6309, Level = LogLevel.Information, Message = "Consumption on RabbitMQ queue {Queue} restored by automatic recovery")]
-    private partial void LogRecoveredByClient(string queue);
+    [LoggerMessage(EventId = 6309, Level = LogLevel.Information, Message = "Consumption on RabbitMQ queues {Queues} restored by automatic recovery")]
+    private partial void LogRecoveredByClient(string queues);
 
-    [LoggerMessage(EventId = 6310, Level = LogLevel.Information, Message = "Re-established the RabbitMQ consumer on queue {Queue}")]
-    private partial void LogConsumerReestablished(string queue);
+    [LoggerMessage(EventId = 6310, Level = LogLevel.Information, Message = "Re-established the RabbitMQ consumers on queues {Queues}")]
+    private partial void LogConsumerReestablished(string queues);
 
-    [LoggerMessage(EventId = 6311, Level = LogLevel.Error, Message = "Re-establishing the RabbitMQ consumer on queue {Queue} failed; retrying on the next health poll")]
-    private partial void LogReestablishFailed(string queue, Exception exception);
+    [LoggerMessage(EventId = 6311, Level = LogLevel.Error, Message = "Re-establishing the RabbitMQ consumers on queues {Queues} failed; retrying on the next health poll")]
+    private partial void LogReestablishFailed(string queues, Exception exception);
 
     [LoggerMessage(EventId = 6312, Level = LogLevel.Debug, Message = "Disposing the previous RabbitMQ consume channel failed; replacing it anyway")]
     private partial void LogChannelDisposeFailed(Exception exception);
+
+    [LoggerMessage(EventId = 6313, Level = LogLevel.Warning, Message = "RabbitMQ queue {Queue} already exists without x-max-priority, so MaxPriority={MaxPriority} cannot apply to it; messages keep their priority property but the broker will not rank them. Recreate the queue during a drain window to enable ranking")]
+    private partial void LogPriorityQueueRejected(string queue, byte maxPriority);
+
+    [LoggerMessage(EventId = 6314, Level = LogLevel.Debug, Message = "Disposing a short-lived RabbitMQ topology channel failed; it is already closed")]
+    private partial void LogProbeChannelDisposeFailed(Exception exception);
+
+    [LoggerMessage(EventId = 6315, Level = LogLevel.Warning, Message = "Removing the '#' catch-all binding failed; the queue may still receive message types this service does not handle")]
+    private partial void LogCatchAllUnbindFailed(Exception exception);
+
+    [LoggerMessage(EventId = 6316, Level = LogLevel.Warning, Message = "No RabbitMQ consume endpoints: no IEventHandler<> is registered, so there is nothing to bind or consume")]
+    private partial void LogNoConsumeEndpoints();
 }
 
 /// <summary>
@@ -634,7 +872,7 @@ internal sealed partial class RabbitMqReceiveTransport(
 /// direct-reply-to; no native delay/dedupe, no cross-queue ordering guarantee, no sessions or exactly-once transactions;
 /// settlement is by delivery tag off the consume thread, so the concurrency pump may dispatch in parallel.
 /// </summary>
-internal sealed class RabbitMqCapabilities : ITransportCapabilities
+internal sealed class RabbitMqCapabilities(IOptions<RabbitMqOptions> options) : ITransportCapabilities
 {
     public bool NativeDeadLetter => true;
 
@@ -647,11 +885,11 @@ internal sealed class RabbitMqCapabilities : ITransportCapabilities
     /// <summary>
     /// Core AMQP: the <c>priority</c> message property, no plugin. Ranking is opt-in per queue — only a queue declared
     /// with the <c>x-max-priority</c> argument sorts by it; elsewhere the broker accepts the property and ignores it.
-    /// The adapter's own queue declaration does not set <c>x-max-priority</c> today, so the hint currently rides the wire
-    /// without taking effect (adding it to an existing queue needs a redeclare — RabbitMQ rejects an argument change on
-    /// a live queue with PRECONDITION_FAILED).
+    /// So this tracks <see cref="RabbitMqOptions.MaxPriority"/> rather than reporting a flat true: without it the hint
+    /// rides the wire and nothing ranks, and a pipeline reading this flag to choose native-versus-emulated would pick
+    /// native on the strength of a property the broker discards.
     /// </summary>
-    public bool NativePriority => true;
+    public bool NativePriority => options.Value.MaxPriority is not null;
 
     /// <summary>Core AMQP: the per-message <c>expiration</c> property (milliseconds). Independent of any queue-level <c>x-message-ttl</c>; when both are set the lower wins.</summary>
     public bool NativeTimeToLive => true;
@@ -681,7 +919,17 @@ internal sealed class RabbitMqCapabilities : ITransportCapabilities
     /// </summary>
     public bool NativeTransactions => false;
 
-    /// <summary>Core AMQP: direct-reply-to via the <c>amq.rabbitmq.reply-to</c> pseudo-queue — no reply queue to declare or clean up.</summary>
+    /// <summary>
+    /// Core AMQP: a native <c>reply-to</c> property on every message, which the adapter maps from
+    /// <see cref="EventEnvelope.ReplyTo"/> in both directions, plus direct-reply-to via the
+    /// <c>amq.rabbitmq.reply-to</c> pseudo-queue.
+    /// </summary>
+    /// <remarks>
+    /// <c>IRequestClient</c> uses the property and routes the reply to an ordinary bound endpoint, not direct-reply-to:
+    /// the pseudo-queue must be consumed on the publishing channel with <c>autoAck</c>, which cannot be the confirm-mode
+    /// send channel or the supervised consume channel, and its addresses are only routable through the default exchange.
+    /// Adopting it means a third channel and a second reply path — a follow-up, not a prerequisite.
+    /// </remarks>
     public bool NativeRequestReply => true;
 
     /// <summary>RabbitMQ settles by delivery tag on the channel, which is safe from a pump worker thread.</summary>
@@ -696,8 +944,14 @@ public static class RabbitMqServiceCollectionExtensions
 {
     /// <summary>
     /// Register the RabbitMQ transport behind the SDK event bus: send/receive transports (topic exchange + native
-    /// DLX/DLQ), the shared <see cref="IEventBus"/>, resilience defaults, and the consumer hosted service. Scans the
-    /// supplied assemblies (or the caller's) for <see cref="IEventHandler{TEvent}"/>.
+    /// DLX/DLQ), the shared <see cref="IEventBus"/>, resilience defaults, topology, and the consumer hosted service.
+    /// Scans the supplied assemblies (or the caller's) for <see cref="IEventHandler{TEvent}"/>, and binds one routing
+    /// key per handled type — a service receives only what it handles.
+    /// <para>
+    /// To change the endpoint shape, call <see cref="MessageTopologyServiceCollectionExtensions.AddMessageTopology"/>
+    /// with its options before this; the two calls share one consumed-type set, and only the names this method
+    /// back-fills from <see cref="RabbitMqOptions"/> are left to it.
+    /// </para>
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configure">RabbitMQ options (connection, exchange, queue, DLQ).</param>
@@ -715,6 +969,18 @@ public static class RabbitMqServiceCollectionExtensions
         var assemblies = handlerAssemblies is { Length: > 0 } ? handlerAssemblies : [Assembly.GetCallingAssembly()];
         services.AddEventHandlersFromAssemblies(assemblies);
         services.AddEventResilienceDefaults();
+
+        // After the handler scan, never before: the consumed-type set that becomes the bindings is read out of the
+        // registered IEventHandler<> descriptors, and a type registered later gets no binding.
+        services.AddMessageTopology();
+
+        // The shared endpoint's names have always been configured on RabbitMqOptions, so keep them there. Null-coalesce
+        // rather than assign — an explicit AddMessageTopology(...) still wins.
+        services.AddOptions<TopologyOptions>().PostConfigure<IOptions<RabbitMqOptions>>((topology, rabbit) =>
+        {
+            topology.SharedEndpointName ??= rabbit.Value.Queue;
+            topology.SharedDeadLetterQueueName ??= rabbit.Value.DeadLetterQueue;
+        });
 
         services.TryAddSingleton<RabbitMqConnection>();
         services.TryAddSingleton<ITransportCapabilities, RabbitMqCapabilities>();

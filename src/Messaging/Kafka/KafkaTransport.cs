@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Text;
 using Confluent.Kafka;
@@ -24,16 +25,57 @@ public sealed class KafkaOptions
 
     /// <summary>Dead-letter topic — Kafka has no native DLQ, so exhausted/poison messages are re-produced here. Default <c>wt.events.dlq</c>.</summary>
     public string DeadLetterTopic { get; set; } = "wt.events.dlq";
+
+    /// <summary>
+    /// Route each message to the topic <see cref="ITopologyProvider"/> resolves from it — the message type's stable
+    /// token for a publish, <see cref="EventEnvelope.Destination"/> for an explicit
+    /// <see cref="IEventBus.SendAsync{TEvent}"/> — instead of producing everything to <see cref="Topic"/>. Default
+    /// false, which keeps an existing deployment on its single topic.
+    /// <para>
+    /// Opt-in because it changes which topic a message lands on, and a consumer still on the old build subscribes to
+    /// <see cref="Topic"/> alone. Migration is therefore consumers first: a consumer with this on subscribes to
+    /// <see cref="Topic"/> <em>as well as</em> every routed topic, so it keeps receiving from producers that have not
+    /// been switched yet. Turn it on for the producers once every consumer is across.
+    /// </para>
+    /// </summary>
+    public bool RouteByDestination { get; set; }
 }
 
-/// <summary>Well-known Kafka header keys.</summary>
-internal static class KafkaHeaders
+/// <summary>
+/// Maps a topology routing key onto a legal Kafka topic name. Kafka accepts <c>[A-Za-z0-9._-]</c> up to 249
+/// characters and rejects <c>.</c> / <c>..</c> outright, which is narrower than the routing keys a custom
+/// <see cref="ITopologyProvider"/> may return — so the key is sanitized rather than trusted.
+/// </summary>
+/// <remarks>
+/// Both halves of the adapter call this on the same keys, so the topic the send path produces to is by construction
+/// one the receive path subscribes to.
+/// </remarks>
+internal static class KafkaTopicName
 {
-    public const string EventType = "wt-event-type";
-    public const string ContentType = "wt-content-type";
-    public const string MessageId = "wt-message-id";
-    public const string DeadLetterReason = "wt-dl-reason";
-    public const string DeadLetterExceptionType = "wt-dl-exception-type";
+    /// <summary>Kafka's own ceiling on a topic name.</summary>
+    private const int MaxLength = 249;
+
+    /// <summary>The topic for <paramref name="routingKey"/>, or null when nothing addressable survives sanitizing.</summary>
+    public static string? From(string? routingKey)
+    {
+        if (string.IsNullOrEmpty(routingKey))
+            return null;
+
+        var builder = new StringBuilder(Math.Min(routingKey.Length, MaxLength));
+        foreach (var character in routingKey)
+        {
+            if (builder.Length == MaxLength)
+                break;
+
+            // Deliberately an ASCII test, not char.IsLetterOrDigit: the latter admits non-ASCII letters, which Kafka
+            // rejects. Everything else collapses to '-' so two distinct keys stay distinct topics.
+            var legal = character is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '.' or '-' or '_';
+            builder.Append(legal ? character : '-');
+        }
+
+        var topic = builder.ToString().Trim('.');
+        return topic.Length == 0 ? null : topic;
+    }
 }
 
 /// <summary>Builds a dead-letter Kafka message — preserves the original key/value/headers and stamps death headers (reason + exception type) for triage.</summary>
@@ -45,18 +87,23 @@ internal static class KafkaDeadLetter
         if (original.Headers is not null)
             foreach (var header in original.Headers)
                 headers.Add(header.Key, header.GetValueBytes());
-        headers.Add(KafkaHeaders.DeadLetterReason, Encoding.UTF8.GetBytes(reason));
+        headers.Add(MessageHeaders.DeadLetterReason, Encoding.UTF8.GetBytes(reason));
         if (exception is not null)
-            headers.Add(KafkaHeaders.DeadLetterExceptionType, Encoding.UTF8.GetBytes(exception.GetType().FullName ?? exception.GetType().Name));
+            headers.Add(MessageHeaders.DeadLetterExceptionType, Encoding.UTF8.GetBytes(exception.GetType().FullName ?? exception.GetType().Name));
         return new Message<string, byte[]> { Key = original.Key, Value = original.Value, Headers = headers };
     }
 }
 
-/// <summary>Kafka <see cref="ISendTransport"/> — produces JSON-serialized events to a topic (key = partition/message id).</summary>
+/// <summary>
+/// Kafka <see cref="ISendTransport"/> — produces JSON-serialized events to a topic. The topic comes from
+/// <see cref="ITopologyProvider"/> once <see cref="KafkaOptions.RouteByDestination"/> is on: the message type's stable
+/// token for a publish, the caller's address for an explicit send.
+/// </summary>
 internal sealed class KafkaSendTransport(
     IOptions<KafkaOptions> options,
     IMessageSerializer serializer,
-    IMessageTypeResolver typeResolver) : ISendTransport, IAsyncDisposable
+    IMessageTypeResolver typeResolver,
+    ITopologyProvider topology) : ISendTransport, IAsyncDisposable
 {
     private readonly IProducer<string, byte[]> _producer =
         new ProducerBuilder<string, byte[]>(new ProducerConfig { BootstrapServers = options.Value.BootstrapServers }).Build();
@@ -65,19 +112,36 @@ internal sealed class KafkaSendTransport(
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
-        var body = serializer.Serialize(envelope.Body, envelope.BodyType);
+        var body = envelope.ToWireBody(serializer);
         // Caller headers first, minus the reserved namespace, then the control headers — the adapter owns wt-*. Kafka
         // headers allow duplicate keys, so an unfiltered caller header would ride the wire alongside the real one and win
         // the decode (last key into the dictionary). A received envelope carries wt-* keys, so a re-publish would stamp
         // the previous message's type token onto the new body.
         var headers = new Headers();
         foreach (var (key, value) in envelope.Headers)
-            if (!MessageHeaders.IsReserved(key))
+            if (!MessageHeaders.IsAdapterOwned(key))
                 headers.Add(key, Encoding.UTF8.GetBytes(value));
 
-        headers.Add(KafkaHeaders.EventType, Encoding.UTF8.GetBytes(typeResolver.ToTypeToken(envelope.BodyType)));
-        headers.Add(KafkaHeaders.ContentType, Encoding.UTF8.GetBytes(serializer.ContentType));
-        headers.Add(KafkaHeaders.MessageId, Encoding.UTF8.GetBytes(envelope.MessageId));
+        // WireBodyType, not BodyType: a send-path transformation that substituted the wire bytes decodes as a different
+        // shape, and this token is what the receiver deserializes into. Topic resolution below stays on BodyType.
+        headers.Add(MessageHeaders.EventType, Encoding.UTF8.GetBytes(typeResolver.ToTypeToken(envelope.WireBodyType)));
+        headers.Add(MessageHeaders.ContentType, Encoding.UTF8.GetBytes(serializer.ContentType));
+        headers.Add(MessageHeaders.MessageId, Encoding.UTF8.GetBytes(envelope.MessageId));
+
+        // Kafka has no reply-address, correlation or conversation property, so all three ride the SDK's reserved
+        // headers. Only stamped when set, so ordinary one-way traffic carries exactly the headers it did before.
+        if (!string.IsNullOrEmpty(envelope.ReplyTo))
+            headers.Add(MessageHeaders.ReplyTo, Encoding.UTF8.GetBytes(envelope.ReplyTo));
+        if (!string.IsNullOrEmpty(envelope.CorrelationId))
+            headers.Add(MessageHeaders.CorrelationId, Encoding.UTF8.GetBytes(envelope.CorrelationId));
+        if (!string.IsNullOrEmpty(envelope.ConversationId))
+            headers.Add(MessageHeaders.ConversationId, Encoding.UTF8.GetBytes(envelope.ConversationId));
+
+        // A first publish is DeliveryCount 0 and stamps nothing; a re-produced envelope (delayed retry, DLQ replay)
+        // arrives with the count already advanced and carries it onto the new record, which is the only way the next
+        // consumer can learn how many attempts this message has had.
+        if (envelope.DeliveryCount > 0)
+            headers.Add(MessageHeaders.DeliveryCount, Encoding.UTF8.GetBytes(envelope.DeliveryCount.ToString(CultureInfo.InvariantCulture)));
 
         var message = new Message<string, byte[]>
         {
@@ -91,7 +155,24 @@ internal sealed class KafkaSendTransport(
             Headers = headers,
         };
 
-        await _producer.ProduceAsync(options.Value.Topic, message, cancellationToken);
+        await _producer.ProduceAsync(ResolveTopic(envelope), message, cancellationToken);
+    }
+
+    /// <summary>
+    /// The topic this envelope is produced to. Off (the default) every message rides
+    /// <see cref="KafkaOptions.Topic"/>, exactly as before. On, the topology decides — and it is the topology, not the
+    /// raw destination, for the same reason the RabbitMQ adapter routes on the resolved key: a publish has to land on
+    /// the type's own topic, which is what a consumer of that type subscribes to, while an explicit send has to land on
+    /// the addressed endpoint's topic so it reaches that endpoint alone.
+    /// </summary>
+    private string ResolveTopic(EventEnvelope envelope)
+    {
+        if (!options.Value.RouteByDestination)
+            return options.Value.Topic;
+
+        // A key that sanitizes away to nothing would otherwise produce to an unnamed topic; the configured topic is
+        // the one address every consumer of this adapter is subscribed to, so it is the safe floor.
+        return KafkaTopicName.From(topology.ResolveRoutingKey(envelope)) ?? options.Value.Topic;
     }
 
     public ValueTask DisposeAsync()
@@ -124,12 +205,20 @@ internal sealed class KafkaReceiveContext(
     }
 }
 
-/// <summary>Kafka <see cref="IReceiveTransport"/> — subscribes to the topic, polls, reconstructs envelopes, and routes them into the pipeline. Manual offset store (commit on ack).</summary>
+/// <summary>
+/// Kafka <see cref="IReceiveTransport"/> — subscribes, polls, reconstructs envelopes, and routes them into the
+/// pipeline. Manual offset store (commit on ack). The subscription is the mirror image of the send path's topic
+/// resolution: every routing key <see cref="ITopologyProvider"/> declares for this process, mapped through the same
+/// <see cref="KafkaTopicName"/>.
+/// </summary>
 internal sealed partial class KafkaReceiveTransport(
     IOptions<KafkaOptions> options,
     IMessageSerializer serializer,
     IMessageTypeResolver typeResolver,
-    ILogger<KafkaReceiveTransport> logger) : IReceiveTransport, IAsyncDisposable
+    ITopologyProvider topology,
+    ILogger<KafkaReceiveTransport> logger,
+    IReplyAddressProvider? replyAddresses = null,
+    MessageSerializerRegistry? serializerRegistry = null) : IReceiveTransport, IAsyncDisposable
 {
     private IConsumer<string, byte[]>? _consumer;
     private IProducer<string, byte[]>? _deadLetterProducer;
@@ -148,9 +237,50 @@ internal sealed partial class KafkaReceiveTransport(
             EnableAutoCommit = true,
             EnableAutoOffsetStore = false,
         }).Build();
-        _consumer.Subscribe(opt.Topic);
+
+        var topics = ResolveSubscription();
+        LogSubscribed(string.Join(", ", topics));
+        _consumer.Subscribe(topics);
 
         await Task.Run(() => ConsumeLoop(onMessage, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>
+    /// Every topic this process consumes. <see cref="KafkaOptions.Topic"/> is always in the set — with routing off it
+    /// is the only one, and with routing on it is what keeps a producer that has not been switched yet reachable,
+    /// which is what makes a consumers-first rollout possible.
+    /// </summary>
+    /// <remarks>
+    /// The routed part is <see cref="EndpointTopology.RoutingKeys"/>, the same list the RabbitMQ adapter binds to its
+    /// queue: one key per consumed message type (so a publish of that type arrives) plus the endpoint's own name (so an
+    /// explicit send addressed to this endpoint — a reply, above all — arrives). Kafka has no exchange to bind
+    /// through, so the key set becomes a topic set instead. Anything the send path can resolve for a type this process
+    /// handles, or for an address it owns, is therefore already here.
+    /// </remarks>
+    private List<string> ResolveSubscription()
+    {
+        var opt = options.Value;
+        var topics = new List<string> { opt.Topic };
+        if (!opt.RouteByDestination)
+            return topics;
+
+        foreach (var endpoint in topology.ConsumeEndpoints)
+            foreach (var routingKey in endpoint.RoutingKeys)
+                AddTopic(topics, KafkaTopicName.From(routingKey));
+
+        // A configured per-instance reply address is not part of the topology — it is this process's alone — so the
+        // topology cannot know about it. Without this the request client would stamp a ReplyTo nothing consumes and
+        // every request would time out, which is the whole point of addressing a reply.
+        if (replyAddresses is not null)
+            AddTopic(topics, KafkaTopicName.From(replyAddresses.ReplyAddress));
+
+        return topics;
+
+        static void AddTopic(List<string> topics, string? topic)
+        {
+            if (topic is { Length: > 0 } && !topics.Contains(topic, StringComparer.Ordinal))
+                topics.Add(topic);
+        }
     }
 
     // Deliberately single-threaded: librdkafka's consumer is not thread-safe, so Consume + StoreOffset stay on this one
@@ -213,25 +343,53 @@ internal sealed partial class KafkaReceiveTransport(
     private EventEnvelope? TryReconstruct(ConsumeResult<string, byte[]> result)
     {
         var headers = DecodeHeaders(result.Message.Headers);
-        if (!headers.TryGetValue(KafkaHeaders.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
+        if (!headers.TryGetValue(MessageHeaders.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
             return null;
 
-        var body = serializer.Deserialize(result.Message.Value, eventType);
+        // Decoded by whoever encoded it. Selection reads "declared or nothing", never the "application/json" the
+        // envelope below falls back to: a producer that stamped no content type is one whose format we do not know, and
+        // guessing JSON for it would route a legacy body to the wrong deserializer wherever the default is not JSON.
+        var body = SerializerFor(ReadOptional(headers, MessageHeaders.ContentType)).Deserialize(result.Message.Value, eventType);
         if (body is null)
             return null;
 
         return new EventEnvelope
         {
-            MessageId = headers.TryGetValue(KafkaHeaders.MessageId, out var id) ? id : Guid.NewGuid().ToString("N"),
+            MessageId = headers.TryGetValue(MessageHeaders.MessageId, out var id) ? id : Guid.NewGuid().ToString("N"),
             Body = body,
             BodyType = eventType,
             Destination = result.Topic,
             PartitionKey = result.Message.Key,
-            DeliveryCount = 1, // Kafka has no native per-message redelivery count; true tracking needs a bumped header (follow-up)
-            ContentType = headers.TryGetValue(KafkaHeaders.ContentType, out var contentType) ? contentType : "application/json",
+            DeliveryCount = ReadDeliveryCount(headers),
+            ContentType = headers.TryGetValue(MessageHeaders.ContentType, out var contentType) ? contentType : "application/json",
+            ReplyTo = ReadOptional(headers, MessageHeaders.ReplyTo),
+            CorrelationId = ReadOptional(headers, MessageHeaders.CorrelationId),
+            ConversationId = ReadOptional(headers, MessageHeaders.ConversationId),
             Headers = headers,
         };
     }
+
+    /// <summary>
+    /// The delivery count the producer stamped, or 1 for a record nothing has re-produced. Deliberately trusts only the
+    /// header: a record re-consumed because its offset was never stored comes back byte-identical, so it cannot be
+    /// distinguished from a first delivery from the wire alone, and the process-local state that could tell them apart
+    /// dies in the restart or rebalance that caused the redelivery.
+    /// </summary>
+    private static int ReadDeliveryCount(Dictionary<string, string> headers)
+    {
+        if (!headers.TryGetValue(MessageHeaders.DeliveryCount, out var raw))
+            return 1;
+
+        // A malformed or non-positive value is treated as a first delivery rather than trusted: the count only ever
+        // drives give-up decisions, and a bad header must not be able to dead-letter a healthy message on arrival.
+        return int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) && count > 0 ? count : 1;
+    }
+
+    private static string? ReadOptional(Dictionary<string, string> headers, string key)
+        => headers.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value) ? value : null;
+
+    /// <summary>The deserializer for a received content type. Falls back to the injected serializer whenever no registry is wired, which is what keeps a single-serializer container behaving exactly as it did.</summary>
+    private IMessageSerializer SerializerFor(string? contentType) => serializerRegistry?.Resolve(contentType) ?? serializer;
 
     private static Dictionary<string, string> DecodeHeaders(Headers headers)
     {
@@ -272,6 +430,9 @@ internal sealed partial class KafkaReceiveTransport(
 
     [LoggerMessage(EventId = 6403, Level = LogLevel.Error, Message = "Kafka message processing failed; offset not advanced (will re-consume)")]
     private partial void LogProcessingError(Exception exception);
+
+    [LoggerMessage(EventId = 6404, Level = LogLevel.Information, Message = "Subscribing to Kafka topics {Topics}")]
+    private partial void LogSubscribed(string topics);
 }
 
 /// <summary>
@@ -332,8 +493,15 @@ public static class KafkaServiceCollectionExtensions
 {
     /// <summary>
     /// Register the Kafka transport behind the SDK event bus: send/receive transports (topic + emulated DLQ topic),
-    /// the shared <see cref="IEventBus"/>, resilience defaults, and the consumer hosted service. Scans the supplied
-    /// assemblies (or the caller's) for <see cref="IEventHandler{TEvent}"/>.
+    /// the shared <see cref="IEventBus"/>, resilience defaults, topology, and the consumer hosted service. Scans the
+    /// supplied assemblies (or the caller's) for <see cref="IEventHandler{TEvent}"/>.
+    /// <para>
+    /// Set <see cref="KafkaOptions.RouteByDestination"/> to route each message to its own topic; the topology derived
+    /// from the handler scan is then what the consumer subscribes to. To change the endpoint shape, call
+    /// <see cref="MessageTopologyServiceCollectionExtensions.AddMessageTopology"/> with its options before this — the
+    /// two calls share one consumed-type set, and only the names this method back-fills from
+    /// <see cref="KafkaOptions"/> are left to it.
+    /// </para>
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configure">Kafka options (bootstrap servers, topic, group, DLQ topic).</param>
@@ -351,6 +519,19 @@ public static class KafkaServiceCollectionExtensions
         var assemblies = handlerAssemblies is { Length: > 0 } ? handlerAssemblies : [Assembly.GetCallingAssembly()];
         services.AddEventHandlersFromAssemblies(assemblies);
         services.AddEventResilienceDefaults();
+
+        // After the handler scan, never before: the consumed-type set that becomes the routed topics is read out of
+        // the registered IEventHandler<> descriptors, and a type registered later gets no topic.
+        services.AddMessageTopology();
+
+        // The shared endpoint's name is this adapter's topic, so an explicit send addressed to this process (a reply)
+        // resolves to the topic it already consumes. Null-coalesce rather than assign — an explicit
+        // AddMessageTopology(...) still wins.
+        services.AddOptions<TopologyOptions>().PostConfigure<IOptions<KafkaOptions>>((topology, kafka) =>
+        {
+            topology.SharedEndpointName ??= kafka.Value.Topic;
+            topology.SharedDeadLetterQueueName ??= kafka.Value.DeadLetterTopic;
+        });
 
         services.TryAddSingleton<ITransportCapabilities, KafkaCapabilities>();
         services.TryAddSingleton<ISendTransport, KafkaSendTransport>();

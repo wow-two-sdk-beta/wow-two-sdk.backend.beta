@@ -8,12 +8,14 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 /// then retries via the configured <see cref="IRetryPolicy"/> + <see cref="RetryConfig"/> and propagates once exhausted.
 /// A <see cref="FaultDisposition.DeadLetter"/> verdict propagates without spending an attempt; an
 /// <see cref="FaultDisposition.Ignore"/> verdict returns normally so the caller acknowledges.
+/// Under <see cref="DelayedRetryOptions"/> the loop stops after one attempt and the caller re-enqueues instead.
 /// </summary>
 internal sealed class DefaultEventResiliencePipeline(
     IRetryPolicy retryPolicy,
     IOptions<InMemoryEventBusOptions> options,
     TimeProvider timeProvider,
-    IEventFaultClassifier? classifier = null) : IEventResiliencePipeline
+    IEventFaultClassifier? classifier = null,
+    DelayedRetryCoordinator? delayedRetry = null) : IEventResiliencePipeline
 {
     // Optional so a hand-rolled composition that never registered a classifier still resolves — and gets today's
     // retry-everything behaviour rather than a container-time failure.
@@ -44,6 +46,12 @@ internal sealed class DefaultEventResiliencePipeline(
 
                 if (disposition == FaultDisposition.DeadLetter)
                     throw; // no redelivery would change the outcome — dead-letter now, budget untouched
+
+                // Delayed retry spends the budget across deliveries instead of inside this loop: one attempt, then out,
+                // so the caller settles the message and re-publishes it with a delay rather than sleeping on the
+                // consumer slot. The propagated fault is what the caller classifies to make that decision.
+                if (delayedRetry is { IsActive: true })
+                    throw;
 
                 attempt++;
                 var delay = retryPolicy.NextDelay(attempt, config);

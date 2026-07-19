@@ -4,6 +4,12 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 
 /// <summary>In-memory <see cref="ISendTransport"/> — writes the envelope to the channel, deferring to the scheduler when it carries a future delivery time.</summary>
+/// <remarks>
+/// There is no wire format to map onto: the same <see cref="EventEnvelope"/> instance the bus built is the one the
+/// receive side reads, so every field — including <see cref="EventEnvelope.ReplyTo"/> and
+/// <see cref="EventEnvelope.ConversationId"/> — survives by reference. This is why <c>IRequestClient</c> is exercised
+/// here first: the correlation logic is isolated from any adapter's header mapping.
+/// </remarks>
 internal sealed class InMemorySendTransport(InMemoryEventChannel channel, IEventScheduler scheduler, TimeProvider timeProvider) : ISendTransport
 {
     public async ValueTask SendAsync(EventEnvelope envelope, CancellationToken cancellationToken)
@@ -88,7 +94,12 @@ internal sealed class InMemoryCapabilities : ITransportCapabilities
     /// <summary>No producer transactions — a batch of writes has no atomic commit or rollback.</summary>
     public bool NativeTransactions => false;
 
-    /// <summary>No reply-address mechanism; the in-memory bus is fire-and-forget over a single channel.</summary>
+    /// <summary>
+    /// No reply-address mechanism of its own: the channel is fire-and-forget and has no inbox or pseudo-queue to route
+    /// a response back through. <c>IRequestClient</c> still works here — the envelope carries its reply address and
+    /// conversation id in-process, and the response is an ordinary write to the same channel — but that is the SDK
+    /// correlating, which is exactly what this flag says the transport does not do.
+    /// </summary>
     public bool NativeRequestReply => false;
 
     public bool SettlesInContext => true;
