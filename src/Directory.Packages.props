@@ -198,6 +198,9 @@
     <PackageVersion Include="NATS.Client.Core" Version="2.5.5" />
     <PackageVersion Include="NATS.Client.JetStream" Version="2.5.5" />
     <PackageVersion Include="MQTTnet" Version="5.0.1.1416" />
+    <!-- Messaging serializer breadth. MessagePack is MIT (core-permissible). CloudEvents needs no package —
+         the structured JSON event format is written directly on System.Text.Json. -->
+    <PackageVersion Include="MessagePack" Version="2.5.187" />
   </ItemGroup>
 
   <ItemGroup Label="Background jobs">
