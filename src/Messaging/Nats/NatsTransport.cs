@@ -39,6 +39,10 @@ internal static class NatsHeaderKeys
     public const string EventType = "wt-event-type";
     public const string ContentType = "wt-content-type";
     public const string MessageId = "wt-message-id";
+
+    /// <summary>Carries the envelope's ordering / partition key so the consumer can preserve per-key ordering.</summary>
+    public const string PartitionKey = "wt-partition-key";
+
     public const string DeadLetterReason = "wt-dl-reason";
     public const string DeadLetterExceptionType = "wt-dl-exception-type";
 }
@@ -48,14 +52,19 @@ internal static class NatsWireFormat
 {
     public static NatsHeaders BuildHeaders(EventEnvelope envelope, string typeToken, string contentType)
     {
-        var headers = new NatsHeaders
-        {
-            [NatsHeaderKeys.EventType] = typeToken,
-            [NatsHeaderKeys.ContentType] = contentType,
-            [NatsHeaderKeys.MessageId] = envelope.MessageId,
-        };
+        // Caller headers first, minus the reserved namespace, then the control headers — the adapter owns wt-*. A received
+        // envelope's Headers carry the wt-* keys of THAT message, so forwarding them on a re-publish would otherwise stamp
+        // the previous message's type token onto the new body and misroute it on the consumer.
+        var headers = new NatsHeaders();
         foreach (var (key, value) in envelope.Headers)
-            headers[key] = value;
+            if (!MessageHeaders.IsReserved(key))
+                headers[key] = value;
+
+        headers[NatsHeaderKeys.EventType] = typeToken;
+        headers[NatsHeaderKeys.ContentType] = contentType;
+        headers[NatsHeaderKeys.MessageId] = envelope.MessageId;
+        if (!string.IsNullOrEmpty(envelope.PartitionKey))
+            headers[NatsHeaderKeys.PartitionKey] = envelope.PartitionKey;
         return headers;
     }
 
@@ -292,6 +301,7 @@ internal sealed partial class NatsReceiveTransport(
             Destination = message.Subject,
             DeliveryCount = (int)(message.Metadata?.NumDelivered ?? 1), // JetStream tracks redelivery natively
             ContentType = headers.TryGetValue(NatsHeaderKeys.ContentType, out var contentType) ? contentType : "application/json",
+            PartitionKey = headers.TryGetValue(NatsHeaderKeys.PartitionKey, out var partitionKey) && !string.IsNullOrEmpty(partitionKey) ? partitionKey : null,
             Headers = headers,
         };
     }
@@ -315,7 +325,12 @@ internal sealed partial class NatsReceiveTransport(
     private partial void LogProcessingError(Exception exception);
 }
 
-/// <summary>NATS JetStream capability flags — no native DLQ (SDK emulates via a dead-letter subject); per-subject ordering.</summary>
+/// <summary>
+/// NATS JetStream capability flags — no native DLQ (SDK emulates via a dead-letter subject); per-subject ordering;
+/// PubAck on publish and core request-reply; no per-message priority, sessions or producer transactions, and the newer
+/// per-message TTL / scheduling features are stream opt-ins this adapter does not enable. Acks are per-message and
+/// thread-safe, so settlement runs from a pump worker and the consume loop has no affinity.
+/// </summary>
 internal sealed class NatsCapabilities : ITransportCapabilities
 {
     public bool NativeDeadLetter => false;
@@ -325,6 +340,44 @@ internal sealed class NatsCapabilities : ITransportCapabilities
     public bool NativeDedupe => false;
 
     public bool NativeOrdering => true;
+
+    /// <summary>
+    /// No per-message priority. JetStream 2.11 priority groups rank pull-consumers competing for a stream (overflow /
+    /// pinned-client policies), not messages within it — nothing lets one message overtake another.
+    /// </summary>
+    public bool NativePriority => false;
+
+    /// <summary>
+    /// Conditional, so reported false. A stream expires by its shared <c>MaxAge</c>; per-message TTL exists only as the
+    /// <c>Nats-TTL</c> header on NATS Server 2.11+ AND only when the stream sets <c>AllowMsgTTL</c>. NatsTopology
+    /// creates the stream without that flag, so a per-message TTL header would be ignored by the server.
+    /// </summary>
+    public bool NativeTimeToLive => false;
+
+    /// <summary>
+    /// Conditional, so reported false. Absolute-time delivery exists as the <c>Nats-Schedule</c> header on NATS Server
+    /// 2.12+ AND only when the stream sets <c>AllowMsgSchedules</c> — an opt-in that cannot be reverted once enabled.
+    /// NatsTopology does not set it, so a scheduled-delivery header would not be honoured.
+    /// </summary>
+    public bool NativeScheduling => false;
+
+    /// <summary>No session or message-group affinity: a durable consumer is not pinned to a key, and JetStream has no group-scoped exclusive lock comparable to ASB sessions.</summary>
+    public bool NativeSessions => false;
+
+    /// <summary>JetStream publish returns a <c>PubAck</c> carrying the stream sequence — a real broker acknowledgement of persistence.</summary>
+    public bool NativePublisherConfirms => true;
+
+    /// <summary>No producer transactions or exactly-once semantics; publishes are acknowledged individually, with no atomic multi-subject commit.</summary>
+    public bool NativeTransactions => false;
+
+    /// <summary>Core NATS request-reply: the request carries an <c>_INBOX</c> reply subject the server routes back, with no reply queue to provision.</summary>
+    public bool NativeRequestReply => true;
+
+    /// <summary>JetStream acks are per-message and safe to send from a pump worker thread.</summary>
+    public bool SettlesInContext => true;
+
+    /// <summary>The consume loop is an ordinary async enumeration — no thread affinity to preserve.</summary>
+    public bool ThreadAffineConsume => false;
 }
 
 /// <summary>DI registration for the NATS JetStream event-bus adapter.</summary>

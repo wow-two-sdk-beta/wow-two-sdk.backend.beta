@@ -57,8 +57,10 @@ public static class MessagingServiceCollectionExtensions
         services.TryAddSingleton<IDeadLetterStore, InMemoryDeadLetterStore>();
         services.TryAddSingleton<ISendTransport, InMemorySendTransport>();
         services.TryAddSingleton<IReceiveTransport, InMemoryReceiveTransport>();
+        services.TryAddSingleton<ITransportCapabilities, InMemoryCapabilities>();
         services.TryAddSingleton<IEventBus, TransportEventBus>();
         services.TryAddSingleton<EventProcessingPipeline>();
+        services.AddMessagePump();
         GetOrAddRegistry(services); // ensure the dispatcher registry exists even with no handlers registered yet
         services.AddHostedService<TransportConsumerHostedService>();
         return services;
@@ -75,9 +77,39 @@ public static class MessagingServiceCollectionExtensions
         services.TryAddSingleton<IRetryPolicy, DefaultRetryPolicy>();
         services.TryAddSingleton<IEventResiliencePipeline, DefaultEventResiliencePipeline>();
         services.TryAddSingleton<IInboxProcessor, InMemoryInboxProcessor>();
+        services.TryAddSingleton<IEventFaultClassifier>(DefaultEventFaultClassifier.RetryAll); // every exception retries until rules are registered
         services.TryAddSingleton<IMessageSerializer, SystemTextJsonMessageSerializer>();
         GetOrAddMessageTypeRegistry(services); // ensure the type registry singleton exists (populated by the handler/contract scan)
         services.TryAddSingleton<IMessageTypeResolver, DefaultMessageTypeResolver>();
+        services.AddMessagePump();
+        return services;
+    }
+
+    /// <summary>
+    /// Configure consume-side concurrency — how many messages the pump processes in parallel, whether messages sharing a
+    /// <see cref="EventEnvelope.PartitionKey"/> stay ordered, and the shutdown drain budget. Without this the pump runs
+    /// with <see cref="ConcurrencyOptions.MaxConcurrentMessages"/> = 1, dispatching inline exactly as before it existed.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">Concurrency options.</param>
+    public static IServiceCollection AddMessagingConcurrency(this IServiceCollection services, Action<ConcurrencyOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        services.AddOptions<ConcurrencyOptions>().Configure(configure);
+        services.AddMessagePump();
+        return services;
+    }
+
+    // Every transport routes its receive loop through the pump; TryAdd keeps the 4 registration paths idempotent.
+    private static IServiceCollection AddMessagePump(this IServiceCollection services)
+    {
+        services.AddOptions<ConcurrencyOptions>();
+        services.TryAddSingleton<MessagePump>();
+        services.AddMessagingMetrics(); // pipeline, bus and pump all take IMessagingMetrics — every transport path lands here
+        services.TryAddSingleton<BusControl>();
+        services.TryAddSingleton<IBusControl>(static sp => sp.GetRequiredService<BusControl>()); // hosted service needs the concrete type for lifecycle stamps; same instance behind the port
         return services;
     }
 

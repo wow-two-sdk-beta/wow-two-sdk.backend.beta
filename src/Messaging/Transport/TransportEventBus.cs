@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
@@ -7,9 +8,18 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 /// Transport-agnostic <see cref="IEventBus"/> — builds the <see cref="EventEnvelope"/> (id, correlation, transport
 /// hints), starts a PRODUCER span and injects W3C trace-context into the headers, then hands the envelope to the
 /// registered <see cref="ISendTransport"/>. Shared by every transport (in-memory channel, RabbitMQ, …).
+/// Registered <see cref="IPublishObserver"/>s are notified around the hand-off; they only watch, and cannot change it.
 /// </summary>
-internal sealed class TransportEventBus(ISendTransport sendTransport, TimeProvider timeProvider) : IEventBus
+internal sealed class TransportEventBus(
+    ISendTransport sendTransport,
+    TimeProvider timeProvider,
+    IMessagingMetrics metrics,
+    IEnumerable<IPublishObserver> publishObservers,
+    ILogger<TransportEventBus> logger) : IEventBus
 {
+    // Materialized once: the send path only pays a length check when nothing is observing.
+    private readonly IPublishObserver[] _publishObservers = [.. publishObservers];
+
     public ValueTask PublishAsync<TEvent>(TEvent @event, PublishOptions? options = null, CancellationToken cancellationToken = default)
         where TEvent : class, IEvent
     {
@@ -71,7 +81,21 @@ internal sealed class TransportEventBus(ISendTransport sendTransport, TimeProvid
             Headers = BuildPropagatedHeaders(headers, activity),
         };
 
-        await sendTransport.SendAsync(envelope, cancellationToken);
+        await _publishObservers.NotifyPrePublishAsync(envelope, logger, cancellationToken);
+
+        try
+        {
+            await sendTransport.SendAsync(envelope, cancellationToken);
+        }
+        // The filter keeps the no-observer path identical: with nothing registered the catch is never entered and the fault propagates untouched.
+        catch (Exception ex) when (_publishObservers.Length != 0 && !MessageObserverNotifications.IsCancellation(ex, cancellationToken))
+        {
+            await _publishObservers.NotifyPublishFaultAsync(envelope, ex, logger, cancellationToken);
+            throw;
+        }
+
+        metrics.RecordPublished(destination, typeof(TEvent)); // after the hand-off, so a failed send is not counted as sent
+        await _publishObservers.NotifyPostPublishAsync(envelope, logger, cancellationToken);
     }
 
     private static IReadOnlyDictionary<string, string> BuildPropagatedHeaders(IReadOnlyDictionary<string, string>? headers, Activity? activity)
