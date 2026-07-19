@@ -79,6 +79,7 @@ public static class MessagingServiceCollectionExtensions
         services.TryAddSingleton<IInboxProcessor, InMemoryInboxProcessor>();
         services.TryAddSingleton<IEventFaultClassifier>(DefaultEventFaultClassifier.RetryAll); // every exception retries until rules are registered
         services.TryAddSingleton<IMessageSerializer, SystemTextJsonMessageSerializer>();
+        services.TryAddSingleton<MessageSerializerRegistry>(); // selects the deserializer by the received wt-content-type; one registered serializer = today's behaviour
         GetOrAddMessageTypeRegistry(services); // ensure the type registry singleton exists (populated by the handler/contract scan)
         services.TryAddSingleton<IMessageTypeResolver, DefaultMessageTypeResolver>();
         services.AddMessagePump();
@@ -108,6 +109,7 @@ public static class MessagingServiceCollectionExtensions
         services.AddOptions<ConcurrencyOptions>();
         services.TryAddSingleton<MessagePump>();
         services.AddMessagingMetrics(); // pipeline, bus and pump all take IMessagingMetrics — every transport path lands here
+        services.TryAddSingleton<IMessageHeaderPropagationPolicy>(MessageHeaderPropagationPolicy.Default);
         services.TryAddSingleton<BusControl>();
         services.TryAddSingleton<IBusControl>(static sp => sp.GetRequiredService<BusControl>()); // hosted service needs the concrete type for lifecycle stamps; same instance behind the port
         return services;
@@ -166,15 +168,78 @@ public static class MessagingServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Replace the default System.Text.Json message serializer with another (MessagePack, Protobuf, …).</summary>
+    /// <summary>
+    /// Make <typeparamref name="TSerializer"/> <b>the default</b> — the serializer every message is sent with, replacing
+    /// System.Text.Json. Pair with <see cref="AddReceiveOnlyMessageSerializer{TSerializer}"/> to keep decoding a format
+    /// this service no longer sends.
+    /// </summary>
+    /// <remarks>
+    /// Swaps the <em>default</em> descriptor specifically — the last <see cref="IMessageSerializer"/> registered, which is
+    /// the one MS DI resolves for the singular service. <c>Replace</c> removes the <em>first</em> match instead, which with
+    /// a receive-only serializer registered would drop that format and leave the default untouched — the exact inverse of
+    /// what the call says. With only the shipped default registered the two are the same descriptor.
+    /// </remarks>
     /// <typeparam name="TSerializer">The serializer implementation.</typeparam>
     /// <param name="services">The service collection.</param>
     public static IServiceCollection AddMessageSerializer<TSerializer>(this IServiceCollection services)
         where TSerializer : class, IMessageSerializer
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.Replace(ServiceDescriptor.Singleton<IMessageSerializer, TSerializer>());
+
+        var defaultIndex = LastIndexOfMessageSerializer(services);
+        if (defaultIndex >= 0)
+            services.RemoveAt(defaultIndex);
+
+        services.Add(ServiceDescriptor.Singleton<IMessageSerializer, TSerializer>()); // last = the default DI resolves
         return services;
+    }
+
+    /// <summary>
+    /// Make <typeparamref name="TSerializer"/>'s format <b>understood on receive</b> without making it the default — the
+    /// send path keeps whatever <see cref="AddMessageSerializer{TSerializer}"/> (or the shipped default) put there.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is what fills <see cref="MessageSerializerRegistry"/>. The registry selects a deserializer by the received
+    /// <c>wt-content-type</c>, but it is built from <c>IEnumerable&lt;IMessageSerializer&gt;</c> — and with
+    /// <see cref="AddMessageSerializer{TSerializer}"/> as the only registration path that enumerable could never hold more
+    /// than one entry, so the selection had nothing to select between. Call this once per extra format a producer on this
+    /// stream might send.
+    /// </para>
+    /// <para>
+    /// The descriptor is inserted <em>ahead of</em> the default rather than appended, because MS DI resolves the singular
+    /// <see cref="IMessageSerializer"/> to the last descriptor: appending would silently hand the send path to a serializer
+    /// registered for receive. Registering the default first is for the same reason — <c>TryAddSingleton</c> in
+    /// <see cref="AddEventResilienceDefaults"/> matches on service type alone, so a bare call placed ahead of it would
+    /// suppress the System.Text.Json default entirely. Repeat calls for one implementation type are no-ops.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="TSerializer">The serializer implementation whose <see cref="IMessageSerializer.ContentType"/> becomes decodable.</typeparam>
+    /// <param name="services">The service collection.</param>
+    public static IServiceCollection AddReceiveOnlyMessageSerializer<TSerializer>(this IServiceCollection services)
+        where TSerializer : class, IMessageSerializer
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.TryAddSingleton<IMessageSerializer, SystemTextJsonMessageSerializer>(); // guarantee a default to sit behind
+        foreach (var descriptor in services)
+            if (descriptor.ServiceType == typeof(IMessageSerializer) && descriptor.ImplementationType == typeof(TSerializer))
+                return services; // already decodable — as the default or from an earlier call
+
+        services.Insert(LastIndexOfMessageSerializer(services), ServiceDescriptor.Singleton<IMessageSerializer, TSerializer>());
+        return services;
+    }
+
+    // The default is positional: MS DI hands the singular IMessageSerializer to the LAST registered descriptor, and the
+    // registry takes that same instance as its fallback. Both registration paths pivot on this index, never on the first
+    // match, so a receive-only serializer can never be mistaken for the one that sends.
+    private static int LastIndexOfMessageSerializer(IServiceCollection services)
+    {
+        for (var index = services.Count - 1; index >= 0; index--)
+            if (services[index].ServiceType == typeof(IMessageSerializer))
+                return index;
+
+        return -1;
     }
 
     /// <summary>Replace the default message-type resolver (e.g. a URN- or schema-registry-backed one).</summary>
@@ -198,6 +263,17 @@ public static class MessagingServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrEmpty(token);
         GetOrAddMessageTypeRegistry(services).Register(typeof(TEvent), token);
+        return services;
+    }
+
+    /// <summary>Replace the header-propagation policy — which of a consumed message's headers flow onto messages published while handling it. Defaults to W3C trace context only.</summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="policy">The policy, e.g. <c>MessageHeaderPropagationPolicy.Default.Allow("tenant-id")</c>.</param>
+    public static IServiceCollection AddMessageHeaderPropagation(this IServiceCollection services, IMessageHeaderPropagationPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(policy);
+        services.Replace(ServiceDescriptor.Singleton(policy));
         return services;
     }
 

@@ -19,7 +19,21 @@ public interface IMessageSerializer
     /// <param name="bodyType">The runtime type of the body.</param>
     byte[] Serialize(object body, Type bodyType);
 
-    /// <summary>Deserialize <paramref name="data"/> into <paramref name="bodyType"/>; null when the payload is empty/null.</summary>
+    /// <summary>Deserialize <paramref name="data"/> into <paramref name="bodyType"/>; null when the payload is empty.</summary>
+    /// <remarks>
+    /// <para>
+    /// An empty <paramref name="data"/> MUST return null rather than throw, and every shipped implementation obeys
+    /// this. Null is the seam's "this body is not decodable" signal and every caller already converts it into an
+    /// explicit failure — the adapters' <c>TryReconstruct</c> returns a null envelope and takes the unparseable path
+    /// (DLQ topic / nack / native dead-letter), <c>ClaimCheck</c> throws <c>ClaimCheckPayloadException</c>, and the
+    /// outbox dispatcher marks the row failed. No caller hands a null body to a handler.
+    /// </para>
+    /// <para>
+    /// Throwing here is not the louder alternative, it is the fatal one: <c>TryReconstruct</c> is called outside the
+    /// adapters' try/catch, so an exception escapes the consume loop and stops the subscription instead of costing one
+    /// message. A body that is present but malformed is a different case and still throws.
+    /// </para>
+    /// </remarks>
     /// <param name="data">The serialized bytes.</param>
     /// <param name="bodyType">The target runtime type.</param>
     object? Deserialize(ReadOnlySpan<byte> data, Type bodyType);
@@ -46,10 +60,16 @@ public sealed class SystemTextJsonMessageSerializer : IMessageSerializer
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// The empty check is this implementation's own: <see cref="JsonSerializer"/> throws <see cref="JsonException"/>
+    /// ("no JSON tokens") on an empty span, which broke the interface's empty-payload contract that MessagePack and
+    /// CloudEvents both honour. A non-empty but malformed body still throws — only genuine emptiness returns null, and
+    /// a payload of the four bytes <c>null</c> already returned null here before this check existed.
+    /// </remarks>
     public object? Deserialize(ReadOnlySpan<byte> data, Type bodyType)
     {
         ArgumentNullException.ThrowIfNull(bodyType);
-        return JsonSerializer.Deserialize(data, bodyType, _options);
+        return data.IsEmpty ? null : JsonSerializer.Deserialize(data, bodyType, _options);
     }
 }
 

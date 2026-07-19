@@ -5,13 +5,23 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 /// <summary>Drives the registered <see cref="IReceiveTransport"/>, routing each received message through the <see cref="MessagePump"/> into the <see cref="EventProcessingPipeline"/>. Transport-agnostic — in-memory and every broker adapter reuse it.</summary>
 internal sealed class TransportConsumerHostedService(IReceiveTransport receiveTransport, MessagePump pump, BusControl busControl) : BackgroundService
 {
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    public override async Task StartAsync(CancellationToken cancellationToken)
     {
-        // The host lifecycle is what moves IBusControl off Stopped. MarkRunning stands down if the bus was already
-        // stopped explicitly, so a kill-switch pulled before startup is not undone by the host starting.
+        // The host lifecycle is what moves IBusControl off Stopped, and the stamp belongs HERE rather than in
+        // ExecuteAsync: IHostedService.StartAsync is awaited by the host, ExecuteAsync is not. On .NET 10 BackgroundService
+        // schedules ExecuteAsync on the thread pool and returns, so stamping there left a window — sometimes milliseconds
+        // wide under a saturated pool — in which IHost.StartAsync had returned and IBusControl still reported Stopped.
+        // A caller that paused or queried the bus straight after startup saw a bus that had never run.
+        await base.StartAsync(cancellationToken);
+
+        // After the base call, so a transport that fails to start leaves the bus reporting Stopped rather than a Running
+        // it never reached. MarkRunning stands down if the bus was already stopped explicitly, so a kill-switch pulled
+        // before startup is not undone by the host starting.
         busControl.MarkRunning();
-        return receiveTransport.StartAsync(pump.DispatchAsync, stoppingToken).AsTask();
     }
+
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        => receiveTransport.StartAsync(pump.DispatchAsync, stoppingToken).AsTask();
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {

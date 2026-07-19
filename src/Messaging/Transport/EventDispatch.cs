@@ -16,7 +16,7 @@ internal sealed class EventDispatcher<TEvent> : EventDispatcher
     public override async ValueTask DispatchAsync(IServiceProvider services, EventEnvelope envelope, IEventBus bus, CancellationToken cancellationToken)
     {
         var @event = (TEvent)envelope.Body;
-        var context = new EventContext<TEvent>(@event, envelope, bus);
+        var context = new EventContext<TEvent>(@event, envelope, bus, services.GetService<IMessageHeaderPropagationPolicy>());
         foreach (var handler in services.GetServices<IEventHandler<TEvent>>())
             await handler.HandleAsync(context, cancellationToken);
     }

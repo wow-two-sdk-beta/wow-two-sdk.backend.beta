@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Runtime.InteropServices;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging;
 
@@ -62,6 +65,17 @@ public sealed record EventEnvelope
     /// <summary>Logical destination (queue/topic) name; empty for publish fan-out.</summary>
     public string Destination { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Logical address a reply to this message should be sent to; null for a one-way message. Paired with
+    /// <see cref="ConversationId"/>, which tells the requester which pending request the reply answers.
+    /// </summary>
+    /// <remarks>
+    /// The address is transport-abstract — a queue/subject name, resolved by the adapter to its native reply mechanism
+    /// (AMQP <c>reply-to</c>, a NATS inbox subject) or carried as <see cref="Transport.MessageHeaders.ReplyTo"/> where
+    /// none exists. The SDK carries it and correlates by it; it does not itself send replies.
+    /// </remarks>
+    public string? ReplyTo { get; init; }
+
     /// <summary>Correlation id linking all events in one business flow.</summary>
     public string? CorrelationId { get; init; }
 
@@ -91,6 +105,71 @@ public sealed record EventEnvelope
 
     /// <summary>Transport headers — carries W3C trace-context (<c>traceparent</c>) and custom metadata.</summary>
     public IReadOnlyDictionary<string, string> Headers { get; init; } = ReadOnlyDictionary<string, string>.Empty;
+
+    /// <summary>
+    /// The body already serialized, for a send-path transformation that has to decide what goes on the wire before the
+    /// adapter does. When set, an adapter puts these bytes on the wire verbatim instead of calling
+    /// <see cref="IMessageSerializer.Serialize"/>; <see langword="null"/> — the default — leaves every adapter
+    /// serializing <see cref="Body"/> itself, exactly as before this existed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A general seam, not one feature's field. Three transformations need to substitute wire bytes without disturbing
+    /// routing, and they are the same shape: claim check (the body is replaced by a pointer to blob storage), payload
+    /// compression (the same body, deflated) and envelope encryption (the same body, as ciphertext). Each runs once on
+    /// the send path and hands the adapter the bytes it produced.
+    /// </para>
+    /// <para>
+    /// It also removes a double serialization. A transformation that has to <i>measure</i> the body — a size threshold,
+    /// a compress-only-if-it-helps check — has already serialized it, and carrying those bytes here spends that work
+    /// rather than making the adapter repeat it.
+    /// </para>
+    /// <para>
+    /// <see cref="Body"/> and <see cref="BodyType"/> stay the logical message throughout, so routing, metrics,
+    /// observers and the outbox keep describing what was published rather than how it was encoded.
+    /// </para>
+    /// </remarks>
+    public ReadOnlyMemory<byte>? RawBody { get; init; }
+
+    /// <summary>
+    /// The type the bytes in <see cref="RawBody"/> decode as, when the transformation put a <i>different shape</i> on
+    /// the wire than <see cref="Body"/>. <see langword="null"/> — the default — means they still decode as
+    /// <see cref="BodyType"/>.
+    /// </summary>
+    /// <remarks>
+    /// Set by a substituting transformation (claim check sends a claim reference; envelope encryption would send its
+    /// ciphertext wrapper), left null by a transparent one (compression re-encodes the same contract). It governs the
+    /// <see cref="MessageHeaders.EventType"/> token only — see <see cref="WireBodyType"/> — and never routing, which
+    /// stays on <see cref="BodyType"/> so the message still lands where consumers of the real contract are bound.
+    /// </remarks>
+    public Type? RawBodyType { get; init; }
+
+    /// <summary>
+    /// The type an adapter stamps as <see cref="MessageHeaders.EventType"/>: the substituted wire type where there is
+    /// one, else the logical <see cref="BodyType"/>. The receiving adapter deserializes the wire bytes into whatever
+    /// this names, which is why it has to describe the shape actually on the wire rather than the logical one.
+    /// </summary>
+    public Type WireBodyType => RawBodyType ?? BodyType;
+
+    /// <summary>
+    /// The bytes to put on the wire: <see cref="RawBody"/> where a send-path transformation pre-serialized them, else
+    /// <see cref="Body"/> run through <paramref name="serializer"/>. Every transport adapter calls this instead of
+    /// serializing directly, so one expression governs whether a transformation is honoured.
+    /// </summary>
+    /// <param name="serializer">The serializer to fall back on when nothing pre-serialized the body.</param>
+    public byte[] ToWireBody(IMessageSerializer serializer)
+    {
+        ArgumentNullException.ThrowIfNull(serializer);
+
+        if (RawBody is not { } raw)
+            return serializer.Serialize(Body, BodyType);
+
+        // Hand back the producer's own array when it owns the whole buffer, so the seam allocates nothing on the common
+        // path; only a slice of a larger (pooled) buffer has to be copied out.
+        return MemoryMarshal.TryGetArray(raw, out var segment) && segment.Array is { } array && segment.Offset == 0 && segment.Count == array.Length
+            ? array
+            : raw.ToArray();
+    }
 }
 
 /// <summary>The per-event context handed to a handler — the event, its envelope, and correlation-aware helpers.</summary>
@@ -99,12 +178,17 @@ public sealed class EventContext<TEvent>
     where TEvent : class, IEvent
 {
     private readonly IEventBus _bus;
+    private readonly IMessageHeaderPropagationPolicy _headerPropagation;
 
     /// <summary>Create a context.</summary>
     /// <param name="event">The deserialized event.</param>
     /// <param name="envelope">The transport envelope.</param>
     /// <param name="bus">The bus, for correlation-propagating publish/send from within the handler.</param>
-    public EventContext(TEvent @event, EventEnvelope envelope, IEventBus bus)
+    /// <param name="headerPropagation">
+    /// Decides which of this message's headers flow onto messages published from this context.
+    /// <see cref="MessageHeaderPropagationPolicy.Default"/> (W3C trace context only) when null.
+    /// </param>
+    public EventContext(TEvent @event, EventEnvelope envelope, IEventBus bus, IMessageHeaderPropagationPolicy? headerPropagation = null)
     {
         ArgumentNullException.ThrowIfNull(@event);
         ArgumentNullException.ThrowIfNull(envelope);
@@ -112,6 +196,7 @@ public sealed class EventContext<TEvent>
         Event = @event;
         Envelope = envelope;
         _bus = bus;
+        _headerPropagation = headerPropagation ?? MessageHeaderPropagationPolicy.Default;
     }
 
     /// <summary>The event payload.</summary>
@@ -129,31 +214,88 @@ public sealed class EventContext<TEvent>
     /// <summary>The conversation id, if any.</summary>
     public string? ConversationId => Envelope.ConversationId;
 
+    /// <summary>The address a reply to this message should be sent to, if any.</summary>
+    public string? ReplyTo => Envelope.ReplyTo;
+
     /// <summary>The event headers.</summary>
     public IReadOnlyDictionary<string, string> Headers => Envelope.Headers;
 
-    /// <summary>Publish a follow-on event, auto-propagating correlation/conversation and setting this event as the cause.</summary>
+    /// <summary>Publish a follow-on event, auto-propagating correlation/conversation/headers and setting this event as the cause.</summary>
     /// <typeparam name="TOut">Outgoing event type.</typeparam>
     /// <param name="event">The outgoing event.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public ValueTask PublishAsync<TOut>(TOut @event, CancellationToken cancellationToken = default)
         where TOut : class, IEvent
+        => PublishAsync(@event, options: null, cancellationToken);
+
+    /// <summary>
+    /// Publish a follow-on event with explicit options, auto-propagating correlation/conversation/headers and setting
+    /// this event as the cause. Any field set on <paramref name="options"/> overrides what would be propagated.
+    /// </summary>
+    /// <typeparam name="TOut">Outgoing event type.</typeparam>
+    /// <param name="event">The outgoing event.</param>
+    /// <param name="options">Publish options; null behaves exactly like the overload without them.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public ValueTask PublishAsync<TOut>(TOut @event, PublishOptions? options, CancellationToken cancellationToken = default)
+        where TOut : class, IEvent
         => _bus.PublishAsync(
             @event,
-            new PublishOptions { CorrelationId = CorrelationId ?? MessageId, ConversationId = ConversationId, CausationId = MessageId },
+            new PublishOptions
+            {
+                MessageId = options?.MessageId,
+                CorrelationId = options?.CorrelationId ?? CorrelationId ?? MessageId,
+                ConversationId = options?.ConversationId ?? ConversationId,
+                CausationId = options?.CausationId ?? MessageId,
+                Delay = options?.Delay,
+                PartitionKey = options?.PartitionKey,
+                Durable = options?.Durable,
+                Priority = options?.Priority,
+                TimeToLive = options?.TimeToLive,
+                // Caller-set only — unlike correlation, the inbound ReplyTo is never inherited. A reply address belongs
+                // to the message that carried it; forwarding it would aim a follow-on event's replies at a requester
+                // waiting on a different exchange.
+                ReplyTo = options?.ReplyTo,
+                Headers = _headerPropagation.BuildOutboundHeaders(Envelope.Headers, options?.Headers),
+            },
             cancellationToken);
 
-    /// <summary>Send a follow-on event to a destination, auto-propagating correlation/conversation and setting this event as the cause.</summary>
+    /// <summary>Send a follow-on event to a destination, auto-propagating correlation/conversation/headers and setting this event as the cause.</summary>
     /// <typeparam name="TOut">Outgoing event type.</typeparam>
     /// <param name="destination">Destination (queue) name.</param>
     /// <param name="event">The outgoing event.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public ValueTask SendAsync<TOut>(string destination, TOut @event, CancellationToken cancellationToken = default)
         where TOut : class, IEvent
+        => SendAsync(destination, @event, options: null, cancellationToken);
+
+    /// <summary>
+    /// Send a follow-on event to a destination with explicit options, auto-propagating correlation/conversation/headers
+    /// and setting this event as the cause. Any field set on <paramref name="options"/> overrides what would be propagated.
+    /// </summary>
+    /// <typeparam name="TOut">Outgoing event type.</typeparam>
+    /// <param name="destination">Destination (queue) name.</param>
+    /// <param name="event">The outgoing event.</param>
+    /// <param name="options">Send options; null behaves exactly like the overload without them.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public ValueTask SendAsync<TOut>(string destination, TOut @event, SendOptions? options, CancellationToken cancellationToken = default)
+        where TOut : class, IEvent
         => _bus.SendAsync(
             destination,
             @event,
-            new SendOptions { CorrelationId = CorrelationId ?? MessageId, ConversationId = ConversationId, CausationId = MessageId },
+            new SendOptions
+            {
+                MessageId = options?.MessageId,
+                CorrelationId = options?.CorrelationId ?? CorrelationId ?? MessageId,
+                ConversationId = options?.ConversationId ?? ConversationId,
+                CausationId = options?.CausationId ?? MessageId,
+                Delay = options?.Delay,
+                PartitionKey = options?.PartitionKey,
+                Durable = options?.Durable,
+                Priority = options?.Priority,
+                TimeToLive = options?.TimeToLive,
+                ReplyTo = options?.ReplyTo,
+                Headers = _headerPropagation.BuildOutboundHeaders(Envelope.Headers, options?.Headers),
+            },
             cancellationToken);
 }
 
@@ -168,6 +310,9 @@ public sealed class PublishOptions
 
     /// <summary>Conversation id for a request/response exchange.</summary>
     public string? ConversationId { get; set; }
+
+    /// <summary>Address a reply should be sent to (transport-abstract); null for a one-way message. See <see cref="EventEnvelope.ReplyTo"/>.</summary>
+    public string? ReplyTo { get; set; }
 
     /// <summary>Id of the event that caused this one.</summary>
     public string? CausationId { get; set; }
@@ -202,6 +347,9 @@ public sealed class SendOptions
 
     /// <summary>Conversation id for a request/response exchange.</summary>
     public string? ConversationId { get; set; }
+
+    /// <summary>Address a reply should be sent to (transport-abstract); null for a one-way message. See <see cref="EventEnvelope.ReplyTo"/>.</summary>
+    public string? ReplyTo { get; set; }
 
     /// <summary>Id of the event that caused this one.</summary>
     public string? CausationId { get; set; }

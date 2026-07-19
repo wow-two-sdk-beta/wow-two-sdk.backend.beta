@@ -10,12 +10,20 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 /// registered <see cref="ISendTransport"/>. Shared by every transport (in-memory channel, RabbitMQ, …).
 /// Registered <see cref="IPublishObserver"/>s are notified around the hand-off; they only watch, and cannot change it.
 /// </summary>
+/// <remarks>
+/// <paramref name="claimCheck"/> is the one thing here that <i>may</i> change the envelope: it decides what goes on the
+/// wire in place of an oversized body. Optional by constructor default, on the same reasoning as
+/// <c>EventProcessingPipeline</c>'s delayed-retry coordinator — an application that never called
+/// <c>AddEventClaimCheck()</c> registers nothing, DI supplies null, and the send path is byte-identical to before it
+/// existed.
+/// </remarks>
 internal sealed class TransportEventBus(
     ISendTransport sendTransport,
     TimeProvider timeProvider,
     IMessagingMetrics metrics,
     IEnumerable<IPublishObserver> publishObservers,
-    ILogger<TransportEventBus> logger) : IEventBus
+    ILogger<TransportEventBus> logger,
+    ClaimCheckOffloader? claimCheck = null) : IEventBus
 {
     // Materialized once: the send path only pays a length check when nothing is observing.
     private readonly IPublishObserver[] _publishObservers = [.. publishObservers];
@@ -24,7 +32,7 @@ internal sealed class TransportEventBus(
         where TEvent : class, IEvent
     {
         ArgumentNullException.ThrowIfNull(@event);
-        return EnqueueAsync(@event, typeof(TEvent).Name, options?.MessageId, options?.CorrelationId, options?.ConversationId, options?.CausationId, options?.Delay, options?.PartitionKey, options?.Durable, options?.Priority, options?.TimeToLive, options?.Headers, cancellationToken);
+        return EnqueueAsync(@event, typeof(TEvent).Name, options?.MessageId, options?.CorrelationId, options?.ConversationId, options?.CausationId, options?.ReplyTo, options?.Delay, options?.PartitionKey, options?.Durable, options?.Priority, options?.TimeToLive, options?.Headers, cancellationToken);
     }
 
     public ValueTask SendAsync<TEvent>(string destination, TEvent @event, SendOptions? options = null, CancellationToken cancellationToken = default)
@@ -32,7 +40,7 @@ internal sealed class TransportEventBus(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destination);
         ArgumentNullException.ThrowIfNull(@event);
-        return EnqueueAsync(@event, destination, options?.MessageId, options?.CorrelationId, options?.ConversationId, options?.CausationId, options?.Delay, options?.PartitionKey, options?.Durable, options?.Priority, options?.TimeToLive, options?.Headers, cancellationToken);
+        return EnqueueAsync(@event, destination, options?.MessageId, options?.CorrelationId, options?.ConversationId, options?.CausationId, options?.ReplyTo, options?.Delay, options?.PartitionKey, options?.Durable, options?.Priority, options?.TimeToLive, options?.Headers, cancellationToken);
     }
 
     private async ValueTask EnqueueAsync<TEvent>(
@@ -42,6 +50,7 @@ internal sealed class TransportEventBus(
         string? correlationId,
         string? conversationId,
         string? causationId,
+        string? replyTo,
         TimeSpan? delay,
         string? partitionKey,
         bool? durable,
@@ -72,6 +81,7 @@ internal sealed class TransportEventBus(
             CorrelationId = correlationId,
             ConversationId = conversationId,
             CausationId = causationId,
+            ReplyTo = replyTo,
             DeliveryCount = 0,
             NotBeforeUtc = notBefore,
             PartitionKey = partitionKey,
@@ -80,6 +90,13 @@ internal sealed class TransportEventBus(
             TimeToLive = timeToLive,
             Headers = BuildPropagatedHeaders(headers, activity),
         };
+
+        // Before the observers and the transport. The claim check decides what actually travels — the body's bytes, or
+        // a pointer to them plus the headers that let the consumer fetch them back — so notifying first would hand
+        // observers an envelope that is not the one sent. Null on a default wiring, and even when registered it hands
+        // the same instance straight back for a message it has nothing to do to.
+        if (claimCheck is not null)
+            envelope = await claimCheck.PrepareAsync(envelope, cancellationToken);
 
         await _publishObservers.NotifyPrePublishAsync(envelope, logger, cancellationToken);
 
