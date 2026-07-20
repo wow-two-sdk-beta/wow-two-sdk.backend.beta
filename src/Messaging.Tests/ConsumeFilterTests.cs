@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
@@ -35,20 +35,22 @@ public sealed class ConsumeFilterTests
     public async Task Filters_wrap_the_handler_in_registration_order()
     {
         Trace.Clear();
-        var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<EventCollector>();
-        builder.Services.AddInMemoryEventBus(typeof(PingHandler).Assembly);
-        builder.Services.AddConsumeFilter<FilterA>();
-        builder.Services.AddConsumeFilter<FilterB>();
-        using var host = builder.Build();
-        await host.StartAsync();
+        await using var harness = await MessagingTestHarness.StartAsync(
+            static services =>
+            {
+                services.AddSingleton<EventCollector>();
+                services.AddConsumeFilter<FilterA>();
+                services.AddConsumeFilter<FilterB>();
+            },
+            handlerAssemblies: [typeof(PingHandler).Assembly]);
 
-        var collector = host.Services.GetRequiredService<EventCollector>();
-        var bus = host.Services.GetRequiredService<IEventBus>();
-        await bus.PublishAsync(new PingEvent("x"));
+        await harness.Bus.PublishAsync(new PingEvent("x"));
 
-        (await collector.WaitForCountAsync(1, TimeSpan.FromSeconds(5))).Should().BeTrue(); // handler ran through the chain
-        await host.StopAsync();
+        // Each filter records its "after" leg as the chain unwinds, which is past the consume hook — so wait for the
+        // whole message to land rather than only for the handler to have run.
+        await harness.WaitForIdleAsync();
+
+        harness.Consumed.Count<PingEvent>().Should().Be(1); // handler ran through the chain
 
         // A registered first = outermost; the handler runs innermost between the before/after pairs.
         Trace.Should().ContainInOrder("A:before", "B:before", "B:after", "A:after");

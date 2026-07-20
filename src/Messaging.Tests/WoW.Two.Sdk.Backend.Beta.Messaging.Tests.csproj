@@ -24,9 +24,12 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="AwesomeAssertions" />
+    <!-- Drives IRequestClient's response timeout and the saga's scheduled timeout without a real wait. -->
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <PackageReference Include="Testcontainers.RabbitMq" />
     <PackageReference Include="Testcontainers.Kafka" />
     <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.Redis" />
     <PackageReference Include="Testcontainers" />
     <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="Confluent.Kafka" />
@@ -36,6 +39,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../WoW.Two.Sdk.Backend.Beta.csproj" />
+    <!-- The consumer-facing harness under test here as well as used by it: MessagingTestHarness + MessagingRecorder. -->
+    <ProjectReference Include="../Testing.Messaging/WoW.Two.Sdk.Backend.Beta.Testing.Messaging.csproj" />
   </ItemGroup>
 
   <ItemGroup>

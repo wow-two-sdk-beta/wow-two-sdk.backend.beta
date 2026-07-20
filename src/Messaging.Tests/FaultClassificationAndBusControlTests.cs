@@ -86,6 +86,24 @@ public sealed class FaultClassificationAndBusControlTests
     }
 
     [Fact]
+    public async Task Reports_running_the_instant_the_host_has_started()
+    {
+        using var host = BuildHost();
+        await host.StartAsync();
+
+        // No wait, no poll: a started host must already report a running bus. Stamping the state from ExecuteAsync made
+        // this a race — .NET 10's BackgroundService schedules ExecuteAsync on the thread pool rather than running it
+        // inline, so under a saturated pool StartAsync returned while the bus still read Stopped and the very next
+        // PauseAsync threw "cannot be paused from Stopped".
+        var control = host.Services.GetRequiredService<IBusControl>();
+        control.State.Should().Be(BusState.Running);
+        await control.PauseAsync();
+        control.State.Should().Be(BusState.Paused);
+
+        await host.StopAsync();
+    }
+
+    [Fact]
     public async Task Pause_holds_messages_at_the_gate_and_resume_releases_them()
     {
         using var host = BuildHost();
@@ -102,14 +120,18 @@ public sealed class FaultClassificationAndBusControlTests
         for (var i = 0; i < 3; i++)
             await bus.PublishAsync(new PingEvent($"p{i}"));
 
-        // Paused gates entry into the pipeline; nothing should be handled while the gate is shut.
-        await Task.Delay(TimeSpan.FromMilliseconds(300), CancellationToken.None);
+        // Paused gates entry into the pipeline; nothing should be handled while the gate is shut. WaitForCountAsync
+        // returns as soon as the count is reached, so this asserts the gate held for the whole window rather than
+        // racing it — a shut gate makes it burn the full timeout and report false.
+        (await collector.WaitForCountAsync(1, TimeSpan.FromMilliseconds(300))).Should().BeFalse();
         collector.Count.Should().Be(0);
 
         await control.ResumeAsync();
         control.State.Should().Be(BusState.Running);
 
-        (await collector.WaitForCountAsync(3, TimeSpan.FromSeconds(5))).Should().BeTrue();
+        // Generous: the full suite runs 5 broker containers in parallel, and a tight bound here flakes under that load,
+        // not under a real regression.
+        (await collector.WaitForCountAsync(3, TimeSpan.FromSeconds(20))).Should().BeTrue();
         await host.StopAsync();
     }
 

@@ -1,81 +1,72 @@
-using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using WoW.Two.Sdk.Backend.Beta.Messaging;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
+using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
+/// <summary>The in-memory bus end to end: round-trip, dedupe, dead-letter — driven through the shipped harness.</summary>
 public sealed class InMemoryEventBusTests
 {
-    private static async Task<IHost> StartHostAsync(Action<InMemoryEventBusOptions>? configure = null)
-    {
-        var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<EventCollector>();
-        builder.Services.AddInMemoryEventBus(configure, typeof(PingHandler).Assembly);
-        var host = builder.Build();
-        await host.StartAsync();
-        return host;
-    }
+    private static Task<MessagingTestHarness> StartAsync(Action<InMemoryEventBusOptions>? configureBus = null)
+        => MessagingTestHarness.StartAsync(
+            static services => services.AddSingleton<EventCollector>(), // PingHandler's collaborator, still shared with the broker suites
+            configureBus,
+            [typeof(PingHandler).Assembly]);
 
     [Fact]
     public async Task Publishes_and_handles_event()
     {
-        using var host = await StartHostAsync();
-        var collector = host.Services.GetRequiredService<EventCollector>();
-        var bus = host.Services.GetRequiredService<IEventBus>();
+        await using var harness = await StartAsync();
 
-        await bus.PublishAsync(new PingEvent("hello"));
+        await harness.Bus.PublishAsync(new PingEvent("hello"));
 
-        (await collector.WaitForCountAsync(1, TimeSpan.FromSeconds(5))).Should().BeTrue();
-        collector.Count.Should().Be(1);
-        await host.StopAsync();
+        await harness.Consumed.WaitForAsync<PingEvent>();
+        harness.Consumed.Count<PingEvent>().Should().Be(1);
+        harness.Published.Count<PingEvent>(e => e.Value == "hello").Should().Be(1); // the send half, which a handler-side collector cannot see
     }
 
     [Fact]
     public async Task Deduplicates_by_message_id()
     {
-        using var host = await StartHostAsync();
-        var collector = host.Services.GetRequiredService<EventCollector>();
-        var bus = host.Services.GetRequiredService<IEventBus>();
+        await using var harness = await StartAsync();
 
-        await bus.PublishAsync(new PingEvent("a"), new PublishOptions { MessageId = "dup-1" });
-        await bus.PublishAsync(new PingEvent("b"), new PublishOptions { MessageId = "dup-1" });
+        await harness.Bus.PublishAsync(new PingEvent("a"), new PublishOptions { MessageId = "dup-1" });
+        await harness.Bus.PublishAsync(new PingEvent("b"), new PublishOptions { MessageId = "dup-1" });
 
-        (await collector.WaitForCountAsync(1, TimeSpan.FromSeconds(5))).Should().BeTrue();
-        await Task.Delay(TimeSpan.FromMilliseconds(300));
-        collector.Count.Should().Be(1);
-        await host.StopAsync();
+        // Both deliveries have to be seen before the counts mean anything, and the second one produces no handler call
+        // to await — so wait for the bus to fall silent instead of sleeping a guessed 300ms.
+        await harness.WaitForIdleAsync();
+
+        harness.Published.Count<PingEvent>().Should().Be(2);
+        harness.Consumed.Count(m => m.Is<PingEvent>() && m.Outcome == ConsumeOutcome.Success).Should().Be(1);
+        harness.Consumed.Count(m => m.Is<PingEvent>() && m.Outcome == ConsumeOutcome.Duplicate).Should().Be(1); // skipped by the inbox, not lost in transit
     }
 
     [Fact]
     public async Task Dead_letters_after_retries_exhausted()
     {
-        using var host = await StartHostAsync(o => o.Retry = new RetryConfig(MaxAttempts: 2, Backoff: BackoffKind.None));
-        var bus = host.Services.GetRequiredService<IEventBus>();
-        var deadLetters = host.Services.GetRequiredService<IDeadLetterStore>();
+        await using var harness = await StartAsync(o => o.Retry = new RetryConfig(MaxAttempts: 2, Backoff: BackoffKind.None));
 
-        await bus.PublishAsync(new BoomEvent("x"), new PublishOptions { MessageId = "boom-1" });
+        await harness.Bus.PublishAsync(new BoomEvent("x"), new PublishOptions { MessageId = "boom-1" });
 
-        var record = await WaitForDeadLetterAsync(deadLetters, source: nameof(BoomEvent), messageId: "boom-1", TimeSpan.FromSeconds(5));
+        var deadLettered = await harness.DeadLettered.WaitForAsync<BoomEvent>();
+        deadLettered[0].Exception.Should().BeOfType<InvalidOperationException>(); // terminal exception captured, not null
+        harness.Faulted.Count<BoomEvent>().Should().Be(2); // MaxAttempts = 2 — the budget was spent, not short-circuited
+
+        // The dead-letter hook fires after settlement, so the store is already written: read it once, no polling loop.
+        var record = await FirstDeadLetterAsync(harness, source: nameof(BoomEvent), messageId: "boom-1");
         record.Should().NotBeNull();
-        record!.ExceptionType.Should().Contain(nameof(InvalidOperationException)); // terminal exception captured, not null
-        await host.StopAsync();
+        record!.ExceptionType.Should().Contain(nameof(InvalidOperationException));
     }
 
-    private static async Task<DeadLetterRecord?> WaitForDeadLetterAsync(IDeadLetterStore store, string source, string messageId, TimeSpan timeout)
+    private static async Task<DeadLetterRecord?> FirstDeadLetterAsync(MessagingTestHarness harness, string source, string messageId)
     {
-        using var cts = new CancellationTokenSource(timeout);
-        while (!cts.IsCancellationRequested)
-        {
-            await foreach (var record in store.ReadAsync(source, CancellationToken.None))
-                if (record.MessageId == messageId)
-                    return record;
-
-            await Task.Delay(TimeSpan.FromMilliseconds(100));
-        }
+        var store = harness.Services.GetRequiredService<IDeadLetterStore>();
+        await foreach (var record in store.ReadAsync(source, CancellationToken.None))
+            if (record.MessageId == messageId)
+                return record;
 
         return null;
     }
