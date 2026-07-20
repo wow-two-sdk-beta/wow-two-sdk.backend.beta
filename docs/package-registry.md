@@ -1,6 +1,6 @@
 # Package registry
 
-*Last updated: 2026-06-23*
+*Last updated: 2026-07-19*
 
 > **Mono-lib note:** since the mono-lib migration these "packages" are subpath areas of the single
 > `WoW2.Sdk.Backend.Beta` NuGet (plus the separate `.Testing` and `.Testing.Data` libs). Rows still track per-area status.
@@ -185,10 +185,11 @@
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Cap.AzureServiceBus` | CAP transport via ASB | planned |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq` | `AddRabbitMqEventBus` — RabbitMQ transport behind the port (native DLX/DLQ) | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Kafka` | `AddKafkaEventBus` — Kafka transport (emulated DLQ) | shipped (mono-lib) |
-| `WoW.Two.Sdk.Backend.Beta.Messaging.AzureServiceBus` | Azure.Messaging.ServiceBus direct use | planned |
+| `WoW.Two.Sdk.Backend.Beta.Messaging.AzureServiceBus` | `AddAzureServiceBusEventBus` — topic + subscription-per-endpoint with `Subject` correlation filters, native DLQ, sessions, scheduled enqueue | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.AzureEventHubs` | Azure.Messaging.EventHubs direct use | planned |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.AwsSqs` | AWSSDK.SQS direct use | planned |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Nats` | `AddNatsEventBus` — NATS JetStream transport (emulated DLQ, in-context settle) | shipped (mono-lib) |
+| `WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams` | `AddRedisStreamsEventBus` — consumer group + `XPENDING`/`XCLAIM` stale recovery, emulated DLQ, in-context settle | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Mqtt` | MQTTnet direct use | planned |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks` | `AddWebhooks` — outbound HMAC-signed delivery + SSRF guard + retry | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Jobs` | Meta — Hangfire defaults | planned |

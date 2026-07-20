@@ -14,7 +14,7 @@
 ```bash
 cd src; export MSBUILDDISABLENODEREUSE=1; ulimit -n 65535
 dotnet build WoW.Two.Sdk.Backend.Beta.csproj -m:1                                    # 0 errors; 41 NuGet-advisory warns
-dotnet test Messaging.Tests/WoW.Two.Sdk.Backend.Beta.Messaging.Tests.csproj -m:1     # Docker. 29 pass / 1 skip
+dotnet test Messaging.Tests/WoW.Two.Sdk.Backend.Beta.Messaging.Tests.csproj -m:1     # Docker. 89 pass / 1 skip (Redis + Rabbit + Kafka + NATS + PG containers)
 ```
 
 - warnings-as-errors: CS1591 (XML doc every **public** member) · IDE0005 (no unused usings) · CA2263 (AwesomeAssertions generic `Be<T>()`)
@@ -52,6 +52,58 @@ A1 unparseable→DLQ · A2 delivery-count · A5 outbox cap+prune · A6 `DeadLett
 - A4 — 7.x confirms are a channel-creation option, so awaiting `BasicPublishAsync` *is* the confirm wait. **`SendAsync` now costs a broker round-trip and throws on nack.**
 - 9 tests added (4 pump, 5 classification/bus-control). Committed in 4 commits.
 
+**B4 · 2026-07-19 — topology + typed headers + A8 + test harness**
+- `ITopologyProvider` + `IEndpointNameFormatter` (`Transport/Topology.cs`) — the RabbitMQ `#` catch-all is gone; routing key is the resolver's stable token, sanitized so `#`/`*` can never reach a key. `TopologyOptions.Style` defaults to `SharedEndpoint`, so queue/DLQ names are unchanged and nothing strands.
+- `x-max-priority` is opt-in via `RabbitMqOptions.MaxPriority`; a pre-existing queue is probed on a **throwaway** channel (a rejected declare closes its channel) and logs rather than crashing. `NativePriority` now reflects the option instead of claiming a ranking the broker discarded.
+- typed header model + `IMessageHeaderPropagationPolicy` — allow-list, default `traceparent`+`tracestate`; reserved `wt-` blocked in the builder, so a custom policy can't leak a control header. 6 header names were triplicated across the 3 adapters.
+- `ReplyTo` on envelope/options/context, threaded through `TransportEventBus`. Inert until adapters map it — BATCH 5.
+- A8 delayed retry (`Reliability/DelayedRetry.cs`) — opt-in `DelayedRetryOptions.Enabled`, default off. Schedules **then** acks (crash between = redelivery, not loss). Attempts ride `DeliveryCount`; three independent stops prevent an infinite redelivery loop. Falls back to in-process delay where the transport can't schedule, logged once at startup.
+- `MessagingTestHarness` (`src/Testing.Messaging/`, new companion) — published/consumed/faulted/dead-lettered logs, signal-driven waits, `WaitForIdleAsync`. Built purely on the B3 observer seam, no pipeline hooks. 4 tests ported off `Task.Delay` polling, 6 new. Suite 29 → 35.
+
+**B5 · 2026-07-19 — request/response + saga + DLQ admin + sweep**
+- `IRequestClient<TReq,TResp>` (`Transport/RequestClient.cs`) — request carries `ReplyTo` + client-generated `ConversationId`; a short-circuiting `IConsumeFilter` completes the pending request before dispatch, so the requester needs no handler for its own responses. Pending entry registered **before** the send (in-memory can reply before `PublishAsync` returns) and removed in one `finally`. **Reply address defaults to the shared endpoint → single-instance only**; a second instance of the same service steals the reply. Per-instance needs `RequestClientOptions.ReplyAddress`.
+- adapters finally map `ReplyTo` **and** `ConversationId` — both were inert since the beginning. RabbitMQ native `BasicProperties.ReplyTo`; Kafka/NATS via `wt-` headers.
+- Kafka true delivery-count via `wt-delivery-count`. Honest limit: a record re-consumed because its offset never stored comes back byte-identical, so that redelivery is uncountable from the wire.
+- state-machine saga (`Saga/**`) — `ISagaRepository<TState>` + `Initially`/`During`/`When`→`TransitionTo`/`Finalize`, correlate-by-key, timeouts on `IEventScheduler`. **Optimistic** concurrency resolved by reload-and-replay, so activities must be idempotent. `AddSaga` must run **before** `AddMessageTopology` or the saga's events get no binding.
+- DLQ admin (`Reliability/DeadLetterAdmin.cs`) — browse/redrive/quarantine/purge. Redrive cap rides `wt-dl-redrive-count` on the **envelope**, not the record: a redriven message that dies again gets a brand-new record, so a record-only counter resets every lap. Second-level retry ships as an `IConsumeFilter`, default off.
+- sweep: `ConsumeOutcome.Ignored` (ignored messages recorded no metric at all) · Webhook `EventId` 6401–6403 → 6901–6903 · `Messaging.spec.md` + `Messaging.standard.md` brought current.
+- Kafka/NATS now honour `envelope.Destination` — both ignored it, so every `SendAsync` went to one topic/subject and `SendAsync`'s point-to-point contract was never kept there. Opt-in `RouteByDestination`, default off. `CorrelationId` mapped on both.
+- 11 tests added (request client, saga, DLQ admin). Suite 35 → 46.
+- **Two agents died mid-run** (API errors). The outbox lane edited nothing. The test lane left 2 CA2263 errors, fixed by the lead; its tests all pass.
+
+**B6 · 2026-07-19 — outbox trace fix + 2 adapters + header consolidation**
+- **outbox headers fixed** — `BuildInvoker` passed a constant null `PublishOptions`, so every staged message lost its headers. Passing the header through wasn't enough: `TransportEventBus` re-stamps `traceparent` from the ambient `Activity`, which in the dispatcher loop is the dispatcher's. Now starts an `outbox dispatch` activity parented to the staged trace, so the producer span joins the same trace. Also: every dispatch attempt was minting a fresh `MessageId`, making a post-crash redelivery undetectable by the consumer's inbox. No schema change.
+- **Azure Service Bus adapter** (`AzureServiceBus/**`) — native DLQ, scheduled enqueue, per-message TTL, sessions from `PartitionKey`, native `ReplyTo`/`CorrelationId`/`DeliveryCount`. The first adapter where most `Native*` flags are genuinely true.
+- **Redis Streams adapter** (`RedisStreams/**`) — consumer groups, PEL-backed real delivery-count, `XAUTOCLAIM` stale recovery, `MAXLEN` trimming (default 100k, DLQ untrimmed). Polls rather than blocks: StackExchange.Redis multiplexes one connection, so a blocking `XREADGROUP` would stall every other command.
+- **header constants consolidated** — `KafkaHeaders`/`NatsHeaderKeys`/`RabbitMqHeaders` deleted; all 43 sites now use `MessageHeaders`, with `CorrelationId` + `DeliveryCount` lifted in. Every reserved constant is composed from `ReservedPrefix`, so `IsReserved` covers them by construction.
+- **Three agents died mid-run** (API/network). Both adapter lanes were near-complete; the lead fixed 1 error each (`Span.TrimEnd` arity, CA1859). Suite unchanged at 46 — **neither new adapter has a single test**.
+
+**B7 · 2026-07-19 — Redis tests + serializers + claim-check + adapter review**
+- **Header-strip regression fixed.** B2's reserved-namespace rule stripped every caller `wt-` key on send, but adapters only re-stamp 8 of them. So the headers SDK *features* stamp — `wt-retry-tier`, `wt-dl-redrive-count`, `wt-claim-check` — were dropped at every broker: second-level retry and the redrive cap worked in-memory and were **silently dead behind RabbitMQ/Kafka/NATS/ASB/Redis**. `MessageHeaders.IsAdapterOwned` now strips only the 8 re-derived keys.
+- **Redis Streams tested** — 5 container tests, 5 consecutive clean runs. Deterministic: the test provisions the consumer group at `Beginning` itself, killing the startup race the NATS/Kafka/RabbitMQ suites paper over with 1–2s sleeps.
+- **MessagePack + CloudEvents serializers** — first implementations besides STJ since the seam shipped in B1. CloudEvents is structured-mode only; binary mode needs per-attribute `ce-*` headers and the seam returns bytes with no header access.
+- **Claim-check** (`Transport/ClaimCheck.cs`) — offload over the existing `src/Storage/` `IBlobStorage`, rehydrate as an `IConsumeFilter`. Blob is **never** deleted on consume: publish is fan-out, retries re-read, and a DLQ redrive re-reads days later. Retention sweep only, and the retention window *is* the redrive window.
+- **Both B6 adapters reviewed and fixed.** ASB `SettlesInContext` lied under sessions (the session receiver is disposed while a pump worker may still hold an unsettled message). Redis had process-global mutable dead-letter state, so two buses in one process wrote to each other's DLQ and acked the wrong group.
+- Suite 46 → 51.
+
+**B8 · 2026-07-19 — claim-check wired + content-type honoured + Redis defects**
+- **`EventEnvelope.RawBody`** (`ReadOnlyMemory<byte>?`) + `RawBodyType` + `WireBodyType` + `ToWireBody(serializer)` — the general send-side transformation seam. Claim-check uses it; §3.2's compression and envelope encryption need the same one. `RawBodyType` is load-bearing: the receiving adapter eagerly deserializes into whatever `wt-event-type` names, so a substituted wire body must declare its own type or it decodes as silent garbage.
+- claim-check **send half wired** — offloader called in `TransportEventBus` before the publish; the double-serialize is gone (the size check *is* the serialization). Guarded against offloading a message that already carries a reference (redrive / delayed-retry re-publish). All 5 adapters honour `RawBody`.
+- **`ContentType` now selects the deserializer** (`Serialization/MessageSerializerRegistry.cs`). Every adapter previously read `wt-content-type` into the envelope and then deserialized with the single injected serializer regardless, while the XML docs on both claimed otherwise. Selection reads the *declared* header, not the envelope's `"application/json"` fallback — otherwise a legacy no-header producer routes to JSON on a MessagePack-default container.
+- **Redis `XACK` defect fixed** — `PurgePhantomsAsync` conflated a trimmed-away entry with one another consumer legitimately claimed, and acked both. `XACK` is group-scoped, so that erased the winner's PEL row and the message was unrecoverable if the winner died. Now discriminates via `XRANGE` absence.
+- **Redis consume loop** no longer dies on a transient fault — per-round try, transient set (`RedisTimeoutException`/`RedisConnectionException`/`LOADING`/`CLUSTERDOWN`/…), 1s→30s backoff, resets on a clean round.
+- `StartAsync` now blocks on NATS + Redis, restoring the stop→drain→release order. **Kafka already blocked** — the premise carried in this file since B7 was wrong for Kafka.
+- `Saga` header literals compose from `ReservedPrefix`; `Azure.Messaging.ServiceBus` gained a direct `PackageReference` (it compiled only transitively).
+- 33 tests added (serializers, claim-check, `IsAdapterOwned` round trip). Suite 51 → 85.
+
+**B9 · 2026-07-19 — startup race + serializer contract + header cover**
+- **`IBusControl` startup race fixed — a real SDK bug, not a test flake.** .NET 10 changed `BackgroundService`: `StartAsync` no longer runs `ExecuteAsync` inline, it schedules it on the thread pool and returns. `MarkRunning()` lived in `ExecuteAsync`, which the host never awaits — so `IHost.StartAsync()` could return with the bus still reporting `Stopped`. A caller that paused or queried straight after startup saw a bus that had never run. Moved to an awaited `StartAsync` override, **after** `base.StartAsync` so a transport that fails to start doesn't report a `Running` it never reached.
+- the `StopHost` hypothesis carried in this file was **refuted** — `MarkStopped` never ran on the failing instances, and nothing faulted. B8's choice stands, untouched. Proven by trace instrumentation, then 5 clean full-suite runs + 3 more under 20 CPU hogs (pool starvation is the trigger).
+- **STJ now returns null on an empty payload**, matching the interface contract and the two new serializers. Throwing was the fatal option, not the loud one: `TryReconstruct` is called *outside* the adapters' try/catch, so the `JsonException` escaped the consume loop and killed the whole subscription instead of costing one message.
+- **`AddReceiveOnlyMessageSerializer<T>()`** — `AddMessageSerializer<T>()` uses `Replace`, so it could only *swap* the default and B8's content-type registry could never hold more than one entry. Fixed two ordering traps while wiring it: `Replace` removed the *first* match (dropping the extra format), and a bare additive call ahead of `AddEventResilienceDefaults` suppressed the STJ default entirely.
+- `IsAdapterOwned` round trip extended from RabbitMQ to **Kafka, NATS and Redis** — one shared contract helper, 4 brokers, no per-broker drift.
+- Suite 85 → 89, and the intermittent is gone: 4 consecutive clean full runs.
+
 ---
 
 ## Open follow-ups
@@ -68,23 +120,38 @@ A1 unparseable→DLQ · A2 delivery-count · A5 outbox cap+prune · A6 `DeadLett
 
 ## Remaining work
 
-**Tier-B, 4 seams left** (§2): `ITopologyProvider` + `IEndpointNameFormatter` · `IRequestClient` · state-machine saga + `ISagaRepository` · typed header model + propagation policy.
+**Tier-B: complete.** All 12 seams shipped.
 
-**Wave 2 leftovers** (§1): A8 re-enqueue delayed retry (in-proc `Task.Delay` still holds the message unsettled) · Kafka true delivery-count.
-
-**Tier-C** (§3): ~18 transports · serializer breadth · DLQ redrive + 2nd-level retry · EIP patterns · test harness · ops/management.
+**Tier-C** (§3): ~18 transports (none built beyond the original 3) · serializer breadth (MessagePack/Protobuf/Avro/CloudEvents) · EIP patterns (claim-check, aggregator, scatter-gather) · ops/management · schema registry.
 
 ---
 
-## BATCH 4 — next (4 lanes, disjoint)
+## BATCH 10 — next (4 lanes, disjoint)
 
 | Lane | Owns | Build |
 |---|---|---|
-| 1 | `Transport/Topology*.cs` (new) + `RabbitMq/**` | `ITopologyProvider` + `IEndpointNameFormatter`; replace the `#` catch-all with per-type routing; per-endpoint DLQ; add `x-max-priority` at declare |
-| 2 | `MessagingContracts.cs` + `Transport/MessageHeaders*.cs` (new) | typed header model + propagation policy; only `traceparent` flows today; `ReplyTo` on the envelope (prereq for `IRequestClient`) |
-| 3 | `Reliability/EventResilience.cs` + `Reliability/Retry*.cs` (new) | A8 re-enqueue delayed retry via `IEventScheduler`, so backoff stops pinning a consumer slot |
-| 4 | `src/Testing/**` + `Messaging.Tests/TestSupport.cs` | `MessagingTestHarness` on the observer seam — published/consumed/faulted assertions, idle-wait; every test re-rolls `EventCollector` today |
+| 1 | `RedisStreams/**` | **`wt-body` is forgeable.** `RedisStreamsFields.Body` is reserved but not adapter-owned, so `IsAdapterOwned` no longer strips it. A caller-supplied `wt-body` lands as the first field, and `ReadBody` uses the `StreamEntry` indexer (first match wins) — so the forgery replaces the real body and the message dead-letters as unparseable. The field's own doc still claims it is "stripped on send" |
+| 2 | `Transport/Topology.cs` + `EventSaga/**` | `InProcessEventSagaTransport` sends to an arbitrary logical destination; post-B4 an unbound routing key is silently dropped (`mandatory: false`). B5 added a warn-once log, but the send still vanishes |
+| 3 | `Kafka/**` + `Nats/**` + `RedisStreams/**` (comments only) + `Messaging.Tests/**` | Stale post-B7 comments: `KafkaTransport.cs:117`, `NatsTransport.cs:137`, `RedisStreamsTransport.cs:252` all say "minus the reserved namespace" but filter on `IsAdapterOwned`; `KafkaTransport.cs:118` claims an unfiltered caller header would "win the decode" — it would lose. Also add the missing `AddReceiveOnlyMessageSerializer` test (B9 lane 2 flagged the gap) |
+| 4 | `Testing.Messaging/**` + `Messaging.Tests/**` | Saga test harness (§3.12) — the one harness piece B4 skipped. Saga steps don't cross the bus, so it wraps `IEventSagaRunner`/`SagaCoordinator` rather than the observer seam |
 
-Lane 2 before lane 1 finishes is fine — different files. `IRequestClient` is BATCH 5, after lanes 1+2 land `ReplyTo` + temp-queue topology.
+**Traps for BATCH 10:**
+- **Kafka's forgery half can pass vacuously.** Kafka `Headers` permits duplicates and the decoder is last-write-wins, so a "strip nothing" mutation still passes. Redis closes this via an `XRANGE` field count; NATS closes it by construction (dictionary). Kafka needs a raw consumer to inspect duplicates — blocked by the macOS librdkafka multi-consumer crash, so it wants Linux CI.
+- ASB has no Testcontainers image; its `IsAdapterOwned` round trip is unproven and stays that way until an emulator decision.
 
-**Sequencing note:** lane 1 and lane 3 both change observable delivery behaviour — run the full suite after each, not just at the end of the batch.
+---
+
+## BATCH 9 — done (kept for reference)
+
+| Lane | Owns | Build |
+|---|---|---|
+| 1 | `Transport/TransportEventBus.cs` + `MessagingContracts.cs` + `Transport/ClaimCheck.cs` | **Wire up claim-check's send half.** B7 shipped the consume half only — offload has no call site, so the feature is half-dead. Add `EventEnvelope.RawBody` (`ReadOnlyMemory<byte>?`, pre-serialized wire body), an optional `ClaimCheckOffloader?` on `TransportEventBus`, and one call before `sendTransport.SendAsync`. `RawBody` is also the seam §3.2's compression and envelope-encryption need |
+| 2 | all 5 adapters (`RabbitMq` `Kafka` `Nats` `AzureServiceBus` `RedisStreams`) | Honour `EventEnvelope.RawBody` (`envelope.RawBody?.ToArray() ?? serializer.Serialize(...)`) and stamp `ClaimCheckOffload.Headers`. Then fix the **content-type-never-honoured** defect: every adapter reads `wt-content-type` into `EventEnvelope.ContentType` and then deserializes with the single injected serializer regardless — the XML docs on both claim it selects the deserializer. Needs a content-type→serializer registry |
+| 3 | `RedisStreams/**` | Two defects the test lane found and did not fix: (a) `PurgePhantomsAsync` assumes `XACK` is consumer-scoped — **it is group-scoped**, verified against `redis:7-alpine`, so a losing claimer deletes the winner's PEL row and the message is unrecoverable if the winner dies; (b) `ConsumeLoopAsync` catches only `OperationCanceledException`, so a `RedisTimeoutException` kills consumption permanently with no log and no restart |
+| 4 | `Messaging.Tests/**` | Tests for B7's untested work: MessagePack + CloudEvents round-trip (incl. a hand-written non-.NET CloudEvent with shuffled attributes and `data_base64`) · claim-check offload/rehydrate/missing-blob/forged-path · the `IsAdapterOwned` fix (a `wt-retry-tier` header must now survive a broker round-trip) |
+
+**Traps for BATCH 8:**
+- lane 1 and lane 2 are sequenced by `RawBody` — lane 2 can't compile its half until lane 1's field lands. Run lane 1 first, or have lane 2 write against the agreed field name.
+- **`StartAsync` returns before the consume loop ends** on Kafka, NATS and Redis, so `BackgroundService.ExecuteAsync` completes at startup and the stop→drain→release order collapses. ASB and RabbitMQ block correctly. Cross-adapter fix, deferred twice now — worth its own lane.
+- `Azure.Messaging.ServiceBus` has **no direct `PackageReference`**; it compiles transitively via `AspNetCore.HealthChecks.AzureServiceBus`. Add it to the messaging `ItemGroup`.
+- `Saga/SagaContracts.cs` still spells `wt-saga-*` as raw literals instead of composing from `ReservedPrefix` — last site bypassing it.
