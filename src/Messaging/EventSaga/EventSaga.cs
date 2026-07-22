@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga;
 
@@ -107,10 +108,11 @@ public sealed record EventSagaResult(
 /// <summary>An immutable, ordered event-saga definition (the itinerary as data).</summary>
 public sealed class EventSagaDefinition
 {
-    internal EventSagaDefinition(string name, IReadOnlyList<Type> stepTypes)
+    internal EventSagaDefinition(string name, IReadOnlyList<Type> stepTypes, IReadOnlyList<DestinationBinding> destinations)
     {
         Name = name;
         StepTypes = stepTypes;
+        Destinations = destinations;
     }
 
     /// <summary>The saga name.</summary>
@@ -118,6 +120,13 @@ public sealed class EventSagaDefinition
 
     /// <summary>The ordered step types.</summary>
     public IReadOnlyList<Type> StepTypes { get; }
+
+    /// <summary>
+    /// The logical destinations this saga's steps address, declared via <see cref="EventSagaBuilder.SendsTo{TEvent}"/>.
+    /// Registration binds each one whose type this process consumes, which is what keeps a step's send from being
+    /// dropped as unroutable; a destination another service consumes is recorded but not bound.
+    /// </summary>
+    public IReadOnlyList<DestinationBinding> Destinations { get; }
 
     /// <summary>Render the itinerary as a Mermaid <c>flowchart</c> for documentation / visualization.</summary>
     public string ToMermaid()
@@ -150,6 +159,7 @@ public sealed class EventSagaBuilder
 {
     private readonly string _name;
     private readonly List<Type> _stepTypes = [];
+    private readonly List<DestinationBinding> _destinations = [];
 
     private EventSagaBuilder(string name) => _name = name;
 
@@ -182,8 +192,73 @@ public sealed class EventSagaBuilder
         return this;
     }
 
+    /// <summary>
+    /// Declare a logical destination this saga's steps send <typeparamref name="TEvent"/> to, so registration binds
+    /// that address instead of leaving it unroutable.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A step addresses its output by name — <c>transport.SendAsync("order-fulfilment", evt, context, ct)</c> — and
+    /// since topology replaced RabbitMQ's catch-all binding, only the endpoint queue names and the consumed types'
+    /// keys are bound. An undeclared name therefore resolves to a routing key nothing matches, and the broker
+    /// discards the message without refusing it, because a publish is <c>mandatory: false</c>.
+    /// </para>
+    /// <para>
+    /// The address is bound only where <typeparamref name="TEvent"/> is consumed in this process, so declaring a
+    /// destination another service owns is both safe and useful: it tells the transport the address is accounted
+    /// for, which is what separates a legitimate cross-service send from a misspelt local one.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="TEvent">The event type the step sends to that destination.</typeparam>
+    /// <param name="destination">The destination name, exactly as the step passes it to <see cref="IEventSagaTransport.SendAsync{TEvent}"/>.</param>
+    public EventSagaBuilder SendsTo<TEvent>(string destination)
+        where TEvent : class, IEvent
+        => SendsTo(destination, typeof(TEvent));
+
+    /// <summary>Declare a logical destination by type.</summary>
+    /// <param name="destination">The destination name a step addresses.</param>
+    /// <param name="messageType">The event type sent to it; must implement <see cref="IEvent"/>.</param>
+    public EventSagaBuilder SendsTo(string destination, Type messageType)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(destination);
+        ArgumentNullException.ThrowIfNull(messageType);
+        if (!typeof(IEvent).IsAssignableFrom(messageType))
+            throw new ArgumentException($"Destination type {messageType.FullName} must implement {nameof(IEvent)}.", nameof(messageType));
+
+        _destinations.Add(new DestinationBinding { Destination = destination, MessageType = messageType });
+        return this;
+    }
+
     /// <summary>Build the immutable definition.</summary>
-    public EventSagaDefinition Build() => new(_name, _stepTypes.AsReadOnly());
+    public EventSagaDefinition Build() => new(_name, _stepTypes.AsReadOnly(), _destinations.AsReadOnly());
+}
+
+/// <summary>What the default <see cref="IEventSagaTransport"/> does when a step addresses a destination this process does not bind.</summary>
+public enum UnroutableDestinationBehavior
+{
+    /// <summary>
+    /// Log once per destination and send anyway. The default, because an address consumed by <em>another</em> service
+    /// is unbound here and perfectly legitimate — this process cannot see a remote binding.
+    /// </summary>
+    Warn = 0,
+
+    /// <summary>
+    /// Throw <see cref="InvalidOperationException"/> instead of sending. For a service whose saga destinations are all
+    /// local: every one is then declarable via <see cref="EventSagaBuilder.SendsTo{TEvent}"/>, so anything unbound is a
+    /// configuration error and a silent drop is never the right outcome.
+    /// </summary>
+    Throw = 1,
+}
+
+/// <summary>Options for declarative (routing-slip) event sagas.</summary>
+public sealed class EventSagaOptions
+{
+    /// <summary>
+    /// How a send to an unbound destination is handled. Default <see cref="UnroutableDestinationBehavior.Warn"/>.
+    /// A destination declared through <see cref="EventSagaBuilder.SendsTo{TEvent}"/> whose type this process does not
+    /// consume is exempt either way — it is a known cross-service address, not an accident.
+    /// </summary>
+    public UnroutableDestinationBehavior UnroutableDestination { get; set; } = UnroutableDestinationBehavior.Warn;
 }
 
 /// <summary>Executes an <see cref="EventSagaDefinition"/>, compensating completed steps in reverse on failure.</summary>
@@ -202,9 +277,11 @@ public interface IEventSagaTransport
     /// <summary>Send an event to a destination, carrying the saga's correlation id.</summary>
     /// <typeparam name="TEvent">Event type.</typeparam>
     /// <param name="destination">
-    /// Destination (queue) name. On a key-routed transport this must be a <b>bound</b> address — an endpoint queue name
-    /// or a consumed type's key — because an unbound key is dropped rather than refused. The default transport checks
-    /// it against the local topology and logs an unbound destination once.
+    /// Destination (queue) name. On a key-routed transport this must be a <b>bound</b> address, because an unbound key
+    /// is dropped rather than refused. Declare it with <see cref="EventSagaBuilder.SendsTo{TEvent}"/> and registration
+    /// binds it; the bound set is otherwise only the endpoint queue names and the consumed types' keys. The default
+    /// transport checks the address against the local topology and applies
+    /// <see cref="EventSagaOptions.UnroutableDestination"/> to one it cannot account for.
     /// </param>
     /// <param name="event">The event.</param>
     /// <param name="context">The saga context (for correlation).</param>

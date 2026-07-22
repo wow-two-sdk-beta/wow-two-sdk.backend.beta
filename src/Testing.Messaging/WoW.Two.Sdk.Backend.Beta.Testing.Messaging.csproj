@@ -16,8 +16,8 @@
   <PropertyGroup>
     <!-- Published ID uses the OWNED WoW2.* reserved prefix. Assembly + namespaces remain WoW.Two.*. -->
     <PackageId>WoW2.Sdk.Backend.Beta.Testing.Messaging</PackageId>
-    <Description>WoW Two backend SDK messaging test harness (beta-forever) — MessagingTestHarness with published / consumed / faulted / dead-lettered assertions over the observer seam, plus an idle-wait primitive that replaces polling sleeps. References core; reference from test projects only.</Description>
-    <PackageTags>wow-two; backend; beta; sdk; testing; messaging; events; harness; xunit</PackageTags>
+    <Description>WoW Two backend SDK messaging test harness (beta-forever) — MessagingTestHarness with published / consumed / faulted / dead-lettered assertions over the observer seam, plus an idle-wait primitive that replaces polling sleeps; and SagaTestHarness with state, transition, timeout and optimistic-concurrency assertions over a state-machine saga. References core; reference from test projects only.</Description>
+    <PackageTags>wow-two; backend; beta; sdk; testing; messaging; events; saga; harness; xunit</PackageTags>
 
     <!-- Test-HELPER library (not a test SUITE): ships no runner. Tell `dotnet test` to skip it. -->
     <IsTestProject>false</IsTestProject>
@@ -31,6 +31,12 @@
        for the harness's one-call host. -->
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- SagaTestHarness owns its clock: a saga is the most time-driven part of the SDK, and a timeout test on a real
+       clock is a race. FakeTimeProvider makes "advance to the due instant" a condition instead of a sleep. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
   </ItemGroup>
 
   <ItemGroup>

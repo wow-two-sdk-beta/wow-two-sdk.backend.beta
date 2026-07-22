@@ -153,7 +153,8 @@ public static class MessagingServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="definition">A definition built via <see cref="EventSagaBuilder"/>.</param>
-    public static IServiceCollection AddEventSaga(this IServiceCollection services, EventSagaDefinition definition)
+    /// <param name="configure">Optional saga options — notably what an unroutable step destination does (warn, the default, or throw).</param>
+    public static IServiceCollection AddEventSaga(this IServiceCollection services, EventSagaDefinition definition, Action<EventSagaOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(definition);
@@ -161,6 +162,15 @@ public static class MessagingServiceCollectionExtensions
         services.TryAddSingleton<IEventSagaRunner, EventSagaRunner>();
         services.TryAddSingleton<IEventSagaTransport, InProcessEventSagaTransport>();
         services.AddSingleton(definition);
+
+        var optionsBuilder = services.AddOptions<EventSagaOptions>();
+        if (configure is not null)
+            optionsBuilder.Configure(configure);
+
+        // Bind every address the steps send to, so an explicit send is delivered rather than dropped unrouted — the
+        // per-type topology that replaced RabbitMQ's `#` catch-all binds no arbitrary logical destination.
+        foreach (var destination in definition.Destinations)
+            services.AddDestinationBinding(destination.Destination, destination.MessageType);
 
         foreach (var stepType in definition.StepTypes)
             services.TryAddTransient(stepType);

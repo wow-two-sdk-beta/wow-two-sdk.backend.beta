@@ -169,6 +169,28 @@ public interface ITopologyProvider
     /// <summary>The routing key for one outgoing envelope — the type key for a publish, the destination address for an explicit send.</summary>
     /// <param name="envelope">The envelope being sent.</param>
     string ResolveRoutingKey(EventEnvelope envelope);
+
+    /// <summary>
+    /// Whether <paramref name="routingKey"/> is bound to an endpoint of <em>this</em> process — a message addressed to
+    /// it arrives here. The default answer walks <see cref="ConsumeEndpoints"/>; a provider that binds patterns rather
+    /// than literal keys overrides it.
+    /// </summary>
+    /// <remarks>
+    /// False is not proof the message is lost — another service may bind the key. It only says this process does not.
+    /// Callers deciding whether a send will be dropped must pair it with knowledge of who owns the destination; see
+    /// <see cref="DestinationBinding"/>, which records that ownership at registration time.
+    /// </remarks>
+    /// <param name="routingKey">A routing key, as returned by <see cref="RoutingKeyFor"/> or <see cref="ResolveRoutingKey"/>.</param>
+    bool BindsRoutingKey(string routingKey)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(routingKey);
+
+        foreach (var endpoint in ConsumeEndpoints)
+            if (endpoint.RoutingKeys.Contains(routingKey, StringComparer.Ordinal))
+                return true;
+
+        return false;
+    }
 }
 
 /// <summary>
@@ -191,6 +213,84 @@ public sealed class ConsumedMessageTypeRegistry
 
     /// <summary>Every recorded type, ordered by full name so the declared topology is identical across restarts and instances.</summary>
     public IReadOnlyList<Type> Types => [.. _types.OrderBy(static type => type.FullName ?? type.Name, StringComparer.Ordinal)];
+}
+
+/// <summary>
+/// A logical destination address this process answers to for one message type — an alias bound alongside the type
+/// keys, so an explicit <see cref="IEventBus.SendAsync{TEvent}"/> to that address is delivered instead of dropped.
+/// </summary>
+/// <remarks>
+/// A routing-slip saga step addresses its output by a logical name (<c>"order-fulfilment"</c>), not by type. Since
+/// topology replaced the catch-all binding, only the endpoint queue names and the consumed types' keys are bound, so
+/// such a name resolves to a key nothing binds and RabbitMQ discards the message without refusing it. Declaring the
+/// pair here binds the alias, which is what makes the address deliverable.
+/// <para>
+/// The type is required and load-bearing: an alias is bound only where <see cref="MessageType"/> is actually
+/// consumed. Binding an address blindly would attach another service's destination to this process's queue and steal
+/// its messages — a louder failure than the drop, and a harder one to see.
+/// </para>
+/// </remarks>
+public sealed record DestinationBinding
+{
+    /// <summary>The logical destination address, as passed to <see cref="IEventBus.SendAsync{TEvent}"/>.</summary>
+    public required string Destination { get; init; }
+
+    /// <summary>The message type sent to <see cref="Destination"/>. The alias is bound only on an endpoint carrying this type.</summary>
+    public required Type MessageType { get; init; }
+}
+
+/// <summary>
+/// Registration-time set of logical destination aliases this process answers to. Read by
+/// <see cref="DefaultTopologyProvider"/> when it builds bindings, and by the routing-slip saga transport to tell a
+/// destination it owns from one another service consumes. Written during registration only — not thread-safe.
+/// </summary>
+/// <remarks>
+/// Populated through <see cref="MessageTopologyServiceCollectionExtensions.AddDestinationBinding"/>. The instance is
+/// shared and endpoints are built lazily on first use, so registration order against
+/// <see cref="MessageTopologyServiceCollectionExtensions.AddMessageTopology"/> does not matter.
+/// </remarks>
+public sealed class DestinationBindingRegistry
+{
+    private readonly Dictionary<string, HashSet<Type>> _byDestination = new(StringComparer.Ordinal);
+
+    /// <summary>Record that <paramref name="destination"/> carries <paramref name="messageType"/>. Idempotent.</summary>
+    /// <param name="destination">The logical destination address.</param>
+    /// <param name="messageType">The message contract type sent to it.</param>
+    public void Add(string destination, Type messageType)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(destination);
+        ArgumentNullException.ThrowIfNull(messageType);
+
+        if (!_byDestination.TryGetValue(destination, out var types))
+            _byDestination[destination] = types = [];
+
+        types.Add(messageType);
+    }
+
+    /// <summary>Every declared pair, ordered so the declared topology is identical across restarts and instances.</summary>
+    public IReadOnlyList<DestinationBinding> Bindings =>
+    [
+        .. _byDestination
+            .SelectMany(static pair => pair.Value.Select(type => new DestinationBinding { Destination = pair.Key, MessageType = type }))
+            .OrderBy(static binding => binding.Destination, StringComparer.Ordinal)
+            .ThenBy(static binding => binding.MessageType.FullName ?? binding.MessageType.Name, StringComparer.Ordinal),
+    ];
+
+    /// <summary>
+    /// Whether a registration declared <paramref name="messageType"/> on <paramref name="destination"/> — i.e. this
+    /// process knows who consumes that pair, whether locally or in another service.
+    /// </summary>
+    /// <remarks>
+    /// The type is part of the question on purpose: declaring an address for one type says nothing about a second type
+    /// sent to the same address, and treating it as covered would hide exactly the drop this records.
+    /// </remarks>
+    /// <param name="destination">The logical destination address.</param>
+    /// <param name="messageType">The message contract type sent to it.</param>
+    public bool IsDeclared(string destination, Type messageType)
+    {
+        ArgumentNullException.ThrowIfNull(messageType);
+        return !string.IsNullOrEmpty(destination) && _byDestination.TryGetValue(destination, out var types) && types.Contains(messageType);
+    }
 }
 
 /// <summary>Topology shape — how endpoints are named and which routing keys each one binds.</summary>
@@ -217,6 +317,13 @@ public sealed class TopologyOptions
 
     /// <summary>Bind each endpoint queue under its own name, so an explicit <see cref="IEventBus.SendAsync{TEvent}"/> to that name lands point-to-point. Default true.</summary>
     public bool BindEndpointNameKeys { get; set; } = true;
+
+    /// <summary>
+    /// Bind every declared <see cref="DestinationBinding"/> whose message type this process consumes, so a send to
+    /// that logical address is delivered rather than dropped as unroutable. Default true. Turn it off only when an
+    /// external topology already binds those aliases and a duplicate binding would double-deliver.
+    /// </summary>
+    public bool BindDestinationAliasKeys { get; set; } = true;
 }
 
 /// <summary>
@@ -241,11 +348,13 @@ public sealed class DefaultTopologyProvider : ITopologyProvider
     /// <param name="typeResolver">Supplies the stable wire token used as a routing key.</param>
     /// <param name="nameFormatter">Names endpoints and their dead-letter queues.</param>
     /// <param name="options">Topology shape options.</param>
+    /// <param name="destinationBindings">Logical destination aliases this process answers to; null for none.</param>
     public DefaultTopologyProvider(
         ConsumedMessageTypeRegistry consumedTypes,
         IMessageTypeResolver typeResolver,
         IEndpointNameFormatter nameFormatter,
-        IOptions<TopologyOptions> options)
+        IOptions<TopologyOptions> options,
+        DestinationBindingRegistry? destinationBindings = null)
     {
         ArgumentNullException.ThrowIfNull(consumedTypes);
         ArgumentNullException.ThrowIfNull(typeResolver);
@@ -255,8 +364,9 @@ public sealed class DefaultTopologyProvider : ITopologyProvider
         _typeResolver = typeResolver;
 
         // Built once, on first use rather than in the constructor: the consumed set is complete only after the whole
-        // service collection has been built, and a transport resolves this provider well after that.
-        _endpoints = new Lazy<IReadOnlyList<EndpointTopology>>(() => Build(consumedTypes, nameFormatter, options.Value));
+        // service collection has been built, and a transport resolves this provider well after that. The alias set is
+        // read at the same moment, so a saga registered after AddMessageTopology still gets its bindings.
+        _endpoints = new Lazy<IReadOnlyList<EndpointTopology>>(() => Build(consumedTypes, nameFormatter, options.Value, destinationBindings));
     }
 
     /// <inheritdoc />
@@ -284,9 +394,14 @@ public sealed class DefaultTopologyProvider : ITopologyProvider
         return ToRoutingKey(envelope.Destination);
     }
 
-    private List<EndpointTopology> Build(ConsumedMessageTypeRegistry consumedTypes, IEndpointNameFormatter nameFormatter, TopologyOptions options)
+    private List<EndpointTopology> Build(
+        ConsumedMessageTypeRegistry consumedTypes,
+        IEndpointNameFormatter nameFormatter,
+        TopologyOptions options,
+        DestinationBindingRegistry? destinationBindings)
     {
         var types = consumedTypes.Types;
+        IReadOnlyList<DestinationBinding> aliases = destinationBindings?.Bindings ?? [];
 
         if (options.Style == TopologyStyle.EndpointPerMessageType)
         {
@@ -298,7 +413,7 @@ public sealed class DefaultTopologyProvider : ITopologyProvider
                 {
                     Queue = queue,
                     DeadLetterQueue = nameFormatter.DeadLetter(queue),
-                    RoutingKeys = BuildRoutingKeys(queue, [type], options),
+                    RoutingKeys = BuildRoutingKeys(queue, [type], options, aliases),
                     MessageTypes = [type],
                 });
             }
@@ -315,13 +430,13 @@ public sealed class DefaultTopologyProvider : ITopologyProvider
             {
                 Queue = sharedQueue,
                 DeadLetterQueue = options.SharedDeadLetterQueueName ?? nameFormatter.DeadLetter(sharedQueue),
-                RoutingKeys = BuildRoutingKeys(sharedQueue, types, options),
+                RoutingKeys = BuildRoutingKeys(sharedQueue, types, options, aliases),
                 MessageTypes = types,
             },
         ];
     }
 
-    private List<string> BuildRoutingKeys(string queue, IReadOnlyList<Type> types, TopologyOptions options)
+    private List<string> BuildRoutingKeys(string queue, IReadOnlyList<Type> types, TopologyOptions options, IReadOnlyList<DestinationBinding> aliases)
     {
         var keys = new List<string>((types.Count * 2) + 1);
 
@@ -335,6 +450,14 @@ public sealed class DefaultTopologyProvider : ITopologyProvider
             if (options.BindLegacyTypeNameKeys)
                 AddKey(keys, ToRoutingKey(type.Name));
         }
+
+        // An alias rides the endpoint that carries its message type, in both styles — the shared queue when everything
+        // shares one, that type's queue when they do not. Gated on the type being consumed here: an alias whose type
+        // this process does not handle belongs to another service, and binding it locally would divert its traffic.
+        if (options.BindDestinationAliasKeys)
+            foreach (var alias in aliases)
+                if (types.Contains(alias.MessageType))
+                    AddKey(keys, ToRoutingKey(alias.Destination));
 
         return keys;
 
@@ -390,6 +513,10 @@ public static class MessageTopologyServiceCollectionExtensions
         if (configure is not null)
             optionsBuilder.Configure(configure);
 
+        // Registered unconditionally so DefaultTopologyProvider always resolves the same instance, whichever of
+        // AddMessageTopology / AddDestinationBinding the application calls first.
+        GetOrAddDestinationBindings(services);
+
         var consumedTypes = GetOrAddConsumedTypes(services);
         foreach (var descriptor in services)
         {
@@ -417,6 +544,44 @@ public static class MessageTopologyServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Declare that this process consumes <paramref name="messageType"/> addressed to the logical destination
+    /// <paramref name="destination"/>, binding that address alongside the type's own routing key.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Needed by anything that addresses a message by a logical name rather than by type — a routing-slip saga step
+    /// above all. Since topology replaced the catch-all binding, an address nothing bound resolves to a key nothing
+    /// matches, and RabbitMQ accepts and discards the message: <c>mandatory: false</c> means unroutable is not an
+    /// error. Declaring the address is what makes it deliverable.
+    /// </para>
+    /// <para>
+    /// The alias binds only where <paramref name="messageType"/> is consumed, so declaring a destination another
+    /// service owns is safe and records who owns it — the saga transport uses that to tell a legitimate cross-service
+    /// address from a misspelt local one. Order against <see cref="AddMessageTopology"/> does not matter.
+    /// </para>
+    /// </remarks>
+    /// <param name="services">The service collection.</param>
+    /// <param name="destination">The logical destination address, exactly as passed to <see cref="IEventBus.SendAsync{TEvent}"/>.</param>
+    /// <param name="messageType">The message contract type sent to that address.</param>
+    public static IServiceCollection AddDestinationBinding(this IServiceCollection services, string destination, Type messageType)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destination);
+        ArgumentNullException.ThrowIfNull(messageType);
+
+        GetOrAddDestinationBindings(services).Add(destination, messageType);
+        return services;
+    }
+
+    /// <summary>Declare a logical destination this process consumes <typeparamref name="TEvent"/> on.</summary>
+    /// <typeparam name="TEvent">The message contract type sent to that address.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <param name="destination">The logical destination address.</param>
+    public static IServiceCollection AddDestinationBinding<TEvent>(this IServiceCollection services, string destination)
+        where TEvent : class, IEvent
+        => services.AddDestinationBinding(destination, typeof(TEvent));
+
     /// <summary>Replace the topology provider — for content/header routing, a schema registry, or an existing broker layout.</summary>
     /// <typeparam name="TProvider">The provider implementation.</typeparam>
     /// <param name="services">The service collection.</param>
@@ -435,6 +600,17 @@ public static class MessageTopologyServiceCollectionExtensions
                 return existing;
 
         var registry = new ConsumedMessageTypeRegistry();
+        services.AddSingleton(registry);
+        return registry;
+    }
+
+    private static DestinationBindingRegistry GetOrAddDestinationBindings(IServiceCollection services)
+    {
+        foreach (var descriptor in services)
+            if (descriptor.ServiceType == typeof(DestinationBindingRegistry) && descriptor.ImplementationInstance is DestinationBindingRegistry existing)
+                return existing;
+
+        var registry = new DestinationBindingRegistry();
         services.AddSingleton(registry);
         return registry;
     }

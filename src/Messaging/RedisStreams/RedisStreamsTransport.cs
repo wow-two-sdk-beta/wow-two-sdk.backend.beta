@@ -140,7 +140,10 @@ public sealed class RedisStreamsOptions
 /// </remarks>
 internal static class RedisStreamsFields
 {
-    /// <summary>The serialized body. Safe from collision with a caller header: <c>wt-</c> is reserved and stripped on send.</summary>
+    /// <summary>
+    /// The serialized body. Reserved, and stripped on send by <see cref="IsAdapterOwned"/> — not by the reserved
+    /// prefix, which the send path stopped filtering on so that headers SDK features stamp survive the wire.
+    /// </summary>
     public const string Body = MessageHeaders.ReservedPrefix + "body";
 
     /// <summary>Carries the event's stable type token so the consumer can resolve the CLR type.</summary>
@@ -169,6 +172,36 @@ internal static class RedisStreamsFields
 
     /// <summary>PEL delivery count at the moment of death — how many attempts the message actually consumed.</summary>
     public const string DeadLetterDeliveryCount = MessageHeaders.ReservedPrefix + "dl-delivery-count";
+
+    /// <summary>
+    /// True when this adapter re-derives <paramref name="name"/> on every write, so a caller-supplied copy must be
+    /// dropped instead of riding the wire.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A Redis-scoped superset of <see cref="MessageHeaders.IsAdapterOwned"/>. That predicate is the cross-broker set
+    /// and deliberately cannot name a key only one broker has, so the fields declared here — the body and the
+    /// dead-letter provenance — need an owner on this side of the seam.
+    /// </para>
+    /// <para>
+    /// A stream entry is a field <em>list</em>, not a map, so an unstripped copy is not overwritten by the genuine
+    /// value appended after it: both ride, and which one a reader sees is a question of scan direction.
+    /// </para>
+    /// </remarks>
+    /// <param name="name">The field name.</param>
+    public static bool IsAdapterOwned(string name)
+        => MessageHeaders.IsAdapterOwned(name) || name is Body || IsDeathField(name);
+
+    /// <summary>
+    /// True for the provenance fields stamped only on the dead-letter copy. Excludes <see cref="Body"/> on purpose —
+    /// the dead-letter copy has to keep the body it died on, so this is the narrower of the two strips.
+    /// </summary>
+    /// <param name="name">The field name.</param>
+    public static bool IsDeathField(string name)
+        => name is DeadLetterReason
+            or DeadLetterExceptionType
+            or DeadLetterSourceStream
+            or DeadLetterDeliveryCount;
 }
 
 /// <summary>Maps a topology routing key onto a stream key nested under the adapter's configured root stream.</summary>
@@ -249,12 +282,13 @@ internal static class RedisStreamsWireFormat
     /// <summary>The field/value pairs for one outgoing envelope.</summary>
     public static NameValueEntry[] BuildEntry(EventEnvelope envelope, byte[] body, string typeToken, string contentType)
     {
-        // Caller headers first, minus the reserved namespace, then the control fields — the adapter owns wt-*. A
-        // received envelope's Headers carry the wt-* fields of THAT message, so forwarding them on a re-publish would
-        // otherwise stamp the previous message's type token onto the new body and misroute it on the consumer.
+        // Caller headers first, minus the fields this adapter re-derives below, then the control fields. A received
+        // envelope's Headers carry the wt-* fields of THAT message, so forwarding them on a re-publish would otherwise
+        // stamp the previous message's type token onto the new body and misroute it on the consumer — and, for a
+        // replayed dead letter, re-assert death provenance on a message that is alive.
         var fields = new List<NameValueEntry>(envelope.Headers.Count + 8);
         foreach (var (key, value) in envelope.Headers)
-            if (!MessageHeaders.IsAdapterOwned(key))
+            if (!RedisStreamsFields.IsAdapterOwned(key))
                 fields.Add(new NameValueEntry(key, value));
 
         fields.Add(new NameValueEntry(RedisStreamsFields.EventType, typeToken));
@@ -300,11 +334,22 @@ internal static class RedisStreamsWireFormat
     /// <summary>The serialized body of a received entry, or null when the entry carries none (not one of ours, or truncated).</summary>
     public static byte[]? ReadBody(StreamEntry entry)
     {
-        if (entry.Values is null)
+        if (entry.Values is not { } values)
             return null;
 
-        var body = entry[RedisStreamsFields.Body];
-        return body.IsNull ? null : (byte[]?)body;
+        // Scanned backwards rather than read through entry[Body], because the indexer returns the FIRST field of that
+        // name and an entry is a list: a duplicate shadows the real value instead of replacing it. The send path strips
+        // a caller's copy, so this defends the entries it did not author — a hand-rolled XADD, a foreign producer — for
+        // which last is the right pick either way, since BuildEntry appends the body last and DecodeHeaders is
+        // last-wins. A null-valued field is skipped so a truncated trailing copy cannot mask a body that is present.
+        for (var index = values.Length - 1; index >= 0; index--)
+        {
+            var field = values[index];
+            if (!field.Value.IsNull && string.Equals(field.Name.ToString(), RedisStreamsFields.Body, StringComparison.Ordinal))
+                return (byte[]?)field.Value;
+        }
+
+        return null;
     }
 
     /// <summary>The dead-letter entry for a poison message — every original field plus death fields for triage.</summary>
@@ -318,7 +363,7 @@ internal static class RedisStreamsWireFormat
                 // A message that was dead-lettered, replayed and died again would otherwise carry two of each death
                 // field, and a lookup by name returns the first — which would be the stale reason.
                 var name = field.Name.ToString();
-                if (IsDeathField(name))
+                if (RedisStreamsFields.IsDeathField(name))
                     continue;
 
                 fields.Add(field);
@@ -333,12 +378,6 @@ internal static class RedisStreamsWireFormat
 
         return [.. fields];
     }
-
-    private static bool IsDeathField(string name)
-        => name is RedisStreamsFields.DeadLetterReason
-            or RedisStreamsFields.DeadLetterExceptionType
-            or RedisStreamsFields.DeadLetterSourceStream
-            or RedisStreamsFields.DeadLetterDeliveryCount;
 }
 
 /// <summary>

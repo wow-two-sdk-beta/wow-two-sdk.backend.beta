@@ -14,7 +14,7 @@
 ```bash
 cd src; export MSBUILDDISABLENODEREUSE=1; ulimit -n 65535
 dotnet build WoW.Two.Sdk.Backend.Beta.csproj -m:1                                    # 0 errors; 41 NuGet-advisory warns
-dotnet test Messaging.Tests/WoW.Two.Sdk.Backend.Beta.Messaging.Tests.csproj -m:1     # Docker. 89 pass / 1 skip (Redis + Rabbit + Kafka + NATS + PG containers)
+dotnet test Messaging.Tests/WoW.Two.Sdk.Backend.Beta.Messaging.Tests.csproj -m:1     # Docker. 96 pass / 1 skip (Redis + Rabbit + Kafka + NATS + PG containers)
 ```
 
 - warnings-as-errors: CS1591 (XML doc every **public** member) · IDE0005 (no unused usings) · CA2263 (AwesomeAssertions generic `Be<T>()`)
@@ -104,6 +104,13 @@ A1 unparseable→DLQ · A2 delivery-count · A5 outbox cap+prune · A6 `DeadLett
 - `IsAdapterOwned` round trip extended from RabbitMQ to **Kafka, NATS and Redis** — one shared contract helper, 4 brokers, no per-broker drift.
 - Suite 85 → 89, and the intermittent is gone: 4 consecutive clean full runs.
 
+**B10 · 2026-07-19 — forgeable fields + saga routing + saga harness**
+- **Redis `wt-body` forgery fixed.** Reserved but not adapter-owned after B7, so a caller-supplied `wt-body` rode the wire; stream entries are a **field list, not a map**, and `ReadBody` used the first-match indexer — the forgery replaced the real body. Fixed both ends: `RedisStreamsFields.IsAdapterOwned` strips Redis-only reserved fields on send, and `ReadBody` scans backwards for the last value. 4 more fields had the same exposure (`wt-dl-*` on the live stream); only `wt-body` was fatal because every other read goes through a last-wins dictionary.
+- **Saga destinations now bind.** `EventSagaBuilder.SendsTo<TEvent>("dest")` → `AddDestinationBinding` → the alias rides `EndpointTopology.RoutingKeys`, so 4 key-routed brokers deliver it with **zero adapter edits**. An alias binds **only where its type is consumed locally** — binding blind would attach another service's destination to this queue and divert its traffic. `EventSagaOptions.UnroutableDestination` = `Warn` (default) / `Throw`.
+- **Saga test harness** (`Testing.Messaging/SagaTestHarness.cs`) — transitions don't cross the bus, so it decorates `ISagaRepository<TState>` plus a pass-through filter for the causing envelope. `SagaCoordinator` is `internal` with no `InternalsVisibleTo`, so the repository is the only public seam every transition crosses. Outcomes: `Transitioned` · `Conflicted` · `Ignored` · `Faulted`; `Attempt > 1` makes the optimistic-concurrency replay a positive assertion.
+- **Latent hazard found:** every SDK backoff sleeps on `TimeProvider`, so a saga test that fakes the clock **and** forces a conflict or fault hangs rather than fails. Today's tests escape only because the conflict test uses the real clock. The harness zeroes both delays.
+- 7 saga tests added; correlation-miss (`Ignore` vs `Fault`), finalization/retention and stale-timeout-after-unschedule were all untested. Suite 89 → 96.
+
 ---
 
 ## Open follow-ups
@@ -126,22 +133,24 @@ A1 unparseable→DLQ · A2 delivery-count · A5 outbox cap+prune · A6 `DeadLett
 
 ---
 
-## BATCH 10 — next (4 lanes, disjoint)
+## BATCH 11 — next (4 lanes, disjoint)
 
 | Lane | Owns | Build |
 |---|---|---|
-| 1 | `RedisStreams/**` | **`wt-body` is forgeable.** `RedisStreamsFields.Body` is reserved but not adapter-owned, so `IsAdapterOwned` no longer strips it. A caller-supplied `wt-body` lands as the first field, and `ReadBody` uses the `StreamEntry` indexer (first match wins) — so the forgery replaces the real body and the message dead-letters as unparseable. The field's own doc still claims it is "stripped on send" |
-| 2 | `Transport/Topology.cs` + `EventSaga/**` | `InProcessEventSagaTransport` sends to an arbitrary logical destination; post-B4 an unbound routing key is silently dropped (`mandatory: false`). B5 added a warn-once log, but the send still vanishes |
-| 3 | `Kafka/**` + `Nats/**` + `RedisStreams/**` (comments only) + `Messaging.Tests/**` | Stale post-B7 comments: `KafkaTransport.cs:117`, `NatsTransport.cs:137`, `RedisStreamsTransport.cs:252` all say "minus the reserved namespace" but filter on `IsAdapterOwned`; `KafkaTransport.cs:118` claims an unfiltered caller header would "win the decode" — it would lose. Also add the missing `AddReceiveOnlyMessageSerializer` test (B9 lane 2 flagged the gap) |
-| 4 | `Testing.Messaging/**` + `Messaging.Tests/**` | Saga test harness (§3.12) — the one harness piece B4 skipped. Saga steps don't cross the bus, so it wraps `IEventSagaRunner`/`SagaCoordinator` rather than the observer seam |
+| 1 | `RabbitMq/**` | Unroutable-publish detection, the half B10 lane 2 couldn't reach. Opt-in `RabbitMqOptions.FailOnUnroutable` → `mandatory: true` + `IChannel.BasicReturnAsync` on the send channel, **re-hooked in `GetChannelAsync` after every recreate**. Correlate via a pending map keyed by `MessageId`, registered **before** the publish — AMQP delivers the return ahead of that message's confirm ack, which B3 made `BasicPublishAsync` await. Default off: publishing before consumers declare their queues is normal. Weigh the cheaper `alternate-exchange` alternative first — no per-publish cost, and it catches drops from services that never opted in |
+| 2 | `Messaging.Tests/**` | Pin B10's fixes. Redis: forged `wt-body` + 4 `wt-dl-*` stripped on send (`XRANGE` shows exactly one `wt-body`); a hand-rolled `XADD` with two `wt-body` fields resolves to the last — the only assertion that fails if the read-side half is reverted. Topology: a declared alias for a **consumed** type appears in `RoutingKeys`, one for a non-consumed type does **not** (the anti-steal rule). Also the missing `AddReceiveOnlyMessageSerializer` test (flagged B9) |
+| 3 | `Kafka/**` + `Nats/**` (comments) + `Messaging/Messaging.md` + `Messaging.spec.md` | Stale post-B7 comments: `KafkaTransport.cs:117`, `NatsTransport.cs:137` say "minus the reserved namespace" but filter on `IsAdapterOwned`; `:118` claims an unfiltered caller header would "win the decode" — it would lose. Docs: `Messaging.md:52,65` and `Messaging.spec.md:212-215,285` don't mention `SendsTo` / `AddDestinationBinding` / the saga harness |
+| 4 | `AwsSqs/**` (new) | Next adapter (§3.1) — SQS+SNS: native redrive DLQ, FIFO groups, visibility-timeout settlement. Follow the ASB/Redis structure; capability flags honest per B2's rule |
 
-**Traps for BATCH 10:**
-- **Kafka's forgery half can pass vacuously.** Kafka `Headers` permits duplicates and the decoder is last-write-wins, so a "strip nothing" mutation still passes. Redis closes this via an `XRANGE` field count; NATS closes it by construction (dictionary). Kafka needs a raw consumer to inspect duplicates — blocked by the macOS librdkafka multi-consumer crash, so it wants Linux CI.
-- ASB has no Testcontainers image; its `IsAdapterOwned` round trip is unproven and stays that way until an emulator decision.
+**Traps for BATCH 11:**
+- **`TimeProvider` + backoff deadlock.** Every SDK backoff sleeps on `TimeProvider`, so any test that fakes the clock **and** forces a retry/conflict hangs instead of failing. `SagaTestHarness` zeroes both delays; a new harness must do the same.
+- **Kafka's forgery test passes vacuously** — duplicate headers + last-write-wins means a "strip nothing" mutation still passes. Needs a raw consumer, blocked by the macOS librdkafka multi-consumer crash. Linux CI.
+- ASB's `IsAdapterOwned` round trip stays unproven — no Testcontainers image.
+- Redis: an instance created **and** finalized by one message under `RemoveOnFinalize` is never written, so it records as `Ignored`, not `Transitioned`.
 
 ---
 
-## BATCH 9 — done (kept for reference)
+## BATCH 10 — done (kept for reference)
 
 | Lane | Owns | Build |
 |---|---|---|
