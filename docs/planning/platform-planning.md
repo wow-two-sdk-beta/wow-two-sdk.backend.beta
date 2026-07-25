@@ -48,6 +48,8 @@
 | webhooks (HMAC sign/verify + replay window + SSRF guard) | feature | P4 | **✅ shipped 2026-07-10** — `Messaging/Webhooks`: HMAC-SHA256 (`timestamp.body`) + SSRF guard (scheme/host pre-flight + connect-time private-IP block). Replay window is receiver-side (timestamp header shipped). Residual: durable store + mgmt API. |
 | sms/push comms channels | feature | P4 | Twilio/Vonage SMS · FCM/APNS push. |
 | ai/core (Microsoft.Extensions.AI) + SSE streaming + pgvector | feature | P5 | Pulled forward by transcript-forge. |
+| **data session** (`IDataSession` + hooks + Dapper hardening + write guards) | feature | P3 | Researched + designed 2026-07-19. **7 live defects found** (D1–D7): Dapper writes escape EF transactions · no tenant/soft-delete predicate on Dapper reads · `SELECT *` never returns `xmin` · `Set.Update()` writes defaults over real data · `AddPostgresPersistence` drops `AddEfInterceptor` registrations · no unit of work · tenant row-stamping never invoked. See deep-dive. |
+| **component registry** (TryAdd-skip / Replace-displacement ledger) | feature | Quality | Idea 2026-07-19 → **build narrower**. 175 `Add*` · 184 `TryAdd` sites; a skipped `TryAdd` leaves *no trace anywhere*. The BCL already dumps the positive space (`DependencyInjectionEventSource` event 8); only the **negative space** is unsolved — and it's the class D5/D7 belong to. See deep-dive. |
 | Roslyn analyzer: foundation-can't-import-domain | check | Quality | Decision 9.14 open. |
 | `apps/playground/` Aspire end-to-end smoke | check | Quality | Nothing validates wrappers end-to-end today. |
 | Haven.Auth dogfood migration onto shipped OTP/issuance/policies | check | Identity | Validates the seams before products depend on them. |
@@ -57,3 +59,5 @@
 | Feature | Doc | Status |
 |---|---|---|
 | Identity (own, sliced) | [identity/identity-architecture.md](identity/identity-architecture.md) | drafted |
+| Data session | [data-pipeline/data-session-architecture.md](data-pipeline/data-session-architecture.md) | designed + adversarially verified · [test plan](data-pipeline/data-session-test-plan.md) · [verdict](data-pipeline/data-pipeline-verdict.md) · [research 01–05](data-pipeline/research/) |
+| Component registry | [component-registry/component-registry-idea.md](component-registry/component-registry-idea.md) | researched · verdict = build narrower |
