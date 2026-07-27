@@ -3,6 +3,10 @@ name: publish
 # Beta-forever: every push to main bumps the version, packs, publishes to nuget.org,
 # then commits the bumped version back (so the repo always reflects what's published).
 #
+# Every `run:` step below executes from the code dir — `defaults.run.working-directory:
+# engineering/codebase/wow-two-back-beta-sdk` (per conventions/development/repo/structure/
+# sdk-structure.md). So every `src/...` path here is code-dir-relative, not repo-root-relative.
+#
 # Version is the source of truth in src/Directory.Build.props — format 10.{y}.{z}-beta:
 #   x = 10     → .NET line (fixed)
 #   z          → bumps each release; rolls to 0 (and y += 1) when it passes 99
@@ -28,6 +32,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.bump.outputs.version }}
+    defaults:
+      run:
+        working-directory: engineering/codebase/wow-two-back-beta-sdk
     steps:
       - uses: actions/checkout@v4
         with:

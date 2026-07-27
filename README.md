@@ -18,7 +18,7 @@
 | P5 | SaaS-shaped (tenancy + AI + flags) | planned |
 | P6 | heavy domain extensions | planned |
 
-Ships as a **mono-lib** — one NuGet (`WoW2.Sdk.Backend.Beta`) + a separate `.Testing` lib; per-area subpaths inside. Area-by-area status: [`docs/package-registry.md`](./docs/package-registry.md).
+Ships as a **mono-lib** — one NuGet (`WoW2.Sdk.Backend.Beta`) + a separate `.Testing` lib; per-area subpaths inside. Area-by-area status: [`engineering/architecture/package-registry.md`](./engineering/architecture/package-registry.md).
 
 OAuth sign-in providers (16): Google, Microsoft, GitHub, Apple, Facebook, LinkedIn, Discord, Slack, GitLab, Amazon, Twitch, Spotify, Yandex, Reddit, Notion, VK. Passwordless: `AddOtpService` + `AddTelegramOtpDelivery` + `AddJwtTokenIssuance` + `AddRolePolicy`.
 
@@ -26,7 +26,7 @@ OAuth sign-in providers (16): Google, Microsoft, GitHub, Apple, Facebook, Linked
 
 In-progress patterns being designed/built — read these to know what's underway:
 
-- [`docs/analysis/validation-and-result-pattern.md`](./docs/analysis/validation-and-result-pattern.md) — validation result model (Stage 1, building now) + the deferred generic `Result`/`Error` pattern.
+- [`engineering/architecture/analysis/validation-and-result-pattern.md`](./engineering/architecture/analysis/validation-and-result-pattern.md) — validation result model (Stage 1, building now) + the deferred generic `Result`/`Error` pattern.
 
 ## Quick start
 
@@ -60,18 +60,18 @@ app.Run();
 ```
 
 Need per-concern control? Every piece `AddApiDefaults` wires is a public extension you can call
-directly — the expansion is listed in [`src/Meta/Meta.md`](./src/Meta/Meta.md).
+directly — the expansion is listed in [`src/Meta/Meta.md`](./engineering/codebase/wow-two-back-beta-sdk/src/Meta/Meta.md).
 
 ## Read these first
 
-- [`docs/analysis/philosophy/ideas.md`](./docs/analysis/philosophy/ideas.md) — encyclopedia of the .NET ecosystem (no verdicts)
-- [`docs/analysis/philosophy/targets.md`](./docs/analysis/philosophy/targets.md) — verdicts (DONE / NOW / NEXT / LATER / MAYBE / SKIP / LOCKED)
-- [`docs/architecture/package-layout.md`](./docs/architecture/package-layout.md) — repo + per-package shape + three-layer doc strategy
+- [`engineering/architecture/analysis/philosophy/ideas.md`](./engineering/architecture/analysis/philosophy/ideas.md) — encyclopedia of the .NET ecosystem (no verdicts)
+- [`engineering/architecture/analysis/philosophy/targets.md`](./engineering/architecture/analysis/philosophy/targets.md) — verdicts (DONE / NOW / NEXT / LATER / MAYBE / SKIP / LOCKED)
+- [`engineering/architecture/package-layout.md`](./engineering/architecture/package-layout.md) — repo + per-package shape + three-layer doc strategy
 
 ## Build
 
 ```bash
-cd src
+cd engineering/codebase/wow-two-back-beta-sdk/src
 ulimit -n 65535          # macOS — avoid EMFILE
 export MSBUILDDISABLENODEREUSE=1
 dotnet restore WoW.Two.Sdk.Backend.Beta.slnx -m:1
