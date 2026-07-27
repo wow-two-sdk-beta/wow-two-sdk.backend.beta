@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Interceptors;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 
@@ -58,26 +57,13 @@ public static class EntityFrameworkCoreServiceCollectionExtensions
         var options = new EntityFrameworkCoreOptions();
         configureOptions(options);
 
+        // Record the context so the boot guard can verify every DI-registered interceptor actually landed on it.
+        var registry = services.GetOrAddEfContextWiringRegistry();
+        registry.Register(typeof(TContext));
+
         void Apply(IServiceProvider serviceProvider, DbContextOptionsBuilder builder)
-        {
-            configureProvider(serviceProvider, builder);
-
-            // Auto-wire every pluggable interceptor registered via AddEfInterceptor / AddEfSaveChangesInterceptor.
-            var interceptors = serviceProvider.GetServices<IInterceptor>().ToArray();
-            if (interceptors.Length > 0)
-                builder.AddInterceptors(interceptors);
-
-            var isDevelopment = serviceProvider.GetService<IHostEnvironment>()?.IsDevelopment() ?? false;
-
-            if (options.EnableSensitiveDataLogging ?? isDevelopment)
-                builder.EnableSensitiveDataLogging();
-
-            if (options.EnableDetailedErrors ?? isDevelopment)
-                builder.EnableDetailedErrors();
-
-            if (options.NoTrackingByDefault)
-                builder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
-        }
+            => EfInterceptorWiring.ApplySdkContextConfiguration(
+                serviceProvider, builder, options, configureProvider, registry, typeof(TContext));
 
         if (options.UsePooling)
             services.AddDbContextPool<TContext>(Apply, options.PoolSize);

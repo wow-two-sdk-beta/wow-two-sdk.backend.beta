@@ -57,7 +57,7 @@ Reads stay Dapper (complex multi-entity queries) · partial updates deferred · 
 - **Dapper reads need EF's `ValueConverter`s applied before attach** (jsonb, owned columns — POC probe 6). Converters are **reflected from the EF model**, never hand-maintained: smart-qr already carries 2 jsonb converters and a hand-map drifts silently.
 - Prev-version source: **`FindAsync` default** (identity-map hit = 0 SQL) · `FullRow<T>` via Dapper = gated opt-in (`PreviousFrom` in per-entity write config) · pessimistic `ForWrite()` = opt-in escalation for hot aggregates.
 - `UpdateAsync(FullRow<TEntity> previous, TEntity incoming)` — the 2-arg overload takes `FullRow`, not bare entity, so provenance is compiler-checked (EF-loaded previous gets its `FullRow` minted by the repository itself).
-- **Rule A** (runtime backstop): `ChangeTracker.Tracked` — entry enters tracking `Modified && !FromQuery` → throw. Catches every hand-rolled `Update()` on an untracked instance.
+- **Rule A** (runtime backstop): `ChangeTracker.Tracked` — entry enters tracking `Modified && !FromQuery` → throw. Catches every hand-rolled `Update()` on an untracked instance. **Must re-subscribe per pool rent** — P2 measured the subscription cleared on pool return, so arm-once leaves the guard live in dev and silently dead from request 2 in prod.
 - **Rule B**: concurrency-token **OriginalValue** at CLR default on a tracked-for-write entity → throw. The *incoming* DTO's token is ignored — server-side token authority; `Xmin=0` on incoming is the normal case, the attached previous carries the real token.
 - `IVersioned` seed moves to 1 (version-0 rows silently match an unfetched token).
 - `AutoDetectChangesEnabled=false` silently disables audit/soft-delete/version interceptors → asserted loudly (bulk-insert carve-out for Added-only trackers).
@@ -71,14 +71,14 @@ Reads stay Dapper (complex multi-entity queries) · partial updates deferred · 
 2. **`IdempotencyBehavior` ordering** — it stores the response *before* the unit commits; a rolled-back command can leave a cached SUCCESS replayed forever. Fix = store via `OnCommitted`. Approve?
 3. **Breaking changes** (one honest migration note, both lanes' deltas): `UpdateAsync` signature + semantics (`+1` PK SELECT, diff-only UPDATE, typed NotFound); `IWriteRepository`'s persist-immediately contract narrows to "per-write commit timing only when no session".
 
-## Load-bearing probes — run before any interface freezes
+## Load-bearing probes — **measured 2026-07-24**, now permanent tests in `Data.Tests`
 
-| # | Probe | Blocks |
+| # | Question | Measured answer |
 |---|---|---|
-| P1 | Do `CreatedSavepoint`/`RolledBackToSavepoint` fire for EF's **automatic** per-SaveChanges savepoints on Npgsql? | session depth counter + hook frames (both dead if not; synthetic-frame fallback specified in hooks design) |
-| P2 | Does a `ChangeTracker.Tracked` subscription survive `DbContextPool` reset? | Rule A — pool reset silently disarming the primary guard |
-| P3 | HybridCache tag invalidation cross-node (docs say no, dotnet/extensions#7098 says yes) | drain granularity of the future cache adapter |
-| P4 | Outbox claim strategy opens its own transaction — collision with a session unit on the same context (EF throws on second `BeginTransaction`) | outbox-dispatcher scopes must skip units, or the claim strategy joins the session |
+| P1 | Do `CreatedSavepoint`/`RolledBackToSavepoint` fire for EF's **automatic** per-`SaveChanges` savepoints on Npgsql? | **Yes, both.** EF 10.0.3 / Npgsql 10.0.0. Per save: `created → (rolled-back-to on failure) → released`. **EF also releases *after* rolling back** — the depth model must not read a released frame as surviving. Depth counter can ride the events. |
+| P2 | Does a `ChangeTracker.Tracked` subscription survive `DbContextPool` return+rent? | **No.** Pool returns the *same instance* with `Tracked` cleared: 1 fire on rent 1, **0** on rent 2. **Rule A cannot be armed once per instance** — armed in dev, silently off from request 2 in prod. Must re-subscribe per rent (verified: 3 rents → exactly 3 fires, no drops, no double-count). |
+| P3 | HybridCache tag invalidation cross-node? | Out of suite — cache-adapter phase. Drain stays key-based so the answer can't silently change behaviour. |
+| P4 | Outbox claim strategy vs a session unit on the same context | **Collision confirmed, fails loudly.** `ClaimPendingAsync` throws at its own `BeginTransactionAsync`. It throws *before* attaching its `SavedChanges` commit bridge, so the caller's unit still rolls back whole — no corruption. Dispatcher must skip units, or the strategy must join one. |
 
 ## Build order
 

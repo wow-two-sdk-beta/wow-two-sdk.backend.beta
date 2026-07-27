@@ -26,6 +26,8 @@ Found while researching, all in shipped code, none related to the pipeline. **Th
 | D4 | **`EfRepository.UpdateAsync` calls `Set.Update(entity)`** | Flags every non-key property regardless of what was loaded. A partially-populated entity writes `NULL`/`0` over real columns, in one statement, no error |
 | D5 | **`AddPostgresPersistence` never runs the interceptor auto-wire loop** | Anything registered via `AddEfInterceptor` is **silently dropped** under the flagship registration |
 | D6 | **No unit of work** — `EfRepository` calls `SaveChangesAsync` inside every write | There is no rollback boundary to defer anything to. Precondition for everything else here |
+| D8 | **`EntityFrameworkCoreOptions` is a record with `init`-only properties**, configured through an `Action<EntityFrameworkCoreOptions>` — the callback can never assign anything | `UsePooling` is stuck at `true`; non-pooled registration is **unreachable**. Found 2026-07-24 |
+| D9 | **`Testing.Data.RepointDbContext` re-adds a bare `AddDbContext`** (`DbContextProviderSwapExtensions.cs:45`) | Test hosts silently lose **every** interceptor, audit included. Same family as D5; one line (`.AddRegisteredInterceptors(sp)`) |
 | D7 | **`AddTenantRowStamping()` is never invoked** under `AddPostgresPersistence` — it plugs in via `AddEfSaveChangesInterceptor`, which the flagship registration never enumerates (same root cause as D5) | Registered, resolvable, **never runs**. Rows insert with a null tenant while its XML doc promises the opposite. 5 services call `AddPostgresPersistence`; none has tenancy on yet, which is the only reason it isn't burning |
 
 D2 is a security bug. D1, D3, D5 are silent-failure bugs of the same class this session has been finding all day in the events layer.

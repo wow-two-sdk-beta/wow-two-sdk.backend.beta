@@ -1,22 +1,21 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Interceptors;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit;
 
 /// <summary>Registration helpers for the audit interceptor.</summary>
 public static class AuditServiceCollectionExtensions
 {
-    /// <summary>Registers the <see cref="AuditInterceptor"/> as a singleton; to wire it into a DbContext, resolve the interceptor in the context's configuration and call <see cref="DbContextOptionsBuilder.AddInterceptors(IEnumerable{IInterceptor})"/>.</summary>
-    /// <remarks><c>TimeProvider</c> falls back to <see cref="TimeProvider.System"/> if not registered; register <see cref="IAuditCurrentUserAccessor"/> if you want <c>CreatedBy</c>/<c>UpdatedBy</c> stamping.</remarks>
+    /// <summary>Registers the <see cref="AuditInterceptor"/> on the pluggable-interceptor seam, so every SDK-registered DbContext attaches it automatically.</summary>
+    /// <remarks><c>TimeProvider</c> falls back to <see cref="TimeProvider.System"/> if not registered; register <see cref="IAuditCurrentUserAccessor"/> if you want <c>CreatedBy</c>/<c>UpdatedBy</c> stamping. Audit runs in DI registration order relative to the other registered interceptors — register a guard interceptor before this call to have it run first.</remarks>
     /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddEfCoreAuditInterceptor(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton(TimeProvider.System);
-        services.AddSingleton<AuditInterceptor>();
-        return services;
+        return services.AddEfInterceptor<AuditInterceptor>();
     }
 
     /// <summary>Registers the audit interceptor and a custom <typeparamref name="TAccessor"/> implementation for current-user resolution.</summary>
@@ -30,7 +29,8 @@ public static class AuditServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Convenience extension for wiring the audit interceptor into a <see cref="DbContextOptionsBuilder"/>, resolving it from the application service provider.</summary>
+    /// <summary>Wires the audit interceptor into a <see cref="DbContextOptionsBuilder"/> that is not registered through an SDK path.</summary>
+    /// <remarks>Idempotent — a no-op when the interceptor is already attached, so it cannot double-stamp alongside the auto-wire seam. SDK-registered contexts attach it automatically and need not call this.</remarks>
     /// <param name="builder">The DbContext options builder to configure.</param>
     /// <param name="serviceProvider">The application service provider the interceptor is resolved from.</param>
     public static DbContextOptionsBuilder UseAuditInterceptor(
@@ -41,6 +41,6 @@ public static class AuditServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(serviceProvider);
 
         var interceptor = serviceProvider.GetRequiredService<AuditInterceptor>();
-        return builder.AddInterceptors(interceptor);
+        return builder.HasInterceptor(interceptor) ? builder : builder.AddInterceptors(interceptor);
     }
 }

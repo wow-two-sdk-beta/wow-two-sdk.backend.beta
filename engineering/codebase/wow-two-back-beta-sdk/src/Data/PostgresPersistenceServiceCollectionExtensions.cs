@@ -7,6 +7,7 @@ using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 using WoW.Two.Sdk.Backend.Beta.Data.Errors;
 using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit;
+using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Interceptors;
 using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Postgres;
 using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
@@ -16,6 +17,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Data;
 public static class PostgresPersistenceServiceCollectionExtensions
 {
     /// <summary>Registers the full Postgres host floor for <typeparamref name="TContext"/> — resolves the connection string, builds the shared <see cref="NpgsqlDataSource"/>, registers the Dapper connection factory and audit interceptor, adds the snake_case-naming audited <see cref="DbContext"/>, and wires the embedded-resource bespoke migrator over the context's assembly.</summary>
+    /// <remarks>The context is configured through the same path as <c>AddEntityFrameworkCore&lt;T&gt;</c>, so every interceptor registered via <c>AddEfInterceptor</c>/<c>AddEfSaveChangesInterceptor</c> — audit, soft-delete, tenant stamping, outbox — is attached in DI registration order. A boot guard fails the host if one is registered but never attached.</remarks>
     /// <typeparam name="TContext">The application <see cref="DbContext"/> to register.</typeparam>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configuration">The configuration the connection string is resolved from.</param>
@@ -48,14 +50,24 @@ public static class PostgresPersistenceServiceCollectionExtensions
         // Npgsql/EF exceptions escaping a handler now map to their AppError (unique-violation -> Conflict, etc.).
         services.AddDbExceptionMapping();
 
+        // Same context-configuration path as AddEntityFrameworkCore<T> — the one place interceptors attach.
+        // AddDbContext (not AddDbContextPool) is deliberate: the scoped provider stays available in the callback,
+        // which pooling would take away. Pooling remains opt-in via AddEntityFrameworkCore<T>.
+        var registry = services.GetOrAddEfContextWiringRegistry();
+        registry.Register(typeof(TContext));
+
+        var efCoreOptions = new EntityFrameworkCoreOptions();
+
         services.AddDbContext<TContext>((serviceProvider, optionsBuilder) =>
-        {
-            var dataSource = serviceProvider.GetRequiredService<NpgsqlDataSource>();
-            optionsBuilder
-                .UseNpgsql(dataSource)
-                .UseSnakeCaseNamingConvention()
-                .UseAuditInterceptor(serviceProvider);
-        });
+            EfInterceptorWiring.ApplySdkContextConfiguration(
+                serviceProvider,
+                optionsBuilder,
+                efCoreOptions,
+                static (provider, builder) => builder
+                    .UseNpgsql(provider.GetRequiredService<NpgsqlDataSource>())
+                    .UseSnakeCaseNamingConvention(),
+                registry,
+                typeof(TContext)));
 
         // The bespoke SQL migrator owns the schema; EF is a pure mapper over it.
         services.AddDatabaseBespokeMigrations(typeof(TContext).Assembly);
