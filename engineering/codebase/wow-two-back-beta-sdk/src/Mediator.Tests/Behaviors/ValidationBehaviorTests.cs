@@ -27,6 +27,8 @@ public sealed class ValidationBehaviorTests
             if (error is not null)
                 throw new ValidationException(error);
         }
+
+        public IReadOnlyList<FieldError> Inspect(Req instance) => Validate(instance)?.Failures ?? [];
     }
 
     [Fact]

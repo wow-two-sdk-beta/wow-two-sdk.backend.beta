@@ -76,8 +76,8 @@ public sealed class RedisStreamsAdapterOwnedHeaderTests : IAsyncLifetime
         // field wins) while a lookup by field name elsewhere returns the first, which is the caller's.
         var entries = await database.StreamRangeAsync(stream);
         entries.Should().ContainSingle();
-        CountField(entries[0], MessageHeaders.EventType).Should().Be(1);
-        CountField(entries[0], SecondLevelRetryHeaders.Tier).Should().Be(1);
+        CountField(entries[0], MessageHeaderConstants.EventType).Should().Be(1);
+        CountField(entries[0], SecondLevelRetryHeaderConstants.Tier).Should().Be(1);
 
         await host.StopAsync();
     }
@@ -102,7 +102,7 @@ public sealed class RedisStreamsAdapterOwnedHeaderTests : IAsyncLifetime
     private async Task<IHost> StartHostAsync(string stream, string group)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<EventCollector>(); // PingHandler is scanned from this assembly and needs it
+        builder.Services.AddScannedHandlerDependencies(); // PingHandler is scanned from this assembly and needs it
         builder.Services.AddRedisStreamsEventBus(
             options =>
             {

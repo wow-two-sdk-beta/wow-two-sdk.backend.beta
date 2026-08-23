@@ -12,7 +12,7 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
 /// <summary>
-/// An <see cref="IBlobStorage"/> that keeps blobs in memory and records every call, so a test can assert both what was
+/// An <see cref="IBlobRepository"/> that keeps blobs in memory and records every call, so a test can assert both what was
 /// stored and that nothing was stored at all.
 /// </summary>
 /// <remarks>
@@ -21,7 +21,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 /// and keeps nothing — <see cref="DropWrites"/> — which is the retention-expired / purged shape without a sweep or a
 /// sleep to produce it.
 /// </remarks>
-internal sealed class RecordingBlobStorage : IBlobStorage
+internal sealed class RecordingBlobRepository : IBlobRepository
 {
     private readonly ConcurrentDictionary<string, BlobEntry> _blobs = new(StringComparer.Ordinal);
     private readonly ConcurrentQueue<string> _calls = new();
@@ -127,7 +127,7 @@ public sealed class ClaimCheckTests
     [Fact]
     public async Task Leaves_a_body_under_the_threshold_on_the_wire_and_never_touches_the_store()
     {
-        var store = new RecordingBlobStorage();
+        var store = new RecordingBlobRepository();
         await using var harness = await StartAsync(store, claimCheck: true);
 
         await harness.Bus.PublishAsync(new HarnessEvent("small"));
@@ -135,9 +135,9 @@ public sealed class ClaimCheckTests
 
         // The whole point of a threshold: under it the feature is inert on the wire.
         var published = harness.Published.Of<HarnessEvent>()[0].Envelope;
-        published.Headers.Should().NotContainKey(ClaimCheckHeaders.Reference);
-        published.Headers.Should().NotContainKey(ClaimCheckHeaders.Size);
-        published.Headers.Should().NotContainKey(ClaimCheckHeaders.BodyType);
+        published.Headers.Should().NotContainKey(ClaimCheckHeaderConstants.Reference);
+        published.Headers.Should().NotContainKey(ClaimCheckHeaderConstants.Size);
+        published.Headers.Should().NotContainKey(ClaimCheckHeaderConstants.BodyType);
         published.RawBodyType.Should().BeNull();
         published.WireBodyType.Should().Be<HarnessEvent>();
 
@@ -155,7 +155,7 @@ public sealed class ClaimCheckTests
     [Fact]
     public async Task Offloads_a_body_over_the_threshold_and_puts_a_small_reference_on_the_wire()
     {
-        var store = new RecordingBlobStorage();
+        var store = new RecordingBlobRepository();
         await using var harness = await StartAsync(store, claimCheck: true);
 
         await harness.Bus.PublishAsync(new HarnessEvent(LargePayload));
@@ -167,13 +167,13 @@ public sealed class ClaimCheckTests
         // One blob, under the configured prefix, holding exactly what the size header advertises.
         store.SaveCalls.Should().Be(1);
         store.BlobCount.Should().Be(1);
-        var path = published.Headers[ClaimCheckHeaders.Reference];
+        var path = published.Headers[ClaimCheckHeaderConstants.Reference];
         path.Should().StartWith("messaging/claim-check/");
         var stored = store.Read(path);
         stored.Should().NotBeNull();
 
-        published.Headers[ClaimCheckHeaders.Size].Should().Be(stored!.LongLength.ToString(CultureInfo.InvariantCulture));
-        published.Headers[ClaimCheckHeaders.BodyType].Should().Be(typeof(HarnessEvent).FullName);
+        published.Headers[ClaimCheckHeaderConstants.Size].Should().Be(stored!.LongLength.ToString(CultureInfo.InvariantCulture));
+        published.Headers[ClaimCheckHeaderConstants.BodyType].Should().Be(typeof(HarnessEvent).FullName);
 
         // The substitution: the bytes and the type token that travel are the reference's, while BodyType — what routing
         // and metrics read — stays the real contract, so the message still lands where its consumers are bound.
@@ -195,7 +195,7 @@ public sealed class ClaimCheckTests
     [Fact]
     public async Task Never_calls_the_blob_store_when_the_feature_was_not_registered()
     {
-        var store = new RecordingBlobStorage();
+        var store = new RecordingBlobRepository();
         await using var harness = await StartAsync(store, claimCheck: false);
 
         var sent = new HarnessEvent(LargePayload);
@@ -208,7 +208,7 @@ public sealed class ClaimCheckTests
 
         var published = harness.Published.Of<HarnessEvent>()[0].Envelope;
         published.RawBody.Should().BeNull();
-        published.Headers.Should().NotContainKey(ClaimCheckHeaders.Reference);
+        published.Headers.Should().NotContainKey(ClaimCheckHeaderConstants.Reference);
 
         // Same instance the test published — this transport passes the envelope by reference when nothing intercepts
         // it. It is also the negative control for the rehydrate test above: that one asserts NOT-same-instance, which
@@ -219,7 +219,7 @@ public sealed class ClaimCheckTests
     [Fact]
     public async Task Rehydrates_the_real_body_before_the_handler_sees_it()
     {
-        var store = new RecordingBlobStorage();
+        var store = new RecordingBlobRepository();
         await using var harness = await StartAsync(store, claimCheck: true);
 
         var sent = new HarnessEvent(LargePayload);
@@ -243,7 +243,7 @@ public sealed class ClaimCheckTests
     [Fact]
     public async Task Dead_letters_a_missing_blob_without_spending_the_retry_budget()
     {
-        var store = new RecordingBlobStorage { DropWrites = true }; // the write reports success and keeps nothing
+        var store = new RecordingBlobRepository { DropWrites = true }; // the write reports success and keeps nothing
         await using var harness = await StartAsync(store, claimCheck: true, retry: new RetryConfig(MaxAttempts: 5, Backoff: BackoffKind.None));
 
         await harness.Bus.PublishAsync(new HarnessEvent(LargePayload));
@@ -269,7 +269,7 @@ public sealed class ClaimCheckTests
     [InlineData("messaging/claim-check/../../etc/passwd", "not a valid blob path")] // traversal — rejected at normalization
     public async Task Refuses_a_forged_reference_that_points_outside_the_prefix(string forgedPath, string expectedReason)
     {
-        var store = new RecordingBlobStorage();
+        var store = new RecordingBlobRepository();
         await using var harness = await StartAsync(store, claimCheck: true);
 
         // A small body, so nothing was offloaded and the reference is purely the attacker's. It rides through because
@@ -277,7 +277,7 @@ public sealed class ClaimCheckTests
         // puts a real consumer in behind any broker that carries reserved headers through.
         await harness.Bus.PublishAsync(
             new HarnessEvent("forged"),
-            new PublishOptions { Headers = new Dictionary<string, string>(StringComparer.Ordinal) { [ClaimCheckHeaders.Reference] = forgedPath } });
+            new PublishOptions { Headers = new Dictionary<string, string>(StringComparer.Ordinal) { [ClaimCheckHeaderConstants.Reference] = forgedPath } });
 
         var deadLettered = await harness.DeadLettered.WaitForAsync<HarnessEvent>();
         deadLettered[0].Exception.Should().BeOfType<ClaimCheckPayloadException>();
@@ -292,7 +292,7 @@ public sealed class ClaimCheckTests
     [Fact]
     public async Task Keeps_the_blob_after_a_dead_letter_so_a_redrive_can_rehydrate_it()
     {
-        var store = new RecordingBlobStorage();
+        var store = new RecordingBlobRepository();
         await using var harness = await StartAsync(store, claimCheck: true, retry: new RetryConfig(MaxAttempts: 5, Backoff: BackoffKind.None));
 
         await harness.Bus.PublishAsync(new BoomEvent(LargePayload)); // offloaded, rehydrated, then the handler throws
@@ -306,8 +306,8 @@ public sealed class ClaimCheckTests
         // What the dead-letter record holds is the pointer, not the payload — which is what a redrive follows and what
         // keeps the dead-letter store from growing by the size of every oversized body.
         var record = deadLettered[0].Envelope;
-        record.Headers.Should().ContainKey(ClaimCheckHeaders.Reference);
-        store.Read(record.Headers[ClaimCheckHeaders.Reference]).Should().NotBeNull();
+        record.Headers.Should().ContainKey(ClaimCheckHeaderConstants.Reference);
+        store.Read(record.Headers[ClaimCheckHeaderConstants.Reference]).Should().NotBeNull();
 
         // The rehydrate is a filter wrapping the core, and the retry loop lives inside that core: the body is fetched
         // once and every attempt reuses it, rather than re-reading the blob per attempt.
@@ -315,12 +315,12 @@ public sealed class ClaimCheckTests
         store.Calls.Count(call => call.StartsWith("OpenRead ", StringComparison.Ordinal)).Should().Be(1);
     }
 
-    private static Task<MessagingTestHarness> StartAsync(RecordingBlobStorage store, bool claimCheck, RetryConfig? retry = null)
+    private static Task<MessagingTestHarness> StartAsync(RecordingBlobRepository store, bool claimCheck, RetryConfig? retry = null)
         => MessagingTestHarness.StartAsync(
             services =>
             {
-                services.AddSingleton<EventCollector>(); // PingHandler is scanned from this assembly and needs one
-                services.AddSingleton<IBlobStorage>(store);
+                services.AddScannedHandlerDependencies(); // PingHandler is scanned from this assembly and needs one
+                services.AddSingleton<IBlobRepository>(store);
                 if (claimCheck)
                 {
                     services.AddEventClaimCheck(options =>

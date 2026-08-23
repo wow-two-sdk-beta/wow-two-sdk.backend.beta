@@ -12,7 +12,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Interceptors;
 /// </summary>
 /// <remarks>
 /// Attachment order is DI registration order — register a guard interceptor before the concerns it must precede.
-/// Attachment happens in exactly one place, <see cref="EfInterceptorWiring.AddRegisteredInterceptors"/>, and a boot
+/// Attachment happens in exactly one place, <see cref="EfInterceptorExtensions.AddRegisteredInterceptors"/>, and a boot
 /// guard fails the host if a registered interceptor never reaches an SDK-registered context.
 /// </remarks>
 public static class EfInterceptorServiceCollectionExtensions

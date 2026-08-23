@@ -10,7 +10,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
 /// <summary>Timing and clock defaults for a <see cref="SagaTestHarness{TState}"/>.</summary>
-public sealed class SagaHarnessOptions
+public sealed record SagaHarnessOptions
 {
     /// <summary>Where the harness's <see cref="FakeTimeProvider"/> starts. Fixed by default, so <see cref="ISagaState.FinalizedAtUtc"/> and a timeout's due time are exact values a test can assert on.</summary>
     public DateTimeOffset StartTime { get; set; } = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
@@ -205,7 +205,7 @@ public sealed class SagaTestHarness<TState> : IAsyncDisposable
 
     /// <summary>Whether a <typeparamref name="TEvent"/> moved an instance from <paramref name="from"/> to <paramref name="to"/> — <c>null</c> means "any" on every part.</summary>
     /// <typeparam name="TEvent">The event that drove the transition.</typeparam>
-    /// <param name="from">The source state, or <c>null</c> for any. A created instance transitions from <see cref="SagaStates.Initial"/>.</param>
+    /// <param name="from">The source state, or <c>null</c> for any. A created instance transitions from <see cref="SagaStateConstants.Initial"/>.</param>
     /// <param name="to">The target state, or <c>null</c> for any.</param>
     /// <param name="correlationId">Narrow to one instance, or <c>null</c> for any.</param>
     public bool HasTransition<TEvent>(string? from = null, string? to = null, string? correlationId = null)
@@ -236,12 +236,12 @@ public sealed class SagaTestHarness<TState> : IAsyncDisposable
         return matches[0];
     }
 
-    /// <summary>Wait until an instance reaches <see cref="SagaStates.Final"/> — whether it is then removed or retained.</summary>
+    /// <summary>Wait until an instance reaches <see cref="SagaStateConstants.Final"/> — whether it is then removed or retained.</summary>
     /// <param name="correlationId">The instance's correlation id.</param>
     /// <param name="timeout">Overall budget.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public Task<RecordedTransition<TState>> WaitForFinalizedAsync(string correlationId, TimeSpan? timeout = null, CancellationToken cancellationToken = default)
-        => WaitForStateAsync(correlationId, SagaStates.Final, timeout, cancellationToken);
+        => WaitForStateAsync(correlationId, SagaStateConstants.Final, timeout, cancellationToken);
 
     /// <summary>Wait for a from-state → event → to-state edge to be taken.</summary>
     /// <typeparam name="TEvent">The event that drives it.</typeparam>
@@ -406,8 +406,8 @@ public sealed class SagaTestHarness<TState> : IAsyncDisposable
     private static bool IsTimeout(RecordedMessage message, string? name, string? correlationId)
     {
         var headers = message.Envelope.Headers;
-        return headers.ContainsKey(SagaHeaders.TimeoutToken)
-            && (name is null || (headers.TryGetValue(SagaHeaders.TimeoutName, out var declared) && string.Equals(declared, name, StringComparison.Ordinal)))
+        return headers.ContainsKey(SagaHeaderConstants.TimeoutToken)
+            && (name is null || (headers.TryGetValue(SagaHeaderConstants.TimeoutName, out var declared) && string.Equals(declared, name, StringComparison.Ordinal)))
             && (correlationId is null || string.Equals(message.Envelope.CorrelationId, correlationId, StringComparison.Ordinal));
     }
 
@@ -416,8 +416,8 @@ public sealed class SagaTestHarness<TState> : IAsyncDisposable
         var envelope = message.Envelope;
         return new RecordedSagaTimeout
         {
-            Name = envelope.Headers.TryGetValue(SagaHeaders.TimeoutName, out var name) ? name : envelope.BodyType.Name,
-            Token = envelope.Headers.TryGetValue(SagaHeaders.TimeoutToken, out var token) ? token : string.Empty,
+            Name = envelope.Headers.TryGetValue(SagaHeaderConstants.TimeoutName, out var name) ? name : envelope.BodyType.Name,
+            Token = envelope.Headers.TryGetValue(SagaHeaderConstants.TimeoutToken, out var token) ? token : string.Empty,
             CorrelationId = envelope.CorrelationId ?? string.Empty,
             DueUtc = envelope.NotBeforeUtc,
             Envelope = envelope,

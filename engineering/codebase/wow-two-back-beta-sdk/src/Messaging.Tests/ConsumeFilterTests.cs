@@ -38,7 +38,7 @@ public sealed class ConsumeFilterTests
         await using var harness = await MessagingTestHarness.StartAsync(
             static services =>
             {
-                services.AddSingleton<EventCollector>();
+                services.AddScannedHandlerDependencies();
                 services.AddConsumeFilter<FilterA>();
                 services.AddConsumeFilter<FilterB>();
             },

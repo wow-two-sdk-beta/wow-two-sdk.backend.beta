@@ -8,7 +8,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Media.Csv;
 public static class CsvServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers CSV support: <see cref="ICsvReader"/> and <see cref="CsvTabularExporter"/> (both directly and
+    /// Registers CSV support: <see cref="ICsvParser"/> and <see cref="CsvTabularExporter"/> (both directly and
     /// as part of the <see cref="ITabularExporter"/> set). Singletons; idempotent.
     /// </summary>
     /// <param name="services">The service collection to configure.</param>
@@ -17,7 +17,7 @@ public static class CsvServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddSingleton<ICsvReader, CsvDocumentReader>();
+        services.TryAddSingleton<ICsvParser, CsvDocumentParser>();
         services.TryAddSingleton<CsvTabularExporter>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ITabularExporter, CsvTabularExporter>());
         return services;

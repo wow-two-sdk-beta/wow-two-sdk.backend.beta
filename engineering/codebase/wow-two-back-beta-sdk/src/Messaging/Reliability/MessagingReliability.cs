@@ -89,7 +89,7 @@ public sealed record DeadLetterRecord(
     /// larger of the two means the cap holds across replays, across a restart, and across a store that persists nothing
     /// but the envelope — without every adapter having to know the field exists.
     /// </remarks>
-    public int EffectiveRedriveCount => Math.Max(RedriveCount, DeadLetterHeaders.ReadRedriveCount(Envelope));
+    public int EffectiveRedriveCount => Math.Max(RedriveCount, DeadLetterHeaderConstants.ReadRedriveCount(Envelope));
 
     /// <summary>Build a record from a failed delivery.</summary>
     /// <param name="envelope">The envelope being dead-lettered.</param>
@@ -103,7 +103,7 @@ public sealed record DeadLetterRecord(
         {
             // Recovered from the envelope so a message dying on its Nth replay is stored knowing it, rather than
             // presenting to an operator as a first-time failure.
-            RedriveCount = DeadLetterHeaders.ReadRedriveCount(envelope),
+            RedriveCount = DeadLetterHeaderConstants.ReadRedriveCount(envelope),
         };
     }
 }
@@ -111,10 +111,10 @@ public sealed record DeadLetterRecord(
 /// <summary>Poison-message terminus with replay (redrive). Native broker DLQs back this on adapters; in-memory by default.</summary>
 /// <remarks>
 /// This is the floor: enough to park a message and put it back. Browse-by-criteria, by-id lookup, purge and quarantine
-/// need <see cref="IDeadLetterQueryStore"/>; <see cref="IDeadLetterAdmin"/> uses it where a store offers it and falls
+/// need <see cref="IDeadLetterQueryRepository"/>; <see cref="IDeadLetterAdmin"/> uses it where a store offers it and falls
 /// back to this interface where it does not.
 /// </remarks>
-public interface IDeadLetterStore
+public interface IDeadLetterRepository
 {
     /// <summary>Move a message into the dead-letter store.</summary>
     /// <param name="record">The dead-letter record.</param>

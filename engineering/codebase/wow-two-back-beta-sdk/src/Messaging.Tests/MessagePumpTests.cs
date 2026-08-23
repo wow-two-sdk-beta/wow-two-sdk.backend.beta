@@ -65,7 +65,7 @@ public sealed class MessagePumpTests
     {
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddSingleton(probe);
-        builder.Services.AddSingleton<EventCollector>();
+        builder.Services.AddScannedHandlerDependencies();
         builder.Services.AddInMemoryEventBus(typeof(SlowHandler).Assembly);
         if (concurrency is not null)
             builder.Services.AddMessagingConcurrency(concurrency);

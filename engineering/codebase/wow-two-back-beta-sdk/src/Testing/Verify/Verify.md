@@ -21,7 +21,7 @@ dotnet add package WoW.Two.Sdk.Backend.Beta.Testing.Verify
 internal static class TestSetup
 {
     [System.Runtime.CompilerServices.ModuleInitializer]
-    public static void Init() => VerifyDefaults.Initialize();
+    public static void Init() => VerifyDefaultConstants.Initialize();
 }
 ```
 

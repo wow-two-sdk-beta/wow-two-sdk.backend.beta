@@ -11,7 +11,7 @@ public sealed class ExceptionChainTests
     {
         var exception = new InvalidOperationException("boom");
 
-        var entries = ExceptionChain.Flatten(exception);
+        var entries = ExceptionChainMapper.Flatten(exception);
 
         entries.Should().ContainSingle()
             .Which.Should().Be("InvalidOperationException: boom");
@@ -22,7 +22,7 @@ public sealed class ExceptionChainTests
     {
         var root = new InvalidOperationException("outer", new ArgumentException("inner"));
 
-        var entries = ExceptionChain.Flatten(root);
+        var entries = ExceptionChainMapper.Flatten(root);
 
         entries.Should().HaveCount(2);
         entries[0].Should().StartWith("InvalidOperationException: outer");
@@ -38,7 +38,7 @@ public sealed class ExceptionChainTests
             current = new InvalidOperationException($"level-{i}", current);
         }
 
-        var entries = ExceptionChain.Flatten(current);
+        var entries = ExceptionChainMapper.Flatten(current);
 
         entries.Should().HaveCount(5);
     }
@@ -50,7 +50,7 @@ public sealed class ExceptionChainTests
             new InvalidOperationException("first"),
             new ArgumentException("second"));
 
-        var entries = ExceptionChain.Flatten(aggregate);
+        var entries = ExceptionChainMapper.Flatten(aggregate);
 
         entries.Should().HaveCount(2);
         entries.Should().Contain(entry => entry.Contains("first", StringComparison.Ordinal));
@@ -60,7 +60,7 @@ public sealed class ExceptionChainTests
     [Fact]
     public void Flatten_ShouldThrow_WhenNull()
     {
-        var act = () => ExceptionChain.Flatten(null!);
+        var act = () => ExceptionChainMapper.Flatten(null!);
 
         act.Should().Throw<ArgumentNullException>();
     }

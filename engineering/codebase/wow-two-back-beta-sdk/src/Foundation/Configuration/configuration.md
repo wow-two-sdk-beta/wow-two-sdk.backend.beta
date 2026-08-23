@@ -17,7 +17,7 @@ public sealed class DatabaseConnectionSettings
 ### Load directly
 
 ```csharp
-var settings = ConfigurationLoader.Load<DatabaseConnectionSettings>(configuration);
+var settings = ConfigurationMapper.Load<DatabaseConnectionSettings>(configuration);
 // section name defaults to typeof(T).Name ("DatabaseConnectionSettings"); pass a name to override
 ```
 

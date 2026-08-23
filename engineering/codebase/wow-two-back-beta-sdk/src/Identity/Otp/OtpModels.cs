@@ -44,7 +44,7 @@ public sealed record OtpVerificationResult(bool Success, OtpFailureReason? Failu
     public static OtpVerificationResult Failed(OtpFailureReason reason) => new(false, reason);
 }
 
-/// <summary>One stored OTP. The canonical shape every <see cref="IOtpStore"/> maps onto.</summary>
+/// <summary>One stored OTP. The canonical shape every <see cref="IOtpRepository"/> maps onto.</summary>
 /// <param name="Id">Stable record id.</param>
 /// <param name="Subject">Consumer-defined identity key (phone, email, username).</param>
 /// <param name="Code">The code as generated.</param>

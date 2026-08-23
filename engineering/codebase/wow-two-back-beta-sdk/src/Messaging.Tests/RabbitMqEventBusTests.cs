@@ -60,7 +60,7 @@ public sealed class RabbitMqEventBusTests : IAsyncLifetime
     private async Task<IHost> StartHostAsync(Action<RabbitMqOptions> configure, Action<InMemoryEventBusOptions>? retry = null)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<EventCollector>();
+        builder.Services.AddScannedHandlerDependencies();
         builder.Services.AddRabbitMqEventBus(
             o =>
             {

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Audit;
@@ -27,6 +28,7 @@ public static class HashChainServiceCollectionExtensions
         else
         {
             services.AddOptions<HashChainOptions>();
+            services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<HashChainOptions>>().Value);
         }
 
         services.TryAddSingleton<IChainedEntryCanonicalizer<TEntry>, TCanonicalizer>();
@@ -57,6 +59,7 @@ public static class HashChainServiceCollectionExtensions
         else
         {
             services.AddOptions<HashChainOptions>();
+            services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<HashChainOptions>>().Value);
         }
 
         services.TryAddSingleton<IChainedEntryCanonicalizer<TEntry>>(canonicalizer);

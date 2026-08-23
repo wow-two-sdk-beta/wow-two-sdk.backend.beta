@@ -278,7 +278,7 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
     private async Task PublishWithoutConsumingAsync(string stream, string group, PingEvent @event)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<EventCollector>();
+        builder.Services.AddScannedHandlerDependencies();
         builder.Services.AddRedisStreamsEventBus(
             options =>
             {
@@ -304,7 +304,7 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
         Action<InMemoryEventBusOptions>? retry = null)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<EventCollector>();
+        builder.Services.AddScannedHandlerDependencies();
         builder.Services.AddRedisStreamsEventBus(
             options =>
             {

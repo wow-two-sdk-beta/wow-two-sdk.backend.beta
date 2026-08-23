@@ -14,12 +14,12 @@ public sealed class CookieCurrentUser : ICurrentUser
     /// <summary>Creates the resolver over the request accessor and resolution options.</summary>
     /// <param name="accessor">Accessor for the ambient <see cref="HttpContext"/>.</param>
     /// <param name="options">Guest-cookie name and subject-claim type.</param>
-    public CookieCurrentUser(IHttpContextAccessor accessor, IOptions<CurrentUserOptions> options)
+    public CookieCurrentUser(IHttpContextAccessor accessor, CurrentUserOptions options)
     {
         ArgumentNullException.ThrowIfNull(accessor);
         ArgumentNullException.ThrowIfNull(options);
         _accessor = accessor;
-        _options = options.Value;
+        _options = options;
     }
 
     /// <inheritdoc />

@@ -19,23 +19,23 @@ public sealed class AppErrorsTests
 
     public static TheoryData<Func<AppError>, AppErrorType> SimpleFactories => new()
     {
-        { () => AppErrors.NotFound(), AppErrorType.NotFound },
-        { () => AppErrors.Conflict(), AppErrorType.Conflict },
-        { () => AppErrors.BusinessRule(), AppErrorType.BusinessRule },
-        { () => AppErrors.PaymentRequired(), AppErrorType.PaymentRequired },
-        { () => AppErrors.Gone(), AppErrorType.Gone },
-        { () => AppErrors.Forbidden(), AppErrorType.Forbidden },
-        { () => AppErrors.Unauthorized(), AppErrorType.Unauthorized },
-        { () => AppErrors.Validation(), AppErrorType.Validation },
-        { () => AppErrors.TooManyRequests(), AppErrorType.TooManyRequests },
-        { () => AppErrors.DbTimeout(), AppErrorType.DbTimeout },
-        { () => AppErrors.OperationTimeout(), AppErrorType.OperationTimeout },
-        { () => AppErrors.ExternalUnavailable(), AppErrorType.ExternalUnavailable },
-        { () => AppErrors.ExternalUnauthorized(), AppErrorType.ExternalUnauthorized },
-        { () => AppErrors.FileNotFound(), AppErrorType.FileNotFound },
-        { () => AppErrors.DataIntegrity(), AppErrorType.DataIntegrity },
-        { () => AppErrors.Canceled(), AppErrorType.Canceled },
-        { () => AppErrors.Unexpected(), AppErrorType.Unexpected },
+        { () => AppErrorFactory.NotFound(), AppErrorType.NotFound },
+        { () => AppErrorFactory.Conflict(), AppErrorType.Conflict },
+        { () => AppErrorFactory.BusinessRule(), AppErrorType.BusinessRule },
+        { () => AppErrorFactory.PaymentRequired(), AppErrorType.PaymentRequired },
+        { () => AppErrorFactory.Gone(), AppErrorType.Gone },
+        { () => AppErrorFactory.Forbidden(), AppErrorType.Forbidden },
+        { () => AppErrorFactory.Unauthorized(), AppErrorType.Unauthorized },
+        { () => AppErrorFactory.Validation(), AppErrorType.Validation },
+        { () => AppErrorFactory.TooManyRequests(), AppErrorType.TooManyRequests },
+        { () => AppErrorFactory.DbTimeout(), AppErrorType.DbTimeout },
+        { () => AppErrorFactory.OperationTimeout(), AppErrorType.OperationTimeout },
+        { () => AppErrorFactory.ExternalUnavailable(), AppErrorType.ExternalUnavailable },
+        { () => AppErrorFactory.ExternalUnauthorized(), AppErrorType.ExternalUnauthorized },
+        { () => AppErrorFactory.FileNotFound(), AppErrorType.FileNotFound },
+        { () => AppErrorFactory.DataIntegrity(), AppErrorType.DataIntegrity },
+        { () => AppErrorFactory.Canceled(), AppErrorType.Canceled },
+        { () => AppErrorFactory.Unexpected(), AppErrorType.Unexpected },
     };
 
     [Fact]
@@ -43,7 +43,7 @@ public sealed class AppErrorsTests
     {
         var inner = new InvalidOperationException("boom");
 
-        var error = AppErrors.Unexpected(inner: inner);
+        var error = AppErrorFactory.Unexpected(inner: inner);
 
         error.Type.Should().Be(AppErrorType.Unexpected);
         error.Metadata.Should().NotBeNull();
@@ -53,7 +53,7 @@ public sealed class AppErrorsTests
     [Fact]
     public void Unexpected_ShouldCaptureCallSite_WhenNoInner()
     {
-        var error = AppErrors.Unexpected();
+        var error = AppErrorFactory.Unexpected();
 
         error.Origin!.Member.Should().Be(nameof(Unexpected_ShouldCaptureCallSite_WhenNoInner));
     }
@@ -63,7 +63,7 @@ public sealed class AppErrorsTests
     {
         var inner = new InvalidOperationException("corrupt");
 
-        var error = AppErrors.DataIntegrity(inner: inner);
+        var error = AppErrorFactory.DataIntegrity(inner: inner);
 
         error.Type.Should().Be(AppErrorType.DataIntegrity);
         error.Metadata!["cause"].Should().Be(nameof(InvalidOperationException));

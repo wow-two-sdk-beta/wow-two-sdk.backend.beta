@@ -122,7 +122,7 @@ internal sealed class EfInterceptorWiringValidator : IHostedService
         return $"EF interceptor wiring is broken for '{contextType.Name}': {missing.Length} interceptor(s) are "
              + $"registered in DI but never attached to the context — {names}. They would be resolvable and silently "
              + "never run. Route the context registration through "
-             + $"{nameof(EfInterceptorWiring)}.{nameof(EfInterceptorWiring.AddRegisteredInterceptors)} "
+             + $"{nameof(EfInterceptorExtensions)}.{nameof(EfInterceptorExtensions.AddRegisteredInterceptors)} "
              + "(AddEntityFrameworkCore<T> and AddPostgresPersistence<T> already do).";
     }
 }

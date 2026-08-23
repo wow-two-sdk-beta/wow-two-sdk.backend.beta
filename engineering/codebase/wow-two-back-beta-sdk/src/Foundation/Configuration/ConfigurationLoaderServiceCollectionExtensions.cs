@@ -4,10 +4,10 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Configuration;
 
-/// <summary>Registration helpers that bind settings via <see cref="ConfigurationLoader"/> (appsettings section and environment-variable overlay).</summary>
+/// <summary>Registration helpers that bind settings via <see cref="ConfigurationMapper"/> (appsettings section and environment-variable overlay).</summary>
 public static class ConfigurationLoaderServiceCollectionExtensions
 {
-    /// <summary>Binds <typeparamref name="T"/> through <see cref="ConfigurationLoader.Load{T}"/> and registers the resolved instance as <see cref="IOptions{T}"/>.</summary>
+    /// <summary>Binds <typeparamref name="T"/> through <see cref="ConfigurationMapper.Load{T}"/> and registers the resolved instance as <see cref="IOptions{T}"/>.</summary>
     /// <typeparam name="T">The settings type to bind, overlay, and register.</typeparam>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configuration">The configuration the section is bound from.</param>
@@ -22,7 +22,7 @@ public static class ConfigurationLoaderServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var settings = ConfigurationLoader.Load<T>(configuration, sectionName);
+        var settings = ConfigurationMapper.Load<T>(configuration, sectionName);
 
         services.AddSingleton(settings);
         services.AddSingleton<IOptions<T>>(new OptionsWrapper<T>(settings));

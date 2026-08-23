@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Core;
 
@@ -25,10 +27,8 @@ public static class IdentityCoreServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var options = new IdentityCoreOptions();
-        configure?.Invoke(options);
-        services.TryAddSingleton(options);
-        services.TryAddSingleton<ILookupNormalizer, UpperInvariantLookupNormalizer>();
+        services.AddOptions<IdentityCoreOptions>().Configure(options => configure?.Invoke(options));
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<IdentityCoreOptions>>().Value);
         services.TryAddScoped<UserAccountManager<TUser, TKey>>();
 
         return new IdentityBuilder<TUser, TKey>(services);

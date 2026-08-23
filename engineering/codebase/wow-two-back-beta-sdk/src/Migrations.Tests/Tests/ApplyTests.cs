@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Harness;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 
@@ -19,7 +20,7 @@ public sealed class ApplyTests : SqliteMigratorTestBase
         await using var migrator = CreateMigrator();
 
         // First apply: both pending migrations run.
-        var applied = await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None);
+        var applied = (await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None)).ValueOrThrow();
         applied.Should().BeEquivalentTo(["001-baseline", "002-second"]);
 
         // The tables they declare now exist.
@@ -34,14 +35,14 @@ public sealed class ApplyTests : SqliteMigratorTestBase
         history.Should().OnlyContain(r => r.AppliedBy == "test");
 
         // GetStatus shows both applied, nothing pending / drifted / orphaned.
-        var status = await migrator.Runner.GetStatusAsync(CancellationToken.None);
+        var status = (await migrator.Runner.GetStatusAsync(CancellationToken.None)).ValueOrThrow();
         status.Applied.Select(a => a.Ordinal).Should().Equal(1, 2);
         status.Pending.Should().BeEmpty();
         status.Drifted.Should().BeEmpty();
         status.Orphaned.Should().BeEmpty();
 
         // Second apply against an up-to-date DB is a no-op: no labels, history unchanged.
-        var second = await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None);
+        var second = (await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None)).ValueOrThrow();
         second.Should().BeEmpty();
         (await migrator.ReadHistoryAsync()).Should().HaveCount(2);
     }

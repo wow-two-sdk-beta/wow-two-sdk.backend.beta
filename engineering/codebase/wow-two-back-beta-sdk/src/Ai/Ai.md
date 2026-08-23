@@ -8,7 +8,7 @@ Namespace root: `WoW.Two.Sdk.Backend.Beta.Ai`. `IChatClient` / `IEmbeddingGenera
 
 | Folder | Surface | Role |
 |---|---|---|
-| `Core/` | `ChatClientConventions.Apply`, `AiPipelineOptions` | Uniform pipeline (function-invocation + OpenTelemetry) every broker terminates with |
+| `Core/` | `ChatExtensions.Apply`, `AiPipelineOptions` | Uniform pipeline (function-invocation + OpenTelemetry) every broker terminates with |
 | `Ollama/` | `AddOllamaChatClient(endpoint, model)`, `AddOllamaEmbeddingGenerator(...)` | Local models via the Ollama server |
 | `Tokenizers/` | `AddTiktokenTokenCounter(model)`, `ITokenCounter` | tiktoken token counting for prompt-budget / cost |
 
@@ -30,7 +30,7 @@ public sealed class Assistant(IChatClient chat, ITokenCounter tokens)
 }
 ```
 
-Every broker wraps its raw client with the SDK pipeline (`ChatClientConventions.Apply`) so tool-calling and OTel are on by default (toggle via `AiPipelineOptions`).
+Every broker wraps its raw client with the SDK pipeline (`ChatExtensions.Apply`) so tool-calling and OTel are on by default (toggle via `AiPipelineOptions`).
 
 ## Provider status
 

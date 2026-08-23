@@ -8,7 +8,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Auth;
 /// test-auth scheme is the active handler. Tweak per test via <c>AddTestAuth</c>'s configure callback.
 /// </summary>
 /// <remarks>
-/// The handler stamps the SDK's canonical <c>wt:*</c> claims (mirrored in <see cref="TestClaimTypes"/>) so code that
+/// The handler stamps the SDK's canonical <c>wt:*</c> claims (mirrored in <see cref="TestClaimTypeConstants"/>) so code that
 /// reads identity via the SDK's <c>ClaimsPrincipalExtensions</c> (<c>GetUserId()</c>, <c>GetEmail()</c>, …) works
 /// unchanged under test. Add anything provider-specific via <see cref="ExtraClaims"/>.
 /// </remarks>

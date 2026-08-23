@@ -4,7 +4,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.Core;
 
 /// <summary>Join row assigning a role to a user (composite key user + role). Consumed by the roles slice.</summary>
 /// <typeparam name="TKey">User/role key type.</typeparam>
-public class IdentityUserRole<TKey> : IEntity
+public class IdentityUserRole<TKey> : ICompositeKeyEntity
     where TKey : notnull, IEquatable<TKey>
 {
     /// <summary>The user.</summary>
@@ -52,7 +52,7 @@ public class IdentityRoleClaim<TKey> : IKeyedEntity<int>
 
 /// <summary>An external login (Google/Microsoft/Telegram/…) linked to a user (composite key provider + provider-key).</summary>
 /// <typeparam name="TKey">User key type.</typeparam>
-public class IdentityUserLogin<TKey> : IEntity
+public class IdentityUserLogin<TKey> : ICompositeKeyEntity
     where TKey : notnull, IEquatable<TKey>
 {
     /// <summary>External provider name (e.g. <c>Google</c>).</summary>
@@ -70,7 +70,7 @@ public class IdentityUserLogin<TKey> : IEntity
 
 /// <summary>A persisted per-user token — reset / 2FA / recovery / provider tokens (composite key user + provider + name).</summary>
 /// <typeparam name="TKey">User key type.</typeparam>
-public class IdentityUserToken<TKey> : IEntity
+public class IdentityUserToken<TKey> : ICompositeKeyEntity
     where TKey : notnull, IEquatable<TKey>
 {
     /// <summary>The owning user.</summary>

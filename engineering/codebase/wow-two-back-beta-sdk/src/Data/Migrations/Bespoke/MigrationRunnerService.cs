@@ -3,7 +3,9 @@ using System.Diagnostics;
 using System.Globalization;
 using Dapper;
 using Microsoft.Extensions.Logging;
-using WoW.Two.Sdk.Backend.Beta.Data.Abstractions; // IDbConnectionFactory — the SDK connection seam (returns BCL DbConnection).
+using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results; // IDbConnectionFactory — the SDK connection seam (returns BCL DbConnection).
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
@@ -17,16 +19,19 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 ///   5. Release the lock
 /// </remarks>
 public sealed partial class MigrationRunnerService(
-    IMigrationScanner scanner,
+    IMigrationSource source,
     IMigrationHistoryRepository history,
     IDbConnectionFactory connections,
     MigrationOptions options,
     ILogger<MigrationRunnerService> logger) : IMigrationRunnerService
 {
     /// <inheritdoc />
-    public async Task<IReadOnlyList<string>> ApplyPendingAsync(string appliedBy, CancellationToken ct = default)
+    public async Task<Result<IReadOnlyList<string>>> ApplyPendingAsync(string appliedBy, CancellationToken ct = default)
     {
-        var migrations = scanner.Scan();
+        if (Scan().IsFailure(out var malformed, out var migrations))
+        {
+            return Result<IReadOnlyList<string>>.Fail(malformed);
+        }
 
         await using var conn = await connections.CreateOpenAsync(ct);
 
@@ -37,15 +42,22 @@ public sealed partial class MigrationRunnerService(
             await history.EnsureTableAsync(conn, ct);
             var applied = await history.GetAppliedAsync(conn, ct);
 
-            VerifyNoDrift(migrations, applied);
-            VerifyNoOrphans(migrations, applied);
+            if (VerifyNoDrift(migrations, applied) is { } drift)
+            {
+                return Result<IReadOnlyList<string>>.Fail(drift);
+            }
+
+            if (VerifyNoOrphans(migrations, applied) is { } orphans)
+            {
+                return Result<IReadOnlyList<string>>.Fail(orphans);
+            }
 
             var appliedOrdinals = applied.Select(a => a.Ordinal).ToHashSet();
             var pending = migrations.Where(m => !appliedOrdinals.Contains(m.Ordinal)).ToList();
             if (pending.Count == 0)
             {
                 LogUpToDate(applied.Count);
-                return [];
+                return Result<IReadOnlyList<string>>.Ok([]);
             }
 
             var done = new List<string>();
@@ -56,7 +68,7 @@ public sealed partial class MigrationRunnerService(
                 LogApplied(migration.Label, elapsedMs);
             }
 
-            return done;
+            return Result<IReadOnlyList<string>>.Ok(done);
         }
         finally
         {
@@ -101,9 +113,13 @@ public sealed partial class MigrationRunnerService(
     }
 
     /// <inheritdoc />
-    public async Task<MigrationStatus> GetStatusAsync(CancellationToken ct = default)
+    public async Task<Result<MigrationStatus>> GetStatusAsync(CancellationToken ct = default)
     {
-        var migrations = scanner.Scan();
+        if (Scan().IsFailure(out var malformed, out var migrations))
+        {
+            return Result<MigrationStatus>.Fail(malformed);
+        }
+
         var byOrdinal = migrations.ToDictionary(m => m.Ordinal);
 
         await using var conn = await connections.CreateOpenAsync(ct);
@@ -119,17 +135,25 @@ public sealed partial class MigrationRunnerService(
         var orphaned = applied.Where(a => !byOrdinal.ContainsKey(a.Ordinal)).Select(a => a.Ordinal).ToList();
         var pending = migrations.Where(m => !appliedOrdinals.Contains(m.Ordinal)).ToList();
 
-        return new MigrationStatus { Applied = applied, Pending = pending, Drifted = drifted, Orphaned = orphaned };
+        return Result<MigrationStatus>.Ok(
+            new MigrationStatus { Applied = applied, Pending = pending, Drifted = drifted, Orphaned = orphaned });
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<string>> RollbackAsync(int? targetOrdinal = null, CancellationToken ct = default)
+    public async Task<Result<IReadOnlyList<string>>> RollbackAsync(int? targetOrdinal = null, CancellationToken ct = default)
     {
+        // Configuration, not a domain failure: a host that disabled rollback and called it anyway is misconfigured, and the
+        // framework's own seams only catch what is thrown. Stays an exception under N82.
         if (!options.AllowRollback)
             throw new InvalidOperationException(
                 "Rollback is disabled (MigrationOptions.AllowRollback = false). Enable it to permit this guarded recovery op (allowed in any environment, prod included).");
 
-        var byOrdinal = scanner.Scan().ToDictionary(m => m.Ordinal);
+        if (Scan().IsFailure(out var malformed, out var migrations))
+        {
+            return Result<IReadOnlyList<string>>.Fail(malformed);
+        }
+
+        var byOrdinal = migrations.ToDictionary(m => m.Ordinal);
 
         await using var conn = await connections.CreateOpenAsync(ct);
         await history.AcquireLockAsync(conn, ct);
@@ -147,8 +171,10 @@ public sealed partial class MigrationRunnerService(
             foreach (var row in toRollback)
             {
                 if (!byOrdinal.TryGetValue(row.Ordinal, out var migration))
-                    throw new InvalidOperationException(
-                        $"No migration source for {row.Ordinal:D3}-{row.Name}; cannot roll back.");
+                {
+                    return Result<IReadOnlyList<string>>.Fail(AppErrorFactory.NotFound(
+                        $"No migration source for {row.Ordinal:D3}-{row.Name}; cannot roll back."));
+                }
 
                 await using var tx = await conn.BeginTransactionAsync(ct);
                 try
@@ -166,7 +192,7 @@ public sealed partial class MigrationRunnerService(
                 }
             }
 
-            return done;
+            return Result<IReadOnlyList<string>>.Ok(done);
         }
         finally
         {
@@ -175,13 +201,19 @@ public sealed partial class MigrationRunnerService(
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<string>> RepairAsync(CancellationToken ct = default)
+    public async Task<Result<IReadOnlyList<string>>> RepairAsync(CancellationToken ct = default)
     {
+        // Configuration, same as RollbackAsync — stays an exception under N82.
         if (!options.AllowRollback)
             throw new InvalidOperationException(
                 "Repair is disabled (MigrationOptions.AllowRollback = false) — it rewrites recorded checksums; enable it to permit this guarded recovery op.");
 
-        var byOrdinal = scanner.Scan().ToDictionary(m => m.Ordinal);
+        if (Scan().IsFailure(out var malformed, out var migrations))
+        {
+            return Result<IReadOnlyList<string>>.Fail(malformed);
+        }
+
+        var byOrdinal = migrations.ToDictionary(m => m.Ordinal);
 
         await using var conn = await connections.CreateOpenAsync(ct);
 
@@ -203,7 +235,7 @@ public sealed partial class MigrationRunnerService(
                 }
             }
 
-            return repaired;
+            return Result<IReadOnlyList<string>>.Ok(repaired);
         }
         finally
         {
@@ -211,11 +243,70 @@ public sealed partial class MigrationRunnerService(
         }
     }
 
+    // Scanning is a private step, not a seam: source pluggability lives in IMigrationSource, and this parse is the only
+    // reading of a RawMigration there will ever be. Splitting it behind an interface bought one implementation, one
+    // consumer and no test fake.
+    /// <summary>Reads the source, parses <c>NNN-name</c>, computes checksums, and returns migrations ordered by ordinal.</summary>
+    private Result<List<MigrationDescriptor>> Scan()
+    {
+        var descriptors = new List<MigrationDescriptor>();
+
+        foreach (var raw in source.Read())
+        {
+            // Parse the NNN-name prefix; reject anything that does not match.
+            var match = MigrationConventions.FolderPattern().Match(raw.Name);
+            if (!match.Success)
+            {
+                return Result<List<MigrationDescriptor>>.Fail(AppErrorFactory.Validation(
+                    $"Migration folder '{raw.Name}' must match NNN-name (e.g. 001-baseline)."));
+            }
+
+            descriptors.Add(new MigrationDescriptor
+            {
+                Ordinal = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture),
+                Name = match.Groups[2].Value,
+                ApplySql = raw.ApplySql,
+                RollbackSql = raw.RollbackSql,
+                Checksum = raw.ApplySql.ToMigrationChecksum(),
+                NoTransaction = HasNoTransactionDirective(raw.ApplySql),
+            });
+        }
+
+        // Reject two migrations claiming the same ordinal.
+        var duplicate = descriptors.GroupBy(d => d.Ordinal).FirstOrDefault(g => g.Count() > 1);
+        if (duplicate is not null)
+        {
+            return Result<List<MigrationDescriptor>>.Fail(AppErrorFactory.Validation(
+                $"Duplicate migration ordinal {duplicate.Key:D3}: {string.Join(", ", duplicate.Select(d => d.Name))}."));
+        }
+
+        return Result<List<MigrationDescriptor>>.Ok(descriptors.OrderBy(d => d.Ordinal).ToList());
+    }
+
+    /// <summary>Gets whether the leading comment header contains a no-transaction directive.</summary>
+    /// <param name="applySql">The Apply script to inspect.</param>
+    private static bool HasNoTransactionDirective(string applySql)
+    {
+        using var reader = new StringReader(applySql);
+        while (reader.ReadLine() is { } line)
+        {
+            var trimmed = line.Trim();
+            if (trimmed.Length == 0)
+                continue;
+            if (!trimmed.StartsWith("--", StringComparison.Ordinal))
+                break; // The first non-comment line ends the header.
+            if (trimmed.Replace(" ", "").Equals(MigrationConventions.NoTransactionDirectiveCompact, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
     /// <summary>Verifies no applied migration's source checksum has drifted.</summary>
     /// <param name="migrations">The scanned source migrations.</param>
     /// <param name="applied">The applied history rows to compare against.</param>
-    /// <exception cref="MigrationDriftException">One or more applied migrations no longer match their source.</exception>
-    private static void VerifyNoDrift(IReadOnlyList<MigrationDescriptor> migrations, IReadOnlyList<MigrationHistoryEntry> applied)
+    /// <returns>The drift error, or <see langword="null"/> when every applied checksum still matches.</returns>
+    private static AppError? VerifyNoDrift(IReadOnlyList<MigrationDescriptor> migrations, IReadOnlyList<MigrationHistoryEntry> applied)
     {
         var byOrdinal = migrations.ToDictionary(m => m.Ordinal);
         var drifted = applied
@@ -223,29 +314,41 @@ public sealed partial class MigrationRunnerService(
             .Select(a => byOrdinal[a.Ordinal].Label)
             .ToList();
 
-        if (drifted.Count > 0)
-            throw new MigrationDriftException(drifted);
+        if (drifted.Count == 0)
+        {
+            return null;
+        }
+
+        return AppError.Of(
+            AppErrorType.DataIntegrity,
+            $"Applied migrations no longer match their source: {string.Join(", ", drifted)}.",
+            new Dictionary<string, object?> { ["drifted"] = drifted });
     }
 
     /// <summary>Fails closed when the history holds applied migrations absent from the source — unless orphans are explicitly allowed.</summary>
     /// <param name="migrations">The scanned source migrations.</param>
     /// <param name="applied">The applied history rows to compare against.</param>
-    /// <exception cref="MigrationOrphanException">The history has applied ordinals with no source migration and <see cref="MigrationOptions.AllowOrphanedHistory"/> is false.</exception>
-    private void VerifyNoOrphans(IReadOnlyList<MigrationDescriptor> migrations, IReadOnlyList<MigrationHistoryEntry> applied)
+    /// <returns>The orphan error, or <see langword="null"/> when there are none or they are allowed.</returns>
+    private AppError? VerifyNoOrphans(IReadOnlyList<MigrationDescriptor> migrations, IReadOnlyList<MigrationHistoryEntry> applied)
     {
         var sourceOrdinals = migrations.Select(m => m.Ordinal).ToHashSet();
         var orphaned = applied.Where(a => !sourceOrdinals.Contains(a.Ordinal)).Select(a => a.Ordinal).ToList();
         if (orphaned.Count == 0)
-            return;
+        {
+            return null;
+        }
 
         if (options.AllowOrphanedHistory)
         {
             if (logger.IsEnabled(LogLevel.Warning))
                 LogOrphanedHistory(string.Join(", ", orphaned.Select(o => o.ToString("D3", CultureInfo.InvariantCulture))));
-            return;
+            return null;
         }
 
-        throw new MigrationOrphanException(orphaned);
+        return AppError.Of(
+            AppErrorType.DataIntegrity,
+            $"History holds applied migrations absent from the source: {string.Join(", ", orphaned.Select(o => o.ToString("D3", CultureInfo.InvariantCulture)))}.",
+            new Dictionary<string, object?> { ["orphaned"] = orphaned });
     }
 
     /// <summary>Builds the history entry recorded for an applied migration.</summary>

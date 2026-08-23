@@ -34,12 +34,12 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 internal sealed class SagaCoordinator<TState>(
     SagaStateMachine<TState> machine,
     ISagaTimeoutScheduler timeouts,
-    IOptions<SagaOptions> options,
+    SagaOptions options,
     TimeProvider timeProvider,
     ILogger<SagaCoordinator<TState>> logger)
     where TState : class, ISagaState, new()
 {
-    private readonly SagaOptions _options = options.Value;
+    private readonly SagaOptions _options = options;
 
     /// <summary>Handle one message for this saga.</summary>
     /// <typeparam name="TEvent">The event type.</typeparam>
@@ -108,7 +108,7 @@ internal sealed class SagaCoordinator<TState>(
         {
             // No instance: only an Initially clause may create one — a DuringAny clause does not, because an instance
             // that does not exist is not in "any" state. Anything else is an event for a flow that already finished.
-            if (!binding.Transitions.TryGetValue(SagaStates.Initial, out var initiating))
+            if (!binding.Transitions.TryGetValue(SagaStateConstants.Initial, out var initiating))
             {
                 if (binding.MissingInstance == SagaMissingInstance.Fault)
                     throw new InvalidOperationException($"Saga '{machine.Name}' has no instance '{correlationId}' for {typeof(TEvent).Name}, and no clause initiates one.");
@@ -120,7 +120,7 @@ internal sealed class SagaCoordinator<TState>(
             transition = initiating;
             state = new TState();
             state.CorrelationId = correlationId;
-            state.CurrentState = SagaStates.Initial;
+            state.CurrentState = SagaStateConstants.Initial;
         }
         else
         {
@@ -144,7 +144,7 @@ internal sealed class SagaCoordinator<TState>(
         var from = state.CurrentState;
         ApplyTargetState(transitionContext, transition, state);
 
-        var finalized = string.Equals(state.CurrentState, SagaStates.Final, StringComparison.Ordinal);
+        var finalized = string.Equals(state.CurrentState, SagaStateConstants.Final, StringComparison.Ordinal);
         if (finalized && state.FinalizedAtUtc is null)
             state.FinalizedAtUtc = timeProvider.GetUtcNow();
 
@@ -179,10 +179,10 @@ internal sealed class SagaCoordinator<TState>(
 
         // A retained finalized instance takes no wildcard clause: "any state" means any state the saga is running in,
         // and a finished flow reacting to a late cancellation would restart work that already ended.
-        if (string.Equals(sourceState, SagaStates.Final, StringComparison.Ordinal))
+        if (string.Equals(sourceState, SagaStateConstants.Final, StringComparison.Ordinal))
             return null;
 
-        return binding.Transitions.TryGetValue(SagaStates.Any, out var wildcard) ? wildcard : null;
+        return binding.Transitions.TryGetValue(SagaStateConstants.Any, out var wildcard) ? wildcard : null;
     }
 
     private static void ApplyTargetState<TEvent>(SagaTransitionContext<TState, TEvent> context, SagaTransition<TState, TEvent> transition, TState state)
@@ -191,7 +191,7 @@ internal sealed class SagaCoordinator<TState>(
         // Imperative wins over declarative: a branch decided inside an activity knows more than the clause did.
         if (context.Finalized)
         {
-            state.CurrentState = SagaStates.Final;
+            state.CurrentState = SagaStateConstants.Final;
             return;
         }
 
@@ -203,7 +203,7 @@ internal sealed class SagaCoordinator<TState>(
 
         if (transition.Finalizes)
         {
-            state.CurrentState = SagaStates.Final;
+            state.CurrentState = SagaStateConstants.Final;
             return;
         }
 
@@ -219,10 +219,10 @@ internal sealed class SagaCoordinator<TState>(
     private bool TryConsumeTimeoutToken<TEvent>(EventContext<TEvent> context, TState state, string correlationId)
         where TEvent : class, IEvent
     {
-        if (machine.TimeoutNameFor(typeof(TEvent)) is null || !context.Headers.TryGetValue(SagaHeaders.TimeoutToken, out var token))
+        if (machine.TimeoutNameFor(typeof(TEvent)) is null || !context.Headers.TryGetValue(SagaHeaderConstants.TimeoutToken, out var token))
             return true; // not a saga-scheduled timeout — an ordinary event of the same type is handled normally
 
-        var name = context.Headers.TryGetValue(SagaHeaders.TimeoutName, out var declared) ? declared : typeof(TEvent).Name;
+        var name = context.Headers.TryGetValue(SagaHeaderConstants.TimeoutName, out var declared) ? declared : typeof(TEvent).Name;
         if (!state.TimeoutTokens.TryGetValue(name, out var expected) || !string.Equals(expected, token, StringComparison.Ordinal))
         {
             SagaLog.StaleTimeout(logger, machine.Name, name, correlationId);

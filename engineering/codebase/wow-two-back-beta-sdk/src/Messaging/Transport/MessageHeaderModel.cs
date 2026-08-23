@@ -14,7 +14,7 @@ public interface IMessageHeaderPropagationPolicy
 {
     /// <summary>
     /// True when a header of this name should be copied from the consumed message onto the outgoing one. Reserved
-    /// (<see cref="MessageHeaders.ReservedPrefix"/>) keys are blocked by the caller regardless of the answer, so an
+    /// (<see cref="MessageHeaderConstants.ReservedPrefix"/>) keys are blocked by the caller regardless of the answer, so an
     /// implementation never has to guard the control namespace itself.
     /// </summary>
     /// <param name="key">The inbound header key.</param>
@@ -50,8 +50,8 @@ public sealed class MessageHeaderPropagationPolicy : IMessageHeaderPropagationPo
     }
 
     /// <summary>
-    /// The default policy: W3C trace context only (<see cref="MessageHeaders.TraceParent"/> +
-    /// <see cref="MessageHeaders.TraceState"/>), matching what the SDK propagated before the policy seam existed.
+    /// The default policy: W3C trace context only (<see cref="MessageHeaderConstants.TraceParent"/> +
+    /// <see cref="MessageHeaderConstants.TraceState"/>), matching what the SDK propagated before the policy seam existed.
     /// </summary>
     /// <remarks>
     /// On a traced path the copy is inert — the producer <see cref="System.Diagnostics.Activity"/> re-stamps both keys
@@ -59,7 +59,7 @@ public sealed class MessageHeaderPropagationPolicy : IMessageHeaderPropagationPo
     /// only when nothing is listening to the <c>ActivitySource</c>, keeping the outgoing message inside the inbound
     /// trace instead of dropping it.
     /// </remarks>
-    public static MessageHeaderPropagationPolicy Default { get; } = new(MessageHeaders.TraceParent, MessageHeaders.TraceState);
+    public static MessageHeaderPropagationPolicy Default { get; } = new(MessageHeaderConstants.TraceParent, MessageHeaderConstants.TraceState);
 
     /// <summary>A policy that propagates nothing — every outgoing message starts with a clean header set.</summary>
     public static MessageHeaderPropagationPolicy None { get; } = new();
@@ -76,11 +76,11 @@ public sealed class MessageHeaderPropagationPolicy : IMessageHeaderPropagationPo
     }
 
     /// <inheritdoc />
-    public bool ShouldPropagate(string key) => !string.IsNullOrEmpty(key) && !MessageHeaders.IsReserved(key) && _allowed.Contains(key);
+    public bool ShouldPropagate(string key) => !string.IsNullOrEmpty(key) && !MessageHeaderConstants.IsReserved(key) && _allowed.Contains(key);
 }
 
 /// <summary>Applies an <see cref="IMessageHeaderPropagationPolicy"/> to build the header set of an outgoing message.</summary>
-public static class MessageHeaderPropagation
+public static class MessageHeaderExtensions
 {
     /// <summary>
     /// Build the headers for a message published while handling <paramref name="inbound"/>: the inbound headers the
@@ -107,7 +107,7 @@ public static class MessageHeaderPropagation
             {
                 // Reserved keys are blocked here, not in the policy: a control header describes the message it arrived
                 // on, so carrying one forward would stamp the previous body's type token or message id onto a new body.
-                if (MessageHeaders.IsReserved(key) || !policy.ShouldPropagate(key))
+                if (MessageHeaderConstants.IsReserved(key) || !policy.ShouldPropagate(key))
                     continue;
 
                 (outbound ??= new Dictionary<string, string>(StringComparer.Ordinal))[key] = value;

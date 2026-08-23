@@ -10,10 +10,10 @@ public sealed class NumericOtpCodeGenerator : IOtpCodeGenerator
 
     /// <summary>Creates the generator from configured options.</summary>
     /// <param name="options">Source of <see cref="OtpOptions.CodeLength"/>.</param>
-    public NumericOtpCodeGenerator(IOptions<OtpOptions> options)
+    public NumericOtpCodeGenerator(OtpOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        _length = options.Value.CodeLength;
+        _length = options.CodeLength;
         ArgumentOutOfRangeException.ThrowIfLessThan(_length, 4, nameof(options));
         ArgumentOutOfRangeException.ThrowIfGreaterThan(_length, 10, nameof(options));
     }

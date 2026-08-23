@@ -29,7 +29,7 @@ WoW.Two.Sdk.Backend.Beta  (mono-lib; namespace WoW.Two.Sdk.Backend.Beta.Messagin
 
 | Type | Notes |
 |---|---|
-| `IMessageSerializer` | Body ↔ bytes, with a `ContentType`. Default `SystemTextJsonMessageSerializer` (`JsonOptionsPresets`). Swap via `AddMessageSerializer<T>()`. |
+| `IMessageSerializer` | Body ↔ bytes, with a `ContentType`. Default `SystemTextJsonMessageSerializer` (`JsonOptionsConstants`). Swap via `AddMessageSerializer<T>()`. |
 | `IMessageTypeResolver` | CLR type ↔ **stable wire token** (`FullName`, AQN fallback). The token — not the assembly-qualified name — is what rides `wt-event-type` and what a routing key is built from, so a version bump or type move does not break routing. |
 | `MessageTypeRegistry` · `MapMessageType<TEvent>(token)` | Explicit token for a producer-only contract, a custom URN, or a rename alias. |
 | `MessagePackMessageSerializer` | Compact binary — typically 30–60% smaller than JSON and cheaper to encode, at the cost of a payload unreadable off the broker. `ContentType` = `application/x-msgpack`. Contractless resolver by default, so a contract that worked under JSON keeps working with no `[MessagePackObject]` annotation. Security: `MessagePackSecurity.UntrustedData`; the **typeless** resolvers are deliberately not used — they embed CLR type names and instantiate whatever the sender names (RCE vector). Type identity stays in `wt-event-type`, never in the body. Compression is off by default and changes the wire bytes, so it must be switched on producers and consumers together. |
@@ -39,12 +39,12 @@ WoW.Two.Sdk.Backend.Beta  (mono-lib; namespace WoW.Two.Sdk.Backend.Beta.Messagin
 
 | Type | Notes |
 |---|---|
-| `MessageHeaders` | The shared wire-header contract, so no adapter carries inline literals. `ReservedPrefix = "wt-"` · `EventType` · `ContentType` · `MessageId` · `PartitionKey` · `ReplyTo` · `CorrelationId` · `ConversationId` · `DeliveryCount` · `DeadLetterReason` · `DeadLetterExceptionType`; unreserved standards `TraceParent` · `TraceState` · `Baggage`. Two predicates, **not interchangeable**: `IsReserved(key)` · `IsAdapterOwned(key)`. |
+| `MessageHeaderConstants` | The shared wire-header contract, so no adapter carries inline literals. `ReservedPrefix = "wt-"` · `EventType` · `ContentType` · `MessageId` · `PartitionKey` · `ReplyTo` · `CorrelationId` · `ConversationId` · `DeliveryCount` · `DeadLetterReason` · `DeadLetterExceptionType`; unreserved standards `TraceParent` · `TraceState` · `Baggage`. Two predicates, **not interchangeable**: `IsReserved(key)` · `IsAdapterOwned(key)`. |
 | `IsReserved` ⊃ `IsAdapterOwned` | `IsReserved` = the whole `wt-` namespace. `IsAdapterOwned` = the **8 keys an adapter re-derives from the envelope on every send** (`EventType`, `ContentType`, `MessageId`, `PartitionKey`, `ReplyTo`, `CorrelationId`, `ConversationId`, `DeliveryCount`) — the only ones it may strip. Everything in the gap is a reserved header an SDK **feature** stamps and no adapter re-stamps: `wt-slr-tier`, `wt-dl-redrive-count`, `wt-claim-check*`, `wt-saga-timeout-*`. Stripping on `IsReserved` drops all of them at the broker, so those features work in-memory and are silently dead behind every broker — the bug this pair exists to prevent. |
-| *reserved namespace* | An adapter re-stamps the adapter-owned 8 from the envelope, so a caller-supplied copy of one is **overwritten on send** and cannot forge the wire contract (a forged `wt-event-type` would otherwise redirect type resolution). Reserved-but-not-owned headers **ride through** a send, which is what lets a retry, delay or redrive hop carry a claim-check reference or a retry tier. Separately, `MessageHeaderPropagation` blocks **every** reserved key from flowing consumed → published: a control header describes the message it arrived on, so carrying one forward would stamp the previous body's type token or id onto a new body. |
+| *reserved namespace* | An adapter re-stamps the adapter-owned 8 from the envelope, so a caller-supplied copy of one is **overwritten on send** and cannot forge the wire contract (a forged `wt-event-type` would otherwise redirect type resolution). Reserved-but-not-owned headers **ride through** a send, which is what lets a retry, delay or redrive hop carry a claim-check reference or a retry tier. Separately, `MessageHeaderExtensions` blocks **every** reserved key from flowing consumed → published: a control header describes the message it arrived on, so carrying one forward would stamp the previous body's type token or id onto a new body. |
 | `IMessageHeaderPropagationPolicy` | `ShouldPropagate(key)` — which of a consumed message's headers flow onto a message published *while handling it*. Applied by `EventContext<T>`, the only place holding both. |
 | `MessageHeaderPropagationPolicy` | Allow-list impl, case-insensitive, immutable (`Allow(…)` returns a widened copy). `Default` = `traceparent` + `tracestate` · `None` = nothing. Reserved keys can never be allowed. |
-| `MessageHeaderPropagation.BuildOutboundHeaders(policy, inbound, explicit?)` | Merge: policy-allowed inbound headers, overlaid with headers the caller set explicitly (caller wins). Returns `null` when empty, so an unconfigured path stays allocation-free. |
+| `MessageHeaderExtensions.BuildOutboundHeaders(policy, inbound, explicit?)` | Merge: policy-allowed inbound headers, overlaid with headers the caller set explicitly (caller wins). Returns `null` when empty, so an unconfigured path stays allocation-free. |
 
 ### Topology (`…Messaging.Transport`)
 
@@ -54,7 +54,7 @@ Replaces the pre-B4 catch-all binding: bindings derive from the **registered han
 |---|---|
 | `ITopologyProvider` | `ConsumeEndpoints` · `RoutingKeyFor(Type)` · `ResolveRoutingKey(EventEnvelope)` (type key for a publish, destination address for an explicit send). |
 | `EndpointTopology` | `record`: `Queue` · `DeadLetterQueue` · `RoutingKeys` · `MessageTypes`. |
-| `IEndpointNameFormatter` | `Endpoint(Type)` · `DeadLetter(endpointName)`. Default kebab-cases the **simple** type name under an optional dotted prefix: `OrderPlaced` + `wt.events` → `wt.events.order-placed` → `.dlq`. |
+| `IEndpointNameMapper` | `Endpoint(Type)` · `DeadLetter(endpointName)`. Default kebab-cases the **simple** type name under an optional dotted prefix: `OrderPlaced` + `wt.events` → `wt.events.order-placed` → `.dlq`. |
 | `TopologyStyle` | `SharedEndpoint` (**default** — one queue per service, one binding per type; existing deployments keep their queue + DLQ names and nothing strands) · `EndpointPerMessageType` (per-type queue, prefetch, DLQ — opt-in, needs new queues). |
 | `TopologyOptions` | `Style` · `SharedEndpointName` · `SharedDeadLetterQueueName` · `EndpointPrefix` · `BindLegacyTypeNameKeys` (default `true` — keeps un-upgraded publishers' short-name keys routable) · `BindEndpointNameKeys` (default `true` — an explicit `SendAsync` to a queue name lands point-to-point). |
 | `ConsumedMessageTypeRegistry` | Registration-time consumed-type set, ordered by full name so the declared topology is identical across restarts and instances. |
@@ -103,7 +103,7 @@ Watch-only counterpart to `IConsumeFilter`. A filter sits *in* the chain and may
 | Type | Notes |
 |---|---|
 | `BackoffKind` · `RetryConfig(MaxAttempts=5, Backoff=ExponentialJitter, BaseDelay?, MaxDelay?)` · `IRetryPolicy` · `DefaultRetryPolicy` | Retry schedule. `NextDelay` returns `null` → dead-letter. |
-| `IDeadLetterStore` | `DeadLetterAsync(DeadLetterRecord, ct)` · `ReadAsync(source, ct) → IAsyncEnumerable<DeadLetterRecord>` · `ReplayAsync(messageId, ct)` (redrive). Build the record with `DeadLetterRecord.From(env, ex, nowUtc)`. |
+| `IDeadLetterRepository` | `DeadLetterAsync(DeadLetterRecord, ct)` · `ReadAsync(source, ct) → IAsyncEnumerable<DeadLetterRecord>` · `ReplayAsync(messageId, ct)` (redrive). Build the record with `DeadLetterRecord.From(env, ex, nowUtc)`. |
 | `IInboxProcessor.ProcessOnceAsync(messageId, handler)` | Exactly-once seam: dedupe + (EF) run handler in the **same transaction**. `false` ⇒ duplicate (skip). |
 | `IEventScheduler.ScheduleAsync(envelope, notBeforeUtc)` | Delayed delivery. |
 | `IOutbox` / `OutboxRecord` / `IOutboxDispatcher` | Transactional-outbox ports. Rows carry `content_type`, so the outbox rides the serializer seam. |
@@ -173,7 +173,7 @@ Built on `ServiceBusReceiver`, **not** `ServiceBusProcessor`: the processor stop
 |---|---|
 | `AddRedisStreamsEventBus(Action<RedisStreamsOptions>, params Assembly[])` | Handlers + resilience + topology + send/receive transports + `IEventBus` + consumer hosted service. Back-fills `TopologyOptions.SharedEndpointName` from `Stream` and `SharedDeadLetterQueueName` from `DeadLetterStream`. |
 | `RedisStreamsOptions` | `Configuration` (`localhost:6379`) · `Database` (-1) · `Stream` (`wt.events`) · `ConsumerGroup` (`wt-consumers`) · `ConsumerName` (null → `{machine}-{pid}`) · `DeadLetterStream` (`wt.events.dlq`) · `MaxLength` (100 000) · `UseApproximateMaxLength` (`true`) · `DeadLetterMaxLength` (null = never trimmed) · `BatchSize` (32) · `PollInterval` (250ms) · `ClaimInterval` (30s) · `MinIdleTimeBeforeClaim` (5m) · `MaxDeliveryAttempts` (5) · `RouteByDestination`. |
-| *(internal)* `RedisStreams{Connection,Topology,WireFormat,SendTransport,ReceiveContext,ReceiveTransport,Capabilities}`, `RedisStreamName` | One shared `ConnectionMultiplexer`; `RedisStreamsFields` aliases `MessageHeaders` for every cross-broker key. |
+| *(internal)* `RedisStreams{Connection,Topology,WireFormat,SendTransport,ReceiveContext,ReceiveTransport,Capabilities}`, `RedisStreamName` | One shared `ConnectionMultiplexer`; `RedisStreamsFields` aliases `MessageHeaderConstants` for every cross-broker key. |
 
 A stream entry is a flat field/value map, so every header is its own field alongside `wt-body`. The loop **polls** rather than blocking: StackExchange.Redis multiplexes every command over one connection and exposes no `BLOCK` argument, so a blocking read would stall every other command — `PollInterval` is therefore the idle latency floor and applies only after an empty read.
 
@@ -234,13 +234,13 @@ One received message: CONSUMER span (trace context extracted) → ordered `ICons
 
 Bodies over a size threshold go to blob storage and a small pointer travels instead, rehydrated before the handler sees it. Every broker caps message size (ASB Standard and SQS at 256 KB, Kafka at 1 MB by default) and an oversized body is rejected at publish with nothing the SDK can do about it.
 
-**Off by default** — `AddEventClaimCheck(…)` is the opt-in and nothing is consulted until it is called, so an application that configures nothing puts the same bytes on the wire as before. Requires an `IBlobStorage` registration (`AddLocalBlobStorage` or a cloud adapter).
+**Off by default** — `AddEventClaimCheck(…)` is the opt-in and nothing is consulted until it is called, so an application that configures nothing puts the same bytes on the wire as before. Requires an `IBlobRepository` registration (`AddLocalBlobStorage` or a cloud adapter).
 
 | Type | Notes |
 |---|---|
 | `AddEventClaimCheck(Action<ClaimCheckOptions>?)` | Offloader + rehydrate filter + retention sweeper + the `ClaimCheckReference` type-token registration. Sets `Enabled` **before** applying the caller's configuration, so a bound config section that omits the key cannot switch the wire format over by accident. **Call it last** — see ordering below. |
 | `ClaimCheckOptions` | `Enabled` · `ThresholdBytes` (128 KiB — under the tightest common broker cap with room for headers) · `PathPrefix` (`messaging/claim-check`) · `Retention` (7d) · `SweepEnabled` (`true`) · `SweepInterval` (1h) · `MaxPayloadBytes` (64 MiB). |
-| `ClaimCheckHeaders` | `Reference` (`wt-claim-check` — its **presence** is what marks a message as offloaded) · `Size` (`wt-claim-check-size`) · `BodyType` (`wt-claim-check-type`) · `TryReadReference(envelope, out path)`. |
+| `ClaimCheckHeaderConstants` | `Reference` (`wt-claim-check` — its **presence** is what marks a message as offloaded) · `Size` (`wt-claim-check-size`) · `BodyType` (`wt-claim-check-type`) · `TryReadReference(envelope, out path)`. |
 | `ClaimCheckReference` | `Path` · `SizeBytes` · `ContentType` · `BodyType`. Registered under the stable token `wt.claim-check-reference`, **not** the AQN fallback whose version segment moves on every SDK push and would strand a message across a version skew. Deliberately not an `IEvent` — a wire artefact, never publishable. |
 | `ClaimCheckPayloadException` | The body could not be read back: blob gone, over `MaxPayloadBytes`, truncated, undeserializable, or a reference refused by the guards. Terminal — a redelivery reads the same reference and fails identically. |
 
@@ -254,7 +254,7 @@ Bodies over a size threshold go to blob storage and a small pointer travels inst
 
 ### Metrics (`…Messaging`)
 
-Meter `WoW.Two.Sdk.Messaging` — auto-collected by `AddOpenTelemetryMetrics` via the `WoW.Two.*` prefix; a hand-rolled `MeterProvider` adds `MessagingMeter.Name` explicitly.
+Meter `WoW.Two.Sdk.Messaging` — auto-collected by `AddOpenTelemetryMetrics` via the `WoW.Two.*` prefix; a hand-rolled `MeterProvider` adds `MessagingMeterConstants.Name` explicitly.
 
 | Instrument | Name | Notes |
 |---|---|---|
@@ -279,7 +279,7 @@ Tags: `messaging.destination.name` · `messaging.message.type` · `messaging.con
 |---|---|
 | `AddInMemoryEventBus([Action?], params Assembly[])` | Batteries-included = handlers + reliability + transport. |
 | `AddInMemoryEventTransport(Action?)` | Channel + `IEventBus` + consumer only. |
-| `AddInMemoryReliability()` | In-mem `IRetryPolicy`/`IEventResiliencePipeline`/`IInboxProcessor`/`IDeadLetterStore`/`IEventScheduler`. |
+| `AddInMemoryReliability()` | In-mem `IRetryPolicy`/`IEventResiliencePipeline`/`IInboxProcessor`/`IDeadLetterRepository`/`IEventScheduler`. |
 | `AddEventResilienceDefaults()` | Transport-neutral resilience floor, reused by every broker adapter. |
 | `AddEventHandlersFromAssemblies(params Assembly[])` | Scan + register handlers and `IEvent` contracts (incremental; callable repeatedly). |
 | `AddEventSaga(EventSagaDefinition)` | Runner + in-proc transport + definition + step types. |
@@ -289,7 +289,7 @@ Tags: `messaging.destination.name` · `messaging.message.type` · `messaging.con
 | `AddDelayedEventRetry(Action<DelayedRetryOptions>?)` | Turn on re-enqueue-with-delay (sets `Enabled` before applying the caller's configuration). |
 | `AddMessageObserver<TObserver>()` | One instance under every observer interface it implements. |
 | `AddConsumeFilter<TFilter>()` | Ordered consume-pipeline filter. |
-| `AddEventClaimCheck(Action<ClaimCheckOptions>?)` | Offload oversized bodies to `IBlobStorage`, send a pointer. Order vs the transport does not matter; order vs the other filter registrations does — **call it last**. |
+| `AddEventClaimCheck(Action<ClaimCheckOptions>?)` | Offload oversized bodies to `IBlobRepository`, send a pointer. Order vs the transport does not matter; order vs the other filter registrations does — **call it last**. |
 | `AddMessageHeaderPropagation(IMessageHeaderPropagationPolicy)` | e.g. `MessageHeaderPropagationPolicy.Default.Allow("tenant-id")`. |
 | `AddMessageSerializer<T>()` · `AddMessageTypeResolver<T>()` · `MapMessageType<TEvent>(token)` | Serialization seams. |
 | `AddMessagingMetrics()` | `TryAdd`-based; every transport path already calls it. |

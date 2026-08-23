@@ -39,7 +39,7 @@ public enum ConsumeOutcome
 /// (<see cref="SentMessages"/>, <see cref="ConsumedMessages"/>, <see cref="ProcessDuration"/>); the dead-letter,
 /// retry, and in-flight instruments have no convention yet and sit in the same namespace.
 /// </remarks>
-public static class MessagingMeter
+public static class MessagingMeterConstants
 {
     /// <summary>The messaging meter name.</summary>
     public const string Name = "WoW.Two.Sdk.Messaging";
@@ -64,7 +64,7 @@ public static class MessagingMeter
 }
 
 /// <summary>
-/// The messaging layer's metrics seam. The default implementation records to the <see cref="MessagingMeter.Name"/>
+/// The messaging layer's metrics seam. The default implementation records to the <see cref="MessagingMeterConstants.Name"/>
 /// <see cref="Meter"/>; replace the registration to route messaging telemetry elsewhere, or register
 /// <see cref="NoOpMessagingMetrics"/> to switch it off entirely.
 /// </summary>
@@ -110,7 +110,7 @@ public interface IMessagingMetrics
 }
 
 /// <summary>
-/// <see cref="Meter"/>-backed <see cref="IMessagingMetrics"/> on <see cref="MessagingMeter.Name"/>.
+/// <see cref="Meter"/>-backed <see cref="IMessagingMetrics"/> on <see cref="MessagingMeterConstants.Name"/>.
 /// </summary>
 /// <remarks>
 /// The <see cref="Meter"/> is per-instance rather than static (unlike the ActivitySource in <c>MessagingDiagnostics</c>)
@@ -125,7 +125,7 @@ internal sealed class DefaultMessagingMetrics : IMessagingMetrics, IDisposable
     private const string OutcomeTag = "messaging.consume.outcome";
     private const string ErrorTypeTag = "error.type";
 
-    private readonly Meter _meter = new(MessagingMeter.Name);
+    private readonly Meter _meter = new(MessagingMeterConstants.Name);
     private readonly Counter<long> _sent;
     private readonly Counter<long> _consumed;
     private readonly Histogram<double> _processDuration;
@@ -137,34 +137,34 @@ internal sealed class DefaultMessagingMetrics : IMessagingMetrics, IDisposable
     public DefaultMessagingMetrics()
     {
         _sent = _meter.CreateCounter<long>(
-            MessagingMeter.SentMessages,
+            MessagingMeterConstants.SentMessages,
             unit: "{message}",
             description: "Messages handed to the transport for delivery.");
 
         _consumed = _meter.CreateCounter<long>(
-            MessagingMeter.ConsumedMessages,
+            MessagingMeterConstants.ConsumedMessages,
             unit: "{message}",
             description: "Received messages that left the consume pipeline, by outcome.");
 
         _processDuration = _meter.CreateHistogram<double>(
-            MessagingMeter.ProcessDuration,
+            MessagingMeterConstants.ProcessDuration,
             unit: "s",
             description: "Time one received message spent in the consume pipeline, retries and settlement included.");
 
         _deadLettered = _meter.CreateCounter<long>(
-            MessagingMeter.DeadLetteredMessages,
+            MessagingMeterConstants.DeadLetteredMessages,
             unit: "{message}",
             description: "Messages moved aside after processing was exhausted.");
 
         _retried = _meter.CreateCounter<long>(
-            MessagingMeter.RetriedMessages,
+            MessagingMeterConstants.RetriedMessages,
             unit: "{message}",
             description: "Redelivery attempts made by the in-process resilience pipeline.");
 
         // The Meter owns the instrument — no field needed to keep the gauge alive. T is explicit: without it the
         // Func<T> overload is a candidate too and inference goes ambiguous.
         _meter.CreateObservableGauge<int>(
-            MessagingMeter.InFlightMessages,
+            MessagingMeterConstants.InFlightMessages,
             ObserveInFlight,
             unit: "{message}",
             description: "Messages currently queued to or executing on a consume worker.");

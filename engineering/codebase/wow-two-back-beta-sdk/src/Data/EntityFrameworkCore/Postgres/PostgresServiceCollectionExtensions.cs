@@ -9,7 +9,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Postgres;
 /// <summary>Registration helpers for a shared Npgsql data source.</summary>
 public static class PostgresServiceCollectionExtensions
 {
-    /// <summary>Registers a shared <see cref="NpgsqlDataSource"/> built from <see cref="DatabaseOptions"/>, consumable by EF Core and Dapper.</summary>
+    /// <summary>Registers a shared <see cref="NpgsqlDataSource"/> built from <see cref="DatabaseSettings"/>, consumable by EF Core and Dapper.</summary>
     /// <remarks>Register Npgsql enum mappings inside the optional configurator.</remarks>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configure">An optional callback for further data-source configuration.</param>
@@ -21,7 +21,7 @@ public static class PostgresServiceCollectionExtensions
 
         services.AddSingleton(serviceProvider =>
         {
-            var connectionString = serviceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString;
+            var connectionString = serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value.ConnectionString;
             var builder = new NpgsqlDataSourceBuilder(connectionString);
             configure?.Invoke(builder);
             return builder.Build();

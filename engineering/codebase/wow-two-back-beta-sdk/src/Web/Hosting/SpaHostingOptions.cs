@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Web.Hosting;
 
 /// <summary>Configuration for <c>MapSpaFallback</c> / <c>UseSpaHosting</c> when serving a single-page app from the same host as the API.</summary>
-public sealed class SpaHostingOptions
+public sealed record SpaHostingOptions
 {
     /// <summary>
     /// Route prefix reserved for API endpoints. Requests under this prefix that match no endpoint return a JSON 404

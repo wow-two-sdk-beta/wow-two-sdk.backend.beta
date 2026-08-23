@@ -15,13 +15,13 @@ public sealed class HashChainVerifier<TEntry> : IHashChainVerifier<TEntry>
     /// <summary>Initializes the verifier with the consumer canonicalizer and the configured options.</summary>
     /// <param name="canonicalizer">The consumer projection that must match the one used to seal the chain, including its scheme version.</param>
     /// <param name="options">The hash-chain options carrying the algorithm choice.</param>
-    public HashChainVerifier(IChainedEntryCanonicalizer<TEntry> canonicalizer, IOptions<HashChainOptions> options)
+    public HashChainVerifier(IChainedEntryCanonicalizer<TEntry> canonicalizer, HashChainOptions options)
     {
         ArgumentNullException.ThrowIfNull(canonicalizer);
         ArgumentNullException.ThrowIfNull(options);
 
         _canonicalizer = canonicalizer;
-        _algorithm = options.Value.Algorithm;
+        _algorithm = options.Algorithm;
     }
 
     /// <inheritdoc />

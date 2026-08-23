@@ -12,7 +12,7 @@ public interface IIdempotent
 }
 
 /// <summary>Storage abstraction for idempotency dedup. Implement to plug Redis / SQL / etc.</summary>
-public interface IIdempotencyStore
+public interface IIdempotencyRepository
 {
     /// <summary>Try to acquire a slot for the given key. Returns the cached response if already processed.</summary>
     /// <param name="key">The idempotency key to acquire.</param>
@@ -28,9 +28,9 @@ public interface IIdempotencyStore
     Task StoreAsync(string key, object? response, TimeSpan ttl, CancellationToken cancellationToken);
 }
 
-/// <summary>Default in-memory <see cref="IIdempotencyStore"/> — single-instance only.</summary>
+/// <summary>Default in-memory <see cref="IIdempotencyRepository"/> — single-instance only.</summary>
 /// <param name="cache">The backing memory cache for stored responses.</param>
-public sealed class InMemoryIdempotencyStore(IMemoryCache cache) : IIdempotencyStore
+public sealed class InMemoryIdempotencyRepository(IMemoryCache cache) : IIdempotencyRepository
 {
     /// <inheritdoc />
     /// <param name="key">The idempotency key to acquire.</param>
@@ -59,7 +59,7 @@ public sealed class InMemoryIdempotencyStore(IMemoryCache cache) : IIdempotencyS
 
 /// <summary>Dedupes requests marked with <see cref="IIdempotent"/> — first call executes and caches, repeat keys return the cached response.</summary>
 /// <param name="store">The store that tracks and caches idempotent responses.</param>
-public sealed class IdempotencyBehavior<TRequest, TResponse>(IIdempotencyStore store) : IPipelineBehavior<TRequest, TResponse>
+public sealed class IdempotencyBehavior<TRequest, TResponse>(IIdempotencyRepository store) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
     /// <summary>Cache TTL — defaults to 24 hours.</summary>
@@ -96,7 +96,7 @@ public static class IdempotencyBehaviorServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddMemoryCache();
-        services.TryAddSingleton<IIdempotencyStore, InMemoryIdempotencyStore>();
+        services.TryAddSingleton<IIdempotencyRepository, InMemoryIdempotencyRepository>();
         return services.AddMediatorBehavior(typeof(IdempotencyBehavior<,>));
     }
 }

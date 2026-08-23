@@ -18,13 +18,13 @@ public static class OAuth2ClientCredentialsHttpClientBuilderExtensions
         ArgumentNullException.ThrowIfNull(configure);
 
         builder.Services.Configure(builder.Name, configure);
-        builder.Services.TryAddSingleton(static sp => new OAuth2TokenCache(
+        builder.Services.TryAddSingleton(static sp => new OAuth2TokenRepository(
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetService<TimeProvider>() ?? TimeProvider.System));
 
         return builder.AddHttpMessageHandler(sp => new OAuth2ClientCredentialsHandler(
             builder.Name,
-            sp.GetRequiredService<OAuth2TokenCache>(),
+            sp.GetRequiredService<OAuth2TokenRepository>(),
             sp.GetRequiredService<IOptionsMonitor<OAuth2ClientCredentialsOptions>>()));
     }
 }

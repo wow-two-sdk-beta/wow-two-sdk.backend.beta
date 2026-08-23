@@ -1,5 +1,7 @@
 using Dapper;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper;
@@ -19,9 +21,13 @@ public static class DapperServiceCollectionExtensions
     /// Idempotent — safe to call multiple times.
     /// </summary>
     /// <param name="services">The service collection to configure.</param>
-    public static IServiceCollection AddDapperConventions(this IServiceCollection services)
+    /// <param name="configureNaming">Configures the casing applied to generated identifiers. Default: snake columns, camel parameters.</param>
+    public static IServiceCollection AddDapperConventions(this IServiceCollection services, Action<SqlNamingOptions>? configureNaming = null)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        services.AddOptions<SqlNamingOptions>().Configure(options => configureNaming?.Invoke(options));
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<SqlNamingOptions>>().Value);
 
         if (System.Threading.Interlocked.Exchange(ref _conventionsApplied, 1) == 0)
         {

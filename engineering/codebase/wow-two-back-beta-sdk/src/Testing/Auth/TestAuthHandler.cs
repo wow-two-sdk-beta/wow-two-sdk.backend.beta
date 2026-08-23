@@ -23,7 +23,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Auth;
 /// </list>
 /// </para>
 /// <para>
-/// When authenticated, the principal is stamped with the SDK's canonical <c>wt:*</c> claims (<see cref="TestClaimTypes"/>)
+/// When authenticated, the principal is stamped with the SDK's canonical <c>wt:*</c> claims (<see cref="TestClaimTypeConstants"/>)
 /// plus standard <see cref="ClaimTypes.Name"/> / <see cref="ClaimTypes.Role"/> claims, so both the SDK's
 /// <c>ClaimsPrincipalExtensions</c> and framework <c>[Authorize(Roles = …)]</c> checks resolve correctly.
 /// </para>
@@ -59,13 +59,13 @@ public sealed class TestAuthHandler : AuthenticationHandler<TestAuthOptions>
         {
             new(ClaimTypes.Name, o.Name),
             new(ClaimTypes.NameIdentifier, o.UserId),
-            new(TestClaimTypes.UserId, o.UserId),
-            new(TestClaimTypes.DisplayName, o.Name),
-            new(TestClaimTypes.Provider, o.Provider),
+            new(TestClaimTypeConstants.UserId, o.UserId),
+            new(TestClaimTypeConstants.DisplayName, o.Name),
+            new(TestClaimTypeConstants.Provider, o.Provider),
         };
 
         if (!string.IsNullOrEmpty(o.Email))
-            claims.Add(new Claim(TestClaimTypes.Email, o.Email));
+            claims.Add(new Claim(TestClaimTypeConstants.Email, o.Email));
 
         foreach (var role in o.Roles)
             claims.Add(new Claim(ClaimTypes.Role, role));

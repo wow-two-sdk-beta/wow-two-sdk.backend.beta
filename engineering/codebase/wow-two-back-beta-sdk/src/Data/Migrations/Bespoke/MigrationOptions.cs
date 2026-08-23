@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Configuration for the SQL migrator, shared by every host.</summary>
-public sealed class MigrationOptions
+public sealed record MigrationOptions
 {
     /// <summary>Gets or sets the version label stamped onto applied rows.</summary>
     /// <example>v1.0</example>

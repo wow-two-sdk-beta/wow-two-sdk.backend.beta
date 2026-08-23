@@ -14,7 +14,7 @@ public sealed class QrCodeRenderer(
     /// <inheritdoc />
     public string RenderSvg(string payload, StyleSpec style)
     {
-        var normalized = StyleSpecNormalizer.Normalize(style);
+        var normalized = StyleSpecMapper.Normalize(style);
         var matrix = matrixGenerator.Generate(payload, normalized.EccLevel);
         return emitter.Emit(matrix, normalized);
     }

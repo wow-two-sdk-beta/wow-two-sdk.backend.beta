@@ -20,7 +20,7 @@ public sealed class ResultTests
     [Fact]
     public void Fail_ShouldBuildFailureCarryingAppError()
     {
-        var result = Result<int>.Fail(AppErrors.NotFound("nope"));
+        var result = Result<int>.Fail(AppErrorFactory.NotFound("nope"));
 
         result.IsSuccess.Should().BeFalse();
         result.Should().BeOfType<Result<int>.Failure>()
@@ -31,7 +31,7 @@ public sealed class ResultTests
     public void Match_ShouldRouteSuccessAndFailure()
     {
         Result<int>.Ok(7).Match(v => v * 2, _ => -1).Should().Be(14);
-        Result<int>.Fail(AppErrors.Conflict("x")).Match(v => v, _ => -1).Should().Be(-1);
+        Result<int>.Fail(AppErrorFactory.Conflict("x")).Match(v => v, _ => -1).Should().Be(-1);
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public sealed class ResultTests
     [Fact]
     public void Map_ShouldPropagateFailureUnchanged()
     {
-        var error = AppErrors.Conflict("dup");
+        var error = AppErrorFactory.Conflict("dup");
 
         var mapped = Result<int>.Fail(error).Map(v => v.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
@@ -58,7 +58,7 @@ public sealed class ResultTests
     public void NonGeneric_ShouldBuildOkAndFail()
     {
         Result.Ok().IsSuccess.Should().BeTrue();
-        Result.Fail(AppErrors.Unexpected()).IsSuccess.Should().BeFalse();
+        Result.Fail(AppErrorFactory.Unexpected()).IsSuccess.Should().BeFalse();
     }
 
     [Fact]

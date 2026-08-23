@@ -1,6 +1,6 @@
 # Dapper repositories
 
-> Thin generic CRUD repository on the Dapper hot path. Same `Create / Update / Delete / Get` vocabulary as the EF repo — SQL generated from `IHasTableName` + `SqlNaming` + reflected properties.
+> Thin generic CRUD repository on the Dapper hot path. Same `Create / Update / Delete / Get` vocabulary as the EF repo — SQL generated from `IHasTableName` + `SqlNamingMapper` + reflected properties.
 
 Namespace: `WoW.Two.Sdk.Backend.Beta.Data.Dapper.Repositories`
 Contracts: `IRepository<TEntity, TId>` / `IReadRepository<TEntity, TId>` (same as EF — interchangeable at the call site).
@@ -46,7 +46,7 @@ public sealed class ProductsService(IRepository<Product, Guid> repo)
 | `UpdateAsync` | `UPDATE products SET name = @Name, price_usd = @PriceUsd WHERE id = @Id` |
 | `DeleteByIdAsync` | `DELETE FROM products WHERE id = @id` |
 
-Columns come from every public read-write property, cased via `SqlNaming.ColumnCase` (default snake).
+Columns come from every public read-write property, cased via `SqlNamingMapper.ColumnCase` (default snake).
 
 ## Identity / computed / store-generated columns
 

@@ -64,8 +64,8 @@ await webhooks.PublishAsync("order.created", """{"id":42}"""u8.ToArray());
 
 | Type | Notes |
 |---|---|
-| `IWebhookSubscriptionStore` | `GetMatchingAsync(eventType, ct) → IReadOnlyList<WebhookSubscription>` · `AddAsync(sub, ct)`. |
-| `InMemoryWebhookSubscriptionStore` | Default — seeded from `WebhookOptions.Subscriptions`, thread-safe, supports runtime `AddAsync`. |
+| `IWebhookSubscriptionRepository` | `GetMatchingAsync(eventType, ct) → IReadOnlyList<WebhookSubscription>` · `AddAsync(sub, ct)`. |
+| `InMemoryWebhookSubscriptionRepository` | Default — seeded from `WebhookOptions.Subscriptions`, thread-safe, supports runtime `AddAsync`. |
 | `IWebhookDeliveryLog` | `RecordAsync(WebhookDeliveryRecord, ct)` — terminal-outcome seam. Default = no-op. |
 | `WebhookDeliveryRecord` | `record`: `SubscriptionId`, `EventType`, `Url`, `Outcome`, `Attempts`, `StatusCode?`, `OccurredAtUtc`. |
 | `WebhookDeliveryOutcome` | `Delivered` · `Dropped`. |
@@ -80,14 +80,14 @@ await webhooks.PublishAsync("order.created", """{"id":42}"""u8.ToArray());
 | `MaxRetryDelay` | `TimeSpan` | `30s` | Backoff ceiling. |
 | `RequestTimeout` | `TimeSpan` | `30s` | Per-attempt HTTP timeout (a timeout counts as transient). |
 
-### Signing (`WebhookSignature`, `WebhookHeaders`, `WebhookDefaults`)
+### Signing (`WebhookSignatureHasher`, `WebhookHeaderConstants`, `WebhookDefaultConstants`)
 
 | Member | Notes |
 |---|---|
-| `WebhookSignature.Scheme` | `"sha256"`. |
-| `WebhookSignature.Create(string secret, string timestamp, ReadOnlySpan<byte> payload)` | Returns `"sha256=<lowercase-hex>"` — `HMACSHA256(secret, UTF8(timestamp + ".") + payload)`. |
-| `WebhookHeaders.Signature / Timestamp / Event / Id` | `X-Webhook-Signature` · `X-Webhook-Timestamp` · `X-Webhook-Event` · `X-Webhook-Id`. |
-| `WebhookDefaults.HttpClientName` | `"webhooks"` — the named `HttpClient`; add delegating handlers / Polly to it via `AddHttpClient(WebhookDefaults.HttpClientName)`. |
+| `WebhookSignatureHasher.Scheme` | `"sha256"`. |
+| `WebhookSignatureHasher.Create(string secret, string timestamp, ReadOnlySpan<byte> payload)` | Returns `"sha256=<lowercase-hex>"` — `HMACSHA256(secret, UTF8(timestamp + ".") + payload)`. |
+| `WebhookHeaderConstants.Signature / Timestamp / Event / Id` | `X-Webhook-Signature` · `X-Webhook-Timestamp` · `X-Webhook-Event` · `X-Webhook-Id`. |
+| `WebhookDefaultConstants.HttpClientName` | `"webhooks"` — the named `HttpClient`; add delegating handlers / Polly to it via `AddHttpClient(WebhookDefaultConstants.HttpClientName)`. |
 
 ## Signing scheme
 
@@ -100,7 +100,7 @@ signature       = "sha256=" + lower-hex( HMACSHA256(secret, signed_content) )
 Sent as `X-Webhook-Signature`; `timestamp` echoed in `X-Webhook-Timestamp`. Receiver-side verify:
 
 ```csharp
-var expected = WebhookSignature.Create(secret, timestamp, rawBodyBytes);
+var expected = WebhookSignatureHasher.Create(secret, timestamp, rawBodyBytes);
 var ok = CryptographicOperations.FixedTimeEquals(
     Encoding.ASCII.GetBytes(expected), Encoding.ASCII.GetBytes(receivedSignatureHeader));
 // plus: reject if |now - timestamp| exceeds your tolerance window
@@ -121,7 +121,7 @@ public sealed class MirrorOrderHandler(IWebhookPublisher webhooks) : IEventHandl
 ### Example B — register a subscription at runtime
 
 ```csharp
-var store = app.Services.GetRequiredService<IWebhookSubscriptionStore>();
+var store = app.Services.GetRequiredService<IWebhookSubscriptionRepository>();
 await store.AddAsync(new WebhookSubscription
 {
     Url = new Uri("https://tenant-42.example/hooks"), Secret = secret, EventTypeFilter = "invoice.*",
@@ -148,7 +148,7 @@ builder.Services.AddSingleton<IWebhookDeliveryLog, MetricsDeliveryLog>();
 ## Future
 
 - **Configuration binding** — an `AddWebhooks(IConfiguration, section)` overload (subscriptions from `appsettings`).
-- **Durable store** — an EF-backed `IWebhookSubscriptionStore` + management API (currently in-memory only).
+- **Durable store** — an EF-backed `IWebhookSubscriptionRepository` + management API (currently in-memory only).
 - **Persistent delivery + dedupe** — outbox-staged deliveries, receiver-idempotency guarantees, DLQ for exhausted drops.
 - **Concurrency & ordering** — deliveries fan out sequentially today; parallelism / per-subscription ordering unspecified.
 - **Circuit-breaking a failing endpoint** — auto-disable a subscription after sustained failures.

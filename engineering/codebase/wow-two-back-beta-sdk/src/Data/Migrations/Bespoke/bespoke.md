@@ -569,7 +569,7 @@ src/Data/Migrations/Bespoke/
 ├── MigrationDescriptor.cs · AppliedMigration.cs · *Result.cs · MigrationDriftException.cs · MigrationRunnerOptions.cs
 ├── MigrationContentNormalizer.cs · OrdinalAllocator.cs
 ├── SqlServiceCollectionExtensions.cs                          ← AddSqlMigrationsRunner (parallels AddDbUpRunner)
-├── MigrationBootstrapService.cs                               ← IHostedService adapter (mirrors DbUpHostedService)*
+├── MigrationBootstrapService.cs                               ← IHostedService adapter (mirrors DbUpBackgroundService)*
 ├── sql.md                                                     ← this doc (folder lead doc)
 ├── SqlMigrations.standard.md  (RFC 2119 contract — when API firms)
 └── SqlMigrations.spec.md      (API + snippets — when API firms)

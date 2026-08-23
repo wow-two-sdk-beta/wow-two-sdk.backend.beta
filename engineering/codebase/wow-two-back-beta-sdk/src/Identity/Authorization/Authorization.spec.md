@@ -51,7 +51,7 @@ app.Run();
 
 | Property | Type | Default | Notes |
 |---|---|---|---|
-| `ClaimType` | `string` | `"wt:username"` | Seam: `Identity/Claims` `NormalizedClaimTypes.Username` |
+| `ClaimType` | `string` | `"wt:username"` | Seam: `Identity/Claims` `NormalizedClaimTypeConstants.Username` |
 | `Allowed` | `ISet<string>` | empty (`OrdinalIgnoreCase`) | **Empty ⇒ OPEN** (any authenticated principal) |
 | `CaseInsensitive` | `bool` | `true` | Claim-value comparison casing |
 

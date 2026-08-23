@@ -113,7 +113,7 @@ public sealed class InterceptorWiringTests(DataTestDb testDb) : RelationalTestBa
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["DatabaseOptions:ConnectionString"] = TestDb.ConnectionString,
+                ["DatabaseSettings:ConnectionString"] = TestDb.ConnectionString,
             })
             .Build();
 

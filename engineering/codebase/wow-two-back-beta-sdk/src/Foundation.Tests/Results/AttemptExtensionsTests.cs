@@ -28,7 +28,7 @@ public sealed class AttemptExtensionsTests
     [Fact]
     public void Attempt_ShouldPreserveAppExceptionError()
     {
-        var error = AppErrors.NotFound("missing");
+        var error = AppErrorFactory.NotFound("missing");
         var result = new Func<int>(() => throw error.ToException()).Attempt();
 
         result.Should().BeOfType<Result<int>.Failure>()

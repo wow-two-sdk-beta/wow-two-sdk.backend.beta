@@ -1,7 +1,9 @@
+using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
+
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Core;
 
 /// <summary>
-/// The thin facade over the identity slices — the app-facing surface. Core composes only <see cref="IUserStore{TUser,TKey}"/>
+/// The thin facade over the identity slices — the app-facing surface. Core composes only <see cref="IUserRepository{TUser,TKey}"/>
 /// (normalize keys, enforce uniqueness, stamp security/concurrency); optional slices extend it. Replaces ASP.NET Identity's
 /// <c>UserManager</c> god-object: capabilities not registered are simply absent rather than silently no-op.
 /// </summary>
@@ -11,21 +13,17 @@ public sealed class UserAccountManager<TUser, TKey>
     where TUser : IdentityUser<TKey>
     where TKey : notnull, IEquatable<TKey>
 {
-    private readonly IUserStore<TUser, TKey> _store;
-    private readonly ILookupNormalizer _normalizer;
+    private readonly IUserRepository<TUser, TKey> _store;
     private readonly IdentityCoreOptions _options;
 
     /// <summary>Create the manager.</summary>
     /// <param name="store">The core user store.</param>
-    /// <param name="normalizer">The lookup-key normalizer.</param>
     /// <param name="options">Identity options.</param>
-    public UserAccountManager(IUserStore<TUser, TKey> store, ILookupNormalizer normalizer, IdentityCoreOptions options)
+    public UserAccountManager(IUserRepository<TUser, TKey> store, IdentityCoreOptions options)
     {
         ArgumentNullException.ThrowIfNull(store);
-        ArgumentNullException.ThrowIfNull(normalizer);
         ArgumentNullException.ThrowIfNull(options);
         _store = store;
-        _normalizer = normalizer;
         _options = options;
     }
 
@@ -84,18 +82,18 @@ public sealed class UserAccountManager<TUser, TKey>
     /// <param name="userName">The user name.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public Task<TUser?> FindByNameAsync(string userName, CancellationToken cancellationToken = default)
-        => _store.FindByNormalizedUserNameAsync(_normalizer.Normalize(userName) ?? string.Empty, cancellationToken);
+        => _store.FindByNormalizedUserNameAsync(userName.ToCanonical() ?? string.Empty, cancellationToken);
 
     /// <summary>Find a user by email (case-insensitive), or null.</summary>
     /// <param name="email">The email.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public Task<TUser?> FindByEmailAsync(string email, CancellationToken cancellationToken = default)
-        => _store.FindByNormalizedEmailAsync(_normalizer.Normalize(email) ?? string.Empty, cancellationToken);
+        => _store.FindByNormalizedEmailAsync(email.ToCanonical() ?? string.Empty, cancellationToken);
 
     private void ApplyNormalization(TUser user)
     {
-        user.NormalizedUserName = _normalizer.Normalize(user.UserName);
-        user.NormalizedEmail = _normalizer.Normalize(user.Email);
+        user.NormalizedUserName = user.UserName.ToCanonical();
+        user.NormalizedEmail = user.Email.ToCanonical();
     }
 
     private static string NewStamp() => Guid.NewGuid().ToString("N");

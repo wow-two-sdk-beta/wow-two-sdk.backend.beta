@@ -17,7 +17,7 @@ public sealed class ExceptionMapperTests
     public void Map_ShouldUnwrapCarriedError_WhenAppException()
     {
         var mapper = new ExceptionMapper([]);
-        var original = AppErrors.NotFound("missing");
+        var original = AppErrorFactory.NotFound("missing");
 
         var error = mapper.Map(original.ToException());
 

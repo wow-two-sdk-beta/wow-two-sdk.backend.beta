@@ -5,7 +5,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Ai.Core;
 /// (function/tool invocation and OpenTelemetry). Providers accept this so the pipeline is uniform
 /// regardless of which broker backs it.
 /// </summary>
-public sealed class AiPipelineOptions
+public sealed record AiPipelineOptions
 {
     /// <summary>Gets or sets whether automatic function (tool) invocation is enabled. Default <see langword="true"/>.</summary>
     public bool EnableFunctionInvocation { get; set; } = true;

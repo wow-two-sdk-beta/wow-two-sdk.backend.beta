@@ -62,7 +62,7 @@ public static class EntityFrameworkCoreServiceCollectionExtensions
         registry.Register(typeof(TContext));
 
         void Apply(IServiceProvider serviceProvider, DbContextOptionsBuilder builder)
-            => EfInterceptorWiring.ApplySdkContextConfiguration(
+            => EfInterceptorExtensions.ApplySdkContextConfiguration(
                 serviceProvider, builder, options, configureProvider, registry, typeof(TContext));
 
         if (options.UsePooling)

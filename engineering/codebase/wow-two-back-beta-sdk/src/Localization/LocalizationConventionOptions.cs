@@ -5,7 +5,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Localization;
 /// <see cref="LocalizationServiceCollectionExtensions.AddRequestLocalizationConventions"/>. Supply at
 /// least one supported culture; the resolution order is query string → cookie → <c>Accept-Language</c>.
 /// </summary>
-public sealed class LocalizationConventionOptions
+public sealed record LocalizationConventionOptions
 {
     /// <summary>Gets or sets the fallback culture used when no provider resolves one. Default <c>"en"</c>.</summary>
     public string DefaultCulture { get; set; } = "en";

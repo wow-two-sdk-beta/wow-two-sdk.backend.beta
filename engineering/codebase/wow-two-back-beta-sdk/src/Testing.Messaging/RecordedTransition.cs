@@ -88,8 +88,8 @@ public sealed record RecordedTransition<TState>
     /// <summary>Wall-clock time the harness recorded this — for ordering against the message logs in a failure dump.</summary>
     public required DateTimeOffset RecordedAtUtc { get; init; }
 
-    /// <summary>The instance reached <see cref="SagaStates.Final"/> on this record.</summary>
-    public bool Finalized => Outcome == SagaTransitionOutcome.Transitioned && string.Equals(ToState, SagaStates.Final, StringComparison.Ordinal);
+    /// <summary>The instance reached <see cref="SagaStateConstants.Final"/> on this record.</summary>
+    public bool Finalized => Outcome == SagaTransitionOutcome.Transitioned && string.Equals(ToState, SagaStateConstants.Final, StringComparison.Ordinal);
 
     /// <summary>This transition ran again after a version conflict — the behaviour that is silently wrong when the repository does not enforce its version check.</summary>
     public bool Replayed => Attempt > 1;
@@ -163,7 +163,7 @@ public sealed class RecordedTransitionLog<TState>
     /// the from-state → event → to-state assertion, with <c>null</c> meaning "any" on every part.
     /// </summary>
     /// <typeparam name="TEvent">The event that drove the transition.</typeparam>
-    /// <param name="from">The source state, or <c>null</c> for any. Match a <i>created</i> instance with <see cref="SagaStates.Initial"/>.</param>
+    /// <param name="from">The source state, or <c>null</c> for any. Match a <i>created</i> instance with <see cref="SagaStateConstants.Initial"/>.</param>
     /// <param name="to">The target state, or <c>null</c> for any.</param>
     /// <param name="correlationId">Narrow to one instance, or <c>null</c> for any.</param>
     public bool Has<TEvent>(string? from = null, string? to = null, string? correlationId = null)

@@ -12,7 +12,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Kafka;
 
 /// <summary>Options for the Kafka event-bus adapter.</summary>
-public sealed class KafkaOptions
+public sealed record KafkaOptions
 {
     /// <summary>Bootstrap servers (host:port[,host:port]). Default local.</summary>
     public string BootstrapServers { get; set; } = "localhost:9092";
@@ -87,9 +87,9 @@ internal static class KafkaDeadLetter
         if (original.Headers is not null)
             foreach (var header in original.Headers)
                 headers.Add(header.Key, header.GetValueBytes());
-        headers.Add(MessageHeaders.DeadLetterReason, Encoding.UTF8.GetBytes(reason));
+        headers.Add(MessageHeaderConstants.DeadLetterReason, Encoding.UTF8.GetBytes(reason));
         if (exception is not null)
-            headers.Add(MessageHeaders.DeadLetterExceptionType, Encoding.UTF8.GetBytes(exception.GetType().FullName ?? exception.GetType().Name));
+            headers.Add(MessageHeaderConstants.DeadLetterExceptionType, Encoding.UTF8.GetBytes(exception.GetType().FullName ?? exception.GetType().Name));
         return new Message<string, byte[]> { Key = original.Key, Value = original.Value, Headers = headers };
     }
 }
@@ -119,29 +119,29 @@ internal sealed class KafkaSendTransport(
         // the previous message's type token onto the new body.
         var headers = new Headers();
         foreach (var (key, value) in envelope.Headers)
-            if (!MessageHeaders.IsAdapterOwned(key))
+            if (!MessageHeaderConstants.IsAdapterOwned(key))
                 headers.Add(key, Encoding.UTF8.GetBytes(value));
 
         // WireBodyType, not BodyType: a send-path transformation that substituted the wire bytes decodes as a different
         // shape, and this token is what the receiver deserializes into. Topic resolution below stays on BodyType.
-        headers.Add(MessageHeaders.EventType, Encoding.UTF8.GetBytes(typeResolver.ToTypeToken(envelope.WireBodyType)));
-        headers.Add(MessageHeaders.ContentType, Encoding.UTF8.GetBytes(serializer.ContentType));
-        headers.Add(MessageHeaders.MessageId, Encoding.UTF8.GetBytes(envelope.MessageId));
+        headers.Add(MessageHeaderConstants.EventType, Encoding.UTF8.GetBytes(typeResolver.ToTypeToken(envelope.WireBodyType)));
+        headers.Add(MessageHeaderConstants.ContentType, Encoding.UTF8.GetBytes(serializer.ContentType));
+        headers.Add(MessageHeaderConstants.MessageId, Encoding.UTF8.GetBytes(envelope.MessageId));
 
         // Kafka has no reply-address, correlation or conversation property, so all three ride the SDK's reserved
         // headers. Only stamped when set, so ordinary one-way traffic carries exactly the headers it did before.
         if (!string.IsNullOrEmpty(envelope.ReplyTo))
-            headers.Add(MessageHeaders.ReplyTo, Encoding.UTF8.GetBytes(envelope.ReplyTo));
+            headers.Add(MessageHeaderConstants.ReplyTo, Encoding.UTF8.GetBytes(envelope.ReplyTo));
         if (!string.IsNullOrEmpty(envelope.CorrelationId))
-            headers.Add(MessageHeaders.CorrelationId, Encoding.UTF8.GetBytes(envelope.CorrelationId));
+            headers.Add(MessageHeaderConstants.CorrelationId, Encoding.UTF8.GetBytes(envelope.CorrelationId));
         if (!string.IsNullOrEmpty(envelope.ConversationId))
-            headers.Add(MessageHeaders.ConversationId, Encoding.UTF8.GetBytes(envelope.ConversationId));
+            headers.Add(MessageHeaderConstants.ConversationId, Encoding.UTF8.GetBytes(envelope.ConversationId));
 
         // A first publish is DeliveryCount 0 and stamps nothing; a re-produced envelope (delayed retry, DLQ replay)
         // arrives with the count already advanced and carries it onto the new record, which is the only way the next
         // consumer can learn how many attempts this message has had.
         if (envelope.DeliveryCount > 0)
-            headers.Add(MessageHeaders.DeliveryCount, Encoding.UTF8.GetBytes(envelope.DeliveryCount.ToString(CultureInfo.InvariantCulture)));
+            headers.Add(MessageHeaderConstants.DeliveryCount, Encoding.UTF8.GetBytes(envelope.DeliveryCount.ToString(CultureInfo.InvariantCulture)));
 
         var message = new Message<string, byte[]>
         {
@@ -343,28 +343,28 @@ internal sealed partial class KafkaReceiveTransport(
     private EventEnvelope? TryReconstruct(ConsumeResult<string, byte[]> result)
     {
         var headers = DecodeHeaders(result.Message.Headers);
-        if (!headers.TryGetValue(MessageHeaders.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
+        if (!headers.TryGetValue(MessageHeaderConstants.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
             return null;
 
         // Decoded by whoever encoded it. Selection reads "declared or nothing", never the "application/json" the
         // envelope below falls back to: a producer that stamped no content type is one whose format we do not know, and
         // guessing JSON for it would route a legacy body to the wrong deserializer wherever the default is not JSON.
-        var body = SerializerFor(ReadOptional(headers, MessageHeaders.ContentType)).Deserialize(result.Message.Value, eventType);
+        var body = SerializerFor(ReadOptional(headers, MessageHeaderConstants.ContentType)).Deserialize(result.Message.Value, eventType);
         if (body is null)
             return null;
 
         return new EventEnvelope
         {
-            MessageId = headers.TryGetValue(MessageHeaders.MessageId, out var id) ? id : Guid.NewGuid().ToString("N"),
+            MessageId = headers.TryGetValue(MessageHeaderConstants.MessageId, out var id) ? id : Guid.NewGuid().ToString("N"),
             Body = body,
             BodyType = eventType,
             Destination = result.Topic,
             PartitionKey = result.Message.Key,
             DeliveryCount = ReadDeliveryCount(headers),
-            ContentType = headers.TryGetValue(MessageHeaders.ContentType, out var contentType) ? contentType : "application/json",
-            ReplyTo = ReadOptional(headers, MessageHeaders.ReplyTo),
-            CorrelationId = ReadOptional(headers, MessageHeaders.CorrelationId),
-            ConversationId = ReadOptional(headers, MessageHeaders.ConversationId),
+            ContentType = headers.TryGetValue(MessageHeaderConstants.ContentType, out var contentType) ? contentType : "application/json",
+            ReplyTo = ReadOptional(headers, MessageHeaderConstants.ReplyTo),
+            CorrelationId = ReadOptional(headers, MessageHeaderConstants.CorrelationId),
+            ConversationId = ReadOptional(headers, MessageHeaderConstants.ConversationId),
             Headers = headers,
         };
     }
@@ -377,7 +377,7 @@ internal sealed partial class KafkaReceiveTransport(
     /// </summary>
     private static int ReadDeliveryCount(Dictionary<string, string> headers)
     {
-        if (!headers.TryGetValue(MessageHeaders.DeliveryCount, out var raw))
+        if (!headers.TryGetValue(MessageHeaderConstants.DeliveryCount, out var raw))
             return 1;
 
         // A malformed or non-positive value is treated as a first delivery rather than trusted: the count only ever
@@ -516,6 +516,10 @@ public static class KafkaServiceCollectionExtensions
 
         services.AddOptions<KafkaOptions>().Configure(configure);
 
+        // One shape at the injection site: consumers take the record, the builder keeps validation
+        // and post-configuration.
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<KafkaOptions>>().Value);
+
         var assemblies = handlerAssemblies is { Length: > 0 } ? handlerAssemblies : [Assembly.GetCallingAssembly()];
         services.AddEventHandlersFromAssemblies(assemblies);
         services.AddEventResilienceDefaults();
@@ -538,7 +542,7 @@ public static class KafkaServiceCollectionExtensions
         services.TryAddSingleton<IReceiveTransport, KafkaReceiveTransport>();
         services.TryAddSingleton<IEventBus, TransportEventBus>();
         services.TryAddSingleton<EventProcessingPipeline>();
-        services.AddHostedService<TransportConsumerHostedService>();
+        services.AddHostedService<TransportConsumerBackgroundService>();
         return services;
     }
 }

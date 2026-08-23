@@ -13,7 +13,9 @@ public sealed class MessagingTestHarnessTests
     [Fact]
     public async Task Records_both_halves_of_a_round_trip()
     {
-        await using var harness = await MessagingTestHarness.StartAsync(handlerAssemblies: [typeof(HarnessHandler).Assembly]);
+        await using var harness = await MessagingTestHarness.StartAsync(
+            static services => services.AddScannedHandlerDependencies(),
+            handlerAssemblies: [typeof(HarnessHandler).Assembly]);
 
         await harness.Bus.PublishAsync(new HarnessEvent("round-trip"), new PublishOptions { MessageId = "rt-1" });
 
@@ -32,6 +34,7 @@ public sealed class MessagingTestHarnessTests
     public async Task Faulted_holds_one_entry_per_delivery_attempt()
     {
         await using var harness = await MessagingTestHarness.StartAsync(
+            static services => services.AddScannedHandlerDependencies(),
             configureBus: o => o.Retry = new RetryConfig(MaxAttempts: 3, Backoff: BackoffKind.None),
             handlerAssemblies: [typeof(HarnessHandler).Assembly]);
 
@@ -49,7 +52,9 @@ public sealed class MessagingTestHarnessTests
     [Fact]
     public async Task Idle_wait_returns_while_the_bus_is_paused_and_holding_messages()
     {
-        await using var harness = await MessagingTestHarness.StartAsync(handlerAssemblies: [typeof(HarnessHandler).Assembly]);
+        await using var harness = await MessagingTestHarness.StartAsync(
+            static services => services.AddScannedHandlerDependencies(),
+            handlerAssemblies: [typeof(HarnessHandler).Assembly]);
         harness.Control.Should().NotBeNull();
         var control = harness.Control!;
 
@@ -74,7 +79,7 @@ public sealed class MessagingTestHarnessTests
     {
         var gate = new HarnessGate { Hold = true };
         await using var harness = await MessagingTestHarness.StartAsync(
-            services => services.AddSingleton(gate),
+            services => services.AddScannedHandlerDependencies().AddSingleton(gate),
             handlerAssemblies: [typeof(HarnessHandler).Assembly]);
 
         await harness.Bus.PublishAsync(new HarnessEvent("held"));
@@ -96,6 +101,7 @@ public sealed class MessagingTestHarnessTests
     public async Task Attaches_to_a_host_the_test_built_itself()
     {
         var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddScannedHandlerDependencies();
         builder.Services.AddInMemoryEventBus(typeof(HarnessHandler).Assembly);
         builder.Services.AddMessagingRecorder(); // the seam a WebApplicationFactory or broker-backed host uses
         using var host = builder.Build();
@@ -114,7 +120,9 @@ public sealed class MessagingTestHarnessTests
     [Fact]
     public async Task A_timed_out_wait_reports_what_it_actually_saw()
     {
-        await using var harness = await MessagingTestHarness.StartAsync(handlerAssemblies: [typeof(HarnessHandler).Assembly]);
+        await using var harness = await MessagingTestHarness.StartAsync(
+            static services => services.AddScannedHandlerDependencies(),
+            handlerAssemblies: [typeof(HarnessHandler).Assembly]);
 
         await harness.Bus.PublishAsync(new HarnessEvent("only-one"));
         await harness.Consumed.WaitForAsync<HarnessEvent>();

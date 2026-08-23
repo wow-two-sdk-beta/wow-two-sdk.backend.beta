@@ -1,6 +1,6 @@
 # WoW.Two.Sdk.Backend.Beta.Mediator.Idempotency
 
-> Pipeline behavior — dedupes requests marked with `IIdempotent` via a pluggable `IIdempotencyStore`.
+> Pipeline behavior — dedupes requests marked with `IIdempotent` via a pluggable `IIdempotencyRepository`.
 
 ## Install
 
@@ -28,7 +28,7 @@ The first call executes the handler; subsequent calls with the same `Idempotency
 The default store is in-process — replace with a Redis/SQL implementation:
 
 ```csharp
-public sealed class RedisIdempotencyStore(IConnectionMultiplexer redis) : IIdempotencyStore { ... }
+public sealed class RedisIdempotencyStore(IConnectionMultiplexer redis) : IIdempotencyRepository { ... }
 
-builder.Services.AddSingleton<IIdempotencyStore, RedisIdempotencyStore>();
+builder.Services.AddSingleton<IIdempotencyRepository, RedisIdempotencyStore>();
 ```

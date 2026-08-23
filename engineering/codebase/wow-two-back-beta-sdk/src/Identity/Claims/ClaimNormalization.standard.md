@@ -12,7 +12,7 @@ Give downstream code one canonical `wt:*` set independent of the OAuth provider:
 
 - **MUST** expose `AddClaimNormalization(this IServiceCollection, Action<ClaimNormalizationOptions>? configure = null)` returning `IServiceCollection`.
 - **MUST** be opt-in — nothing added unless called.
-- **MUST** register `ClaimNormalizer` as an `IClaimsTransformation` additively (`TryAddEnumerable`), without displacing other registrations.
+- **MUST** register `ClaimMapper` as an `IClaimsTransformation` additively (`TryAddEnumerable`), without displacing other registrations.
 - Repeated calls **MUST NOT** register the normalizer twice.
 
 ## Transformation

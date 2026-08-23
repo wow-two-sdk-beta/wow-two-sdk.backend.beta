@@ -53,7 +53,7 @@ internal sealed class EfOutbox<TContext>(TContext context, IMessageSerializer se
             var withMessageId = headers is null
                 ? new Dictionary<string, string>(StringComparer.Ordinal)
                 : new Dictionary<string, string>(headers, StringComparer.Ordinal);
-            withMessageId[MessageHeaders.MessageId] = record.Id;
+            withMessageId[MessageHeaderConstants.MessageId] = record.Id;
             headers = withMessageId;
         }
 

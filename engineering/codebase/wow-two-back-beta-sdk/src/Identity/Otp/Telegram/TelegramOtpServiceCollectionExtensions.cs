@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp.Telegram;
@@ -22,6 +23,7 @@ public static class TelegramOtpServiceCollectionExtensions
         else
         {
             services.AddOptions<TelegramOtpOptions>();
+            services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<TelegramOtpOptions>>().Value);
         }
 
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IOtpDeliveryHandler, TelegramOtpDeliveryHandler>());

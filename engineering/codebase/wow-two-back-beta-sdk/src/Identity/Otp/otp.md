@@ -6,7 +6,7 @@ email, username); the SDK has no user model. Orthogonal seams, all swappable via
 | Seam | Default |
 |---|---|
 | `IOtpService` | `OtpService` — rate limit → generate → store; verify with fixed-time compare, attempt counting, consume-on-success |
-| `IOtpStore` | `MemoryOtpStore` (singleton; dev / single instance — use a shared store for multi-instance) |
+| `IOtpRepository` | `MemoryOtpRepository` (singleton; dev / single instance — use a shared store for multi-instance) |
 | `IOtpCodeGenerator` | `NumericOtpCodeGenerator` — crypto-random digits, `CodeLength` long |
 | `IOtpDeliveryHandler` | none — pick a channel package (`Otp/Telegram`) or implement your own |
 

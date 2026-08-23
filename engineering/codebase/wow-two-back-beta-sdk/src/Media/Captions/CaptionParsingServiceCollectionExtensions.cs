@@ -22,7 +22,7 @@ public static class CaptionParsingServiceCollectionExtensions
     /// <summary>
     /// Registers the full caption surface as singletons: every per-format parser (WebVTT, SubRip, TTML,
     /// YouTube json3), the format-detecting <see cref="ICaptionParser"/> facade, and the VTT + SRT writers
-    /// (exposed both individually and via the <see cref="ICaptionWriter"/> set for conversion). All
+    /// (exposed both individually and via the <see cref="ICaptionRenderer"/> set for conversion). All
     /// implementations are stateless and thread-safe; the call is idempotent.
     /// </summary>
     /// <param name="services">The service collection to add the caption services to.</param>
@@ -37,10 +37,10 @@ public static class CaptionParsingServiceCollectionExtensions
         services.TryAddSingleton<IJson3CaptionParser, Json3CaptionParser>();
         services.TryAddSingleton<ICaptionParser, CompositeCaptionParser>();
 
-        services.TryAddSingleton<VttCaptionWriter>();
-        services.TryAddSingleton<SrtCaptionWriter>();
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<ICaptionWriter, VttCaptionWriter>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<ICaptionWriter, SrtCaptionWriter>());
+        services.TryAddSingleton<VttCaptionRenderer>();
+        services.TryAddSingleton<SrtCaptionRenderer>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ICaptionRenderer, VttCaptionRenderer>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ICaptionRenderer, SrtCaptionRenderer>());
 
         return services;
     }

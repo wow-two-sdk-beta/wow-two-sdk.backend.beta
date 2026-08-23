@@ -28,7 +28,7 @@ The same shared `NpgsqlDataSource` then drives both EF Core (`UseNpgsqlConventio
 | Member | Role |
 |---|---|
 | `UseNpgsqlConventional(connectionString \| dataSource)` | Npgsql with 6× retry-on-failure + 30s command timeout |
-| `AddNpgsqlDataSource(configure)` | shared `NpgsqlDataSource` from `DatabaseOptions.ConnectionString`, registered as `DbDataSource` too |
+| `AddNpgsqlDataSource(configure)` | shared `NpgsqlDataSource` from `DatabaseSettings.ConnectionString`, registered as `DbDataSource` too |
 | `ApplyNpgsqlConventions()` (ModelBuilder) | maps the `xmin` system column as the concurrency token for every `IHasXmin` entity |
 
 ## See also

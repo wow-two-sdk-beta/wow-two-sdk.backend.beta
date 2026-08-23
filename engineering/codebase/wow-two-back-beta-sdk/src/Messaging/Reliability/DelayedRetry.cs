@@ -38,7 +38,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 /// Polly-backed pipelines already do. The redelivery cap below holds either way.
 /// </para>
 /// </remarks>
-public sealed class DelayedRetryOptions
+public sealed record DelayedRetryOptions
 {
     /// <summary>
     /// Re-enqueue a failed message with a delay instead of waiting in the consume slot. Defaults to <c>false</c> —
@@ -72,8 +72,8 @@ internal sealed partial class DelayedRetryCoordinator
     private readonly ILogger<DelayedRetryCoordinator> _logger;
 
     public DelayedRetryCoordinator(
-        IOptions<DelayedRetryOptions> options,
-        IOptions<InMemoryEventBusOptions> busOptions,
+        DelayedRetryOptions options,
+        InMemoryEventBusOptions busOptions,
         IRetryPolicy retryPolicy,
         TimeProvider timeProvider,
         IEnumerable<ITransportCapabilities> capabilities,
@@ -86,8 +86,8 @@ internal sealed partial class DelayedRetryCoordinator
         ArgumentNullException.ThrowIfNull(capabilities);
         ArgumentNullException.ThrowIfNull(retryPolicy);
 
-        _options = options.Value;
-        _sharedRetry = busOptions.Value.Retry;
+        _options = options;
+        _sharedRetry = busOptions.Retry;
         _retryPolicy = retryPolicy;
         _timeProvider = timeProvider;
         _scheduler = scheduler;
@@ -225,6 +225,9 @@ public static class DelayedRetryServiceCollectionExtensions
         services.AddOptions<DelayedRetryOptions>().Configure(options =>
         {
             options.Enabled = true;
+
+        // Consumers take the record; the builder above stays for validation and post-configuration.
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<DelayedRetryOptions>>().Value);
             configure?.Invoke(options);
         });
 

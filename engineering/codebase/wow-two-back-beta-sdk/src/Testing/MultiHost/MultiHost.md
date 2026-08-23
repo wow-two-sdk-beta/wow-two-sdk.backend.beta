@@ -105,4 +105,4 @@ Domain-specific request builders (e.g. a `CodeRequests` helper) stay app-side �
 
 - [Testing.md](../Testing.md) — single-host `WebApiTestBase<T>`
 - [Containers.md](../Containers/Containers.md) — the `IAsyncTestFixture` container fixtures composed in
-- `Polling.UntilAsync` — poll an eventually-consistent probe (e.g. async analytics flush) across hosts
+- `PollingExtensions.UntilAsync` — poll an eventually-consistent probe (e.g. async analytics flush) across hosts

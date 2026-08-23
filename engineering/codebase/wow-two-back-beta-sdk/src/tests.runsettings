@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Test runs execute as Development so the host validates the container on build.
+  Production (the dotnet test default) skips ValidateOnBuild, which hides a registration
+  whose dependency nobody registered until something resolves it.
+-->
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <DOTNET_ENVIRONMENT>Development</DOTNET_ENVIRONMENT>
+      <ASPNETCORE_ENVIRONMENT>Development</ASPNETCORE_ENVIRONMENT>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>

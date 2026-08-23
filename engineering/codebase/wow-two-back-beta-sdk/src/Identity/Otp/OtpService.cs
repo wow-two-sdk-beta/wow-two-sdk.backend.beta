@@ -4,10 +4,10 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 
-/// <summary>Default <see cref="IOtpService"/> — rate-limits creation, stores via <see cref="IOtpStore"/>, verifies with a fixed-time comparison, and consumes codes on success.</summary>
+/// <summary>Default <see cref="IOtpService"/> — rate-limits creation, stores via <see cref="IOtpRepository"/>, verifies with a fixed-time comparison, and consumes codes on success.</summary>
 public sealed class OtpService : IOtpService
 {
-    private readonly IOtpStore _store;
+    private readonly IOtpRepository _store;
     private readonly IOtpCodeGenerator _codeGenerator;
     private readonly OtpOptions _options;
     private readonly TimeProvider _timeProvider;
@@ -18,9 +18,9 @@ public sealed class OtpService : IOtpService
     /// <param name="options">Lifetime / rate-limit / attempt settings.</param>
     /// <param name="timeProvider">Time source for creation, expiry, and rate-limit checks.</param>
     public OtpService(
-        IOtpStore store,
+        IOtpRepository store,
         IOtpCodeGenerator codeGenerator,
-        IOptions<OtpOptions> options,
+        OtpOptions options,
         TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(store);
@@ -29,7 +29,7 @@ public sealed class OtpService : IOtpService
         ArgumentNullException.ThrowIfNull(timeProvider);
         _store = store;
         _codeGenerator = codeGenerator;
-        _options = options.Value;
+        _options = options;
         _timeProvider = timeProvider;
     }
 

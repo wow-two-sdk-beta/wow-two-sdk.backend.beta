@@ -10,7 +10,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
 /// <summary>Timing defaults for a <see cref="MessagingTestHarness"/>.</summary>
-public sealed class MessagingHarnessOptions
+public sealed record MessagingHarnessOptions
 {
     /// <summary>How long the bus must be silent before <see cref="MessagingTestHarness.WaitForIdleAsync"/> calls it idle. Default 100ms.</summary>
     /// <remarks>
@@ -63,7 +63,7 @@ public sealed class MessagingTestHarness : IAsyncDisposable
         Control = services.GetService<IBusControl>();
     }
 
-    /// <summary>The host's service provider — for resolving whatever else the assertion needs (<c>IDeadLetterStore</c>, a fake, the handler's own state).</summary>
+    /// <summary>The host's service provider — for resolving whatever else the assertion needs (<c>IDeadLetterRepository</c>, a fake, the handler's own state).</summary>
     public IServiceProvider Services { get; }
 
     /// <summary>The bus under test.</summary>

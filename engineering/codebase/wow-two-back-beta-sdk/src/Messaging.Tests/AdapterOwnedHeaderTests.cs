@@ -22,10 +22,10 @@ public sealed class MessageHeaderOwnershipTests
         // The bug in one line: adapters stripped on IsReserved — the whole wt- namespace — but re-stamped only the
         // adapter-owned subset. Every header in the gap was dropped at the broker with nothing to restore it. Named
         // from the features' own constants, so renaming a feature header cannot quietly desync this from reality.
-        MessageHeaders.IsReserved(SecondLevelRetryHeaders.Tier).Should().BeTrue();
-        MessageHeaders.IsAdapterOwned(SecondLevelRetryHeaders.Tier).Should().BeFalse();
-        MessageHeaders.IsReserved(DeadLetterHeaders.RedriveCount).Should().BeTrue();
-        MessageHeaders.IsAdapterOwned(DeadLetterHeaders.RedriveCount).Should().BeFalse();
+        MessageHeaderConstants.IsReserved(SecondLevelRetryHeaderConstants.Tier).Should().BeTrue();
+        MessageHeaderConstants.IsAdapterOwned(SecondLevelRetryHeaderConstants.Tier).Should().BeFalse();
+        MessageHeaderConstants.IsReserved(DeadLetterHeaderConstants.RedriveCount).Should().BeTrue();
+        MessageHeaderConstants.IsAdapterOwned(DeadLetterHeaderConstants.RedriveCount).Should().BeFalse();
     }
 
     [Fact]
@@ -34,22 +34,22 @@ public sealed class MessageHeaderOwnershipTests
         // Pinned as a set, because the predicate is only safe while it matches what the send path actually re-stamps:
         // add a header here without re-stamping it and it silently vanishes on every broker; drop one and a caller
         // gets to forge it.
-        MessageHeaders.IsAdapterOwned(MessageHeaders.EventType).Should().BeTrue();
-        MessageHeaders.IsAdapterOwned(MessageHeaders.ContentType).Should().BeTrue();
-        MessageHeaders.IsAdapterOwned(MessageHeaders.MessageId).Should().BeTrue();
-        MessageHeaders.IsAdapterOwned(MessageHeaders.PartitionKey).Should().BeTrue();
-        MessageHeaders.IsAdapterOwned(MessageHeaders.ReplyTo).Should().BeTrue();
-        MessageHeaders.IsAdapterOwned(MessageHeaders.CorrelationId).Should().BeTrue();
-        MessageHeaders.IsAdapterOwned(MessageHeaders.ConversationId).Should().BeTrue();
-        MessageHeaders.IsAdapterOwned(MessageHeaders.DeliveryCount).Should().BeTrue();
+        MessageHeaderConstants.IsAdapterOwned(MessageHeaderConstants.EventType).Should().BeTrue();
+        MessageHeaderConstants.IsAdapterOwned(MessageHeaderConstants.ContentType).Should().BeTrue();
+        MessageHeaderConstants.IsAdapterOwned(MessageHeaderConstants.MessageId).Should().BeTrue();
+        MessageHeaderConstants.IsAdapterOwned(MessageHeaderConstants.PartitionKey).Should().BeTrue();
+        MessageHeaderConstants.IsAdapterOwned(MessageHeaderConstants.ReplyTo).Should().BeTrue();
+        MessageHeaderConstants.IsAdapterOwned(MessageHeaderConstants.CorrelationId).Should().BeTrue();
+        MessageHeaderConstants.IsAdapterOwned(MessageHeaderConstants.ConversationId).Should().BeTrue();
+        MessageHeaderConstants.IsAdapterOwned(MessageHeaderConstants.DeliveryCount).Should().BeTrue();
 
         // Dead-letter death info is stamped only by the adapter that re-produces onto a DLQ, never on a normal send,
         // so it is reserved-but-not-owned and rides through like any other feature header.
-        MessageHeaders.IsAdapterOwned(MessageHeaders.DeadLetterReason).Should().BeFalse();
-        MessageHeaders.IsAdapterOwned(MessageHeaders.DeadLetterExceptionType).Should().BeFalse();
+        MessageHeaderConstants.IsAdapterOwned(MessageHeaderConstants.DeadLetterReason).Should().BeFalse();
+        MessageHeaderConstants.IsAdapterOwned(MessageHeaderConstants.DeadLetterExceptionType).Should().BeFalse();
 
         // W3C trace context is a standard name, not an SDK-owned one — never in the reserved namespace at all.
-        MessageHeaders.IsReserved(MessageHeaders.TraceParent).Should().BeFalse();
+        MessageHeaderConstants.IsReserved(MessageHeaderConstants.TraceParent).Should().BeFalse();
     }
 
     [Fact]
@@ -59,21 +59,21 @@ public sealed class MessageHeaderOwnershipTests
         // one definition and a header cannot drift out of the reserved set by typo. The saga timeout pair was the last
         // holdout. These literals pin the WIRE values: composing them was a refactor, and a message in flight during a
         // rolling deploy has to be read by both builds — a changed string here is a silently dropped timeout.
-        SagaHeaders.TimeoutName.Should().Be("wt-saga-timeout-name");
-        SagaHeaders.TimeoutToken.Should().Be("wt-saga-timeout-token");
+        SagaHeaderConstants.TimeoutName.Should().Be("wt-saga-timeout-name");
+        SagaHeaderConstants.TimeoutToken.Should().Be("wt-saga-timeout-token");
 
         // And the reason composing them matters: both are reserved (so propagation blocks them) but neither is
         // adapter-owned, so both ride a re-publish instead of being stripped at the broker.
-        MessageHeaders.IsReserved(SagaHeaders.TimeoutName).Should().BeTrue();
-        MessageHeaders.IsReserved(SagaHeaders.TimeoutToken).Should().BeTrue();
-        MessageHeaders.IsAdapterOwned(SagaHeaders.TimeoutName).Should().BeFalse();
-        MessageHeaders.IsAdapterOwned(SagaHeaders.TimeoutToken).Should().BeFalse();
+        MessageHeaderConstants.IsReserved(SagaHeaderConstants.TimeoutName).Should().BeTrue();
+        MessageHeaderConstants.IsReserved(SagaHeaderConstants.TimeoutToken).Should().BeTrue();
+        MessageHeaderConstants.IsAdapterOwned(SagaHeaderConstants.TimeoutName).Should().BeFalse();
+        MessageHeaderConstants.IsAdapterOwned(SagaHeaderConstants.TimeoutToken).Should().BeFalse();
 
         // Same pair for the claim check, whose reference must survive a retry / delay / redrive hop or the rehydrator
         // on the far side has nothing to fetch.
-        ClaimCheckHeaders.Reference.Should().Be("wt-claim-check");
-        MessageHeaders.IsReserved(ClaimCheckHeaders.Reference).Should().BeTrue();
-        MessageHeaders.IsAdapterOwned(ClaimCheckHeaders.Reference).Should().BeFalse();
+        ClaimCheckHeaderConstants.Reference.Should().Be("wt-claim-check");
+        MessageHeaderConstants.IsReserved(ClaimCheckHeaderConstants.Reference).Should().BeTrue();
+        MessageHeaderConstants.IsAdapterOwned(ClaimCheckHeaderConstants.Reference).Should().BeFalse();
     }
 }
 
@@ -82,7 +82,7 @@ public sealed class MessageHeaderOwnershipTests
 /// assertions themselves, which are shared with the Kafka, NATS and Redis Streams suites.
 /// </summary>
 /// <remarks>
-/// Azure Service Bus is the fifth caller of <see cref="MessageHeaders.IsAdapterOwned"/> and the one broker not covered
+/// Azure Service Bus is the fifth caller of <see cref="MessageHeaderConstants.IsAdapterOwned"/> and the one broker not covered
 /// here: it has no Testcontainers image, so the contract cannot be asserted against it without a real namespace.
 /// </remarks>
 public sealed class AdapterOwnedHeaderTests : IAsyncLifetime
@@ -109,7 +109,7 @@ public sealed class AdapterOwnedHeaderTests : IAsyncLifetime
     private async Task<IHost> StartHostAsync(string suffix)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<EventCollector>(); // PingHandler is scanned from this assembly and needs it
+        builder.Services.AddScannedHandlerDependencies(); // PingHandler is scanned from this assembly and needs it
         builder.Services.AddRabbitMqEventBus(
             o =>
             {

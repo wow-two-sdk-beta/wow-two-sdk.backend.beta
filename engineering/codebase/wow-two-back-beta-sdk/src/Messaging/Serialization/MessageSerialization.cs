@@ -6,7 +6,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 
 /// <summary>
 /// Serializes an event body to/from the wire. Pluggable — the default is System.Text.Json (through the SDK's
-/// <see cref="JsonOptionsPresets"/>); register another (MessagePack, Protobuf, …) via <c>AddMessageSerializer</c>.
+/// <see cref="JsonOptionsConstants"/>); register another (MessagePack, Protobuf, …) via <c>AddMessageSerializer</c>.
 /// The transport stamps <see cref="ContentType"/> as a header so the receiver can select the matching serializer.
 /// </summary>
 public interface IMessageSerializer
@@ -39,14 +39,14 @@ public interface IMessageSerializer
     object? Deserialize(ReadOnlySpan<byte> data, Type bodyType);
 }
 
-/// <summary>Default <see cref="IMessageSerializer"/> — System.Text.Json routed through the SDK's shared <see cref="JsonOptionsPresets"/> so producer and consumer share one casing/enum/null policy.</summary>
+/// <summary>Default <see cref="IMessageSerializer"/> — System.Text.Json routed through the SDK's shared <see cref="JsonOptionsConstants"/> so producer and consumer share one casing/enum/null policy.</summary>
 public sealed class SystemTextJsonMessageSerializer : IMessageSerializer
 {
     private readonly JsonSerializerOptions _options;
 
-    /// <summary>Create the serializer with optional overriding options (defaults to <see cref="JsonOptionsPresets.Default"/>).</summary>
+    /// <summary>Create the serializer with optional overriding options (defaults to <see cref="JsonOptionsConstants.Default"/>).</summary>
     /// <param name="options">JSON options; null uses the SDK default preset.</param>
-    public SystemTextJsonMessageSerializer(JsonSerializerOptions? options = null) => _options = options ?? JsonOptionsPresets.Default;
+    public SystemTextJsonMessageSerializer(JsonSerializerOptions? options = null) => _options = options ?? JsonOptionsConstants.Default;
 
     /// <inheritdoc />
     public string ContentType => "application/json";

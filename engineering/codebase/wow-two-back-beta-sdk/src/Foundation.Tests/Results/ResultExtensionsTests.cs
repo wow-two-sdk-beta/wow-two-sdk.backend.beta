@@ -18,7 +18,7 @@ public sealed class ResultExtensionsTests
     [Fact]
     public void ValueOrThrow_ShouldThrowAppException_WhenFailure()
     {
-        var result = Result<int>.Fail(AppErrors.NotFound("gone"));
+        var result = Result<int>.Fail(AppErrorFactory.NotFound("gone"));
 
         var act = () => result.ValueOrThrow();
 
@@ -37,7 +37,7 @@ public sealed class ResultExtensionsTests
     [Fact]
     public void ThrowIfFailure_ShouldThrow_WhenFailure()
     {
-        var result = Result.Fail(AppErrors.Conflict("dup"));
+        var result = Result.Fail(AppErrorFactory.Conflict("dup"));
 
         var act = () => result.ThrowIfFailure();
 

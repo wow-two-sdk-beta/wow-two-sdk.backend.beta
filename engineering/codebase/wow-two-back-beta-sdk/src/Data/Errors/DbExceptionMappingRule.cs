@@ -14,7 +14,7 @@ public sealed class DbExceptionMappingRule : IExceptionMappingRule
         ArgumentNullException.ThrowIfNull(exception);
 
         return Classify(exception) is { } type
-            ? AppError.FromException(type, ErrorMessages.For(type), exception)
+            ? AppError.FromException(type, ErrorMessageConstants.For(type), exception)
             : null;
     }
 

@@ -18,13 +18,13 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 /// constructs a new <see cref="DeadLetterRecord"/> knowing nothing about the previous one. The header is what makes the
 /// redrive cap hold across replays and restarts.
 /// </remarks>
-public static class DeadLetterHeaders
+public static class DeadLetterHeaderConstants
 {
     /// <summary>Reserved. How many times this message has been redriven out of a dead-letter store.</summary>
-    public const string RedriveCount = MessageHeaders.ReservedPrefix + "dl-redrive-count";
+    public const string RedriveCount = MessageHeaderConstants.ReservedPrefix + "dl-redrive-count";
 
     /// <summary>Reserved. Round-trip (<c>o</c>) timestamp of the most recent redrive.</summary>
-    public const string RedrivenAt = MessageHeaders.ReservedPrefix + "dl-redriven-at";
+    public const string RedrivenAt = MessageHeaderConstants.ReservedPrefix + "dl-redriven-at";
 
     /// <summary>Read the redrive marker off an envelope; 0 when absent or unparseable.</summary>
     /// <param name="envelope">The envelope to inspect.</param>
@@ -72,8 +72,8 @@ public static class DeadLetterHeaders
 public sealed record DeadLetterQuery
 {
     /// <summary>
-    /// Source destinations to search. Empty means every source — which needs an <see cref="IDeadLetterQueryStore"/>,
-    /// since the floor <see cref="IDeadLetterStore.ReadAsync"/> enumerates one named source at a time.
+    /// Source destinations to search. Empty means every source — which needs an <see cref="IDeadLetterQueryRepository"/>,
+    /// since the floor <see cref="IDeadLetterRepository.ReadAsync"/> enumerates one named source at a time.
     /// </summary>
     public IReadOnlyList<string> Sources { get; init; } = [];
 
@@ -174,12 +174,12 @@ public sealed record DeadLetterQuery
 /// "park it" and "put it back".
 /// </summary>
 /// <remarks>
-/// Optional: <see cref="IDeadLetterAdmin"/> works over a bare <see cref="IDeadLetterStore"/>, restricted to what that
+/// Optional: <see cref="IDeadLetterAdmin"/> works over a bare <see cref="IDeadLetterRepository"/>, restricted to what that
 /// interface can express (browse only within named sources, no by-id lookup, no purge). A broker adapter implements
 /// this when its DLQ supports browsing and deleting individual messages; where it cannot, the admin degrades rather
 /// than pretending.
 /// </remarks>
-public interface IDeadLetterQueryStore : IDeadLetterStore
+public interface IDeadLetterQueryRepository : IDeadLetterRepository
 {
     /// <summary>Enumerate records matching <paramref name="query"/>, across every source when it names none.</summary>
     /// <param name="query">The filter.</param>
@@ -220,7 +220,7 @@ public enum RedriveOutcome
     /// <summary>The store rejected the replay. The record is left in place, so the request can be repeated.</summary>
     Failed,
 
-    /// <summary>The registered store cannot service the request — a by-id operation on a store that is not an <see cref="IDeadLetterQueryStore"/>.</summary>
+    /// <summary>The registered store cannot service the request — a by-id operation on a store that is not an <see cref="IDeadLetterQueryRepository"/>.</summary>
     NotSupported,
 }
 
@@ -249,12 +249,12 @@ public sealed record DeadLetterRedriveResult(int Matched, int Redriven, IReadOnl
 /// </summary>
 /// <remarks>
 /// <para>
-/// Everything routes through <see cref="IDeadLetterStore"/>, so it is transport-neutral. Operations that need more than
-/// that interface can express (by-id lookup, purge) require the store to implement <see cref="IDeadLetterQueryStore"/>
+/// Everything routes through <see cref="IDeadLetterRepository"/>, so it is transport-neutral. Operations that need more than
+/// that interface can express (by-id lookup, purge) require the store to implement <see cref="IDeadLetterQueryRepository"/>
 /// and say so via <see cref="RedriveOutcome.NotSupported"/> or a <see cref="NotSupportedException"/> otherwise.
 /// </para>
 /// <para>
-/// Redrive re-publishes through the store's own <see cref="IDeadLetterStore.ReplayAsync"/> rather than through a
+/// Redrive re-publishes through the store's own <see cref="IDeadLetterRepository.ReplayAsync"/> rather than through a
 /// transport of its own: the marker is written onto the stored record first, so a store that replays what it holds
 /// carries the counter onto the wire without the admin needing a publish path.
 /// </para>
@@ -266,7 +266,7 @@ public interface IDeadLetterAdmin
     /// <param name="cancellationToken">Cancellation token.</param>
     IAsyncEnumerable<DeadLetterRecord> BrowseAsync(DeadLetterQuery query, CancellationToken cancellationToken);
 
-    /// <summary>Read one record by message id. Requires an <see cref="IDeadLetterQueryStore"/>; returns <c>null</c> otherwise.</summary>
+    /// <summary>Read one record by message id. Requires an <see cref="IDeadLetterQueryRepository"/>; returns <c>null</c> otherwise.</summary>
     /// <param name="messageId">The dead-lettered message id.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask<DeadLetterRecord?> PeekAsync(string messageId, CancellationToken cancellationToken);
@@ -282,7 +282,7 @@ public interface IDeadLetterAdmin
     /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask<RedriveOutcome> RedriveAsync(DeadLetterRecord record, CancellationToken cancellationToken);
 
-    /// <summary>Redrive by message id. Requires an <see cref="IDeadLetterQueryStore"/> to resolve the id.</summary>
+    /// <summary>Redrive by message id. Requires an <see cref="IDeadLetterQueryRepository"/> to resolve the id.</summary>
     /// <param name="messageId">The dead-lettered message id.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask<RedriveOutcome> RedriveAsync(string messageId, CancellationToken cancellationToken);
@@ -305,12 +305,12 @@ public interface IDeadLetterAdmin
     /// <summary>Delete matching records without replaying them; returns how many were removed.</summary>
     /// <param name="query">The filter selecting what to delete.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <exception cref="NotSupportedException">The registered store is not an <see cref="IDeadLetterQueryStore"/> and cannot delete.</exception>
+    /// <exception cref="NotSupportedException">The registered store is not an <see cref="IDeadLetterQueryRepository"/> and cannot delete.</exception>
     ValueTask<int> PurgeAsync(DeadLetterQuery query, CancellationToken cancellationToken);
 }
 
 /// <summary>Options for <see cref="IDeadLetterAdmin"/>.</summary>
-public sealed class DeadLetterAdminOptions
+public sealed record DeadLetterAdminOptions
 {
     /// <summary>
     /// How many times one message may be redriven before the guard refuses it. Default 3; zero or negative disables
@@ -329,18 +329,18 @@ public sealed class DeadLetterAdminOptions
     public bool QuarantineAtRedriveLimit { get; set; } = true;
 }
 
-/// <summary>Default <see cref="IDeadLetterAdmin"/> — uses an <see cref="IDeadLetterQueryStore"/> where the registered store is one, and degrades to <see cref="IDeadLetterStore"/> where it is not.</summary>
+/// <summary>Default <see cref="IDeadLetterAdmin"/> — uses an <see cref="IDeadLetterQueryRepository"/> where the registered store is one, and degrades to <see cref="IDeadLetterRepository"/> where it is not.</summary>
 internal sealed partial class DeadLetterAdmin : IDeadLetterAdmin
 {
-    private readonly IDeadLetterStore _store;
-    private readonly IDeadLetterQueryStore? _queryStore;
+    private readonly IDeadLetterRepository _store;
+    private readonly IDeadLetterQueryRepository? _queryStore;
     private readonly DeadLetterAdminOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<DeadLetterAdmin> _logger;
 
     public DeadLetterAdmin(
-        IDeadLetterStore store,
-        IOptions<DeadLetterAdminOptions> options,
+        IDeadLetterRepository store,
+        DeadLetterAdminOptions options,
         TimeProvider timeProvider,
         ILogger<DeadLetterAdmin> logger)
     {
@@ -348,8 +348,8 @@ internal sealed partial class DeadLetterAdmin : IDeadLetterAdmin
         ArgumentNullException.ThrowIfNull(options);
 
         _store = store;
-        _queryStore = store as IDeadLetterQueryStore;
-        _options = options.Value;
+        _queryStore = store as IDeadLetterQueryRepository;
+        _options = options;
         _timeProvider = timeProvider;
         _logger = logger;
     }
@@ -452,7 +452,7 @@ internal sealed partial class DeadLetterAdmin : IDeadLetterAdmin
             RedriveCount = redrives + 1,
             LastRedrivenAtUtc = now,
             State = DeadLetterState.DeadLettered,
-            Envelope = DeadLetterHeaders.StampRedrive(record.Envelope, redrives + 1, now),
+            Envelope = DeadLetterHeaderConstants.StampRedrive(record.Envelope, redrives + 1, now),
         };
 
         try
@@ -535,7 +535,7 @@ internal sealed partial class DeadLetterAdmin : IDeadLetterAdmin
             // Throwing rather than returning 0: a purge that silently deletes nothing reads as an empty DLQ, and the
             // operator moves on believing the queue is clear.
             throw new NotSupportedException(
-                $"Purging requires the registered {nameof(IDeadLetterStore)} ({_store.GetType().Name}) to implement {nameof(IDeadLetterQueryStore)}.");
+                $"Purging requires the registered {nameof(IDeadLetterRepository)} ({_store.GetType().Name}) to implement {nameof(IDeadLetterQueryRepository)}.");
         }
 
         var matched = await CollectAsync(query, cancellationToken);
@@ -609,10 +609,10 @@ internal sealed partial class DeadLetterAdmin : IDeadLetterAdmin
     [LoggerMessage(EventId = 6076, Level = LogLevel.Information, Message = "Purged {Purged} of {Matched} matched dead-letter records")]
     private partial void LogPurged(int purged, int matched);
 
-    [LoggerMessage(EventId = 6077, Level = LogLevel.Warning, Message = "Dead-letter store {StoreType} does not implement IDeadLetterQueryStore; a browse across all sources returns nothing — name the sources on the query or register a query-capable store")]
+    [LoggerMessage(EventId = 6077, Level = LogLevel.Warning, Message = "Dead-letter store {StoreType} does not implement IDeadLetterQueryRepository; a browse across all sources returns nothing — name the sources on the query or register a query-capable store")]
     private partial void LogCrossSourceBrowseUnsupported(string storeType);
 
-    [LoggerMessage(EventId = 6078, Level = LogLevel.Warning, Message = "Dead-letter store {StoreType} does not implement IDeadLetterQueryStore; message {MessageId} cannot be resolved by id alone — supply its source")]
+    [LoggerMessage(EventId = 6078, Level = LogLevel.Warning, Message = "Dead-letter store {StoreType} does not implement IDeadLetterQueryRepository; message {MessageId} cannot be resolved by id alone — supply its source")]
     private partial void LogByIdLookupUnsupported(string storeType, string messageId);
 }
 
@@ -620,7 +620,7 @@ internal sealed partial class DeadLetterAdmin : IDeadLetterAdmin
 public static class DeadLetterAdminServiceCollectionExtensions
 {
     /// <summary>
-    /// Register <see cref="IDeadLetterAdmin"/> over whatever <see cref="IDeadLetterStore"/> is registered — browse,
+    /// Register <see cref="IDeadLetterAdmin"/> over whatever <see cref="IDeadLetterRepository"/> is registered — browse,
     /// peek, redrive, quarantine, release, purge. Purely additive: nothing on the consume path changes, and the admin
     /// does nothing until something calls it.
     /// </summary>
@@ -629,7 +629,7 @@ public static class DeadLetterAdminServiceCollectionExtensions
     /// <remarks>
     /// Order-independent relative to the transport registration: the store is resolved when the admin is first used.
     /// Pair with <see cref="AddInMemoryDeadLetterQueryStore"/> (or a broker store that implements
-    /// <see cref="IDeadLetterQueryStore"/>) to get cross-source browse, by-id lookup and purge.
+    /// <see cref="IDeadLetterQueryRepository"/>) to get cross-source browse, by-id lookup and purge.
     /// </remarks>
     /// <example>
     /// <code>
@@ -646,9 +646,8 @@ public static class DeadLetterAdminServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var optionsBuilder = services.AddOptions<DeadLetterAdminOptions>();
-        if (configure is not null)
-            optionsBuilder.Configure(configure);
+        services.AddOptions<DeadLetterAdminOptions>().Configure(options => configure?.Invoke(options));
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<DeadLetterAdminOptions>>().Value);
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IDeadLetterAdmin, DeadLetterAdmin>();
@@ -656,20 +655,20 @@ public static class DeadLetterAdminServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Replace the dead-letter store with the in-memory <see cref="IDeadLetterQueryStore"/> — same behaviour as the
+    /// Replace the dead-letter store with the in-memory <see cref="IDeadLetterQueryRepository"/> — same behaviour as the
     /// default in-memory store plus cross-source browse, by-id lookup, in-place update and delete.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <remarks>
     /// Explicitly a replacement, not a <c>TryAdd</c>: it overrides whatever store is registered, including a broker
     /// adapter's. Call it only where the process itself is the dead-letter terminus — a broker with a native DLQ should
-    /// keep its own store and implement <see cref="IDeadLetterQueryStore"/> there instead. State is process-local and
+    /// keep its own store and implement <see cref="IDeadLetterQueryRepository"/> there instead. State is process-local and
     /// does not survive a restart, exactly like the store it replaces.
     /// </remarks>
     public static IServiceCollection AddInMemoryDeadLetterQueryStore(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.Replace(ServiceDescriptor.Singleton<IDeadLetterStore, InMemoryDeadLetterQueryStore>());
+        services.Replace(ServiceDescriptor.Singleton<IDeadLetterRepository, InMemoryDeadLetterQueryRepository>());
         return services;
     }
 }

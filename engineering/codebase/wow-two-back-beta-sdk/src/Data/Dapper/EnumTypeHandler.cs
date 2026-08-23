@@ -21,7 +21,7 @@ public sealed class EnumTypeHandler<TEnum> : SqlMapper.TypeHandler<TEnum>
     public override void SetValue(IDbDataParameter parameter, TEnum value)
     {
         parameter.DbType = DbType.String;
-        parameter.Value = EnumNameConverter<TEnum>.ToLabel(value, Style);
+        parameter.Value = EnumNameMapper<TEnum>.ToLabel(value, Style);
     }
 
     /// <inheritdoc />
@@ -33,7 +33,7 @@ public sealed class EnumTypeHandler<TEnum> : SqlMapper.TypeHandler<TEnum>
         var label = value as string
             ?? throw new InvalidCastException($"Cannot map {value?.GetType().Name ?? "null"} to enum '{typeof(TEnum).Name}'.");
 
-        if (EnumNameConverter<TEnum>.TryParse(label, Style, out var parsed))
+        if (EnumNameMapper<TEnum>.TryParse(label, Style, out var parsed))
             return parsed;
 
         throw new InvalidCastException($"'{label}' does not map to any member of enum '{typeof(TEnum).Name}'.");

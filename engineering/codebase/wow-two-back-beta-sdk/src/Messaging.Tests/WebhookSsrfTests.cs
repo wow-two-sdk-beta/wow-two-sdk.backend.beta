@@ -36,7 +36,7 @@ public sealed class WebhookSsrfTests
         services.AddLogging();
         services.AddWebhooks(configure);
         // Override the guarded primary handler with a stub — asserts the pre-flight blocks before any send is attempted.
-        services.AddHttpClient(WebhookDefaults.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
+        services.AddHttpClient(WebhookDefaultConstants.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
         return services.BuildServiceProvider();
     }
 

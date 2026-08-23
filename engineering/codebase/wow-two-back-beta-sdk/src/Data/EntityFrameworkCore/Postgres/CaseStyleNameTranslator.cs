@@ -8,8 +8,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Postgres;
 public sealed class CaseStyleNameTranslator(CaseStyle style) : INpgsqlNameTranslator
 {
     /// <inheritdoc />
-    public string TranslateTypeName(string clrName) => CaseConverter.ToCase(clrName, style);
+    public string TranslateTypeName(string clrName) => CaseMapper.ToCase(clrName, style);
 
     /// <inheritdoc />
-    public string TranslateMemberName(string clrName) => CaseConverter.ToCase(clrName, style);
+    public string TranslateMemberName(string clrName) => CaseMapper.ToCase(clrName, style);
 }

@@ -206,8 +206,8 @@ internal sealed class RecordingSagaRepository<TState>(ISagaRepository<TState> in
             CorrelationId = state.CorrelationId,
 
             // An insert has nothing loaded behind it, but the instance is not stateless: the coordinator starts it in
-            // SagaStates.Initial, which is the state the Initially clause is bound to and the one a test asserts from.
-            FromState = pending?.FromState ?? (created ? SagaStates.Initial : null),
+            // SagaStateConstants.Initial, which is the state the Initially clause is bound to and the one a test asserts from.
+            FromState = pending?.FromState ?? (created ? SagaStateConstants.Initial : null),
             ToState = state.CurrentState,
             Outcome = outcome,
             Attempt = pending?.Attempt ?? 1,

@@ -5,12 +5,12 @@ using WoW.Two.Sdk.Backend.Beta.Caching.Core;
 
 namespace WoW.Two.Sdk.Backend.Beta.Caching.Hybrid;
 
-/// <summary>Registers HybridCache with conventional defaults and the <see cref="ICache"/> facade.</summary>
+/// <summary>Registers HybridCache with conventional defaults and the <see cref="ICacheRepository"/> facade.</summary>
 public static class HybridCachingServiceCollectionExtensions
 {
     /// <summary>
     /// Adds <see cref="HybridCache"/> configured from <see cref="HybridCacheConventionOptions"/> and registers
-    /// the <see cref="ICache"/> facade plus <see cref="ICacheKeyBuilder"/>. Pairs with
+    /// the <see cref="ICacheRepository"/> facade plus <see cref="ICacheKeyBuilder"/>. Pairs with
     /// <c>AddRedisDistributedCache</c> for an L2 tier — HybridCache picks up any registered
     /// <c>IDistributedCache</c> automatically; without one it runs L1-only.
     /// </summary>
@@ -37,7 +37,7 @@ public static class HybridCachingServiceCollectionExtensions
         });
 #pragma warning restore EXTEXP0018
 
-        services.TryAddSingleton<ICache, HybridCacheAdapter>();
+        services.TryAddSingleton<ICacheRepository, HybridCacheRepository>();
         services.TryAddSingleton<ICacheKeyBuilder, CacheKeyBuilder>();
         return services;
     }

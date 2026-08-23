@@ -39,5 +39,5 @@ public sealed class DbExceptionMappingRuleTests
 
     [Fact]
     public void From_ShouldFallBackToUnexpected_WhenNotADatabaseException()
-        => DbErrors.From(new InvalidOperationException("x")).Type.Should().Be(AppErrorType.Unexpected);
+        => DbErrorMapper.From(new InvalidOperationException("x")).Type.Should().Be(AppErrorType.Unexpected);
 }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli;
 
@@ -41,7 +42,12 @@ internal static partial class CliRunner
     public static async Task<int> StatusAsync(string? connection, string? sqlDir, CancellationToken ct)
     {
         await using var provider = BuildProvider(connection, sqlDir);
-        var status = await provider.GetRequiredService<IMigrationRunnerService>().GetStatusAsync(ct);
+        var statusResult = await provider.GetRequiredService<IMigrationRunnerService>().GetStatusAsync(ct);
+        if (statusResult.IsFailure(out var statusError, out var status))
+        {
+            Console.Error.WriteLine($"✗ {statusError.Message}");
+            return 1;
+        }
 
         Console.WriteLine($"Applied ({status.Applied.Count}):");
         foreach (var row in status.Applied)
@@ -74,7 +80,12 @@ internal static partial class CliRunner
 
         // Create the target database first — a fresh box may have no target database yet.
         await provider.GetRequiredService<IMigrationDialect>().EnsureDatabaseExistsAsync(ResolveConnection(connection), ct);
-        var applied = await provider.GetRequiredService<IMigrationRunnerService>().ApplyPendingAsync("cli", ct);
+        var applyResult = await provider.GetRequiredService<IMigrationRunnerService>().ApplyPendingAsync("cli", ct);
+        if (applyResult.IsFailure(out var applyError, out var applied))
+        {
+            Console.Error.WriteLine($"✗ {applyError.Message}");
+            return 1;
+        }
 
         Console.WriteLine(applied.Count == 0
             ? "✓ Up to date — nothing to apply."
@@ -95,7 +106,12 @@ internal static partial class CliRunner
             return 2;
 
         await using var provider = BuildProvider(connection, sqlDir, allowRollback: true);
-        var rolledBack = await provider.GetRequiredService<IMigrationRunnerService>().RollbackAsync(targetOrdinal, ct);
+        var rollbackResult = await provider.GetRequiredService<IMigrationRunnerService>().RollbackAsync(targetOrdinal, ct);
+        if (rollbackResult.IsFailure(out var rollbackError, out var rolledBack))
+        {
+            Console.Error.WriteLine($"✗ {rollbackError.Message}");
+            return 1;
+        }
 
         Console.WriteLine(rolledBack.Count == 0
             ? "Nothing to roll back."
@@ -121,14 +137,24 @@ internal static partial class CliRunner
 
         if (repair)
         {
-            var repaired = await runner.RepairAsync(ct);
+            if ((await runner.RepairAsync(ct)).IsFailure(out var repairError, out var repaired))
+            {
+                Console.Error.WriteLine($"✗ {repairError.Message}");
+                return 1;
+            }
+
             Console.WriteLine(repaired.Count == 0
                 ? "✓ No drift to repair."
                 : $"✓ Repaired checksums: {string.Join(", ", repaired)}");
             return 0;
         }
 
-        var status = await runner.GetStatusAsync(ct);
+        if ((await runner.GetStatusAsync(ct)).IsFailure(out var verifyError, out var status))
+        {
+            Console.Error.WriteLine($"✗ {verifyError.Message}");
+            return 1;
+        }
+
         if (status.Drifted.Count == 0)
         {
             Console.WriteLine("✓ No drift — every applied migration matches its source.");

@@ -1,6 +1,7 @@
 # WoW.Two.Sdk.Backend.Beta.Identity.Mfa.Totp
 
-> TOTP / HOTP helpers (RFC 6238 / 4226) via `Otp.NET`. 6-digit codes, 30-second step, ±1 step tolerance.
+> TOTP / HOTP via `Otp.NET`. Step, digit count and verification window come from `TotpOptions`;
+> the defaults are RFC 6238 — 6 digits, a 30-second step, ±1 step.
 
 ## Install
 
@@ -13,15 +14,18 @@ dotnet add package WoW.Two.Sdk.Backend.Beta.Identity.Mfa.Totp
 ### Enroll
 
 ```csharp
-var secret = TotpService.GenerateSecret();
-var uri = TotpService.BuildOtpAuthUri("MyApp", user.Email, secret);
+builder.Services.AddTotp(o => o.Digits = 8);   // omit the delegate for the RFC defaults
+
+var secret = totp.GenerateSecret();
+var uri = totp.BuildOtpAuthUri("MyApp", user.Email, secret);
 // Render `uri` as QR code (e.g. via QRCoder), persist `secret` for the user.
 ```
 
 ### Verify
 
 ```csharp
-if (!TotpService.VerifyCode(user.TotpSecret, providedCode))
+// ITotpService is injected; it verifies against the registered parameters.
+if (!totp.VerifyCode(user.TotpSecret, providedCode))
     throw new UnauthorizedAccessException("Invalid TOTP.");
 ```
 

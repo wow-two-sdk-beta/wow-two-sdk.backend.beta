@@ -89,7 +89,8 @@ public sealed class SagaTestHarnessTests
     [Fact]
     public async Task Correlation_routes_each_key_to_its_own_instance()
     {
-        await using var harness = await SagaTestHarness.StartAsync<OrderStateMachine, OrderSagaState>();
+        await using var harness = await SagaTestHarness.StartAsync<OrderStateMachine, OrderSagaState>(
+            configureServices: static services => services.AddScannedHandlerDependencies());
 
         await harness.Bus.PublishAsync(new OrderPlaced("order-a", 100m));
         await harness.Bus.PublishAsync(new OrderPlaced("order-b", 55m));
@@ -126,7 +127,7 @@ public sealed class SagaTestHarnessTests
     {
         var probe = new SagaProbe();
         await using var harness = await SagaTestHarness.StartAsync<OrderStateMachine, OrderSagaState>(
-            configureServices: services => services.AddSingleton(probe),
+            configureServices: services => services.AddScannedHandlerDependencies().AddSingleton(probe),
             // Keeping the finalized instance is what makes the write an UpdateAsync (the version-checked path) and
             // leaves the converged state readable afterwards.
             configureSaga: options => options.RemoveOnFinalize = false,
@@ -140,7 +141,7 @@ public sealed class SagaTestHarnessTests
 
         harness.ConcurrencyConflicts("order-c").Should().Be(1); // the store rejected the stale write, as its contract requires
         replayed[0].Attempt.Should().Be(2); // and the coordinator re-ran the transition against reloaded state
-        replayed[0].ToState.Should().Be(SagaStates.Final);
+        replayed[0].ToState.Should().Be(SagaStateConstants.Final);
         probe.PaymentActivityRuns.Should().Be(2);
 
         // Replay is at-least-once by construction — the SDK documents it as the price of never losing an update.
@@ -150,14 +151,15 @@ public sealed class SagaTestHarnessTests
         var converged = await harness.GetInstanceAsync("order-c");
         converged.Should().NotBeNull();
         converged!.Interference.Should().Be(1); // the concurrent writer's commit survived
-        converged.CurrentState.Should().Be(SagaStates.Final); // and this transition landed on top of it
+        converged.CurrentState.Should().Be(SagaStateConstants.Final); // and this transition landed on top of it
         converged.FinalizedAtUtc.Should().Be(harness.Time.GetUtcNow());
     }
 
     [Fact]
     public async Task A_scheduled_timeout_fires_and_the_saga_reacts_to_it()
     {
-        await using var harness = await SagaTestHarness.StartAsync<OrderStateMachine, OrderSagaState>();
+        await using var harness = await SagaTestHarness.StartAsync<OrderStateMachine, OrderSagaState>(
+            configureServices: static services => services.AddScannedHandlerDependencies());
 
         await harness.Bus.PublishAsync(new OrderPlaced("order-d", 100m));
 
@@ -180,7 +182,8 @@ public sealed class SagaTestHarnessTests
     [Fact]
     public async Task A_correlation_miss_is_recorded_as_ignored_rather_than_dropped_silently()
     {
-        await using var harness = await SagaTestHarness.StartAsync<OrderStateMachine, OrderSagaState>();
+        await using var harness = await SagaTestHarness.StartAsync<OrderStateMachine, OrderSagaState>(
+            configureServices: static services => services.AddScannedHandlerDependencies());
 
         // No Initially clause for PaymentReceived, so nothing is created — and without the harness the only assertion
         // available is a negative one. The transition log turns the non-event into a positive fact.
@@ -206,6 +209,7 @@ public sealed class SagaTestHarnessTests
     public async Task A_correlation_miss_faults_the_message_when_the_clause_demands_an_instance()
     {
         await using var harness = await SagaTestHarness.StartAsync<StrictOrderStateMachine, StrictOrderSagaState>(
+            configureServices: static services => services.AddScannedHandlerDependencies(),
             configureBus: options => options.Retry = new RetryConfig(MaxAttempts: 2, Backoff: BackoffKind.None));
 
         await harness.Bus.PublishAsync(new PaymentReceived("order-ghost", 5m));
@@ -225,6 +229,7 @@ public sealed class SagaTestHarnessTests
     public async Task A_finalized_instance_is_retained_until_a_purge_sweeps_it()
     {
         await using var harness = await SagaTestHarness.StartAsync<OrderStateMachine, OrderSagaState>(
+            configureServices: static services => services.AddScannedHandlerDependencies(),
             configureSaga: options => options.RemoveOnFinalize = false);
 
         await harness.Bus.PublishAsync(new OrderPlaced("order-r", 40m));
@@ -235,7 +240,7 @@ public sealed class SagaTestHarnessTests
 
         finalized.Removed.Should().BeFalse(); // retained for inspection, not deleted
         finalized.Instance!.FinalizedAtUtc.Should().Be(harness.Time.GetUtcNow());
-        (await harness.CurrentStateAsync("order-r")).Should().Be(SagaStates.Final);
+        (await harness.CurrentStateAsync("order-r")).Should().Be(SagaStateConstants.Final);
         harness.CountInstances().Should().Be(1);
 
         // Retention is measured from FinalizedAtUtc, so a sweep with a window the instance has not outlived keeps it.
@@ -251,6 +256,7 @@ public sealed class SagaTestHarnessTests
     public async Task An_unscheduled_timeout_is_dropped_when_the_transport_delivers_it_anyway()
     {
         await using var harness = await SagaTestHarness.StartAsync<ShipmentStateMachine, ShipmentSagaState>(
+            configureServices: static services => services.AddScannedHandlerDependencies(),
             configureSaga: options => options.RemoveOnFinalize = false);
 
         await harness.Bus.PublishAsync(new OrderPlaced("ship-1", 20m));
@@ -268,7 +274,7 @@ public sealed class SagaTestHarnessTests
         dropped.Is<PaymentOverdue>().Should().BeTrue();
         dropped.Outcome.Should().Be(SagaTransitionOutcome.Ignored);
         dropped.FromState.Should().Be(ShipmentStateMachine.Paid); // a live instance, not a correlation miss
-        dropped.Envelope!.Headers[SagaHeaders.TimeoutToken].Should().Be(scheduled.Token);
+        dropped.Envelope!.Headers[SagaHeaderConstants.TimeoutToken].Should().Be(scheduled.Token);
 
         harness.Published.Any<OrderCancelled>().Should().BeFalse(); // the paid order was not cancelled
         (await harness.CurrentStateAsync("ship-1")).Should().Be(ShipmentStateMachine.Paid);

@@ -9,7 +9,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 /// the C# member that declared it. The cost is that a typo in a state name is a runtime miss (the event finds no
 /// transition and is ignored) rather than a compile error — declare states as <c>const</c> on the state machine.
 /// </remarks>
-public static class SagaStates
+public static class SagaStateConstants
 {
     /// <summary>The state an instance is in before its first transition — what <c>Initially</c> binds to.</summary>
     public const string Initial = "initial";
@@ -26,17 +26,17 @@ public static class SagaStates
 /// Both use the SDK's reserved <c>wt-</c> namespace: they describe the message the SDK itself produced, and the header
 /// propagation policy blocks reserved keys from being copied onto anything published while handling it.
 /// </remarks>
-public static class SagaHeaders
+public static class SagaHeaderConstants
 {
     /// <summary>The timeout's declared name — the key its token is stored under in <see cref="ISagaState.TimeoutTokens"/>.</summary>
-    public const string TimeoutName = Transport.MessageHeaders.ReservedPrefix + "saga-timeout-name";
+    public const string TimeoutName = Transport.MessageHeaderConstants.ReservedPrefix + "saga-timeout-name";
 
     /// <summary>
     /// The token minted when the timeout was scheduled. A timeout whose token no longer matches the one on the instance
     /// was cancelled or replaced while in flight, and is dropped — this is what makes "unschedule" work on a transport
     /// that cannot recall a message it already accepted.
     /// </summary>
-    public const string TimeoutToken = Transport.MessageHeaders.ReservedPrefix + "saga-timeout-token";
+    public const string TimeoutToken = Transport.MessageHeaderConstants.ReservedPrefix + "saga-timeout-token";
 }
 
 /// <summary>What to do with an event whose saga instance does not exist and which no <c>Initially</c> clause would create.</summary>
@@ -58,7 +58,7 @@ public interface ISagaState
     /// <summary>The correlation key. Unique per instance; the primary key in any real repository.</summary>
     string CorrelationId { get; set; }
 
-    /// <summary>The state name the instance is currently in. Starts at <see cref="SagaStates.Initial"/>.</summary>
+    /// <summary>The state name the instance is currently in. Starts at <see cref="SagaStateConstants.Initial"/>.</summary>
     string CurrentState { get; set; }
 
     /// <summary>
@@ -68,7 +68,7 @@ public interface ISagaState
     /// </summary>
     int Version { get; set; }
 
-    /// <summary>When the instance reached <see cref="SagaStates.Final"/>; null while it is still running. Drives retention.</summary>
+    /// <summary>When the instance reached <see cref="SagaStateConstants.Final"/>; null while it is still running. Drives retention.</summary>
     DateTimeOffset? FinalizedAtUtc { get; set; }
 
     /// <summary>
@@ -101,7 +101,7 @@ public abstract class SagaState : ISagaState
     public string CorrelationId { get; set; } = string.Empty;
 
     /// <inheritdoc />
-    public string CurrentState { get; set; } = SagaStates.Initial;
+    public string CurrentState { get; set; } = SagaStateConstants.Initial;
 
     /// <inheritdoc />
     public int Version { get; set; }
@@ -222,7 +222,7 @@ public interface ISagaRepository<TState>
 }
 
 /// <summary>Saga runtime behaviour — concurrency-conflict retries and what happens to an instance that finalizes.</summary>
-public sealed class SagaOptions
+public sealed record SagaOptions
 {
     /// <summary>
     /// How many times a transition is re-run after losing an optimistic-concurrency race before the message is left to
@@ -234,7 +234,7 @@ public sealed class SagaOptions
     public TimeSpan ConcurrencyRetryDelay { get; set; } = TimeSpan.FromMilliseconds(20);
 
     /// <summary>
-    /// Remove an instance the moment it reaches <see cref="SagaStates.Final"/>. Default true — a finished saga is not
+    /// Remove an instance the moment it reaches <see cref="SagaStateConstants.Final"/>. Default true — a finished saga is not
     /// state, it is history, and history belongs in the log. Turn it off to keep finalized instances for inspection and
     /// sweep them later with <see cref="ISagaRepository{TState}.PurgeFinalizedAsync"/>.
     /// </summary>

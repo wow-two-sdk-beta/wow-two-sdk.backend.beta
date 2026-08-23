@@ -7,7 +7,7 @@ using Polly.Retry;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Polly;
 
 /// <summary>Options for the Polly-backed event resilience pipeline.</summary>
-public sealed class PollyEventResilienceOptions
+public sealed record PollyEventResilienceOptions
 {
     /// <summary>Maximum retry attempts before the failure propagates (→ dead-letter). Default 5.</summary>
     public int MaxRetryAttempts { get; set; } = 5;

@@ -10,7 +10,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
 /// <summary>Renders a thrown <see cref="ValidationException"/> as a 400 ProblemDetails carrying <c>code</c> and <c>errors[]</c> from inside the MVC action invoker.</summary>
 public sealed class ValidationExceptionFilter(
     IErrorHttpStatusCodeMapper statusMapper,
-    IErrorMessageResolver messageResolver) : IExceptionFilter
+    IErrorMessageMapper messageResolver,
+    IFieldErrorMessageMapper fieldMessageResolver) : IExceptionFilter
 {
     /// <inheritdoc />
     public void OnException(ExceptionContext context)
@@ -23,7 +24,7 @@ public sealed class ValidationExceptionFilter(
         }
 
         var problem = AppErrorProblemDetailsFactory.Create(
-            validationException.ValidationError, context.HttpContext, statusMapper, messageResolver);
+            validationException.ValidationError, context.HttpContext, statusMapper, messageResolver, fieldMessageResolver);
         problem.Title = "One or more validation errors occurred.";
 
         context.Result = new ObjectResult(problem)

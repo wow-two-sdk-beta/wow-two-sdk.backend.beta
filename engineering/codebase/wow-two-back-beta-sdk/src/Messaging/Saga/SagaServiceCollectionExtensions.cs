@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
@@ -50,9 +51,8 @@ public static class SagaServiceCollectionExtensions
         var machine = new TStateMachine();
         machine.Validate();
 
-        var optionsBuilder = services.AddOptions<SagaOptions>();
-        if (configure is not null)
-            optionsBuilder.Configure(configure);
+        services.AddOptions<SagaOptions>().Configure(options => configure?.Invoke(options));
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<SagaOptions>>().Value);
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<ISagaTimeoutScheduler, SagaTimeoutScheduler>();

@@ -16,15 +16,15 @@ using WoW.Two.Sdk.Backend.Beta.Serialization;
 // Wire as ASP.NET Core's default
 builder.Services.ConfigureHttpJsonOptions(o =>
 {
-    var defaults = JsonOptionsPresets.Default;
+    var defaults = JsonOptionsConstants.Default;
     foreach (var c in defaults.Converters) o.SerializerOptions.Converters.Add(c);
     o.SerializerOptions.PropertyNamingPolicy = defaults.PropertyNamingPolicy;
     // (or copy other properties)
 });
 
 // Or use directly
-var json = JsonSerializer.Serialize(model, JsonOptionsPresets.Default);
-var pretty = JsonSerializer.Serialize(model, JsonOptionsPresets.Indented);
+var json = JsonSerializer.Serialize(model, JsonOptionsConstants.Default);
+var pretty = JsonSerializer.Serialize(model, JsonOptionsConstants.Indented);
 ```
 
 ## Defaults

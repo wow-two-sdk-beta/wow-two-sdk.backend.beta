@@ -21,6 +21,14 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
+  <!-- Test projects run as Development so the container validates on build; Production hides a
+       missing registration until something resolves it. -->
+
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <RunSettingsFilePath>$(MSBuildThisFileDirectory)tests.runsettings</RunSettingsFilePath>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
   <!-- Packaging defaults — every csproj produces a NuGet by default -->
 
   <PropertyGroup>

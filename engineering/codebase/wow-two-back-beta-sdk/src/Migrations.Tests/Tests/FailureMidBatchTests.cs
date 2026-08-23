@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Harness;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 
@@ -39,14 +40,14 @@ public sealed class FailureMidBatchTests : SqliteMigratorTestBase
         history.Select(h => h.Ordinal).Should().Equal(1);
 
         // Status: #2 and #3 still pending, nothing drifted.
-        var status = await migrator.Runner.GetStatusAsync(CancellationToken.None);
+        var status = (await migrator.Runner.GetStatusAsync(CancellationToken.None)).ValueOrThrow();
         status.Applied.Select(a => a.Ordinal).Should().Equal(1);
         status.Pending.Select(p => p.Ordinal).Should().Equal(2, 3);
         status.Drifted.Should().BeEmpty();
 
         // Fix #2 and re-run: the batch resumes and finishes #2 + #3 (not re-applying #1).
         Workspace.OverwriteApply("002-broken", "create table t2(id int primary key);");
-        var applied = await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None);
+        var applied = (await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None)).ValueOrThrow();
 
         applied.Should().BeEquivalentTo(["002-broken", "003-third"]);
         (await migrator.HasTableAsync("t2")).Should().BeTrue();

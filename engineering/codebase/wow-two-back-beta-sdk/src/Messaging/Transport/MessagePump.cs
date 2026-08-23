@@ -13,7 +13,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 /// exactly as before the pump existed. Raise it to consume in parallel; a broker's own prefetch/fetch window should be
 /// at least as large or it becomes the limit instead.
 /// </remarks>
-public sealed class ConcurrencyOptions
+public sealed record ConcurrencyOptions
 {
     /// <summary>
     /// Messages processed concurrently. <c>1</c> (default) dispatches inline on the consume loop. Values above 1 start
@@ -59,7 +59,7 @@ internal sealed partial class MessagePump : IAsyncDisposable
 
     public MessagePump(
         EventProcessingPipeline pipeline,
-        IOptions<ConcurrencyOptions> options,
+        ConcurrencyOptions options,
         IEnumerable<ITransportCapabilities> capabilities,
         IMessagingMetrics metrics,
         ILogger<MessagePump> logger)
@@ -69,7 +69,7 @@ internal sealed partial class MessagePump : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(metrics);
         _pipeline = pipeline;
         _logger = logger;
-        _options = options.Value;
+        _options = options;
 
         // The gauge pulls; the pump never pushes. Registered before the sequential early-return because _inFlight is
         // maintained in both modes.

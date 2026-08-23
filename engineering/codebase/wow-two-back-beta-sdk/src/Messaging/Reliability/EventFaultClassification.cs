@@ -44,7 +44,7 @@ public interface IEventFaultClassifier
 /// (<see cref="Classify"/>). With no rules registered every exception retries — exactly the behaviour before
 /// classification existed.
 /// </summary>
-public sealed class EventFaultClassificationOptions
+public sealed record EventFaultClassificationOptions
 {
     private readonly List<Func<Exception, FaultDisposition?>> _rules = [];
 

@@ -44,7 +44,7 @@ public sealed class ExceptionToResultBehaviorTests
     public async Task HandleAsync_ShouldConvertAppExceptionToFailure()
     {
         var behavior = Behavior<Req, AppResult<Payload>>();
-        var error = AppErrors.NotFound("missing");
+        var error = AppErrorFactory.NotFound("missing");
 
         var result = await behavior.HandleAsync(
             new Req(),

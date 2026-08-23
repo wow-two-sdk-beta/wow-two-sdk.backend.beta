@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Guest;
@@ -22,6 +23,7 @@ public static class GuestSessionServiceCollectionExtensions
         else
         {
             services.AddOptions<GuestSessionOptions>();
+            services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<GuestSessionOptions>>().Value);
         }
 
         services.AddHttpContextAccessor();

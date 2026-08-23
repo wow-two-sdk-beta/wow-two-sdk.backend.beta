@@ -74,7 +74,7 @@ public sealed record WebhookSubscription
 }
 
 /// <summary>Stores webhook subscriptions and resolves which ones match a given event type.</summary>
-public interface IWebhookSubscriptionStore
+public interface IWebhookSubscriptionRepository
 {
     /// <summary>Return every subscription whose filter matches <paramref name="eventType"/>.</summary>
     /// <param name="eventType">The event type to match.</param>

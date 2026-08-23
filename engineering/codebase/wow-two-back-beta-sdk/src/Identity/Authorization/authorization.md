@@ -5,7 +5,7 @@ Provider-agnostic ASP.NET Core authorization primitives for self-hosted, single-
 ## Primitives
 
 - **Principal allowlist** — `AllowlistRequirement` + `AllowlistAuthorizationHandler`, configured via `AllowlistOptions`. Gates to an allowed set keyed on a claim.
-  - `ClaimType` default `"wt:username"` (seam: `Identity/Claims` `NormalizedClaimTypes.Username`).
+  - `ClaimType` default `"wt:username"` (seam: `Identity/Claims` `NormalizedClaimTypeConstants.Username`).
   - **Open-when-empty:** `Allowed` empty ⇒ any *authenticated* principal passes. Non-empty ⇒ principal must carry a `ClaimType` claim whose value ∈ `Allowed` (case-insensitive by default).
 - **Default-deny** — `AddDefaultDenyAuthorization(scheme, withAllowlist)` builds `RequireAuthenticatedUser()` (+ allowlist) on **one named scheme**, registers it under `PolicyName` (`"DefaultDeny"`) **and** sets it as `FallbackPolicy` ⇒ endpoints without `[Authorize]`/`[AllowAnonymous]` are denied by default.
   - Single named scheme (the cookie) → clean **401**, not an external-IdP **302**.

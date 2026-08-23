@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Configuration;
 
-/// <summary>Marks a settings property to be overlaid from an environment variable by <see cref="ConfigurationLoader"/>.</summary>
+/// <summary>Marks a settings property to be overlaid from an environment variable by <see cref="ConfigurationMapper"/>.</summary>
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class EnvironmentVariableAttribute : Attribute
 {

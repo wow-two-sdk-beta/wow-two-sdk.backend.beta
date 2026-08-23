@@ -127,6 +127,8 @@ public sealed class RequestClientTests
         => MessagingTestHarness.StartAsync(
             services =>
             {
+                services.AddScannedHandlerDependencies();
+
                 // The bus registered TimeProvider.System with a TryAdd before this runs, so a fake needs a Replace.
                 if (timeProvider is not null)
                     services.Replace(ServiceDescriptor.Singleton<TimeProvider>(timeProvider));

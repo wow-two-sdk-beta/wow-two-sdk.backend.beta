@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Http.Resilience;
 
 /// <summary>Configuration for the SDK's standard outbound-HTTP resilience pipeline (retry, circuit breaker, attempt timeout, and total-request timeout) on Polly v8 via <c>Microsoft.Extensions.Http.Resilience</c>.</summary>
-public sealed class HttpResilienceOptions
+public sealed record HttpResilienceOptions
 {
     /// <summary>Maximum retry attempts after the first try. Default 3.</summary>
     public int MaxRetryAttempts { get; set; } = 3;

@@ -11,7 +11,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 /// <c>AddMessageSerializer&lt;T&gt;()</c> takes no options argument, so register this separately as a singleton before
 /// swapping the serializer in; the serializer picks it up from DI.
 /// </remarks>
-public sealed class CloudEventsSerializerOptions
+public sealed record CloudEventsSerializerOptions
 {
     /// <summary>
     /// The CloudEvents <c>source</c> — the context in which the event happened; REQUIRED by the spec and, paired with
@@ -20,7 +20,7 @@ public sealed class CloudEventsSerializerOptions
     /// <remarks>Set this explicitly in production: the default identifies a process, not a logical service, so it moves when the host does.</remarks>
     public Uri Source { get; set; } = DefaultSource;
 
-    /// <summary>JSON options for the <c>data</c> payload; null uses <see cref="JsonOptionsPresets.Default"/> so the body matches the SDK's JSON default byte-for-byte.</summary>
+    /// <summary>JSON options for the <c>data</c> payload; null uses <see cref="JsonOptionsConstants.Default"/> so the body matches the SDK's JSON default byte-for-byte.</summary>
     public JsonSerializerOptions? Json { get; set; }
 
     /// <summary>
@@ -99,7 +99,7 @@ public sealed class CloudEventsMessageSerializer : IMessageSerializer
         ArgumentNullException.ThrowIfNull(typeResolver);
         _typeResolver = typeResolver;
         _options = options ?? new CloudEventsSerializerOptions();
-        _json = _options.Json ?? JsonOptionsPresets.Default;
+        _json = _options.Json ?? JsonOptionsConstants.Default;
     }
 
     /// <inheritdoc />

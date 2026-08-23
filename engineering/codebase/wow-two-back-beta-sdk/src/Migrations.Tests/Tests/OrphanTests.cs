@@ -1,6 +1,8 @@
 using AwesomeAssertions;
 using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 using WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Harness;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 
@@ -10,6 +12,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 /// </summary>
 public sealed class OrphanTests : SqliteMigratorTestBase
 {
+    private static readonly int[] OrphanedOrdinals = [2];
+
     [Fact]
     public async Task ApplyPending_ShouldThrowOrphan_WhenAppliedSourceDeleted()
     {
@@ -21,19 +25,20 @@ public sealed class OrphanTests : SqliteMigratorTestBase
             rollbackSql: "drop table t2;");
 
         await using var migrator = CreateMigrator();
-        await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None);
+        (await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None)).ValueOrThrow();
 
         // Delete the source of an applied migration → its history row is now orphaned.
         Workspace.DeleteFolder("002-second");
 
         // Status reports the orphaned ordinal.
-        var status = await migrator.Runner.GetStatusAsync(CancellationToken.None);
+        var status = (await migrator.Runner.GetStatusAsync(CancellationToken.None)).ValueOrThrow();
         status.Orphaned.Should().Contain(2);
 
         // Apply fails closed, naming the orphaned ordinal.
-        var ex = await Assert.ThrowsAsync<MigrationOrphanException>(
-            () => migrator.Runner.ApplyPendingAsync("test", CancellationToken.None));
-        ex.OrphanedOrdinals.Should().Contain(2);
+        var failure = await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None);
+        failure.IsFailure(out var orphanError, out _).Should().BeTrue();
+        orphanError!.Type.Should().Be(AppErrorType.DataIntegrity);
+        orphanError.Metadata!["orphaned"].Should().BeEquivalentTo(OrphanedOrdinals);
     }
 
     [Fact]
@@ -48,7 +53,7 @@ public sealed class OrphanTests : SqliteMigratorTestBase
 
         // First migrator applies both (orphans not yet relevant).
         await using (var seed = CreateMigrator())
-            await seed.Runner.ApplyPendingAsync("test", CancellationToken.None);
+            (await seed.Runner.ApplyPendingAsync("test", CancellationToken.None)).ValueOrThrow();
 
         Workspace.DeleteFolder("002-second");
 
@@ -58,11 +63,11 @@ public sealed class OrphanTests : SqliteMigratorTestBase
             rollbackSql: "drop table t3;");
 
         await using var migrator = CreateMigrator(o => o.AllowOrphanedHistory = true);
-        var applied = await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None);
+        var applied = (await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None)).ValueOrThrow();
 
         applied.Should().Contain("003-third");
         (await migrator.HasTableAsync("t3")).Should().BeTrue();
         // Orphan still reported in status, but it no longer blocks apply.
-        (await migrator.Runner.GetStatusAsync(CancellationToken.None)).Orphaned.Should().Contain(2);
+        (await migrator.Runner.GetStatusAsync(CancellationToken.None)).ValueOrThrow().Orphaned.Should().Contain(2);
     }
 }

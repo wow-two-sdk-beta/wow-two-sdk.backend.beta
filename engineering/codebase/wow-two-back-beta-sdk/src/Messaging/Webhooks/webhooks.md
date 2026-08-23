@@ -13,9 +13,9 @@ messaging `IRetryPolicy`.
 
 | File | What |
 |---|---|
-| `WebhookContracts.cs` | `IWebhookPublisher`, `WebhookSubscription`, `IWebhookSubscriptionStore`, `IWebhookDeliveryLog` + `WebhookDeliveryRecord`/`WebhookDeliveryOutcome`, `WebhookHeaders`, `WebhookDefaults`, `WebhookSignature` |
+| `WebhookContracts.cs` | `IWebhookPublisher`, `WebhookSubscription`, `IWebhookSubscriptionRepository`, `IWebhookDeliveryLog` + `WebhookDeliveryRecord`/`WebhookDeliveryOutcome`, `WebhookHeaderConstants`, `WebhookDefaultConstants`, `WebhookSignatureHasher` |
 | `WebhookOptions.cs` | Subscriptions seed + retry / timeout knobs (mutable, `Action<T>`-friendly) |
-| `InMemoryWebhookSubscriptionStore.cs` | Default store — seeded from options, thread-safe, runtime `AddAsync` |
+| `InMemoryWebhookSubscriptionRepository.cs` | Default store — seeded from options, thread-safe, runtime `AddAsync` |
 | `WebhookPublisher.cs` | `WebhookPublisher` (resolve → fan-out) + `HttpWebhookDispatcher` (sign → POST → bounded retry) + no-op delivery log |
 | `WebhooksServiceCollectionExtensions.cs` | `AddWebhooks(...)` |
 

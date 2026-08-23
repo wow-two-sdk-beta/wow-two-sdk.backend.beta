@@ -11,7 +11,7 @@ public sealed class InMemoryEventBusTests
 {
     private static Task<MessagingTestHarness> StartAsync(Action<InMemoryEventBusOptions>? configureBus = null)
         => MessagingTestHarness.StartAsync(
-            static services => services.AddSingleton<EventCollector>(), // PingHandler's collaborator, still shared with the broker suites
+            static services => services.AddScannedHandlerDependencies(), // PingHandler's collaborator, still shared with the broker suites
             configureBus,
             [typeof(PingHandler).Assembly]);
 
@@ -63,7 +63,7 @@ public sealed class InMemoryEventBusTests
 
     private static async Task<DeadLetterRecord?> FirstDeadLetterAsync(MessagingTestHarness harness, string source, string messageId)
     {
-        var store = harness.Services.GetRequiredService<IDeadLetterStore>();
+        var store = harness.Services.GetRequiredService<IDeadLetterRepository>();
         await foreach (var record in store.ReadAsync(source, CancellationToken.None))
             if (record.MessageId == messageId)
                 return record;

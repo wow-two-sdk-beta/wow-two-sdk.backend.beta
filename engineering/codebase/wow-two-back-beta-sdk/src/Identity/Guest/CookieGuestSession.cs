@@ -14,12 +14,12 @@ public sealed class CookieGuestSession : IGuestSession
     /// <summary>Creates the provisioner over the request accessor and cookie options.</summary>
     /// <param name="accessor">Accessor for the ambient <see cref="HttpContext"/>.</param>
     /// <param name="options">Cookie name, lifetime, and SameSite policy.</param>
-    public CookieGuestSession(IHttpContextAccessor accessor, IOptions<GuestSessionOptions> options)
+    public CookieGuestSession(IHttpContextAccessor accessor, GuestSessionOptions options)
     {
         ArgumentNullException.ThrowIfNull(accessor);
         ArgumentNullException.ThrowIfNull(options);
         _accessor = accessor;
-        _options = options.Value;
+        _options = options;
     }
 
     /// <inheritdoc />

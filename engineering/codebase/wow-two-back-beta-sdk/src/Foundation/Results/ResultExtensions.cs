@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Results;
@@ -30,5 +31,33 @@ public static class ResultExtensions
         {
             throw failure.Error.ToException();
         }
+    }
+
+    /// <summary>Tests for failure, handing back the error on failure and the value on success, so a caller can guard and propagate in one line.</summary>
+    /// <typeparam name="T">The success value type.</typeparam>
+    /// <param name="result">The result to inspect.</param>
+    /// <param name="error">The failure's error, set only when this returns <see langword="true"/>.</param>
+    /// <param name="value">The success value, set only when this returns <see langword="false"/>.</param>
+    /// <remarks>
+    /// The carrier has <c>Map</c> but no <c>Bind</c>, so propagating a failure through an async operation otherwise costs a
+    /// cast per hop. This keeps the closed union intact and reads as the guard clause the call sites already want.
+    /// </remarks>
+    public static bool IsFailure<T>(
+        this Result<T> result,
+        [NotNullWhen(true)] out AppError? error,
+        [MaybeNullWhen(true)] out T value) where T : notnull
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        if (result is Result<T>.Failure failure)
+        {
+            error = failure.Error;
+            value = default;
+            return true;
+        }
+
+        error = null;
+        value = ((Result<T>.Success)result).Value;
+        return false;
     }
 }

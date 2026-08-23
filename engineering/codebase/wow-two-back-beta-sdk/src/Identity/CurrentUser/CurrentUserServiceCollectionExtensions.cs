@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.CurrentUser;
@@ -22,6 +23,7 @@ public static class CurrentUserServiceCollectionExtensions
         else
         {
             services.AddOptions<CurrentUserOptions>();
+            services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<CurrentUserOptions>>().Value);
         }
 
         services.AddHttpContextAccessor();

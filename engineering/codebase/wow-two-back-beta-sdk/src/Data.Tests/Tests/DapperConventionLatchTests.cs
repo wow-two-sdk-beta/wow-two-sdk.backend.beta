@@ -10,10 +10,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Tests.Tests;
 /// P0-10 — the Dapper conventions are process-global and latched once, so they are asserted rather than assumed.
 /// </summary>
 /// <remarks>
-/// <c>SqlNaming.ColumnCase</c> / <c>ParameterCase</c> are static mutable and <c>AddDapperConventions</c> guards its
-/// body with an <c>Interlocked</c> latch: the second call succeeds and does nothing. Test <em>order</em> therefore
-/// changes the SQL a later test emits, and xUnit parallelises across collections — making it a race, not merely an
-/// order dependency. The suite pins parallelism off (see <c>AssemblyInfo.cs</c>) and this case pins the values.
+/// - <c>AddDapperConventions</c> latches its body with <c>Interlocked</c>; the second call is a silent no-op
+/// - <c>DefaultTypeMap.MatchNamesWithUnderscores</c> is process-global, so test order changes a later test's SQL
+/// - the suite pins parallelism off (see <c>AssemblyInfo.cs</c>) and this case pins the value
 /// </remarks>
 public sealed class DapperConventionLatchTests
 {
@@ -40,11 +39,31 @@ public sealed class DapperConventionLatchTests
     }
 
     [Fact]
-    public void SqlNaming_defaults_are_snake_columns_and_camel_parameters()
+    public void SqlNamingOptions_defaults_are_snake_columns_and_camel_parameters()
     {
-        SqlNaming.ColumnCase.Should().Be(CaseStyle.Snake);     // every composed fragment names snake_case columns
-        SqlNaming.ParameterCase.Should().Be(CaseStyle.Camel);  // …and camelCase parameters
-        SqlNaming.Col("OrderLineId").Should().Be("order_line_id");
-        SqlNaming.ParRef("OrderLineId").Should().Be("@orderLineId");
+        var naming = new SqlNamingOptions();
+
+        naming.ColumnCase.Should().Be(CaseStyle.Snake);     // every composed fragment names snake_case columns
+        naming.ParameterCase.Should().Be(CaseStyle.Camel);  // …and camelCase parameters
+        SqlNamingMapper.Col("OrderLineId", naming.ColumnCase).Should().Be("order_line_id");
+        SqlNamingMapper.ParRef("OrderLineId", naming.ParameterCase).Should().Be("@orderLineId");
+    }
+
+    [Fact]
+    public void SqlNamingMapper_honours_the_style_it_is_handed_rather_than_any_default()
+    {
+        // The casing now travels as an argument, so two callers can disagree inside one process.
+        SqlNamingMapper.Col("OrderLineId", CaseStyle.Camel).Should().Be("orderLineId");
+        SqlNamingMapper.ParRef("OrderLineId", CaseStyle.Snake).Should().Be("@order_line_id");
+    }
+
+    [Fact]
+    public void AddDapperConventions_registers_the_casing_a_caller_configured()
+    {
+        var provider = new ServiceCollection()
+            .AddDapperConventions(naming => naming.ColumnCase = CaseStyle.Pascal)
+            .BuildServiceProvider();
+
+        provider.GetRequiredService<SqlNamingOptions>().ColumnCase.Should().Be(CaseStyle.Pascal);
     }
 }

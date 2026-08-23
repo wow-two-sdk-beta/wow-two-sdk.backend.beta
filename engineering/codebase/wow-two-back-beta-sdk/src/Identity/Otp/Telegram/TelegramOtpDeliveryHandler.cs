@@ -18,15 +18,15 @@ public sealed class TelegramOtpDeliveryHandler : IOtpDeliveryHandler
     /// <param name="otpOptions">Source of the code lifetime shown in the message.</param>
     public TelegramOtpDeliveryHandler(
         ITelegramBotClient botClient,
-        IOptions<TelegramOtpOptions> telegramOptions,
-        IOptions<OtpOptions> otpOptions)
+        TelegramOtpOptions telegramOptions,
+        OtpOptions otpOptions)
     {
         ArgumentNullException.ThrowIfNull(botClient);
         ArgumentNullException.ThrowIfNull(telegramOptions);
         ArgumentNullException.ThrowIfNull(otpOptions);
         _botClient = botClient;
-        _telegramOptions = telegramOptions.Value;
-        _otpOptions = otpOptions.Value;
+        _telegramOptions = telegramOptions;
+        _otpOptions = otpOptions;
     }
 
     /// <inheritdoc />

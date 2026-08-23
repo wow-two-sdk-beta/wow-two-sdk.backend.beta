@@ -92,8 +92,8 @@ public abstract class SagaStateMachine<TState>
         => new(correlate: null);
 
     /// <summary>Declare what happens to an event that arrives with no instance yet — the clauses that create one.</summary>
-    /// <param name="clauses">Clauses bound to <see cref="SagaStates.Initial"/>.</param>
-    protected void Initially(params SagaEventClause<TState>[] clauses) => Bind(SagaStates.Initial, clauses);
+    /// <param name="clauses">Clauses bound to <see cref="SagaStateConstants.Initial"/>.</param>
+    protected void Initially(params SagaEventClause<TState>[] clauses) => Bind(SagaStateConstants.Initial, clauses);
 
     /// <summary>Declare what an instance in <paramref name="state"/> does with each event.</summary>
     /// <param name="state">The source state name.</param>
@@ -109,7 +109,7 @@ public abstract class SagaStateMachine<TState>
     /// for the same event type wins; this is the fallback.
     /// </summary>
     /// <param name="clauses">Clauses bound to every state.</param>
-    protected void DuringAny(params SagaEventClause<TState>[] clauses) => Bind(SagaStates.Any, clauses);
+    protected void DuringAny(params SagaEventClause<TState>[] clauses) => Bind(SagaStateConstants.Any, clauses);
 
     /// <summary>Correlate an event type by the envelope's correlation id rather than a field on the body.</summary>
     /// <typeparam name="TEvent">The event type.</typeparam>
@@ -477,7 +477,7 @@ public sealed class SagaTransitionContext<TState, TEvent>
 /// </summary>
 public static class SagaFinalizationExtensions
 {
-    /// <summary>Move the instance to <see cref="SagaStates.Final"/> when this clause runs — the saga is done.</summary>
+    /// <summary>Move the instance to <see cref="SagaStateConstants.Final"/> when this clause runs — the saga is done.</summary>
     /// <typeparam name="TState">The saga state type.</typeparam>
     /// <typeparam name="TEvent">The event type.</typeparam>
     /// <param name="clause">The clause.</param>
@@ -529,7 +529,7 @@ internal abstract class SagaEventBinding<TState>
     public abstract Type EventType { get; }
 }
 
-/// <summary>Typed binding — keyed by source state, with <see cref="SagaStates.Any"/> as the fallback key.</summary>
+/// <summary>Typed binding — keyed by source state, with <see cref="SagaStateConstants.Any"/> as the fallback key.</summary>
 /// <typeparam name="TState">The saga state type.</typeparam>
 /// <typeparam name="TEvent">The event type.</typeparam>
 internal sealed class SagaEventBinding<TState, TEvent> : SagaEventBinding<TState>

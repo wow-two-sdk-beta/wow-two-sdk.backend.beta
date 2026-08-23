@@ -9,7 +9,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests.Behaviors;
 /// <summary>
 /// <see cref="IdempotencyBehavior{TRequest,TResponse}"/> — requests marked <see cref="IIdempotent"/> execute once
 /// and replay the cached response on a same-key repeat; unmarked requests pass straight through. The
-/// <see cref="InMemoryIdempotencyStore"/> honours the supplied TTL.
+/// <see cref="InMemoryIdempotencyRepository"/> honours the supplied TTL.
 /// </summary>
 public sealed class IdempotencyBehaviorTests
 {
@@ -17,7 +17,7 @@ public sealed class IdempotencyBehaviorTests
 
     private sealed record PlainRequest(int Amount) : IRequest<int>;
 
-    private static InMemoryIdempotencyStore NewStore()
+    private static InMemoryIdempotencyRepository NewStore()
         => new(new MemoryCache(new MemoryCacheOptions()));
 
     [Fact]

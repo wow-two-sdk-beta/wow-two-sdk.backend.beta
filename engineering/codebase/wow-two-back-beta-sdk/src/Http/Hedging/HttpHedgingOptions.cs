@@ -2,7 +2,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Http.Hedging;
 
 /// <summary>Configuration for the SDK's standard outbound-HTTP hedging pipeline (Polly v8 via <c>Microsoft.Extensions.Http.Resilience</c>), which races a parallel attempt when the first is slow.</summary>
 /// <remarks>Use for idempotent (GET-style) calls only — hedged attempts run concurrently.</remarks>
-public sealed class HttpHedgingOptions
+public sealed record HttpHedgingOptions
 {
     /// <summary>Maximum additional (hedged) attempts after the primary one. Default 2.</summary>
     public int MaxHedgedAttempts { get; set; } = 2;

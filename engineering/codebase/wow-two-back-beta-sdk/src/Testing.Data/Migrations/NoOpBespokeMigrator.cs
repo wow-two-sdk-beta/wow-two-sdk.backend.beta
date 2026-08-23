@@ -2,6 +2,7 @@ using System.Data.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Data.Migrations;
 
@@ -45,15 +46,19 @@ internal sealed class NoOpMigrationDialect : IMigrationDialect
 internal sealed class NoOpMigrationRunner : IMigrationRunnerService
 {
     /// <inheritdoc />
-    public Task<IReadOnlyList<string>> ApplyPendingAsync(string appliedBy, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<string>>([]);
+    public Task<Result<IReadOnlyList<string>>> ApplyPendingAsync(string appliedBy, CancellationToken ct = default) =>
+        Task.FromResult(Result<IReadOnlyList<string>>.Ok([]));
 
     /// <inheritdoc />
-    public Task<MigrationStatus> GetStatusAsync(CancellationToken ct = default) =>
-        Task.FromResult(new MigrationStatus { Applied = [], Pending = [], Drifted = [], Orphaned = [] });
+    public Task<Result<MigrationStatus>> GetStatusAsync(CancellationToken ct = default) =>
+        Task.FromResult(Result<MigrationStatus>.Ok(
+            new MigrationStatus { Applied = [], Pending = [], Drifted = [], Orphaned = [] }));
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<string>> RollbackAsync(int? targetOrdinal = null, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<string>>([]);
+    public Task<Result<IReadOnlyList<string>>> RollbackAsync(int? targetOrdinal = null, CancellationToken ct = default) =>
+        Task.FromResult(Result<IReadOnlyList<string>>.Ok([]));
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<string>> RepairAsync(CancellationToken ct = default) => Task.FromResult<IReadOnlyList<string>>([]);
+    public Task<Result<IReadOnlyList<string>>> RepairAsync(CancellationToken ct = default) =>
+        Task.FromResult(Result<IReadOnlyList<string>>.Ok([]));
 }

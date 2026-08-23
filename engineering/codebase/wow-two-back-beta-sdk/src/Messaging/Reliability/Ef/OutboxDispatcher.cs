@@ -46,7 +46,7 @@ internal sealed class OutboxEventPublisher(IEventBus bus)
 /// inside the producer's trace instead of starting an orphan one.
 /// </summary>
 /// <remarks>
-/// Reserved (<see cref="MessageHeaders.ReservedPrefix"/>) keys are lifted onto their typed <see cref="PublishOptions"/>
+/// Reserved (<see cref="MessageHeaderConstants.ReservedPrefix"/>) keys are lifted onto their typed <see cref="PublishOptions"/>
 /// field and never passed through raw — every adapter drops caller-supplied reserved keys when writing wire headers and
 /// re-stamps its own from the envelope, so a raw <c>wt-</c> header staged on a row would be silently discarded a second
 /// time. Deliberately System.Text.Json, matching the write side: <c>headers_json</c> is a text metadata column, not the
@@ -81,7 +81,7 @@ internal static class OutboxDispatchHeaders
         {
             // The control namespace is adapter-owned: EventType/ContentType are already the row's own type +
             // content_type columns, and death headers describe a past dead-letter. Only the four below have a typed home.
-            if (MessageHeaders.IsReserved(key))
+            if (MessageHeaderConstants.IsReserved(key))
                 continue;
 
             (headers ??= new Dictionary<string, string>(StringComparer.Ordinal))[key] = value;
@@ -89,10 +89,10 @@ internal static class OutboxDispatchHeaders
 
         return new PublishOptions
         {
-            MessageId = Lift(staged, MessageHeaders.MessageId) ?? rowId.ToString("N"),
-            ReplyTo = Lift(staged, MessageHeaders.ReplyTo),
-            ConversationId = Lift(staged, MessageHeaders.ConversationId),
-            PartitionKey = Lift(staged, MessageHeaders.PartitionKey),
+            MessageId = Lift(staged, MessageHeaderConstants.MessageId) ?? rowId.ToString("N"),
+            ReplyTo = Lift(staged, MessageHeaderConstants.ReplyTo),
+            ConversationId = Lift(staged, MessageHeaderConstants.ConversationId),
+            PartitionKey = Lift(staged, MessageHeaderConstants.PartitionKey),
             Headers = headers,
         };
     }
@@ -106,10 +106,10 @@ internal static class OutboxDispatchHeaders
     /// <param name="staged">Headers read back from the row.</param>
     public static Activity? StartTraceContinuation(IReadOnlyDictionary<string, string> staged)
     {
-        if (!staged.TryGetValue(MessageHeaders.TraceParent, out var traceParent))
+        if (!staged.TryGetValue(MessageHeaderConstants.TraceParent, out var traceParent))
             return null;
 
-        staged.TryGetValue(MessageHeaders.TraceState, out var traceState);
+        staged.TryGetValue(MessageHeaderConstants.TraceState, out var traceState);
         return ActivityContext.TryParse(traceParent, traceState, out var parent)
             ? MessagingDiagnostics.Source.StartActivity("outbox dispatch", ActivityKind.Internal, parent)
             : null;
@@ -160,13 +160,13 @@ internal sealed partial class OutboxDispatcher<TContext>(
     IMessageSerializer serializer,
     IMessageTypeResolver typeResolver,
     TimeProvider timeProvider,
-    IOptions<OutboxDispatcherOptions> options,
+    OutboxDispatcherOptions options,
     ILogger<OutboxDispatcher<TContext>> logger) : IOutboxDispatcher
     where TContext : DbContext
 {
     public async ValueTask<int> DispatchAsync(int batchSize, CancellationToken cancellationToken)
     {
-        var opt = options.Value;
+        var opt = options;
         var pending = await claimStrategy.ClaimPendingAsync(context, batchSize, cancellationToken);
 
         var dispatched = 0;
@@ -263,7 +263,7 @@ internal sealed partial class OutboxDispatcher<TContext>(
 }
 
 /// <summary>Options for the outbox dispatcher hosted service.</summary>
-public sealed class OutboxDispatcherOptions
+public sealed record OutboxDispatcherOptions
 {
     /// <summary>How often the dispatcher polls for pending rows. Default 5s.</summary>
     public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(5);
@@ -283,16 +283,16 @@ public sealed class OutboxDispatcherOptions
 
 /// <summary>Background service that polls the outbox and drains pending rows to the bus.</summary>
 /// <typeparam name="TContext">The application's DbContext.</typeparam>
-internal sealed partial class OutboxDispatcherHostedService<TContext>(
+internal sealed partial class OutboxDispatcherBackgroundService<TContext>(
     IServiceScopeFactory scopeFactory,
     TimeProvider timeProvider,
-    IOptions<OutboxDispatcherOptions> options,
-    ILogger<OutboxDispatcherHostedService<TContext>> logger) : BackgroundService
+    OutboxDispatcherOptions options,
+    ILogger<OutboxDispatcherBackgroundService<TContext>> logger) : BackgroundService
     where TContext : DbContext
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var config = options.Value;
+        var config = options;
         var lastPrune = timeProvider.GetUtcNow();
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -349,15 +349,14 @@ public static class EfOutboxDispatcherServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var optionsBuilder = services.AddOptions<OutboxDispatcherOptions>();
-        if (configure is not null)
-            optionsBuilder.Configure(configure);
+        services.AddOptions<OutboxDispatcherOptions>().Configure(options => configure?.Invoke(options));
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<OutboxDispatcherOptions>>().Value);
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<OutboxEventPublisher>();
         services.TryAddSingleton<IOutboxClaimStrategy, PollingOutboxClaimStrategy>();
         services.TryAddScoped<IOutboxDispatcher, OutboxDispatcher<TContext>>();
-        services.AddHostedService<OutboxDispatcherHostedService<TContext>>();
+        services.AddHostedService<OutboxDispatcherBackgroundService<TContext>>();
         return services;
     }
 }

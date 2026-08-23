@@ -93,8 +93,8 @@ internal sealed partial class SagaTimeoutScheduler : ISagaTimeoutScheduler
     private static Dictionary<string, string> BuildHeaders(SagaTimeoutRequest request)
         => new(StringComparer.Ordinal)
         {
-            [SagaHeaders.TimeoutName] = request.Name,
-            [SagaHeaders.TimeoutToken] = request.Token,
+            [SagaHeaderConstants.TimeoutName] = request.Name,
+            [SagaHeaderConstants.TimeoutToken] = request.Token,
         };
 
     private static EventEnvelope BuildEnvelope(SagaTimeoutRequest request, DateTimeOffset due, IReadOnlyDictionary<string, string> headers)

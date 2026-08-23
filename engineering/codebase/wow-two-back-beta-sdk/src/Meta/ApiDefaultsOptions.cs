@@ -3,7 +3,7 @@ using System.Reflection;
 namespace WoW.Two.Sdk.Backend.Beta.Meta;
 
 /// <summary>Configuration for <c>AddApiDefaults</c> / <c>UseApiDefaults</c>; every toggle defaults on.</summary>
-public sealed class ApiDefaultsOptions
+public sealed record ApiDefaultsOptions
 {
     /// <summary>OpenTelemetry service name. Defaults to the host's application name.</summary>
     public string? ServiceName { get; set; }

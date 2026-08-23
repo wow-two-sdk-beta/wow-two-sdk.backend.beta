@@ -36,7 +36,7 @@ public sealed class WebhookTests
                 Secret = "shh-secret",
                 EventTypeFilter = eventTypeFilter,
             }));
-        services.AddHttpClient(WebhookDefaults.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
+        services.AddHttpClient(WebhookDefaultConstants.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
         return services.BuildServiceProvider();
     }
 
@@ -55,12 +55,12 @@ public sealed class WebhookTests
         handler.Request!.RequestUri.Should().Be(new Uri("https://example.test/hooks"));
         handler.Body.Should().Equal(payload);
 
-        handler.Request!.Headers.GetValues(WebhookHeaders.Event).Single().Should().Be("order.created");
-        var timestamp = handler.Request!.Headers.GetValues(WebhookHeaders.Timestamp).Single();
-        var signature = handler.Request!.Headers.GetValues(WebhookHeaders.Signature).Single();
+        handler.Request!.Headers.GetValues(WebhookHeaderConstants.Event).Single().Should().Be("order.created");
+        var timestamp = handler.Request!.Headers.GetValues(WebhookHeaderConstants.Timestamp).Single();
+        var signature = handler.Request!.Headers.GetValues(WebhookHeaderConstants.Signature).Single();
 
         signature.Should().StartWith("sha256=");
-        signature.Should().Be(WebhookSignature.Create("shh-secret", timestamp, payload));
+        signature.Should().Be(WebhookSignatureHasher.Create("shh-secret", timestamp, payload));
     }
 
     [Fact]

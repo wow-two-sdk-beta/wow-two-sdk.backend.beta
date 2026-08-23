@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
@@ -6,7 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 /// <summary>OTP service registration.</summary>
 public static class OtpServiceCollectionExtensions
 {
-    /// <summary>Registers <see cref="IOtpService"/> with the numeric code generator and in-memory store; register your own <see cref="IOtpStore"/> before this call for multi-instance, and pair with a delivery package or <see cref="IOtpDeliveryHandler"/>.</summary>
+    /// <summary>Registers <see cref="IOtpService"/> with the numeric code generator and in-memory store; register your own <see cref="IOtpRepository"/> before this call for multi-instance, and pair with a delivery package or <see cref="IOtpDeliveryHandler"/>.</summary>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configure">Optional override of code length / lifetime / rate limit / attempts.</param>
     public static IServiceCollection AddOtpService(
@@ -22,11 +23,12 @@ public static class OtpServiceCollectionExtensions
         else
         {
             services.AddOptions<OtpOptions>();
+            services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<OtpOptions>>().Value);
         }
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IOtpCodeGenerator, NumericOtpCodeGenerator>();
-        services.TryAddSingleton<IOtpStore, MemoryOtpStore>();
+        services.TryAddSingleton<IOtpRepository, MemoryOtpRepository>();
         services.TryAddScoped<IOtpService, OtpService>();
         return services;
     }

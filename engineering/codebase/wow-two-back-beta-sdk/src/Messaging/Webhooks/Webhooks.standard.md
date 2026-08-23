@@ -13,8 +13,8 @@ signed so the receiver can verify origin and integrity. Outbound only; a thin si
 
 - The package **MUST** expose `AddWebhooks(this IServiceCollection, Action<WebhookOptions>? configure = null)` returning `IServiceCollection`.
 - Registration **MUST** be idempotent — repeated `AddWebhooks` calls **MUST NOT** double-register services (`TryAdd*`).
-- Registration **MUST** register a default `IWebhookPublisher`, `IWebhookSubscriptionStore`, `IWebhookDeliveryLog`, and an
-  `IRetryPolicy`, and **MUST** register a named `HttpClient` (`WebhookDefaults.HttpClientName`) via `IHttpClientFactory`.
+- Registration **MUST** register a default `IWebhookPublisher`, `IWebhookSubscriptionRepository`, `IWebhookDeliveryLog`, and an
+  `IRetryPolicy`, and **MUST** register a named `HttpClient` (`WebhookDefaultConstants.HttpClientName`) via `IHttpClientFactory`.
 - A consumer **MUST** be able to replace any of those services by registering its own before/after `AddWebhooks`
   (the default `IWebhookDeliveryLog` is a no-op and **MUST** be overridable).
 - `WebhookOptions` **MUST** use settable properties so `Action<WebhookOptions>` configuration composes.
@@ -24,7 +24,7 @@ signed so the receiver can verify origin and integrity. Outbound only; a thin si
 - A subscription **MUST** carry a delivery `Url`, an HMAC `Secret`, and an `EventTypeFilter`; it **MUST** expose a stable `Id`.
 - `EventTypeFilter` **MUST** be treated as a glob where `*` matches any run of characters and `?` matches exactly one;
   matching **SHOULD** be case-insensitive. A filter of `*` **MUST** match every event type.
-- `IWebhookSubscriptionStore.GetMatchingAsync(eventType)` **MUST** return exactly the subscriptions whose filter matches.
+- `IWebhookSubscriptionRepository.GetMatchingAsync(eventType)` **MUST** return exactly the subscriptions whose filter matches.
 - The default store **MUST** be in-memory, **MUST** seed from `WebhookOptions.Subscriptions` at construction, and **MUST**
   be safe for concurrent `GetMatchingAsync` / `AddAsync`.
 

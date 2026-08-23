@@ -2,63 +2,96 @@ using OtpNet;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Mfa.Totp;
 
-/// <summary>Provides TOTP helpers (RFC 6238) — generate secrets, compute codes, verify.</summary>
-public static class TotpService
+/// <summary>Defines the contract for issuing and verifying time-based one-time codes (RFC 6238).</summary>
+public interface ITotpService
 {
-    /// <summary>Step in seconds. RFC 6238 default is 30.</summary>
-    public const int StepSeconds = 30;
+    /// <summary>Generates a random shared secret of the configured length.</summary>
+    /// <returns>The raw secret bytes.</returns>
+    byte[] GenerateSecret();
 
-    /// <summary>Code digit count. Most authenticator apps use 6.</summary>
-    public const int CodeDigits = 6;
-
-    /// <summary>Generate a 20-byte (160-bit) random secret. Encode for QR via <see cref="ToBase32"/>.</summary>
-    public static byte[] GenerateSecret()
-    {
-        var key = KeyGeneration.GenerateRandomKey(20);
-        return key;
-    }
-
-    /// <summary>Encode a secret as base32 for the standard `otpauth://` URI.</summary>
+    /// <summary>Encodes a secret as base32 for the standard <c>otpauth://</c> URI.</summary>
     /// <param name="secret">The raw secret to encode.</param>
-    public static string ToBase32(byte[] secret)
-    {
-        ArgumentNullException.ThrowIfNull(secret);
-        return Base32Encoding.ToString(secret);
-    }
+    /// <returns>The base32 form.</returns>
+    string ToBase32(byte[] secret);
 
-    /// <summary>Build a standard `otpauth://totp/...` URI suitable for QR codes.</summary>
+    /// <summary>Builds a standard <c>otpauth://totp/…</c> URI suitable for a QR code.</summary>
     /// <param name="issuer">Issuer label shown in the authenticator app.</param>
     /// <param name="accountName">Account label shown in the authenticator app.</param>
     /// <param name="secret">The shared secret to embed.</param>
-    public static Uri BuildOtpAuthUri(string issuer, string accountName, byte[] secret)
+    /// <returns>The URI carrying the configured digits and period.</returns>
+    Uri BuildOtpAuthUri(string issuer, string accountName, byte[] secret);
+
+    /// <summary>Computes the code current for <paramref name="secret"/>.</summary>
+    /// <param name="secret">The shared secret to compute from.</param>
+    /// <returns>The code, at the configured digit length.</returns>
+    string ComputeCode(byte[] secret);
+
+    /// <summary>Verifies a code against <paramref name="secret"/> within the configured window.</summary>
+    /// <param name="secret">The shared secret to verify against.</param>
+    /// <param name="code">The code the user entered.</param>
+    /// <returns><see langword="true"/> when the code matches a step inside the window.</returns>
+    bool VerifyCode(byte[] secret, string code);
+}
+
+/// <summary>Issues and verifies time-based one-time codes against the parameters in <see cref="TotpOptions"/>.</summary>
+public sealed class TotpService : ITotpService
+{
+    private readonly TotpOptions _options;
+
+    /// <summary>Initializes the service with the TOTP parameters it issues and verifies against.</summary>
+    /// <param name="options">The step, digit count and verification window.</param>
+    public TotpService(TotpOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        _options = options;
+    }
+
+    /// <inheritdoc />
+    public byte[] GenerateSecret() => KeyGeneration.GenerateRandomKey(_options.SecretBytes);
+
+    /// <inheritdoc />
+    public string ToBase32(byte[] secret)
+    {
+        ArgumentNullException.ThrowIfNull(secret);
+
+        return Base32Encoding.ToString(secret);
+    }
+
+    /// <inheritdoc />
+    public Uri BuildOtpAuthUri(string issuer, string accountName, byte[] secret)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(issuer);
         ArgumentException.ThrowIfNullOrWhiteSpace(accountName);
         ArgumentNullException.ThrowIfNull(secret);
 
         var label = Uri.EscapeDataString($"{issuer}:{accountName}");
-        var b32 = ToBase32(secret);
-        var qs = $"secret={b32}&issuer={Uri.EscapeDataString(issuer)}&digits={CodeDigits}&period={StepSeconds}";
-        return new Uri($"otpauth://totp/{label}?{qs}");
+        var query = $"secret={ToBase32(secret)}&issuer={Uri.EscapeDataString(issuer)}" +
+                    $"&digits={_options.Digits}&period={_options.StepSeconds}";
+
+        return new Uri($"otpauth://totp/{label}?{query}");
     }
 
-    /// <summary>Compute the current TOTP for a secret.</summary>
-    /// <param name="secret">The shared secret to compute the code from.</param>
-    public static string ComputeCode(byte[] secret)
+    /// <inheritdoc />
+    public string ComputeCode(byte[] secret)
     {
         ArgumentNullException.ThrowIfNull(secret);
-        return new OtpNet.Totp(secret, step: StepSeconds, totpSize: CodeDigits).ComputeTotp();
+
+        return Totp(secret).ComputeTotp();
     }
 
-    /// <summary>Verify a TOTP code with ±1 step tolerance (90s window centered on now).</summary>
-    /// <param name="secret">The shared secret to verify against.</param>
-    /// <param name="code">The code the user entered.</param>
-    public static bool VerifyCode(byte[] secret, string code)
+    /// <inheritdoc />
+    public bool VerifyCode(byte[] secret, string code)
     {
         ArgumentNullException.ThrowIfNull(secret);
-        if (string.IsNullOrWhiteSpace(code)) return false;
 
-        var totp = new OtpNet.Totp(secret, step: StepSeconds, totpSize: CodeDigits);
-        return totp.VerifyTotp(code, out _, new VerificationWindow(previous: 1, future: 1));
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return false;
+        }
+
+        var window = new VerificationWindow(previous: _options.VerificationSteps, future: _options.VerificationSteps);
+        return Totp(secret).VerifyTotp(code, out _, window);
     }
+
+    private OtpNet.Totp Totp(byte[] secret) => new(secret, step: _options.StepSeconds, totpSize: _options.Digits);
 }

@@ -22,7 +22,7 @@ public sealed class SseWriter
     {
         ArgumentNullException.ThrowIfNull(stream);
         _stream = stream;
-        _jsonOptions = jsonOptions ?? JsonOptionsPresets.Default;
+        _jsonOptions = jsonOptions ?? JsonOptionsConstants.Default;
     }
 
     /// <summary>Writes a fully-formed SSE frame and flushes it.</summary>

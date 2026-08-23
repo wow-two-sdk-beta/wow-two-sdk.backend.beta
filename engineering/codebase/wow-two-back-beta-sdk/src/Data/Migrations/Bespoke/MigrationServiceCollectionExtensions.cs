@@ -1,5 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
@@ -32,13 +34,13 @@ public static class MigrationServiceCollectionExtensions
     private static IServiceCollection AddDatabaseBespokeMigrations(
         this IServiceCollection services, Func<IServiceProvider, IMigrationSource> sourceFactory, Action<MigrationOptions>? configure)
     {
-        var options = new MigrationOptions();
-        configure?.Invoke(options);
-        services.AddSingleton(options);
+        services.AddOptions<MigrationOptions>().Configure(options => configure?.Invoke(options));
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<MigrationOptions>>().Value);
 
         services.AddSingleton(sourceFactory);
-        services.AddSingleton<IMigrationDialect>(CreateDialect(options.Provider));
-        services.AddSingleton<IMigrationScanner, MigrationScannerService>();
+        // Resolved rather than captured, so the dialect reads the provider AFTER Configure has run.
+        services.AddSingleton<IMigrationDialect>(serviceProvider =>
+            CreateDialect(serviceProvider.GetRequiredService<MigrationOptions>().Provider));
         services.AddSingleton<IMigrationHistoryRepository, MigrationHistoryRepository>();
         services.AddSingleton<IMigrationRunnerService, MigrationRunnerService>();
 

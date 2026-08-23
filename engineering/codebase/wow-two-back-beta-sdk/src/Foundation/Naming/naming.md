@@ -13,10 +13,10 @@ The same "snake_case" decision is otherwise wired through four independent mecha
 | Type | Role |
 |---|---|
 | `CaseStyle` | enum: `Snake · ScreamingSnake · Kebab · Train · Camel · Pascal · Sentence · Title · Lower · Upper` |
-| `WordTokenizer.Split(s)` | identifier → lowercased words; handles acronym runs + digit boundaries |
-| `CaseConverter.ToCase(s, style)` | the converter; plus `ToSnakeCase/ToCamelCase/ToPascalCase/ToKebabCase` shorthands |
-| `CaseStringExtensions` | `"OrderLine".ToSnakeCase()` extension form |
-| `EnumNameConverter<TEnum>` | **reversible** enum ↔ label (`ToLabel` / `Parse` / `TryParse`) |
+| `WordMapper.Split(s)` | identifier → lowercased words; handles acronym runs + digit boundaries |
+| `CaseMapper.ToCase(s, style)` | the converter; plus `ToSnakeCase/ToCamelCase/ToPascalCase/ToKebabCase` shorthands |
+| `CasingExtensions` | `"OrderLine".ToSnakeCase()` extension form |
+| `EnumNameMapper<TEnum>` | **reversible** enum ↔ label (`ToLabel` / `Parse` / `TryParse`) |
 
 ## Tokenizer edge cases (what Haven's converter got wrong)
 
@@ -33,17 +33,17 @@ IOStream        → io stream
 using WoW.Two.Sdk.Backend.Beta.Naming;
 
 "OrderLineItem".ToSnakeCase();              // order_line_item
-CaseConverter.ToCase("user_id", CaseStyle.Pascal);   // UserId
-CaseConverter.ToCase("APIKey", CaseStyle.Sentence);  // Api key
+CaseMapper.ToCase("user_id", CaseStyle.Pascal);   // UserId
+CaseMapper.ToCase("APIKey", CaseStyle.Sentence);  // Api key
 
 // Reversible enums — no underscore-stripping fallback needed
-EnumNameConverter<AiProvider>.ToLabel(AiProvider.OpenAi, CaseStyle.Snake); // open_ai
-EnumNameConverter<AiProvider>.Parse("open_ai", CaseStyle.Snake);          // AiProvider.OpenAi
+EnumNameMapper<AiProvider>.ToLabel(AiProvider.OpenAi, CaseStyle.Snake); // open_ai
+EnumNameMapper<AiProvider>.Parse("open_ai", CaseStyle.Snake);          // AiProvider.OpenAi
 ```
 
 ## Round-trip guarantee
 
-`EnumNameConverter` builds its reverse map from the enum's own members, so `Parse(ToLabel(v)) == v` for every member — even `OpenAi`/`IOStream`-style names that don't survive a naive `ToSnakeCase → Enum.Parse`.
+`EnumNameMapper` builds its reverse map from the enum's own members, so `Parse(ToLabel(v)) == v` for every member — even `OpenAi`/`IOStream`-style names that don't survive a naive `ToSnakeCase → Enum.Parse`.
 
 ## Storage vs display
 

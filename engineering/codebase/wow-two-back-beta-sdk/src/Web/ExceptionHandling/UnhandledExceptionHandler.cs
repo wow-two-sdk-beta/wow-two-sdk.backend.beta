@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 using WoW.Two.Sdk.Backend.Beta.Observability.Errors;
 using WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
 
@@ -10,7 +11,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
 public sealed class UnhandledExceptionHandler(
     IExceptionMapper exceptionMapper,
     IErrorHttpStatusCodeMapper statusMapper,
-    IErrorMessageResolver messageResolver,
+    IErrorMessageMapper messageResolver,
+    IFieldErrorMessageMapper fieldMessageResolver,
     IProblemDetailsService problemDetailsService,
     AppErrorObserver observer) : IExceptionHandler
 {
@@ -24,7 +26,7 @@ public sealed class UnhandledExceptionHandler(
 
         observer.Record(error, exception);
 
-        var problem = AppErrorProblemDetailsFactory.Create(error, httpContext, statusMapper, messageResolver);
+        var problem = AppErrorProblemDetailsFactory.Create(error, httpContext, statusMapper, messageResolver, fieldMessageResolver);
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {

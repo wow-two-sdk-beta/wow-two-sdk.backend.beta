@@ -35,7 +35,7 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
                 ?? throw new InvalidOperationException("AuthorizationBehavior requires HttpContext (IHttpContextAccessor returned null).");
 
             if (ctx.User?.Identity?.IsAuthenticated != true)
-                throw AppErrors.Unauthorized("Request requires authentication.").ToException();
+                throw AppErrorFactory.Unauthorized("Request requires authentication.").ToException();
 
             var policy = authReq.PolicyName;
             var result = policy is null
@@ -43,7 +43,7 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
                 : await authorizationService.AuthorizeAsync(ctx.User, request, policy).ConfigureAwait(false);
 
             if (!result.Succeeded)
-                throw AppErrors.Forbidden("You do not have permission to perform this action.").ToException();
+                throw AppErrorFactory.Forbidden("You do not have permission to perform this action.").ToException();
         }
 
         return await nextStep().ConfigureAwait(false);

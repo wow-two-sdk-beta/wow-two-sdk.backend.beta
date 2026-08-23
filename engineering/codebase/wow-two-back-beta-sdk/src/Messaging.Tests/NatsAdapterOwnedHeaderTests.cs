@@ -51,7 +51,7 @@ public sealed class NatsAdapterOwnedHeaderTests : IAsyncLifetime
     private async Task<IHost> StartHostAsync(string suffix)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<EventCollector>(); // PingHandler is scanned from this assembly and needs it
+        builder.Services.AddScannedHandlerDependencies(); // PingHandler is scanned from this assembly and needs it
         builder.Services.AddNatsEventBus(
             o =>
             {

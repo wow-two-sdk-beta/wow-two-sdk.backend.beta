@@ -8,7 +8,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 
 /// <summary>Options for the in-memory event bus (the zero-broker default transport).</summary>
-public sealed class InMemoryEventBusOptions
+public sealed record InMemoryEventBusOptions
 {
     /// <summary>Bounded channel capacity (backpressure when full). Set to 0 for an unbounded channel. Default 1024.</summary>
     public int ChannelCapacity { get; set; } = 1024;
@@ -22,10 +22,10 @@ internal sealed class InMemoryEventChannel
 {
     private readonly Channel<EventEnvelope> _channel;
 
-    public InMemoryEventChannel(IOptions<InMemoryEventBusOptions> options)
+    public InMemoryEventChannel(InMemoryEventBusOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        var capacity = options.Value.ChannelCapacity;
+        var capacity = options.ChannelCapacity;
         _channel = capacity > 0
             ? Channel.CreateBounded<EventEnvelope>(new BoundedChannelOptions(capacity)
             {
@@ -61,7 +61,7 @@ internal sealed class InMemoryInboxProcessor : IInboxProcessor
 }
 
 /// <summary>In-memory dead-letter store with replay back onto the channel.</summary>
-internal sealed partial class InMemoryDeadLetterStore(InMemoryEventChannel channel, ILogger<InMemoryDeadLetterStore> logger) : IDeadLetterStore
+internal sealed partial class InMemoryDeadLetterRepository(InMemoryEventChannel channel, ILogger<InMemoryDeadLetterRepository> logger) : IDeadLetterRepository
 {
     private readonly ConcurrentDictionary<string, DeadLetterRecord> _records = new(StringComparer.Ordinal);
 

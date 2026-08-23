@@ -1,6 +1,6 @@
 # Caching
 
-*Two-tier caching over .NET HybridCache — L1 in-process + optional L2 Redis, with stampede protection and tag invalidation, behind a small `ICache` facade.*
+*Two-tier caching over .NET HybridCache — L1 in-process + optional L2 Redis, with stampede protection and tag invalidation, behind a small `ICacheRepository` facade.*
 
 Namespace root: `WoW.Two.Sdk.Backend.Beta.Caching`.
 
@@ -8,8 +8,8 @@ Namespace root: `WoW.Two.Sdk.Backend.Beta.Caching`.
 
 | Folder | Surface | Role |
 |---|---|---|
-| `Core/` | `ICache`, `CacheEntryOptions`, `ICacheKeyBuilder` / `CacheKeyBuilder` | Provider-neutral facade + key convention |
-| `Hybrid/` | `AddHybridCaching(configure?)`, `HybridCacheAdapter`, `HybridCacheConventionOptions` | HybridCache default (the `ICache` impl) |
+| `Core/` | `ICacheRepository`, `CacheEntryOptions`, `ICacheKeyBuilder` / `CacheKeyBuilder` | Provider-neutral facade + key convention |
+| `Hybrid/` | `AddHybridCaching(configure?)`, `HybridCacheRepository`, `HybridCacheConventionOptions` | HybridCache default (the `ICacheRepository` impl) |
 | `Redis/` | `AddRedisDistributedCache(connStr, instanceName?)` | Redis L2 backend (auto-used by HybridCache) |
 | `Memory/` | `AddInMemoryCaching()` | Plain `IMemoryCache` for trivial cases |
 
@@ -20,7 +20,7 @@ builder.Services
     .AddHybridCaching(o => o.DefaultExpiration = TimeSpan.FromMinutes(10))
     .AddRedisDistributedCache(cfg.GetConnectionString("redis")!, instanceName: "app:");  // omit → L1-only
 
-public sealed class Catalog(ICache cache, ICacheKeyBuilder keys)
+public sealed class Catalog(ICacheRepository cache, ICacheKeyBuilder keys)
 {
     public ValueTask<Product> GetAsync(int id, CancellationToken ct) =>
         cache.GetOrCreateAsync(

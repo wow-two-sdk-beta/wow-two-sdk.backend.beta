@@ -1,43 +1,45 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 
-/// <summary>Registration helpers for <see cref="DatabaseOptions"/>.</summary>
+/// <summary>Registration helpers for <see cref="DatabaseSettings"/>.</summary>
 public static class DatabaseServiceCollectionExtensions
 {
-    /// <summary>Binds <see cref="DatabaseOptions"/> from the given configuration section (default <c>Database</c>).</summary>
+    /// <summary>Binds <see cref="DatabaseSettings"/> from the given configuration section (default <c>DatabaseSettings</c>).</summary>
     /// <param name="services">The service collection to configure.</param>
-    /// <param name="configuration">The configuration the options are bound from.</param>
-    /// <param name="sectionName">The configuration section name. Default <c>Database</c>.</param>
-    public static IServiceCollection AddDatabaseOptions(
+    /// <param name="configuration">The configuration the section is bound from.</param>
+    /// <param name="sectionName">The configuration section name. Default <c>DatabaseSettings</c>.</param>
+    public static IServiceCollection AddDatabaseSettings(
         this IServiceCollection services,
         IConfiguration configuration,
-        string sectionName = "Database")
+        string sectionName = nameof(DatabaseSettings))
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        services.AddOptions<DatabaseOptions>()
+        services.AddOptions<DatabaseSettings>()
             .Bind(configuration.GetSection(sectionName))
             .ValidateOnStart();
+
+        // Consumers take the record, never the wrapper — the bind pipeline stays for validation and reload.
+        services.AddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value);
 
         return services;
     }
 
-    /// <summary>Registers <see cref="DatabaseOptions"/> from an inline configurator.</summary>
+    /// <summary>Registers <see cref="DatabaseSettings"/> from a connection string supplied in code.</summary>
     /// <param name="services">The service collection to configure.</param>
-    /// <param name="configure">The callback that populates the options.</param>
-    public static IServiceCollection AddDatabaseOptions(
-        this IServiceCollection services,
-        Action<DatabaseOptions> configure)
+    /// <param name="connectionString">The database connection string.</param>
+    public static IServiceCollection AddDatabaseSettings(this IServiceCollection services, string connectionString)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configure);
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
-        services.AddOptions<DatabaseOptions>()
-            .Configure(configure)
-            .ValidateOnStart();
+        var settings = new DatabaseSettings { ConnectionString = connectionString };
+        services.AddSingleton(settings);
+        services.AddSingleton<IOptions<DatabaseSettings>>(Options.Create(settings));
 
         return services;
     }

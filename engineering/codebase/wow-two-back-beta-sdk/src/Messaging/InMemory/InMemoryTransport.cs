@@ -22,8 +22,8 @@ internal sealed class InMemorySendTransport(InMemoryEventChannel channel, IEvent
     }
 }
 
-/// <summary>In-memory <see cref="ReceiveContext"/> — acknowledge is a no-op (the channel read already removed it); dead-letter writes to the <see cref="IDeadLetterStore"/>.</summary>
-internal sealed class InMemoryReceiveContext(EventEnvelope envelope, IDeadLetterStore deadLetters, TimeProvider timeProvider) : ReceiveContext
+/// <summary>In-memory <see cref="ReceiveContext"/> — acknowledge is a no-op (the channel read already removed it); dead-letter writes to the <see cref="IDeadLetterRepository"/>.</summary>
+internal sealed class InMemoryReceiveContext(EventEnvelope envelope, IDeadLetterRepository deadLetters, TimeProvider timeProvider) : ReceiveContext
 {
     public override EventEnvelope Envelope => envelope;
 
@@ -37,7 +37,7 @@ internal sealed class InMemoryReceiveContext(EventEnvelope envelope, IDeadLetter
 }
 
 /// <summary>In-memory <see cref="IReceiveTransport"/> — reads the channel and hands each envelope to the pipeline until the host stops.</summary>
-internal sealed class InMemoryReceiveTransport(InMemoryEventChannel channel, IDeadLetterStore deadLetters, TimeProvider timeProvider) : IReceiveTransport
+internal sealed class InMemoryReceiveTransport(InMemoryEventChannel channel, IDeadLetterRepository deadLetters, TimeProvider timeProvider) : IReceiveTransport
 {
     public async ValueTask StartAsync(Func<ReceiveContext, CancellationToken, ValueTask> onMessage, CancellationToken cancellationToken)
     {

@@ -59,7 +59,7 @@ public static class SseEndpointExtensions
         var eventName = options.EventName;
         SseEvent Project(T item)
         {
-            var json = JsonSerializer.Serialize(item, serializerOptions ?? Foundation.Serialization.JsonOptionsPresets.Default);
+            var json = JsonSerializer.Serialize(item, serializerOptions ?? Foundation.Serialization.JsonOptionsConstants.Default);
             return eventName is null ? SseEvent.FromData(json) : SseEvent.Named(eventName, json);
         }
 

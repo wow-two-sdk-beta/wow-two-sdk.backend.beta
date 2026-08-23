@@ -7,7 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.Claims;
 /// <summary>Claim-normalization registration.</summary>
 public static class ClaimNormalizationServiceCollectionExtensions
 {
-    /// <summary>Registers <see cref="ClaimNormalizer"/> as an <see cref="IClaimsTransformation"/> so every request reads one canonical <c>wt:*</c> claim set regardless of provider. Opt-in, idempotent.</summary>
+    /// <summary>Registers <see cref="ClaimMapper"/> as an <see cref="IClaimsTransformation"/> so every request reads one canonical <c>wt:*</c> claim set regardless of provider. Opt-in, idempotent.</summary>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configure">Optional configurator — avatar toggle, provider profiles.</param>
     public static IServiceCollection AddClaimNormalization(
@@ -21,7 +21,7 @@ public static class ClaimNormalizationServiceCollectionExtensions
             services.Configure(configure);
         }
 
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IClaimsTransformation, ClaimNormalizer>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IClaimsTransformation, ClaimMapper>());
         return services;
     }
 }

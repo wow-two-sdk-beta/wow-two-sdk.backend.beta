@@ -3,9 +3,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Tenancy.Core;
 /// <summary>
 /// Configures how the current tenant is resolved from a request. Providers are tried in the order
 /// header → route → claim → subdomain; enable the ones your app uses. Populate
-/// <see cref="KnownTenants"/> to back the default in-memory <see cref="ITenantStore"/>.
+/// <see cref="KnownTenants"/> to back the default in-memory <see cref="ITenantRepository"/>.
 /// </summary>
-public sealed class TenancyConventionOptions
+public sealed record TenancyConventionOptions
 {
     /// <summary>Gets or sets whether to read the tenant from a request header. Default <see langword="true"/>.</summary>
     public bool UseHeader { get; set; } = true;
@@ -31,6 +31,6 @@ public sealed class TenancyConventionOptions
     /// <summary>Gets or sets the number of trailing host labels that form the base domain (e.g. <c>example.com</c> = 2, so <c>acme.example.com</c> → <c>acme</c>). Default 2.</summary>
     public int SubdomainBaseLabels { get; set; } = 2;
 
-    /// <summary>Gets the tenants indexed by the default in-memory <see cref="ITenantStore"/>. Leave empty to supply a custom store.</summary>
+    /// <summary>Gets the tenants indexed by the default in-memory <see cref="ITenantRepository"/>. Leave empty to supply a custom store.</summary>
     public IList<TenantInfo> KnownTenants { get; } = [];
 }

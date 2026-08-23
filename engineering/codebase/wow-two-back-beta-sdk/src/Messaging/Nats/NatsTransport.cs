@@ -13,7 +13,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Nats;
 
 /// <summary>Options for the NATS JetStream event-bus adapter.</summary>
-public sealed class NatsOptions
+public sealed record NatsOptions
 {
     /// <summary>NATS server URL. Default <c>nats://localhost:4222</c>.</summary>
     public string Url { get; set; } = "nats://localhost:4222";
@@ -139,24 +139,24 @@ internal static class NatsWireFormat
         // the previous message's type token onto the new body and misroute it on the consumer.
         var headers = new NatsHeaders();
         foreach (var (key, value) in envelope.Headers)
-            if (!MessageHeaders.IsAdapterOwned(key))
+            if (!MessageHeaderConstants.IsAdapterOwned(key))
                 headers[key] = value;
 
-        headers[MessageHeaders.EventType] = typeToken;
-        headers[MessageHeaders.ContentType] = contentType;
-        headers[MessageHeaders.MessageId] = envelope.MessageId;
+        headers[MessageHeaderConstants.EventType] = typeToken;
+        headers[MessageHeaderConstants.ContentType] = contentType;
+        headers[MessageHeaderConstants.MessageId] = envelope.MessageId;
         if (!string.IsNullOrEmpty(envelope.PartitionKey))
-            headers[MessageHeaders.PartitionKey] = envelope.PartitionKey;
+            headers[MessageHeaderConstants.PartitionKey] = envelope.PartitionKey;
 
         // Core NATS routes a reply through the request's own subject field; a JetStream publish has no such field, so
         // the reply address, the correlation id and the conversation id ride the SDK's reserved headers. Stamped only
         // when set, so ordinary one-way traffic carries exactly the headers it did before.
         if (!string.IsNullOrEmpty(envelope.ReplyTo))
-            headers[MessageHeaders.ReplyTo] = envelope.ReplyTo;
+            headers[MessageHeaderConstants.ReplyTo] = envelope.ReplyTo;
         if (!string.IsNullOrEmpty(envelope.CorrelationId))
-            headers[MessageHeaders.CorrelationId] = envelope.CorrelationId;
+            headers[MessageHeaderConstants.CorrelationId] = envelope.CorrelationId;
         if (!string.IsNullOrEmpty(envelope.ConversationId))
-            headers[MessageHeaders.ConversationId] = envelope.ConversationId;
+            headers[MessageHeaderConstants.ConversationId] = envelope.ConversationId;
 
         return headers;
     }
@@ -179,9 +179,9 @@ internal static class NatsWireFormat
         if (original is not null)
             foreach (var key in original.Keys)
                 headers[key] = original[key];
-        headers[MessageHeaders.DeadLetterReason] = reason;
+        headers[MessageHeaderConstants.DeadLetterReason] = reason;
         if (exception is not null)
-            headers[MessageHeaders.DeadLetterExceptionType] = exception.GetType().FullName ?? exception.GetType().Name;
+            headers[MessageHeaderConstants.DeadLetterExceptionType] = exception.GetType().FullName ?? exception.GetType().Name;
         return headers;
     }
 }
@@ -569,7 +569,7 @@ internal sealed partial class NatsReceiveTransport(
     private EventEnvelope? TryReconstruct(NatsJSMsg<byte[]> message)
     {
         var headers = NatsWireFormat.DecodeHeaders(message.Headers);
-        if (!headers.TryGetValue(MessageHeaders.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
+        if (!headers.TryGetValue(MessageHeaderConstants.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
             return null;
 
         if (message.Data is not { } data)
@@ -578,22 +578,22 @@ internal sealed partial class NatsReceiveTransport(
         // Decoded by whoever encoded it. Selection reads "declared or nothing", never the "application/json" the
         // envelope below falls back to: a producer that stamped no content type is one whose format we do not know, and
         // guessing JSON for it would route a legacy body to the wrong deserializer wherever the default is not JSON.
-        var body = SerializerFor(ReadOptional(headers, MessageHeaders.ContentType)).Deserialize(data, eventType);
+        var body = SerializerFor(ReadOptional(headers, MessageHeaderConstants.ContentType)).Deserialize(data, eventType);
         if (body is null)
             return null;
 
         return new EventEnvelope
         {
-            MessageId = headers.TryGetValue(MessageHeaders.MessageId, out var id) ? id : Guid.NewGuid().ToString("N"),
+            MessageId = headers.TryGetValue(MessageHeaderConstants.MessageId, out var id) ? id : Guid.NewGuid().ToString("N"),
             Body = body,
             BodyType = eventType,
             Destination = message.Subject,
             DeliveryCount = (int)(message.Metadata?.NumDelivered ?? 1), // JetStream tracks redelivery natively
-            ContentType = headers.TryGetValue(MessageHeaders.ContentType, out var contentType) ? contentType : "application/json",
-            PartitionKey = headers.TryGetValue(MessageHeaders.PartitionKey, out var partitionKey) && !string.IsNullOrEmpty(partitionKey) ? partitionKey : null,
-            ReplyTo = ReadOptional(headers, MessageHeaders.ReplyTo),
-            CorrelationId = ReadOptional(headers, MessageHeaders.CorrelationId),
-            ConversationId = ReadOptional(headers, MessageHeaders.ConversationId),
+            ContentType = headers.TryGetValue(MessageHeaderConstants.ContentType, out var contentType) ? contentType : "application/json",
+            PartitionKey = headers.TryGetValue(MessageHeaderConstants.PartitionKey, out var partitionKey) && !string.IsNullOrEmpty(partitionKey) ? partitionKey : null,
+            ReplyTo = ReadOptional(headers, MessageHeaderConstants.ReplyTo),
+            CorrelationId = ReadOptional(headers, MessageHeaderConstants.CorrelationId),
+            ConversationId = ReadOptional(headers, MessageHeaderConstants.ConversationId),
             Headers = headers,
         };
     }
@@ -673,7 +673,7 @@ internal sealed class NatsCapabilities : ITransportCapabilities
 
     /// <summary>Core NATS request-reply: the request carries an <c>_INBOX</c> reply subject the server routes back, with no reply queue to provision.</summary>
     /// <remarks>
-    /// <c>IRequestClient</c> carries the reply address in <see cref="MessageHeaders.ReplyTo"/> rather than over an
+    /// <c>IRequestClient</c> carries the reply address in <see cref="MessageHeaderConstants.ReplyTo"/> rather than over an
     /// <c>_INBOX</c>, because this adapter's send path is a JetStream publish and an <c>_INBOX</c> subject is not in the
     /// stream's subject list — replying there would be rejected. Using the native mechanism means a core-NATS publish
     /// path alongside the JetStream one, which also gives up persistence for the reply: a follow-up, and a trade.
@@ -715,6 +715,10 @@ public static class NatsServiceCollectionExtensions
 
         services.AddOptions<NatsOptions>().Configure(configure);
 
+        // One shape at the injection site: consumers take the record, the builder keeps validation
+        // and post-configuration.
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<NatsOptions>>().Value);
+
         var assemblies = handlerAssemblies is { Length: > 0 } ? handlerAssemblies : [Assembly.GetCallingAssembly()];
         services.AddEventHandlersFromAssemblies(assemblies);
         services.AddEventResilienceDefaults();
@@ -737,7 +741,7 @@ public static class NatsServiceCollectionExtensions
         services.TryAddSingleton<IReceiveTransport, NatsReceiveTransport>();
         services.TryAddSingleton<IEventBus, TransportEventBus>();
         services.TryAddSingleton<EventProcessingPipeline>();
-        services.AddHostedService<TransportConsumerHostedService>();
+        services.AddHostedService<TransportConsumerBackgroundService>();
         return services;
     }
 }

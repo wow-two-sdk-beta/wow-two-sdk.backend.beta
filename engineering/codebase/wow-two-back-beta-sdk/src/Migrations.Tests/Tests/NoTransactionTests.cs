@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Harness;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 
@@ -26,7 +27,7 @@ public sealed class NoTransactionTests : SqliteMigratorTestBase
 
         await using var migrator = CreateMigrator();
 
-        var applied = await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None);
+        var applied = (await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None)).ValueOrThrow();
         applied.Should().BeEquivalentTo(["001-baseline", "002-bare-index"]);
 
         // The index exists and the migration is recorded.
@@ -35,11 +36,11 @@ public sealed class NoTransactionTests : SqliteMigratorTestBase
         history.Select(r => r.Ordinal).Should().Equal(1, 2);
 
         // Re-running the whole apply is a clean no-op (idempotent Apply + already-recorded row).
-        var second = await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None);
+        var second = (await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None)).ValueOrThrow();
         second.Should().BeEmpty();
         (await migrator.ReadHistoryAsync()).Should().HaveCount(2);
 
-        var status = await migrator.Runner.GetStatusAsync(CancellationToken.None);
+        var status = (await migrator.Runner.GetStatusAsync(CancellationToken.None)).ValueOrThrow();
         status.Pending.Should().BeEmpty();
         status.Drifted.Should().BeEmpty();
     }

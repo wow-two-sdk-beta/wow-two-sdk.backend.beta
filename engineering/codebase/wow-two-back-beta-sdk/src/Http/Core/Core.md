@@ -20,7 +20,7 @@ builder.Services.AddRefitApiClient<IBillingApi>("https://billing.internal");
 ```
 
 That single call wires:
-- **SDK JSON** (`JsonOptionsPresets.Default` — camelCase, NodaTime, lenient input) via `SystemTextJsonContentSerializer`
+- **SDK JSON** (`JsonOptionsConstants.Default` — camelCase, NodaTime, lenient input) via `SystemTextJsonContentSerializer`
 - **Base address**
 - **Standard resilience** — retry → circuit breaker → per-attempt timeout, inside a total-request timeout
 
@@ -60,5 +60,5 @@ Backed by `Microsoft.Extensions.Http.Resilience` (Polly v8). OTel HttpClient ins
 ## See also
 
 - `…Observability.Tracing` — outbound spans for every call
-- `…Serialization` — the `JsonOptionsPresets` used by Refit clients
+- `…Serialization` — the `JsonOptionsConstants` used by Refit clients
 - [Refit](https://github.com/reactiveui/refit) · [Microsoft.Extensions.Http.Resilience](https://learn.microsoft.com/dotnet/core/resilience/http-resilience)

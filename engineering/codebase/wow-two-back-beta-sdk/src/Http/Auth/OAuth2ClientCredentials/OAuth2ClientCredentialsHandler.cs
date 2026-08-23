@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.OAuth2ClientCredentials;
 
@@ -7,12 +8,12 @@ namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.OAuth2ClientCredentials;
 internal sealed class OAuth2ClientCredentialsHandler : DelegatingHandler
 {
     private readonly string _clientName;
-    private readonly OAuth2TokenCache _tokenCache;
+    private readonly OAuth2TokenRepository _tokenCache;
     private readonly IOptionsMonitor<OAuth2ClientCredentialsOptions> _optionsMonitor;
 
     public OAuth2ClientCredentialsHandler(
         string clientName,
-        OAuth2TokenCache tokenCache,
+        OAuth2TokenRepository tokenCache,
         IOptionsMonitor<OAuth2ClientCredentialsOptions> optionsMonitor)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(clientName);
@@ -30,7 +31,9 @@ internal sealed class OAuth2ClientCredentialsHandler : DelegatingHandler
         if (request.Headers.Authorization is null)
         {
             var options = _optionsMonitor.Get(_clientName);
-            var token = await _tokenCache.GetAccessTokenAsync(_clientName, options, cancellationToken).ConfigureAwait(false);
+            // The HttpClient pipeline reads only exceptions, so the failure crosses back here.
+            var token = (await _tokenCache.GetAccessTokenAsync(_clientName, options, cancellationToken).ConfigureAwait(false))
+                .ValueOrThrow();
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 

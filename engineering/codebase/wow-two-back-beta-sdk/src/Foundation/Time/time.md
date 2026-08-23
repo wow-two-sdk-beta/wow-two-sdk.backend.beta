@@ -19,8 +19,8 @@ builder.Services.AddTimeProviders();
 ### Resolve a time zone (any id format)
 
 ```csharp
-var tz = TimeZoneHelpers.ResolveTimeZone("America/New_York"); // works on Windows
-var tz2 = TimeZoneHelpers.ResolveTimeZone("Eastern Standard Time"); // works on Linux
+var tz = TimeZoneMapper.ResolveTimeZone("America/New_York"); // works on Windows
+var tz2 = TimeZoneMapper.ResolveTimeZone("Eastern Standard Time"); // works on Linux
 ```
 
 ### Cron expressions

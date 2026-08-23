@@ -14,13 +14,13 @@ public sealed class HashChainSealer<TEntry> : IHashChainSealer<TEntry>
     /// <summary>Initializes the sealer with the consumer canonicalizer and the configured options.</summary>
     /// <param name="canonicalizer">The consumer projection of an entry's domain fields onto the canonical payload.</param>
     /// <param name="options">The hash-chain options carrying the algorithm choice.</param>
-    public HashChainSealer(IChainedEntryCanonicalizer<TEntry> canonicalizer, IOptions<HashChainOptions> options)
+    public HashChainSealer(IChainedEntryCanonicalizer<TEntry> canonicalizer, HashChainOptions options)
     {
         ArgumentNullException.ThrowIfNull(canonicalizer);
         ArgumentNullException.ThrowIfNull(options);
 
         _canonicalizer = canonicalizer;
-        _algorithm = options.Value.Algorithm;
+        _algorithm = options.Algorithm;
     }
 
     /// <inheritdoc />

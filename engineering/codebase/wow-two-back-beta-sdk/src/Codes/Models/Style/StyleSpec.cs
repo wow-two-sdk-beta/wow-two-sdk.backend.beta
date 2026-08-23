@@ -25,7 +25,7 @@ public sealed record StyleSpec
     /// <summary>Gets the error-correction level, floored to <see cref="EccLevel.H"/> by the normalizer when a <see cref="Logo"/> is present.</summary>
     public required EccLevel EccLevel { get; init; }
 
-    /// <summary>Gets the quiet-zone width in modules around the symbol, floored to <see cref="QuietZone.MinModules"/> by the normalizer.</summary>
+    /// <summary>Gets the quiet-zone width in modules around the symbol, floored to <see cref="QuietZoneConstants.MinModules"/> by the normalizer.</summary>
     public required int QuietZoneModules { get; init; }
 
     /// <summary>Gets the optional center logo overlay, forcing ECC to <see cref="EccLevel.H"/> when set.</summary>
@@ -50,7 +50,7 @@ public sealed record StyleSpec
         BackgroundColor = "#FFFFFF",
         TransparentBackground = false,
         EccLevel = EccLevel.Q,
-        QuietZoneModules = QuietZone.MinModules,
+        QuietZoneModules = QuietZoneConstants.MinModules,
         ModuleShape = ModuleShape.Square,
         FinderShape = FinderShape.Square,
         FinderDotShape = FinderDotShape.Square,

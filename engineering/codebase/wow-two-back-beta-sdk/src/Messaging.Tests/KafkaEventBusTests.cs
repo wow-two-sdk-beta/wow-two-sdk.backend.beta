@@ -57,7 +57,7 @@ public sealed class KafkaEventBusTests : IAsyncLifetime
     private async Task<IHost> StartHostAsync(Action<KafkaOptions> configure, Action<InMemoryEventBusOptions>? retry = null)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<EventCollector>();
+        builder.Services.AddScannedHandlerDependencies();
         builder.Services.AddKafkaEventBus(
             o =>
             {

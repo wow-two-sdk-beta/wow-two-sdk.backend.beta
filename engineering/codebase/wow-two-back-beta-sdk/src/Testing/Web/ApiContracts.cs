@@ -7,11 +7,11 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Web;
 
 /// <summary>
 /// Shared <see cref="JsonSerializerOptions"/> for E2E HTTP tests, aligned to the SDK's API serializer
-/// (<c>WoW.Two.Sdk.Backend.Beta.Foundation.Serialization.JsonOptionsPresets.Default</c>).
+/// (<c>WoW.Two.Sdk.Backend.Beta.Foundation.Serialization.JsonOptionsConstants.Default</c>).
 /// </summary>
 /// <remarks>
 /// The Testing mono-lib is self-contained (no reference to the core lib), so the preset is mirrored here
-/// rather than imported. Every deserialize- and request-body-relevant setting of <c>JsonOptionsPresets.Default</c>
+/// rather than imported. Every deserialize- and request-body-relevant setting of <c>JsonOptionsConstants.Default</c>
 /// is replicated — including the NodaTime converters via <c>ConfigureForNodaTime(DateTimeZoneProviders.Tzdb)</c>
 /// (the Testing project references <c>NodaTime</c> + <c>NodaTime.Serialization.SystemTextJson</c> for this), so tests
 /// asserting NodaTime payloads work out of the box. <see cref="JsonStringEnumConverter"/> is included to match the
@@ -41,7 +41,7 @@ public static class TestJson
             Converters = { new JsonStringEnumConverter() },
         };
 
-        // Match JsonOptionsPresets.Default exactly — register the NodaTime converters (Instant, LocalDate, …).
+        // Match JsonOptionsConstants.Default exactly — register the NodaTime converters (Instant, LocalDate, …).
         options.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
         // populateMissingResolver: true is REQUIRED on .NET 10 — parameterless MakeReadOnly() throws
         // ("JsonSerializerOptions instance must specify a TypeInfoResolver setting…") when no resolver

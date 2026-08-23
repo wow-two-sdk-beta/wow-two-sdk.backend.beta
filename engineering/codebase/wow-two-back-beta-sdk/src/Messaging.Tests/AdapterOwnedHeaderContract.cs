@@ -15,13 +15,13 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 /// Regression cover for the bug where adapters stripped the whole <c>wt-</c> namespace on send while re-stamping only
 /// the eight they own. Every reserved header belonging to an SDK <em>feature</em> — the second-level retry tier, the
 /// dead-letter redrive count, the claim-check reference — was silently dropped at the broker, so those features worked
-/// in-memory and were dead behind every real transport. <see cref="MessageHeaders.IsAdapterOwned"/> is the fix, and it
+/// in-memory and were dead behind every real transport. <see cref="MessageHeaderConstants.IsAdapterOwned"/> is the fix, and it
 /// is called by five adapters; one broker proving the round trip left the other four uncovered.
 /// </para>
 /// <para>
 /// One definition rather than one copy per broker, because a per-broker copy is free to drift: the value of asserting
-/// through each feature's own reader (<see cref="SecondLevelRetryHeaders.ReadTier"/>,
-/// <see cref="DeadLetterHeaders.ReadRedriveCount"/>) instead of raw strings is that the test dies when the *feature*
+/// through each feature's own reader (<see cref="SecondLevelRetryHeaderConstants.ReadTier"/>,
+/// <see cref="DeadLetterHeaderConstants.ReadRedriveCount"/>) instead of raw strings is that the test dies when the *feature*
 /// dies, and that property has to hold on all of them or the weakest copy is what the suite really asserts.
 /// </para>
 /// <para>
@@ -47,10 +47,10 @@ internal static class AdapterOwnedHeaderContract
     /// </summary>
     public static IReadOnlyDictionary<string, string> CallerHeaders { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        [SecondLevelRetryHeaders.Tier] = "2",
-        [DeadLetterHeaders.RedriveCount] = "3",
+        [SecondLevelRetryHeaderConstants.Tier] = "2",
+        [DeadLetterHeaderConstants.RedriveCount] = "3",
         ["tenant-id"] = "acme", // unreserved: the easy case, and the control for the two above
-        [MessageHeaders.EventType] = ForgedEventType, // adapter-owned — a forgery attempt
+        [MessageHeaderConstants.EventType] = ForgedEventType, // adapter-owned — a forgery attempt
     };
 
     /// <summary>Assert both halves of the contract on a message that made the round trip through a real broker.</summary>
@@ -62,24 +62,24 @@ internal static class AdapterOwnedHeaderContract
 
         // The regression. Reserved but not adapter-owned → the adapter has no value of its own to write, so dropping
         // these is pure data loss and the feature that reads them downstream never fires.
-        received.Should().ContainKey(SecondLevelRetryHeaders.Tier).WhoseValue.Should().Be("2");
-        received.Should().ContainKey(DeadLetterHeaders.RedriveCount).WhoseValue.Should().Be("3");
+        received.Should().ContainKey(SecondLevelRetryHeaderConstants.Tier).WhoseValue.Should().Be("2");
+        received.Should().ContainKey(DeadLetterHeaderConstants.RedriveCount).WhoseValue.Should().Be("3");
         received.Should().ContainKey("tenant-id").WhoseValue.Should().Be("acme");
 
         // Asserted through each feature's own reader too: the header surviving as text is only half the promise —
         // what broke was second-level retry and the redrive cap reading 0 behind every broker.
-        SecondLevelRetryHeaders.ReadTier(consumed.Envelope).Should().Be(2);
-        DeadLetterHeaders.ReadRedriveCount(consumed.Envelope).Should().Be(3);
+        SecondLevelRetryHeaderConstants.ReadTier(consumed.Envelope).Should().Be(2);
+        DeadLetterHeaderConstants.ReadRedriveCount(consumed.Envelope).Should().Be(3);
 
         // The other half: adapter-owned headers stay adapter-owned. The caller asked for a bogus type token; the
         // adapter overwrote it with the real one rather than letting the caller redirect type resolution.
-        received.Should().ContainKey(MessageHeaders.EventType).WhoseValue.Should().Be(typeof(HarnessEvent).FullName);
-        received[MessageHeaders.EventType].Should().NotBe(ForgedEventType);
+        received.Should().ContainKey(MessageHeaderConstants.EventType).WhoseValue.Should().Be(typeof(HarnessEvent).FullName);
+        received[MessageHeaderConstants.EventType].Should().NotBe(ForgedEventType);
 
         // Consumption at all is itself the proof: the receive side resolves the CLR type from wt-event-type, so had the
         // forgery stuck, reconstruction would have failed and nothing would ever have been recorded.
         consumed.BodyAs<HarnessEvent>().Tag.Should().Be(tag);
-        received.Should().ContainKey(MessageHeaders.ContentType).WhoseValue.Should().Be("application/json");
+        received.Should().ContainKey(MessageHeaderConstants.ContentType).WhoseValue.Should().Be("application/json");
     }
 
     /// <summary>Publish until the consumer records it, then return that record.</summary>

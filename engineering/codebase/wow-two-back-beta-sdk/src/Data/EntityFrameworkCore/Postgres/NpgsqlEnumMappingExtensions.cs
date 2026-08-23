@@ -30,7 +30,7 @@ public static class NpgsqlEnumMappingExtensions
 
         foreach (var enumType in DiscoverEnums(assemblies, namespaceFilter))
         {
-            var name = pgTypeName?.Invoke(enumType) ?? CaseConverter.ToCase(enumType.Name, style);
+            var name = pgTypeName?.Invoke(enumType) ?? CaseMapper.ToCase(enumType.Name, style);
             builder.MapEnum(enumType, name, translator);
         }
 

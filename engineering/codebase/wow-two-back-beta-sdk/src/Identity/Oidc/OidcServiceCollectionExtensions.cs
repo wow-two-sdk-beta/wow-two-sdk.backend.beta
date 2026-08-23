@@ -9,19 +9,19 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.Oidc;
 public sealed record OidcOptions
 {
     /// <summary>OIDC authority (issuer URL — discovery is loaded from `{authority}/.well-known/openid-configuration`).</summary>
-    public string Authority { get; init; } = "";
+    public string Authority { get; set; } = "";
 
     /// <summary>Client id.</summary>
-    public string ClientId { get; init; } = "";
+    public string ClientId { get; set; } = "";
 
     /// <summary>Client secret (omit for public PKCE-only clients).</summary>
-    public string? ClientSecret { get; init; }
+    public string? ClientSecret { get; set; }
 
     /// <summary>Scopes to request. Default: openid profile email.</summary>
-    public string[] Scopes { get; init; } = ["openid", "profile", "email"];
+    public string[] Scopes { get; set; } = ["openid", "profile", "email"];
 
     /// <summary>Save tokens in the auth ticket. Default <c>true</c>.</summary>
-    public bool SaveTokens { get; init; } = true;
+    public bool SaveTokens { get; set; } = true;
 }
 
 /// <summary>OIDC registration helpers.</summary>

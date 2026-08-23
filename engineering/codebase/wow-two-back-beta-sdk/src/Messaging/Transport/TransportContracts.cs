@@ -5,7 +5,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 /// header names, and the standard context headers the SDK understands. Adapters name headers from here rather than
 /// from inline literals, so one constant governs the wire contract on every broker.
 /// </summary>
-public static class MessageHeaders
+public static class MessageHeaderConstants
 {
     /// <summary>
     /// Prefix reserved for SDK control headers — type token, content type, partition key, dead-letter death info.
@@ -105,7 +105,7 @@ public interface ISendTransport
 /// <summary>
 /// A received message and its settlement handle. The processing pipeline runs dedupe → resilience → dispatch, then
 /// <see cref="AcknowledgeAsync"/> on success or <see cref="DeadLetterAsync"/> on exhaustion. Each transport supplies
-/// its own settlement (RabbitMQ ack/DLX, ASB complete/dead-letter, in-memory no-op / <c>IDeadLetterStore</c>).
+/// its own settlement (RabbitMQ ack/DLX, ASB complete/dead-letter, in-memory no-op / <c>IDeadLetterRepository</c>).
 /// </summary>
 public abstract class ReceiveContext
 {

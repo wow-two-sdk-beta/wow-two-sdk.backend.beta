@@ -18,7 +18,7 @@ public static class AttemptExtensions
         }
         catch (OperationCanceledException)
         {
-            return Result<T>.Fail(AppErrors.Canceled());
+            return Result<T>.Fail(AppErrorFactory.Canceled());
         }
         catch (AppException appException)
         {
@@ -26,7 +26,7 @@ public static class AttemptExtensions
         }
         catch (Exception exception)
         {
-            return Result<T>.Fail(AppErrors.Unexpected(inner: exception));
+            return Result<T>.Fail(AppErrorFactory.Unexpected(inner: exception));
         }
     }
 
@@ -45,7 +45,7 @@ public static class AttemptExtensions
         }
         catch (OperationCanceledException)
         {
-            return Result<T>.Fail(AppErrors.Canceled());
+            return Result<T>.Fail(AppErrorFactory.Canceled());
         }
         catch (AppException appException)
         {
@@ -53,7 +53,7 @@ public static class AttemptExtensions
         }
         catch (Exception exception)
         {
-            return Result<T>.Fail(AppErrors.Unexpected(inner: exception));
+            return Result<T>.Fail(AppErrorFactory.Unexpected(inner: exception));
         }
     }
 }

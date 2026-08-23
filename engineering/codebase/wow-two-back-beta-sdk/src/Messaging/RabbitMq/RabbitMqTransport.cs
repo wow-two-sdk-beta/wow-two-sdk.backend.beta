@@ -14,7 +14,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq;
 
 /// <summary>Options for the RabbitMQ event-bus adapter.</summary>
-public sealed class RabbitMqOptions
+public sealed record RabbitMqOptions
 {
     /// <summary>AMQP connection URI. Default local guest.</summary>
     public string ConnectionString { get; set; } = "amqp://guest:guest@localhost:5672/";
@@ -25,7 +25,7 @@ public sealed class RabbitMqOptions
     /// <summary>
     /// This service's queue under <see cref="TopologyStyle.SharedEndpoint"/>. Default <c>wt.events.queue</c>.
     /// Ignored under <see cref="TopologyStyle.EndpointPerMessageType"/>, where every queue is named by
-    /// <see cref="IEndpointNameFormatter"/>.
+    /// <see cref="IEndpointNameMapper"/>.
     /// </summary>
     public string Queue { get; set; } = "wt.events.queue";
 
@@ -37,7 +37,7 @@ public sealed class RabbitMqOptions
     /// </summary>
     public string DeadLetterExchange { get; set; } = "wt.events.dlx";
 
-    /// <summary>Dead-letter queue for the shared endpoint. Default <c>wt.events.dlq</c>. Per-type endpoints derive theirs from <see cref="IEndpointNameFormatter.DeadLetter"/> instead.</summary>
+    /// <summary>Dead-letter queue for the shared endpoint. Default <c>wt.events.dlq</c>. Per-type endpoints derive theirs from <see cref="IEndpointNameMapper.DeadLetter"/> instead.</summary>
     public string DeadLetterQueue { get; set; } = "wt.events.dlq";
 
     /// <summary>
@@ -174,21 +174,21 @@ internal sealed partial class RabbitMqSendTransport(
         // the previous message's type token onto the new body and misroute it on the consumer.
         var headers = new Dictionary<string, object?>(StringComparer.Ordinal);
         foreach (var (key, value) in envelope.Headers)
-            if (!MessageHeaders.IsAdapterOwned(key))
+            if (!MessageHeaderConstants.IsAdapterOwned(key))
                 headers[key] = value;
 
         // WireBodyType, not BodyType: a send-path transformation that substituted the wire bytes decodes as a different
         // shape, and this token is what the receiver deserializes into. Routing below stays on BodyType.
-        headers[MessageHeaders.EventType] = typeResolver.ToTypeToken(envelope.WireBodyType);
-        headers[MessageHeaders.ContentType] = serializer.ContentType;
+        headers[MessageHeaderConstants.EventType] = typeResolver.ToTypeToken(envelope.WireBodyType);
+        headers[MessageHeaderConstants.ContentType] = serializer.ContentType;
         if (!string.IsNullOrEmpty(envelope.PartitionKey))
-            headers[MessageHeaders.PartitionKey] = envelope.PartitionKey;
+            headers[MessageHeaderConstants.PartitionKey] = envelope.PartitionKey;
 
         // The conversation id has no AMQP property of its own, and correlation-id is already spoken for by
         // EventEnvelope.CorrelationId — the business flow, which spans many exchanges. Overloading one property with
         // both would make a reply indistinguishable from any other message in the same flow, so this rides a header.
         if (!string.IsNullOrEmpty(envelope.ConversationId))
-            headers[MessageHeaders.ConversationId] = envelope.ConversationId;
+            headers[MessageHeaderConstants.ConversationId] = envelope.ConversationId;
 
         var properties = new BasicProperties
         {
@@ -415,7 +415,7 @@ internal sealed partial class RabbitMqReceiveTransport(
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            // Graceful shutdown. The channel is left open on purpose: TransportConsumerHostedService drains handlers
+            // Graceful shutdown. The channel is left open on purpose: TransportConsumerBackgroundService drains handlers
             // still in flight after this returns, and they settle their deliveries on this channel before StopAsync.
         }
     }
@@ -742,13 +742,13 @@ internal sealed partial class RabbitMqReceiveTransport(
     private EventEnvelope? TryReconstruct(BasicDeliverEventArgs delivery)
     {
         var headers = DecodeHeaders(delivery.BasicProperties.Headers);
-        if (!headers.TryGetValue(MessageHeaders.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
+        if (!headers.TryGetValue(MessageHeaderConstants.EventType, out var typeName) || typeResolver.ResolveType(typeName) is not { } eventType)
             return null;
 
         // Decoded by whoever encoded it. Selection reads "declared or nothing", never the "application/json" the
         // envelope below falls back to: a producer that stamped no content type is one whose format we do not know, and
         // guessing JSON for it would route a legacy body to the wrong deserializer wherever the default is not JSON.
-        var body = SerializerFor(ReadOptional(headers, MessageHeaders.ContentType)).Deserialize(delivery.Body.Span, eventType);
+        var body = SerializerFor(ReadOptional(headers, MessageHeaderConstants.ContentType)).Deserialize(delivery.Body.Span, eventType);
         if (body is null)
             return null;
 
@@ -760,13 +760,13 @@ internal sealed partial class RabbitMqReceiveTransport(
             Destination = delivery.RoutingKey,
             CorrelationId = delivery.BasicProperties.CorrelationId,
             DeliveryCount = delivery.Redelivered ? 2 : 1, // classic queues expose only a redelivered flag; quorum queues' x-delivery-count is a follow-up
-            ContentType = headers.TryGetValue(MessageHeaders.ContentType, out var contentType) ? contentType : "application/json",
-            PartitionKey = headers.TryGetValue(MessageHeaders.PartitionKey, out var partitionKey) && !string.IsNullOrEmpty(partitionKey) ? partitionKey : null,
+            ContentType = headers.TryGetValue(MessageHeaderConstants.ContentType, out var contentType) ? contentType : "application/json",
+            PartitionKey = headers.TryGetValue(MessageHeaderConstants.PartitionKey, out var partitionKey) && !string.IsNullOrEmpty(partitionKey) ? partitionKey : null,
 
             // The native property is what this adapter writes, so it is read first; the header is accepted as a
             // fallback so a message bridged in from a broker with no reply-address property still correlates.
-            ReplyTo = delivery.BasicProperties.ReplyTo is { Length: > 0 } replyTo ? replyTo : ReadOptional(headers, MessageHeaders.ReplyTo),
-            ConversationId = ReadOptional(headers, MessageHeaders.ConversationId),
+            ReplyTo = delivery.BasicProperties.ReplyTo is { Length: > 0 } replyTo ? replyTo : ReadOptional(headers, MessageHeaderConstants.ReplyTo),
+            ConversationId = ReadOptional(headers, MessageHeaderConstants.ConversationId),
             Headers = headers,
         };
     }
@@ -966,6 +966,10 @@ public static class RabbitMqServiceCollectionExtensions
 
         services.AddOptions<RabbitMqOptions>().Configure(configure);
 
+        // One shape at the injection site: consumers take the record, the builder keeps validation
+        // and post-configuration.
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<RabbitMqOptions>>().Value);
+
         var assemblies = handlerAssemblies is { Length: > 0 } ? handlerAssemblies : [Assembly.GetCallingAssembly()];
         services.AddEventHandlersFromAssemblies(assemblies);
         services.AddEventResilienceDefaults();
@@ -988,7 +992,7 @@ public static class RabbitMqServiceCollectionExtensions
         services.TryAddSingleton<IReceiveTransport, RabbitMqReceiveTransport>();
         services.TryAddSingleton<IEventBus, TransportEventBus>();
         services.TryAddSingleton<EventProcessingPipeline>();
-        services.AddHostedService<TransportConsumerHostedService>();
+        services.AddHostedService<TransportConsumerBackgroundService>();
         return services;
     }
 }

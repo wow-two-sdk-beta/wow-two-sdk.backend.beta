@@ -57,7 +57,7 @@ public sealed class AppResultTests
     [Fact]
     public void Fail_ShouldBuildFailure()
     {
-        var result = AppResult<SampleSuccess>.Fail(AppErrors.Conflict("dup"));
+        var result = AppResult<SampleSuccess>.Fail(AppErrorFactory.Conflict("dup"));
 
         result.IsSuccess.Should().BeFalse();
         result.Should().BeOfType<AppResult<SampleSuccess>.Failure>()

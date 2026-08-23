@@ -85,7 +85,7 @@ public interface IBusControl
 
 /// <summary>
 /// Default <see cref="IBusControl"/> — drives the <see cref="MessagePump"/>'s entry gate and reuses the pump's own
-/// drain. Lifecycle state is stamped by <see cref="TransportConsumerHostedService"/>, which is what makes
+/// drain. Lifecycle state is stamped by <see cref="TransportConsumerBackgroundService"/>, which is what makes
 /// <see cref="State"/> reflect the host rather than only explicit control calls.
 /// </summary>
 internal sealed partial class BusControl : IBusControl
@@ -97,11 +97,11 @@ internal sealed partial class BusControl : IBusControl
     private int _state = (int)BusState.Stopped;
     private bool _stopRequested;
 
-    public BusControl(MessagePump pump, IOptions<ConcurrencyOptions> options, ILogger<BusControl> logger)
+    public BusControl(MessagePump pump, ConcurrencyOptions options, ILogger<BusControl> logger)
     {
         ArgumentNullException.ThrowIfNull(options);
         _pump = pump;
-        _options = options.Value;
+        _options = options;
         _logger = logger;
     }
 

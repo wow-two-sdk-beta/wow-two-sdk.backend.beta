@@ -9,7 +9,7 @@ public static class RealtimeServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the in-memory <see cref="IUserConnectionTracker"/> as a singleton for presence tracking.
-    /// <see cref="SignalRConventions.AddConventionalSignalR"/> already does this; call it directly only when
+    /// <see cref="SignalRExtensions.AddConventionalSignalR"/> already does this; call it directly only when
     /// deriving from <see cref="PresenceHub"/> without the conventional SignalR registration. Idempotent.
     /// </summary>
     /// <param name="services">The service collection to add the tracker to.</param>

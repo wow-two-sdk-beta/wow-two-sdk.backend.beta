@@ -1,10 +1,10 @@
 # WoW.Two.Sdk.Backend.Beta.Foundation.Errors
 
-> The transport-agnostic failure model: `AppError` (value) + `AppErrorType` (kind) + `AppException` (throw form), the `AppErrors` catalog, descriptive `ErrorNature`, and the extensible exception→`AppError` mapping seam. Consumed by results, the mediator behaviors, and the ProblemDetails handlers. Part of the core mono-lib (`WoW2.Sdk.Backend.Beta`) — no separate package.
+> The transport-agnostic failure model: `AppError` (value) + `AppErrorType` (kind) + `AppException` (throw form), the `AppErrorFactory` catalog, descriptive `ErrorNature`, and the extensible exception→`AppError` mapping seam. Consumed by results, the mediator behaviors, and the ProblemDetails handlers. Part of the core mono-lib (`WoW2.Sdk.Backend.Beta`) — no separate package.
 
 ## Model
 
-- **`AppError`** — open `record` carrying `Type` (`AppErrorType`), `Message`, optional `Metadata`, and log-only `Origin`. Authored via `AppError.Of(...)`, `AppError.FromException(...)`, or the `AppErrors` catalog (`AppErrors.NotFound(...)`, `Conflict`, `Validation`, …). `Type` is the wire `code`.
+- **`AppError`** — open `record` carrying `Type` (`AppErrorType`), `Message`, optional `Metadata`, and log-only `Origin`. Authored via `AppError.Of(...)`, `AppError.FromException(...)`, or the `AppErrorFactory` catalog (`AppErrorFactory.NotFound(...)`, `Conflict`, `Validation`, …). `Type` is the wire `code`.
 - **`AppException`** — the throw form; *carries* an `AppError` (one source of truth). Bridge both ways: `error.Throw()` / `error.ToException()`.
 - **`ErrorNature {Transient, Permanent, Defect}`** via `IErrorNatureClassifier` (DI) — consumers derive retry/fallback/log level.
 
@@ -13,10 +13,10 @@
 ```csharp
 // return (expected failure) — see ../Results/results.md
 public Result<User> GetUser(Guid id)
-    => _repo.Find(id) is { } user ? user : AppErrors.NotFound("User not found");
+    => _repo.Find(id) is { } user ? user : AppErrorFactory.NotFound("User not found");
 
 // throw (exceptional) — the mediator behavior / global handler turns it into ProblemDetails
-AppErrors.Conflict("Email already registered.").Throw();
+AppErrorFactory.Conflict("Email already registered.").Throw();
 ```
 
 ## Mapping a caught exception → AppError
@@ -28,7 +28,7 @@ AppErrors.Conflict("Email already registered.").Throw();
 public sealed class PaymentDeclinedRule : IExceptionMappingRule
 {
     public AppError? TryMap(Exception ex)
-        => ex is PaymentDeclinedException ? AppErrors.PaymentRequired("Card declined.") : null;
+        => ex is PaymentDeclinedException ? AppErrorFactory.PaymentRequired("Card declined.") : null;
 }
 
 builder.Services.AddExceptionMappingRule<PaymentDeclinedRule>();

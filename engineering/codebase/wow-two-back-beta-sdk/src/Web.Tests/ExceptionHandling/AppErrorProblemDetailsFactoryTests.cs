@@ -11,7 +11,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Web.Tests.ExceptionHandling;
 public sealed class AppErrorProblemDetailsFactoryTests
 {
     private static readonly IErrorHttpStatusCodeMapper Mapper = new DefaultErrorHttpStatusCodeMapper();
-    private static readonly IErrorMessageResolver Resolver = new DefaultErrorMessageResolver();
+    private static readonly IErrorMessageMapper Resolver = new DefaultErrorMessageMapper();
 
     private static Microsoft.AspNetCore.Mvc.ProblemDetails Create(AppError error, out HttpContext context)
     {
@@ -22,7 +22,7 @@ public sealed class AppErrorProblemDetailsFactoryTests
     [Fact]
     public void Create_ShouldSetStatusTypeCodeAndDetail()
     {
-        var problem = Create(AppErrors.NotFound("Order 3f2 not found."), out var context);
+        var problem = Create(AppErrorFactory.NotFound("Order 3f2 not found."), out var context);
 
         problem.Status.Should().Be(StatusCodes.Status404NotFound);
         problem.Type.Should().Be("urn:wow-two:error:NotFound");
@@ -79,7 +79,7 @@ public sealed class AppErrorProblemDetailsFactoryTests
     [Fact]
     public void Create_ShouldNotEmitOrigin()
     {
-        var problem = Create(AppErrors.Conflict("dup"), out _);
+        var problem = Create(AppErrorFactory.Conflict("dup"), out _);
 
         problem.Extensions.Should().NotContainKey("origin");
         problem.Extensions.Should().NotContainKey("Origin");
@@ -88,8 +88,67 @@ public sealed class AppErrorProblemDetailsFactoryTests
     [Fact]
     public void Create_ShouldOmitErrors_WhenNonValidationError()
     {
-        var problem = Create(AppErrors.Conflict("dup"), out _);
+        var problem = Create(AppErrorFactory.Conflict("dup"), out _);
 
         problem.Extensions.Should().NotContainKey("errors");
+    }
+
+    [Fact]
+    public void Create_ShouldEmitParams_WhenFailureCarriesOperands()
+    {
+        var error = ValidationError.From(
+        [
+            new FieldError
+            {
+                Property = "name",
+                Message = "too long",
+                Code = "MaximumLengthValidator",
+                Params = new Dictionary<string, object> { ["MaxLength"] = 3 },
+            },
+        ]);
+
+        var problem = Create(error, out _);
+
+        problem.Extensions["errors"].Should().BeAssignableTo<IReadOnlyList<FieldError>>()
+            .Which.Single().Params!["MaxLength"].Should().Be(3);
+    }
+
+    [Fact]
+    public void Create_ShouldRewriteFieldMessages_WhenFieldResolverSupplied()
+    {
+        // The plug for localization: without it, `detail` is resolved and every `errors[]` message is not.
+        var error = ValidationError.From(
+        [
+            new FieldError { Property = "email", Message = "Email is required.", Code = "NotEmptyValidator" },
+        ]);
+        var context = new DefaultHttpContext();
+
+        var problem = AppErrorProblemDetailsFactory.Create(
+            error, context, Mapper, Resolver, new UpperCaseFieldMessageResolver());
+
+        problem.Extensions["errors"].Should().BeAssignableTo<IReadOnlyList<FieldError>>()
+            .Which.Single().Message.Should().Be("EMAIL IS REQUIRED.");
+    }
+
+    [Fact]
+    public void Create_ShouldPreserveFieldMessages_WhenDefaultFieldResolverSupplied()
+    {
+        var error = ValidationError.From(
+        [
+            new FieldError { Property = "email", Message = "Email is required.", Code = "NotEmptyValidator" },
+        ]);
+        var context = new DefaultHttpContext();
+
+        var problem = AppErrorProblemDetailsFactory.Create(
+            error, context, Mapper, Resolver, new DefaultFieldErrorMessageMapper());
+
+        problem.Extensions["errors"].Should().BeAssignableTo<IReadOnlyList<FieldError>>()
+            .Which.Single().Message.Should().Be("Email is required.");
+    }
+
+    /// <summary>Stands in for a localizing resolver — proves the seam reaches every failure's message.</summary>
+    private sealed class UpperCaseFieldMessageResolver : IFieldErrorMessageMapper
+    {
+        public string Map(FieldError error, HttpContext context) => error.Message.ToUpperInvariant();
     }
 }

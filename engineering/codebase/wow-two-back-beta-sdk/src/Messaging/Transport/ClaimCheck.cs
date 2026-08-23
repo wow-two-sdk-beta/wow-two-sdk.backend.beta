@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Storage.Core;
 
@@ -11,29 +13,29 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>Reserved wire headers carrying a message's claim check — the pointer to a body held in blob storage rather than on the wire.</summary>
 /// <remarks>
-/// Defined here rather than in <see cref="MessageHeaders"/> for the same reason
-/// <see cref="Reliability.SecondLevelRetryHeaders"/> and <see cref="Reliability.DeadLetterHeaders"/> are: a feature that
+/// Defined here rather than in <see cref="MessageHeaderConstants"/> for the same reason
+/// <see cref="Reliability.SecondLevelRetryHeaderConstants"/> and <see cref="Reliability.DeadLetterHeaderConstants"/> are: a feature that
 /// is off by default owns its own wire names, and the shared table stays the set every adapter must understand.
 /// </remarks>
-public static class ClaimCheckHeaders
+public static class ClaimCheckHeaderConstants
 {
     /// <summary>Reserved. Logical blob path of the offloaded body. Its presence is what marks a message as claim-checked.</summary>
-    public const string Reference = MessageHeaders.ReservedPrefix + "claim-check";
+    public const string Reference = MessageHeaderConstants.ReservedPrefix + "claim-check";
 
     /// <summary>Reserved. Size in bytes of the offloaded body, for observability and for spotting a truncated blob.</summary>
-    public const string Size = MessageHeaders.ReservedPrefix + "claim-check-size";
+    public const string Size = MessageHeaderConstants.ReservedPrefix + "claim-check-size";
 
     /// <summary>
     /// Reserved. Wire token of the <i>real</i> body type — the one the offloaded blob deserializes into.
     /// </summary>
     /// <remarks>
     /// Load-bearing, not an optimization. An offloaded message puts a <see cref="ClaimCheckReference"/> on the wire, so
-    /// <see cref="MessageHeaders.EventType"/> names <i>that</i> type (it is what the receiving adapter must decode the
+    /// <see cref="MessageHeaderConstants.EventType"/> names <i>that</i> type (it is what the receiving adapter must decode the
     /// bytes as) and the real contract has nowhere else to travel. The rehydrator reads it, and falls back to the
     /// envelope's own <see cref="EventEnvelope.BodyType"/> only for a transport that never re-encoded the body at all —
     /// the in-memory one, which hands the envelope over by reference.
     /// </remarks>
-    public const string BodyType = MessageHeaders.ReservedPrefix + "claim-check-type";
+    public const string BodyType = MessageHeaderConstants.ReservedPrefix + "claim-check-type";
 
     /// <summary>Read the claim reference off an envelope.</summary>
     /// <param name="envelope">The envelope to inspect.</param>
@@ -104,13 +106,13 @@ public sealed record ClaimCheckReference
 /// than the retry ladder plus however long dead-letter triage takes, or a redrive rehydrates nothing.
 /// </para>
 /// <para>
-/// Storage rides the SDK's existing <see cref="IBlobStorage"/> vector — register one (<c>AddLocalBlobStorage</c> or a
+/// Storage rides the SDK's existing <see cref="IBlobRepository"/> vector — register one (<c>AddLocalBlobStorage</c> or a
 /// cloud adapter) alongside this. On a store with its own lifecycle rules (S3 lifecycle, Azure blob lifecycle
 /// management) prefer those and set <see cref="SweepEnabled"/> to <c>false</c>: they expire objects server-side instead
 /// of listing the whole prefix on a timer.
 /// </para>
 /// </remarks>
-public sealed class ClaimCheckOptions
+public sealed record ClaimCheckOptions
 {
     /// <summary>
     /// Offload bodies over <see cref="ThresholdBytes"/> instead of sending them inline. Defaults to <c>false</c>;
@@ -176,13 +178,13 @@ public sealed class ClaimCheckPayloadException : Exception
     }
 }
 
-/// <summary>Reads and writes claim-checked bodies through the SDK's <see cref="IBlobStorage"/>, owning the path scheme and the guards on a reference that arrived over the wire.</summary>
-internal sealed class ClaimCheckPayloadStore(IBlobStorage blobStorage, IOptions<ClaimCheckOptions> options, TimeProvider timeProvider)
+/// <summary>Reads and writes claim-checked bodies through the SDK's <see cref="IBlobRepository"/>, owning the path scheme and the guards on a reference that arrived over the wire.</summary>
+internal sealed class ClaimCheckPayloadRepository(IBlobRepository blobRepository, ClaimCheckOptions options, TimeProvider timeProvider)
 {
-    private readonly ClaimCheckOptions _options = options.Value;
+    private readonly ClaimCheckOptions _options = options;
 
     /// <summary>The normalized prefix every claim-checked blob lives under, with no trailing separator.</summary>
-    public string Prefix { get; } = BlobStoragePath.Normalize(options.Value.PathPrefix).TrimEnd('/');
+    public string Prefix { get; } = BlobStoragePathMapper.Normalize(options.PathPrefix).TrimEnd('/');
 
     /// <summary>Write a serialized body to blob storage and return the logical path to reference it by.</summary>
     /// <param name="body">The serialized body.</param>
@@ -200,35 +202,45 @@ internal sealed class ClaimCheckPayloadStore(IBlobStorage blobStorage, IOptions<
             $"{Prefix}/{now:yyyy'/'MM'/'dd}/{Guid.NewGuid():N}.bin");
 
         using var stream = new MemoryStream(body, writable: false);
-        await blobStorage.SaveAsync(path, stream, contentType, cancellationToken);
+        await blobRepository.SaveAsync(path, stream, contentType, cancellationToken);
         return path;
     }
 
-    /// <summary>Read an offloaded body back, or throw <see cref="ClaimCheckPayloadException"/> with a reason fit to dead-letter on.</summary>
+    /// <summary>Read an offloaded body back, or fail with a reason fit to dead-letter on.</summary>
     /// <param name="path">The claim reference, as it arrived on the wire.</param>
     /// <param name="messageId">The message the reference came from, for the failure message.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public async ValueTask<byte[]> ReadAsync(string path, string messageId, CancellationToken cancellationToken)
+    public async ValueTask<Result<byte[]>> ReadAsync(string path, string messageId, CancellationToken cancellationToken)
     {
-        var safePath = Confine(path, messageId);
+        var confined = Confine(path, messageId);
+        if (confined is Result<string>.Failure rejected)
+        {
+            return Result<byte[]>.Fail(rejected.Error);
+        }
+
+        var safePath = ((Result<string>.Success)confined).Value;
 
         // Metadata first: it separates "gone" from "too big" before a byte is allocated, and gives the exact length to
         // read into. Two round trips on the offloaded path only — the cheap path never gets here.
-        var info = await blobStorage.GetInfoAsync(safePath, cancellationToken);
+        var info = await blobRepository.GetInfoAsync(safePath, cancellationToken);
         if (info is null)
-            throw Missing(safePath, messageId);
+        {
+            return Result<byte[]>.Fail(Missing(safePath, messageId));
+        }
 
         if (info.SizeBytes > _options.MaxPayloadBytes)
         {
-            throw new ClaimCheckPayloadException(
+            return Result<byte[]>.Fail(AppErrorFactory.DataIntegrity(
                 string.Create(
                     CultureInfo.InvariantCulture,
-                    $"Claim-checked body '{safePath}' for message '{messageId}' is {info.SizeBytes} bytes, over the {_options.MaxPayloadBytes}-byte rehydrate limit; refusing to load it."));
+                    $"Claim-checked body '{safePath}' for message '{messageId}' is {info.SizeBytes} bytes, over the {_options.MaxPayloadBytes}-byte rehydrate limit; refusing to load it.")));
         }
 
-        var stream = await blobStorage.OpenReadAsync(safePath, cancellationToken);
+        var stream = await blobRepository.OpenReadAsync(safePath, cancellationToken);
         if (stream is null)
-            throw Missing(safePath, messageId); // deleted between the two calls — a retention sweep racing a slow consumer
+        {
+            return Result<byte[]>.Fail(Missing(safePath, messageId)); // deleted between the two calls — a retention sweep racing a slow consumer
+        }
 
         await using (stream)
         {
@@ -239,12 +251,12 @@ internal sealed class ClaimCheckPayloadStore(IBlobStorage blobStorage, IOptions<
             }
             catch (EndOfStreamException exception)
             {
-                throw new ClaimCheckPayloadException(
+                return Result<byte[]>.Fail(AppErrorFactory.DataIntegrity(
                     $"Claim-checked body '{safePath}' for message '{messageId}' is shorter than its recorded length; the blob is truncated.",
-                    exception);
+                    exception));
             }
 
-            return buffer;
+            return Result<byte[]>.Ok(buffer);
         }
     }
 
@@ -258,7 +270,7 @@ internal sealed class ClaimCheckPayloadStore(IBlobStorage blobStorage, IOptions<
         // Collected before deleting: mutating the store while its own listing is being enumerated is undefined on some
         // backends and throws outright on a directory-backed one.
         var expired = new List<string>();
-        await foreach (var blob in blobStorage.ListAsync(Prefix, cancellationToken))
+        await foreach (var blob in blobRepository.ListAsync(Prefix, cancellationToken))
         {
             if (blob.LastModified >= cutoffUtc)
                 continue;
@@ -270,7 +282,7 @@ internal sealed class ClaimCheckPayloadStore(IBlobStorage blobStorage, IOptions<
 
         var deleted = 0;
         foreach (var blobPath in expired)
-            if (await blobStorage.DeleteAsync(blobPath, cancellationToken))
+            if (await blobRepository.DeleteAsync(blobPath, cancellationToken))
                 deleted++;
 
         return deleted;
@@ -279,25 +291,29 @@ internal sealed class ClaimCheckPayloadStore(IBlobStorage blobStorage, IOptions<
     // A reference is wire data, so it is attacker-reachable: normalize it (which rejects traversal segments) and then
     // confine it to the configured prefix, so a forged header cannot turn the rehydrator into a reader for arbitrary
     // blobs — credentials, other tenants' payloads — that happen to share the store.
-    private string Confine(string path, string messageId)
+    private Result<string> Confine(string path, string messageId)
     {
         string normalized;
         try
         {
-            normalized = BlobStoragePath.Normalize(path);
+            normalized = BlobStoragePathMapper.Normalize(path);
         }
-        catch (ArgumentException exception)
+        catch (ArgumentException)
         {
-            throw new ClaimCheckPayloadException($"Claim-check reference '{path}' on message '{messageId}' is not a valid blob path.", exception);
+            return Result<string>.Fail(AppErrorFactory.Validation(
+                $"Claim-check reference '{path}' on message '{messageId}' is not a valid blob path."));
         }
 
         if (!normalized.StartsWith(Prefix + "/", StringComparison.Ordinal))
-            throw new ClaimCheckPayloadException($"Claim-check reference '{path}' on message '{messageId}' points outside the '{Prefix}' prefix; refusing to read it.");
+        {
+            return Result<string>.Fail(AppErrorFactory.Validation(
+                $"Claim-check reference '{path}' on message '{messageId}' points outside the '{Prefix}' prefix; refusing to read it."));
+        }
 
-        return normalized;
+        return Result<string>.Ok(normalized);
     }
 
-    private static ClaimCheckPayloadException Missing(string path, string messageId) => new(
+    private static AppError Missing(string path, string messageId) => AppErrorFactory.FileNotFound(
         $"Claim-checked body '{path}' for message '{messageId}' is missing from blob storage — it expired under the configured retention, was purged, or was never written. The body cannot be rehydrated.");
 }
 
@@ -326,13 +342,13 @@ internal sealed class ClaimCheckPayloadStore(IBlobStorage blobStorage, IOptions<
 /// </para>
 /// </remarks>
 internal sealed partial class ClaimCheckOffloader(
-    ClaimCheckPayloadStore store,
+    ClaimCheckPayloadRepository store,
     IMessageSerializer serializer,
     IMessageTypeResolver typeResolver,
-    IOptions<ClaimCheckOptions> options,
+    ClaimCheckOptions options,
     ILogger<ClaimCheckOffloader> logger)
 {
-    private readonly ClaimCheckOptions _options = options.Value;
+    private readonly ClaimCheckOptions _options = options;
 
     /// <summary>True when oversized bodies are offloaded. False leaves the send path putting every body inline, exactly as before this existed.</summary>
     public bool IsActive => _options.Enabled;
@@ -355,9 +371,9 @@ internal sealed partial class ClaimCheckOffloader(
         // A re-publish of an already-offloaded message — a delayed-retry hop, a dead-letter redrive — carries the
         // pointer rather than the payload. Offloading again would store a blob whose content is a reference to a blob,
         // and the rehydrator would hand the handler a ClaimCheckReference. The header survives such a re-publish
-        // precisely because MessageHeaders.IsAdapterOwned strips only the keys an adapter re-derives, so this is where
+        // precisely because MessageHeaderConstants.IsAdapterOwned strips only the keys an adapter re-derives, so this is where
         // the loop has to be cut.
-        if (ClaimCheckHeaders.TryReadReference(envelope, out _))
+        if (ClaimCheckHeaderConstants.TryReadReference(envelope, out _))
             return envelope;
 
         // Size is not knowable without serializing. Carrying the measured bytes on the envelope is what keeps that to
@@ -377,13 +393,13 @@ internal sealed partial class ClaimCheckOffloader(
         };
 
         // Merged into the envelope's own headers rather than handed to the adapter separately: an adapter copies
-        // caller headers minus MessageHeaders.IsAdapterOwned, which covers only the 8 keys it re-derives, so these
+        // caller headers minus MessageHeaderConstants.IsAdapterOwned, which covers only the 8 keys it re-derives, so these
         // three reach the wire with no adapter-side header work at all.
         var headers = new Dictionary<string, string>(envelope.Headers, StringComparer.Ordinal)
         {
-            [ClaimCheckHeaders.Reference] = path,
-            [ClaimCheckHeaders.Size] = reference.SizeBytes.ToString(CultureInfo.InvariantCulture),
-            [ClaimCheckHeaders.BodyType] = bodyToken,
+            [ClaimCheckHeaderConstants.Reference] = path,
+            [ClaimCheckHeaderConstants.Size] = reference.SizeBytes.ToString(CultureInfo.InvariantCulture),
+            [ClaimCheckHeaderConstants.BodyType] = bodyToken,
         };
 
         LogOffloaded(envelope.MessageId, reference.SizeBytes, path);
@@ -422,10 +438,10 @@ internal sealed partial class ClaimCheckOffloader(
 /// </para>
 /// <para>
 /// That ordering depends on the reference surviving a re-publish, which is what
-/// <see cref="MessageHeaders.IsAdapterOwned"/> buys: an adapter now drops only the keys it re-derives from the envelope,
-/// not the whole <see cref="MessageHeaders.ReservedPrefix"/> namespace, so <see cref="ClaimCheckHeaders.Reference"/>
+/// <see cref="MessageHeaderConstants.IsAdapterOwned"/> buys: an adapter now drops only the keys it re-derives from the envelope,
+/// not the whole <see cref="MessageHeaderConstants.ReservedPrefix"/> namespace, so <see cref="ClaimCheckHeaderConstants.Reference"/>
 /// rides a retry, delay or redrive hop intact — as do
-/// <see cref="Reliability.SecondLevelRetryHeaders.Tier"/> and <see cref="Reliability.DeadLetterHeaders.RedriveCount"/>.
+/// <see cref="Reliability.SecondLevelRetryHeaderConstants.Tier"/> and <see cref="Reliability.DeadLetterHeaderConstants.RedriveCount"/>.
 /// The send half relies on the same fact in reverse: seeing the reference on an outgoing envelope is how
 /// <see cref="ClaimCheckOffloader"/> knows not to offload a pointer.
 /// </para>
@@ -438,7 +454,7 @@ internal sealed partial class ClaimCheckOffloader(
 /// </para>
 /// </remarks>
 internal sealed partial class ClaimCheckRehydrateConsumeFilter(
-    ClaimCheckPayloadStore store,
+    ClaimCheckPayloadRepository store,
     IMessageSerializer serializer,
     IMessageTypeResolver typeResolver,
     ILogger<ClaimCheckRehydrateConsumeFilter> logger) : IConsumeFilter
@@ -451,14 +467,17 @@ internal sealed partial class ClaimCheckRehydrateConsumeFilter(
         var envelope = context.Envelope;
 
         // The whole cost of the feature on a normal message: one lookup for a header that is not there.
-        if (!ClaimCheckHeaders.TryReadReference(envelope, out var path))
+        if (!ClaimCheckHeaderConstants.TryReadReference(envelope, out var path))
         {
             await next(context, cancellationToken);
             return;
         }
 
         var bodyType = ResolveBodyType(envelope);
-        var payload = await store.ReadAsync(path, envelope.MessageId, cancellationToken);
+        // The pump reads only exceptions, so the repository's failure crosses back to a throw here — the one seam that
+        // knows the transport, and the same place a bad deserialize is already named for the dead-letter reason.
+        var payload = (await store.ReadAsync(path, envelope.MessageId, cancellationToken))
+            .Match(body => body, error => throw new ClaimCheckPayloadException(error.Message));
 
         object body;
         try
@@ -487,7 +506,7 @@ internal sealed partial class ClaimCheckRehydrateConsumeFilter(
     // than fatal, because the envelope already holds a resolved type to deserialize into.
     private Type ResolveBodyType(EventEnvelope envelope)
     {
-        if (envelope.Headers.TryGetValue(ClaimCheckHeaders.BodyType, out var token)
+        if (envelope.Headers.TryGetValue(ClaimCheckHeaderConstants.BodyType, out var token)
             && !string.IsNullOrWhiteSpace(token)
             && typeResolver.ResolveType(token) is { } resolved)
         {
@@ -519,8 +538,8 @@ internal sealed partial class ClaimCheckRehydrateConsumeFilter(
 /// fan-out, the next retry, and any later redrive out of the dead-letter store.
 /// </summary>
 internal sealed partial class ClaimCheckRetentionSweeper(
-    ClaimCheckPayloadStore store,
-    IOptions<ClaimCheckOptions> options,
+    ClaimCheckPayloadRepository store,
+    ClaimCheckOptions options,
     TimeProvider timeProvider,
     ILogger<ClaimCheckRetentionSweeper> logger) : BackgroundService
 {
@@ -529,7 +548,7 @@ internal sealed partial class ClaimCheckRetentionSweeper(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var config = options.Value;
+        var config = options;
         if (!config.Enabled || !config.SweepEnabled)
         {
             LogSweepDisabled();
@@ -588,7 +607,7 @@ public static class ClaimCheckServiceCollectionExtensions
     /// <returns>The service collection, for chaining.</returns>
     /// <remarks>
     /// <para>
-    /// Requires an <see cref="IBlobStorage"/> registration (<c>AddLocalBlobStorage</c> or a cloud adapter). Order
+    /// Requires an <see cref="IBlobRepository"/> registration (<c>AddLocalBlobStorage</c> or a cloud adapter). Order
     /// relative to the transport does not matter; order relative to <c>AddConsumeFilter&lt;T&gt;()</c> and
     /// <c>AddSecondLevelEventRetry()</c> does — call this <b>last</b>, so the rehydrate sits innermost and the retry
     /// filters keep re-publishing the small reference envelope rather than the rehydrated one.
@@ -631,6 +650,9 @@ public static class ClaimCheckServiceCollectionExtensions
             .Validate(options => options.Retention > TimeSpan.Zero, "ClaimCheckOptions.Retention must be positive.")
             .Validate(options => options.SweepInterval > TimeSpan.Zero, "ClaimCheckOptions.SweepInterval must be positive.")
             .Validate(options => !string.IsNullOrWhiteSpace(options.PathPrefix), "ClaimCheckOptions.PathPrefix must name a blob path prefix.");
+        // Consumers take the record; the builder above stays for validation and post-configuration.
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<ClaimCheckOptions>>().Value);
+
 
         // The wire body of an offloaded message IS a ClaimCheckReference, so the receiving adapter has to resolve that
         // token before any filter runs. Registered under a stable name rather than left to the resolver's
@@ -639,7 +661,7 @@ public static class ClaimCheckServiceCollectionExtensions
         GetOrAddMessageTypeRegistry(services).Register(typeof(ClaimCheckReference), ClaimCheckReference.TypeToken);
 
         services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<ClaimCheckPayloadStore>();
+        services.TryAddSingleton<ClaimCheckPayloadRepository>();
         services.TryAddSingleton<ClaimCheckOffloader>();
         services.AddSingleton<IConsumeFilter, ClaimCheckRehydrateConsumeFilter>();
         services.AddHostedService<ClaimCheckRetentionSweeper>();

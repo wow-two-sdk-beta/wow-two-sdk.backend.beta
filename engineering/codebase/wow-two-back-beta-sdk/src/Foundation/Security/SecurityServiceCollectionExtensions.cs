@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Security;
@@ -20,6 +21,7 @@ public static class SecurityServiceCollectionExtensions
             services.Configure(configure);
         else
             services.AddOptions<EnvelopeCryptographyOptions>();
+            services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<EnvelopeCryptographyOptions>>().Value);
 
         services.TryAddSingleton<IMasterKeyProvider, EnvironmentMasterKeyProvider>();
         services.TryAddSingleton<ISealKeeper, MasterKeySealKeeper>();

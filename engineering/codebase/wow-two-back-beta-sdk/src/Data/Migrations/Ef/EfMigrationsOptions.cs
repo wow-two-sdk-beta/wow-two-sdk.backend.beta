@@ -4,11 +4,11 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Ef;
 public sealed record EfMigrationsOptions
 {
     /// <summary>Gets a value indicating whether the runner is enabled. Default <c>true</c> — flip to <c>false</c> in production when migrations are applied out-of-band (CI step, ops job).</summary>
-    public bool Enabled { get; init; } = true;
+    public bool Enabled { get; set; } = true;
 
     /// <summary>Gets the maximum number of attempts to connect before giving up. Default 10. Mitigates the classic "DB not ready yet" Docker startup race.</summary>
-    public int MaxConnectAttempts { get; init; } = 10;
+    public int MaxConnectAttempts { get; set; } = 10;
 
     /// <summary>Gets the delay between connect attempts. Default 2s.</summary>
-    public TimeSpan ConnectRetryDelay { get; init; } = TimeSpan.FromSeconds(2);
+    public TimeSpan ConnectRetryDelay { get; set; } = TimeSpan.FromSeconds(2);
 }

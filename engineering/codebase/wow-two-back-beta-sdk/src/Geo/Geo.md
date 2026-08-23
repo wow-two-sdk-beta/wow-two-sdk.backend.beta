@@ -10,7 +10,7 @@ Namespace root: `WoW.Two.Sdk.Backend.Beta.Geo`. This is the dependency-free foun
 |---|---|---|
 | `Coordinates/` | `GeoCoordinate`, `GeoBoundingBox` | Validated WGS-84 point + axis-aligned bbox (contains/extend/enclose) |
 | `Distance/` | `IGeoDistanceCalculator` / `GeoDistanceCalculator`, `DistanceUnit` | Haversine distance, initial bearing, destination point; unit conversion |
-| `Geohash/` | `Geohash` (static), `GeohashDirection` | Encode/decode + adjacent/neighbours for spatial-index keys & proximity |
+| `GeohashEncoder/` | `GeohashEncoder` (static), `GeohashDirection` | Encode/decode + adjacent/neighbours for spatial-index keys & proximity |
 | `GeoJson/` | `GeoJsonSerializer`, `GeoJson*` types, `GeoPosition` | RFC 7946 Point/LineString/Polygon/Feature(Collection) read+write |
 
 ## Quickstart
@@ -24,8 +24,8 @@ double km = calc.Distance(a, b, DistanceUnit.Kilometers);
 double bearing = calc.InitialBearingDegrees(a, b);
 GeoCoordinate onward = calc.Destination(a, bearingDegrees: 90, distanceMeters: 5000);
 
-string cell = Geohash.Encode(a, precision: 7);          // proximity key
-IReadOnlyList<string> ring = Geohash.Neighbors(cell);   // 8 surrounding cells
+string cell = GeohashEncoder.Encode(a, precision: 7);          // proximity key
+IReadOnlyList<string> ring = GeohashEncoder.Neighbors(cell);   // 8 surrounding cells
 
 string json = GeoJsonSerializer.Serialize(new GeoJsonPoint(GeoPosition.FromCoordinate(a)));
 GeoJsonFeatureCollection fc = GeoJsonSerializer.ParseFeatureCollection(body);
@@ -35,7 +35,7 @@ GeoJsonFeatureCollection fc = GeoJsonSerializer.ParseFeatureCollection(body);
 
 - **Order matters:** `GeoCoordinate` is latitude-first (spoken order); GeoJSON `GeoPosition` is longitude-first (RFC 7946). Convert with `GeoPosition.FromCoordinate` / `ToCoordinate`.
 - Distance uses a spherical Earth (haversine, IUGG mean radius) — < 1% error for terrestrial spans. Use an ellipsoidal model for survey-grade precision.
-- Everything is immutable + thread-safe; `Geohash`/`GeoJsonSerializer` are static.
+- Everything is immutable + thread-safe; `GeohashEncoder`/`GeoJsonSerializer` are static.
 
 ## Roadmap (adapters, not yet built)
 
@@ -44,4 +44,4 @@ GeoJsonFeatureCollection fc = GeoJsonSerializer.ParseFeatureCollection(body);
 
 ## See also
 
-`Coordinates/coordinates.md` · `Distance/distance.md` · `Geohash/geohash.md` · `GeoJson/geojson.md`
+`Coordinates/coordinates.md` · `Distance/distance.md` · `GeohashEncoder/geohash.md` · `GeoJson/geojson.md`

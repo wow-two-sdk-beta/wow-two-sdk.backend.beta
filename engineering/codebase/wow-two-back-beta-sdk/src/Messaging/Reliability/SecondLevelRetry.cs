@@ -9,10 +9,10 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
 /// <summary>Reserved wire header carrying a message's position in the second-level retry ladder.</summary>
-public static class SecondLevelRetryHeaders
+public static class SecondLevelRetryHeaderConstants
 {
     /// <summary>Reserved. How many second-level tiers this message has already been promoted through; absent means none.</summary>
-    public const string Tier = MessageHeaders.ReservedPrefix + "retry-tier";
+    public const string Tier = MessageHeaderConstants.ReservedPrefix + "retry-tier";
 
     /// <summary>Read the tier marker off an envelope; 0 when absent or unparseable.</summary>
     /// <param name="envelope">The envelope to inspect.</param>
@@ -51,7 +51,7 @@ public static class SecondLevelRetryHeaders
 /// long in-process sleep.
 /// </para>
 /// </remarks>
-public sealed class SecondLevelRetryOptions
+public sealed record SecondLevelRetryOptions
 {
     private readonly List<TimeSpan> _tiers = [];
 
@@ -117,9 +117,9 @@ internal sealed partial class SecondLevelRetryCoordinator
     private readonly ILogger<SecondLevelRetryCoordinator> _logger;
 
     public SecondLevelRetryCoordinator(
-        IOptions<SecondLevelRetryOptions> options,
-        IOptions<InMemoryEventBusOptions> busOptions,
-        IOptions<DelayedRetryOptions> delayedRetryOptions,
+        SecondLevelRetryOptions options,
+        InMemoryEventBusOptions busOptions,
+        DelayedRetryOptions delayedRetryOptions,
         TimeProvider timeProvider,
         IEnumerable<ITransportCapabilities> capabilities,
         ILogger<SecondLevelRetryCoordinator> logger,
@@ -132,7 +132,7 @@ internal sealed partial class SecondLevelRetryCoordinator
         ArgumentNullException.ThrowIfNull(delayedRetryOptions);
         ArgumentNullException.ThrowIfNull(capabilities);
 
-        _options = options.Value;
+        _options = options;
         _timeProvider = timeProvider;
         _scheduler = scheduler;
         _delayedRetry = delayedRetry;
@@ -143,7 +143,7 @@ internal sealed partial class SecondLevelRetryCoordinator
         _classifier = classifier ?? DefaultEventFaultClassifier.RetryAll;
 
         // The first-level budget this has to wait out, resolved exactly as DelayedRetryCoordinator resolves it.
-        _firstLevelRetry = delayedRetryOptions.Value.Retry ?? busOptions.Value.Retry;
+        _firstLevelRetry = delayedRetryOptions.Retry ?? busOptions.Retry;
 
         // Resolved once, at construction: whether a tier delay can be honoured is a property of the wiring, not of any
         // one message, so the downgrade is reported here rather than per message on the consume path.
@@ -195,7 +195,7 @@ internal sealed partial class SecondLevelRetryCoordinator
         if (_delayedRetry is { IsActive: true } && Math.Max(envelope.DeliveryCount, 0) + 1 < _firstLevelRetry.MaxAttempts)
             return false;
 
-        var tier = SecondLevelRetryHeaders.ReadTier(envelope);
+        var tier = SecondLevelRetryHeaderConstants.ReadTier(envelope);
         var tiers = _options.Tiers;
         if (tier >= tiers.Count)
             return false; // ladder spent — the message is genuinely poison
@@ -204,7 +204,7 @@ internal sealed partial class SecondLevelRetryCoordinator
         var notBefore = _timeProvider.GetUtcNow() + delay;
         var headers = new Dictionary<string, string>(envelope.Headers, StringComparer.Ordinal)
         {
-            [SecondLevelRetryHeaders.Tier] = (tier + 1).ToString(CultureInfo.InvariantCulture),
+            [SecondLevelRetryHeaderConstants.Tier] = (tier + 1).ToString(CultureInfo.InvariantCulture),
         };
 
         var promoted = envelope with
@@ -327,12 +327,17 @@ public static class SecondLevelRetryServiceCollectionExtensions
         services.AddOptions<SecondLevelRetryOptions>().Configure(options =>
         {
             options.Enabled = true;
+
+        // Consumers take the record; the builder above stays for validation and post-configuration.
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<SecondLevelRetryOptions>>().Value);
             configure?.Invoke(options);
         });
 
         // Both are read to locate the end of the first-level budget; neither is necessarily registered by the caller.
         services.AddOptions<InMemoryEventBusOptions>();
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<InMemoryEventBusOptions>>().Value);
         services.AddOptions<DelayedRetryOptions>();
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<DelayedRetryOptions>>().Value);
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<SecondLevelRetryCoordinator>();

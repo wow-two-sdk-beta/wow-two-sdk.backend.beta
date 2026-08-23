@@ -6,7 +6,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Every adapter stamps <see cref="Transport.MessageHeaders.ContentType"/> on send and reads it back into
+/// Every adapter stamps <see cref="Transport.MessageHeaderConstants.ContentType"/> on send and reads it back into
 /// <see cref="EventEnvelope.ContentType"/> on receive. Without this map that value was carried and ignored: the single
 /// injected <see cref="IMessageSerializer"/> decoded every message, so a service consuming from two producers on
 /// different formats mis-deserialized one of them silently.

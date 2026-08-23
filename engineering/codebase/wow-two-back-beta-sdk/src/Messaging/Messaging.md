@@ -13,7 +13,7 @@ plug in behind the same ports — opt-in, never core deps. Design + provider ana
 | Folder | What |
 |---|---|
 | `MessagingContracts.cs` | `IEvent`, `IEventHandler<TEvent>`, `IEventBus`, `EventContext<TEvent>`, `EventEnvelope`, `Publish/SendOptions` (with transport-abstract hints) |
-| `Reliability/` | `IRetryPolicy`+`RetryConfig`, `IDeadLetterStore` (+replay), `IInboxStore`, `IEventScheduler`, `IOutbox`/`IOutboxDispatcher`, `DefaultRetryPolicy` |
+| `Reliability/` | `IRetryPolicy`+`RetryConfig`, `IDeadLetterRepository` (+replay), `IInboxStore`, `IEventScheduler`, `IOutbox`/`IOutboxDispatcher`, `DefaultRetryPolicy` |
 | `Reliability/Ef/` | EF transactional outbox — `OutboxMessageEntity`, `EfOutbox<TContext>`, `AddEfOutbox<TContext>()`, migration ([`Ef.md`](./Reliability/Ef/Ef.md)) |
 | `InMemory/` | Channel-backed bus + `EventConsumerHostedService` (DI-scope-per-event, retry→DLQ) + in-mem stores |
 | `EventSaga/` | `EventSagaBuilder`, `IEventSagaStep`/`EventSagaStep`, `EventSagaRunner`, `EventSagaContext`, `IEventSagaTransport` |
@@ -40,7 +40,7 @@ await bus.SendAsync("orders", new ShipRequested(id),                // point-to-
 ```
 
 A handler that throws is retried per `InMemoryEventBusOptions.Retry` (exp+jitter default); on exhaustion the event is
-dead-lettered to `IDeadLetterStore` (replayable via `ReplayAsync`). Duplicate message ids are skipped via `IInboxStore`.
+dead-lettered to `IDeadLetterRepository` (replayable via `ReplayAsync`). Duplicate message ids are skipped via `IInboxStore`.
 `PublishOptions`/`SendOptions` carry **transport-abstract** hints (`Durable`/`Priority`/`TimeToLive`/`PartitionKey`/`Delay`)
 that each adapter maps to its native queue/exchange/topic primitives.
 

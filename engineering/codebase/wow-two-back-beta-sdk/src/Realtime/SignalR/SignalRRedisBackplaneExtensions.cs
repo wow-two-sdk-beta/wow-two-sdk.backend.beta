@@ -7,7 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Realtime.SignalR;
 /// <summary>
 /// Adds a Redis scale-out backplane to a SignalR server so hub messages fan out across every app
 /// instance sharing the Redis instance — the standard way to run SignalR behind more than one server.
-/// Chain after <see cref="SignalRConventions.AddConventionalSignalR"/>.
+/// Chain after <see cref="SignalRExtensions.AddConventionalSignalR"/>.
 /// </summary>
 public static class SignalRRedisBackplaneExtensions
 {

@@ -198,7 +198,7 @@ public sealed class SagaStateMachineTests
         var converged = await Repository(harness).LoadAsync("order-c", CancellationToken.None);
         converged.Should().NotBeNull();
         converged!.Interference.Should().Be(1); // the concurrent writer's commit survived
-        converged.CurrentState.Should().Be(SagaStates.Final); // and this transition landed on top of it
+        converged.CurrentState.Should().Be(SagaStateConstants.Final); // and this transition landed on top of it
         converged.FinalizedAtUtc.Should().NotBeNull();
     }
 
@@ -213,7 +213,7 @@ public sealed class SagaStateMachineTests
         // The timeout is published with a delay, so the transport has parked it on the scheduler by the time this
         // returns — which is what makes the Advance below deterministic rather than a race against the schedule.
         var scheduled = await harness.Published.WaitForAsync<PaymentOverdue>();
-        scheduled[0].Envelope.Headers.Should().ContainKey(SagaHeaders.TimeoutToken);
+        scheduled[0].Envelope.Headers.Should().ContainKey(SagaHeaderConstants.TimeoutToken);
         scheduled[0].Envelope.NotBeforeUtc.Should().Be(time.GetUtcNow() + OrderStateMachine.PaymentWindow);
         harness.Published.Any<OrderCancelled>().Should().BeFalse(); // not yet due
 
@@ -235,6 +235,7 @@ public sealed class SagaStateMachineTests
         => MessagingTestHarness.StartAsync(
             services =>
             {
+                services.AddScannedHandlerDependencies();
                 services.AddSaga<OrderStateMachine, OrderSagaState>(configureSaga);
                 configureServices?.Invoke(services);
             },

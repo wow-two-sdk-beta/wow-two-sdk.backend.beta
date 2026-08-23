@@ -28,9 +28,9 @@ public IActionResult Me() => Ok(new
 
 | Method | Returns | Notes |
 |---|---|---|
-| `AddClaimNormalization(this IServiceCollection, Action<ClaimNormalizationOptions>? configure = null)` | `IServiceCollection` | Registers `ClaimNormalizer` as `IClaimsTransformation` (`TryAddEnumerable`). Opt-in, idempotent. |
+| `AddClaimNormalization(this IServiceCollection, Action<ClaimNormalizationOptions>? configure = null)` | `IServiceCollection` | Registers `ClaimMapper` as `IClaimsTransformation` (`TryAddEnumerable`). Opt-in, idempotent. |
 
-### `NormalizedClaimTypes` (static consts)
+### `NormalizedClaimTypeConstants` (static consts)
 
 `Provider` = `wt:provider` · `UserId` = `wt:user_id` · `Email` = `wt:email` · `DisplayName` = `wt:display_name` · `Username` = `wt:username` · `Avatar` = `wt:avatar`.
 
@@ -54,14 +54,14 @@ Positional: `Scheme`, `UserIdClaims`, `EmailClaims`, `DisplayNameClaims`, `Usern
 
 Positional: `Principal` (`ClaimsPrincipal`), `UserId` (`string?`), `Username` (`string?`).
 
-### `ClaimProviderProfiles` (static)
+### `ClaimProviderProfileFactory` (static)
 
 | Method | Returns | Notes |
 |---|---|---|
 | `CreateDefault()` | `Dictionary<string, ClaimProviderProfile>` | Fresh, mutable, case-insensitive map of all built-ins. |
 | `BuiltIn()` | `IEnumerable<ClaimProviderProfile>` | One per supported scheme. |
 
-### `ClaimNormalizer` (sealed, `IClaimsTransformation`)
+### `ClaimMapper` (sealed, `IClaimsTransformation`)
 
 `Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal)` — adds `wt:*` claims; early-returns when already normalized, no `wt:provider`, or no matching profile.
 

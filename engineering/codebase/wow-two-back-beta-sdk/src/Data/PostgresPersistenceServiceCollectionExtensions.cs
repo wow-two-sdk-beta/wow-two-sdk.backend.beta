@@ -37,10 +37,8 @@ public static class PostgresPersistenceServiceCollectionExtensions
 
         var connectionString = ResolveConnectionString(configuration, options);
 
-        // DatabaseOptions backs AddNpgsqlDataSource (it reads IOptions<DatabaseOptions>); register both the record and IOptions.
-        var databaseOptions = new DatabaseOptions { ConnectionString = connectionString };
-        services.AddSingleton(databaseOptions);
-        services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(databaseOptions));
+        // AddNpgsqlDataSource reads the settings, so the same overload the host would call registers them here.
+        services.AddDatabaseSettings(connectionString);
 
         // Shared NpgsqlDataSource (+ DbDataSource) consumed by EF Core and Dapper; the connection factory rides the DbDataSource.
         services.AddNpgsqlDataSource();
@@ -59,7 +57,7 @@ public static class PostgresPersistenceServiceCollectionExtensions
         var efCoreOptions = new EntityFrameworkCoreOptions();
 
         services.AddDbContext<TContext>((serviceProvider, optionsBuilder) =>
-            EfInterceptorWiring.ApplySdkContextConfiguration(
+            EfInterceptorExtensions.ApplySdkContextConfiguration(
                 serviceProvider,
                 optionsBuilder,
                 efCoreOptions,

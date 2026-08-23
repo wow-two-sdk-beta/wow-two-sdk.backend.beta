@@ -6,7 +6,7 @@ using WoW.Two.Sdk.Backend.Beta.Codes.Rendering.Matrix;
 namespace WoW.Two.Sdk.Backend.Beta.Codes.Rendering.Svg;
 
 /// <summary>Provides the framework-agnostic SVG emitter that turns a <see cref="ModuleMatrix"/> and <see cref="StyleSpec"/> into an SVG string — the single styled render path every export and the live preview share.</summary>
-/// <remarks>Run <see cref="StyleSpecNormalizer"/> over the style before calling <see cref="Emit"/>. The all-square style takes a byte-parity fast path identical to the legacy output; any other style splits the foreground into a data body (<see cref="ModuleShape"/>) and geometry-driven finder eyes (<see cref="FinderShape"/> and <see cref="FinderDotShape"/>), which keeps a stylised code scannable.</remarks>
+/// <remarks>Run <see cref="StyleSpecMapper"/> over the style before calling <see cref="Emit"/>. The all-square style takes a byte-parity fast path identical to the legacy output; any other style splits the foreground into a data body (<see cref="ModuleShape"/>) and geometry-driven finder eyes (<see cref="FinderShape"/> and <see cref="FinderDotShape"/>), which keeps a stylised code scannable.</remarks>
 public sealed class SvgRenderer
 {
     /// <summary>The output-space size of one module, in pixels.</summary>
@@ -29,7 +29,7 @@ public sealed class SvgRenderer
     private const double EmojiMaxRatio = 0.27;
     private const double EmojiHoleFactor = 0.62;
 
-    /// <summary>Emits the styled SVG for <paramref name="matrix"/> under <paramref name="style"/>. The style is consumed as-is — run <see cref="StyleSpecNormalizer"/> first.</summary>
+    /// <summary>Emits the styled SVG for <paramref name="matrix"/> under <paramref name="style"/>. The style is consumed as-is — run <see cref="StyleSpecMapper"/> first.</summary>
     public string Emit(ModuleMatrix matrix, StyleSpec style)
     {
         var quietZone = style.QuietZoneModules;

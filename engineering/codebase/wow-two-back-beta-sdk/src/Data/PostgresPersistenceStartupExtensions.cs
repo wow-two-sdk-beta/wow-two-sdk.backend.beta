@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data;
 
@@ -17,13 +18,16 @@ public static class PostgresPersistenceStartupExtensions
         using var scope = services.CreateScope();
         var serviceProvider = scope.ServiceProvider;
 
-        var connectionString = serviceProvider.GetRequiredService<DatabaseOptions>().ConnectionString;
+        var connectionString = serviceProvider.GetRequiredService<DatabaseSettings>().ConnectionString;
 
         // Create the target database via the maintenance DB before any migration runs.
         var dialect = serviceProvider.GetRequiredService<IMigrationDialect>();
         await dialect.EnsureDatabaseExistsAsync(connectionString, cancellationToken).ConfigureAwait(false);
 
         var runner = serviceProvider.GetRequiredService<IMigrationRunnerService>();
-        await runner.ApplyPendingAsync("startup", cancellationToken).ConfigureAwait(false);
+
+        // Startup is the bridge back to a throw: the host has no result channel before the pipeline exists, and booting on
+        // a schema that failed to migrate is worse than failing to boot.
+        (await runner.ApplyPendingAsync("startup", cancellationToken).ConfigureAwait(false)).ValueOrThrow();
     }
 }

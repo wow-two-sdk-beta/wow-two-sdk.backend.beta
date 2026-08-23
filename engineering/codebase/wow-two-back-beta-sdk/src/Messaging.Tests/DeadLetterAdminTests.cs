@@ -59,7 +59,7 @@ public sealed class DeadLetterAdminTests
 
         var admin = Admin(harness);
 
-        // Naming no source is the cross-source browse, which only an IDeadLetterQueryStore can service.
+        // Naming no source is the cross-source browse, which only an IDeadLetterQueryRepository can service.
         var all = await BrowseAsync(admin, new DeadLetterQuery());
         all.Should().ContainSingle().Which.MessageId.Should().Be("dl-browse-1");
 
@@ -101,7 +101,7 @@ public sealed class DeadLetterAdminTests
         var handled = await harness.Consumed.WaitForAsync(m => m.Is<FlakyEvent>() && m.Outcome == ConsumeOutcome.Success);
         handled[0].MessageId.Should().Be("dl-redrive-1"); // same message, not a copy
         handled[0].Envelope.DeliveryCount.Should().Be(0); // fresh retry budget
-        DeadLetterHeaders.ReadRedriveCount(handled[0].Envelope).Should().Be(1); // the marker rode the wire
+        DeadLetterHeaderConstants.ReadRedriveCount(handled[0].Envelope).Should().Be(1); // the marker rode the wire
 
         (await Admin(harness).PeekAsync("dl-redrive-1", CancellationToken.None)).Should().BeNull(); // replayed out of the store
     }
@@ -129,7 +129,7 @@ public sealed class DeadLetterAdminTests
             // The whole reason the guard reads a header: the transport constructs a brand-new record on each death, so
             // the stored field is back at 0 and only wt-dl-redrive-count still knows how many laps this message ran.
             record!.RedriveCount.Should().Be(0);
-            DeadLetterHeaders.ReadRedriveCount(record.Envelope).Should().Be(lap);
+            DeadLetterHeaderConstants.ReadRedriveCount(record.Envelope).Should().Be(lap);
             record.EffectiveRedriveCount.Should().Be(lap);
         }
 
@@ -188,6 +188,7 @@ public sealed class DeadLetterAdminTests
         => MessagingTestHarness.StartAsync(
             services =>
             {
+                services.AddScannedHandlerDependencies();
                 services.AddDeadLetterAdmin(configureAdmin);
                 services.AddInMemoryDeadLetterQueryStore(); // cross-source browse, by-id lookup and purge
                 configureServices?.Invoke(services);

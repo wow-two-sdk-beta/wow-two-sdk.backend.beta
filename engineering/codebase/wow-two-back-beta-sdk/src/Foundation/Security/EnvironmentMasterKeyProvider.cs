@@ -5,9 +5,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Security;
 
 /// <summary>Default <see cref="IMasterKeyProvider"/> — reads a base64-encoded 256-bit master key from an environment variable.</summary>
 /// <remarks>The env-var name comes from <see cref="EnvelopeCryptographyOptions.MasterKeyEnvironmentVariable"/>. Suitable for containers and local development; swap for a KMS/HSM-backed provider in production by registering your own <see cref="IMasterKeyProvider"/> before <c>AddEnvelopeCryptography</c>. Never logs the key value.</remarks>
-internal sealed class EnvironmentMasterKeyProvider(IOptions<EnvelopeCryptographyOptions> options) : IMasterKeyProvider
+internal sealed class EnvironmentMasterKeyProvider(EnvelopeCryptographyOptions options) : IMasterKeyProvider
 {
-    private readonly EnvelopeCryptographyOptions _options = options.Value;
+    private readonly EnvelopeCryptographyOptions _options = options;
 
     /// <inheritdoc />
     public byte[]? TryLoadKey()

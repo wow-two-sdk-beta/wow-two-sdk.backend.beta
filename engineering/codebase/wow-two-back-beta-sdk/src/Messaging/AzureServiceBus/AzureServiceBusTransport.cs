@@ -14,7 +14,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.AzureServiceBus;
 
 /// <summary>Options for the Azure Service Bus event-bus adapter.</summary>
-public sealed class AzureServiceBusOptions
+public sealed record AzureServiceBusOptions
 {
     /// <summary>
     /// Service Bus connection string (<c>Endpoint=sb://…;SharedAccessKeyName=…;SharedAccessKey=…</c>). Required — there
@@ -28,7 +28,7 @@ public sealed class AzureServiceBusOptions
     /// <summary>
     /// This service's subscription under <see cref="TopologyStyle.SharedEndpoint"/>. Default <c>wt-events</c>. Ignored
     /// under <see cref="TopologyStyle.EndpointPerMessageType"/>, where every subscription is named by
-    /// <see cref="IEndpointNameFormatter"/>.
+    /// <see cref="IEndpointNameMapper"/>.
     /// </summary>
     public string Subscription { get; set; } = "wt-events";
 
@@ -132,16 +132,16 @@ public sealed class AzureServiceBusOptions
 internal static class AzureServiceBusHeaders
 {
     /// <summary>Carries the event's stable type token so the consumer can resolve the CLR type.</summary>
-    public const string EventType = MessageHeaders.EventType;
+    public const string EventType = MessageHeaderConstants.EventType;
 
     /// <summary>Carries the serializer content type. Mirrored onto the native <see cref="ServiceBusMessage.ContentType"/>; the header is what a bridged non-SDK consumer reads.</summary>
-    public const string ContentType = MessageHeaders.ContentType;
+    public const string ContentType = MessageHeaderConstants.ContentType;
 
     /// <summary>Carries the ordering / partition key, so it survives on a non-session entity where <c>SessionId</c> is ignored.</summary>
-    public const string PartitionKey = MessageHeaders.PartitionKey;
+    public const string PartitionKey = MessageHeaderConstants.PartitionKey;
 
     /// <summary>Carries <see cref="EventEnvelope.ConversationId"/> — Service Bus has no property for it, and <c>CorrelationId</c> is already spoken for by the business flow.</summary>
-    public const string ConversationId = MessageHeaders.ConversationId;
+    public const string ConversationId = MessageHeaderConstants.ConversationId;
 }
 
 /// <summary>
@@ -417,7 +417,7 @@ internal sealed class AzureServiceBusSendTransport(
         // received envelope's Headers carry the wt-* keys of THAT message, so forwarding them on a re-publish would
         // otherwise stamp the previous message's type token onto the new body and misroute it on the consumer.
         foreach (var (key, value) in envelope.Headers)
-            if (!MessageHeaders.IsAdapterOwned(key))
+            if (!MessageHeaderConstants.IsAdapterOwned(key))
                 message.ApplicationProperties[key] = value;
 
         // WireBodyType, not BodyType: a send-path transformation that substituted the wire bytes decodes as a different
@@ -629,7 +629,7 @@ internal sealed partial class AzureServiceBusReceiveTransport(
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
             // Graceful shutdown, whether it came from the host token or from StopAsync — the linked source reports both.
-            // Receivers are deliberately left open: TransportConsumerHostedService drains handlers still in flight after
+            // Receivers are deliberately left open: TransportConsumerBackgroundService drains handlers still in flight after
             // this returns, and they settle on these receivers before StopAsync releases them.
         }
     }
@@ -815,7 +815,7 @@ internal sealed partial class AzureServiceBusReceiveTransport(
             // Native property first, then the reserved header a broker without a message-id property would have used to
             // carry it. A fresh GUID is the last resort only: an id the sender never chose cannot match anything the
             // inbox has seen, so falling back to one straight away would silently disable dedupe for bridged traffic.
-            MessageId = FirstNonEmpty(message.MessageId, ReadOptional(headers, MessageHeaders.MessageId)) ?? Guid.NewGuid().ToString("N"),
+            MessageId = FirstNonEmpty(message.MessageId, ReadOptional(headers, MessageHeaderConstants.MessageId)) ?? Guid.NewGuid().ToString("N"),
             Body = body,
             BodyType = eventType,
 
@@ -836,7 +836,7 @@ internal sealed partial class AzureServiceBusReceiveTransport(
 
             // Native properties are what this adapter writes, so they are read first; the reserved header is accepted as
             // a fallback so a message bridged in from a broker with no such property still correlates.
-            ReplyTo = FirstNonEmpty(message.ReplyTo, ReadOptional(headers, MessageHeaders.ReplyTo)),
+            ReplyTo = FirstNonEmpty(message.ReplyTo, ReadOptional(headers, MessageHeaderConstants.ReplyTo)),
             ConversationId = ReadOptional(headers, AzureServiceBusHeaders.ConversationId),
             TimeToLive = message.TimeToLive == TimeSpan.MaxValue ? null : message.TimeToLive,
             Headers = headers,
@@ -1091,6 +1091,10 @@ public static class AzureServiceBusServiceCollectionExtensions
 
         services.AddOptions<AzureServiceBusOptions>().Configure(configure);
 
+        // One shape at the injection site: consumers take the record, the builder keeps validation
+        // and post-configuration.
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<AzureServiceBusOptions>>().Value);
+
         var assemblies = handlerAssemblies is { Length: > 0 } ? handlerAssemblies : [Assembly.GetCallingAssembly()];
         services.AddEventHandlersFromAssemblies(assemblies);
         services.AddEventResilienceDefaults();
@@ -1116,7 +1120,7 @@ public static class AzureServiceBusServiceCollectionExtensions
         services.TryAddSingleton<IReceiveTransport, AzureServiceBusReceiveTransport>();
         services.TryAddSingleton<IEventBus, TransportEventBus>();
         services.TryAddSingleton<EventProcessingPipeline>();
-        services.AddHostedService<TransportConsumerHostedService>();
+        services.AddHostedService<TransportConsumerBackgroundService>();
         return services;
     }
 }

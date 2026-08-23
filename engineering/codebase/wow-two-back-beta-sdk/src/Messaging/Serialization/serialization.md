@@ -107,7 +107,7 @@ None of these are worked around silently — each is listed with what the impl d
 
 - **Serializer**: `string ContentType` (stamped as the `wt-content-type` wire header, and what the receiver selects on) ·
   `byte[] Serialize(object, Type)` · `object? Deserialize(ReadOnlySpan<byte>, Type)` — **empty payload returns null, all
-  three impls**; malformed throws. Default = System.Text.Json through `Foundation/Serialization/JsonOptionsPresets`.
+  three impls**; malformed throws. Default = System.Text.Json through `Foundation/Serialization/JsonOptionsConstants`.
 - **Resolver**: `string ToTypeToken(Type)` (default = registered `FullName`, else AQN) · `Type? ResolveType(string)`
   (registry → alias → `Type.GetType` → assembly scan). Returns null on unknown — the transport dead-letters (does not drop).
 - **Type registry**: `MessageTypeRegistry.Register(type, token?)` / `AddAlias(alias, type)` — populated at registration.

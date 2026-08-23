@@ -57,4 +57,4 @@ builder.Services.AddEfRepository<ProductRepository, Product, Guid>();
 
 ## Scope (deliberately thin)
 
-Covers id-based CRUD — the 80% case. **Complex/composable queries** (filter + sort + page + include reuse) are written as plain LINQ in a subclass, or as Dapper SQL (with `SqlNaming`) on the hot path. The SDK does **not** ship a Specification abstraction: it's `IQueryable`-bound and can't lower to Dapper, so it would split the query story across providers. If composable specs are ever needed, they'll arrive as a standalone opt-in package.
+Covers id-based CRUD — the 80% case. **Complex/composable queries** (filter + sort + page + include reuse) are written as plain LINQ in a subclass, or as Dapper SQL (with `SqlNamingMapper`) on the hot path. The SDK does **not** ship a Specification abstraction: it's `IQueryable`-bound and can't lower to Dapper, so it would split the query story across providers. If composable specs are ever needed, they'll arrive as a standalone opt-in package.

@@ -8,10 +8,10 @@ namespace WoW.Two.Sdk.Backend.Beta.Http.Refit;
 /// <summary>Provides registration for declarative Refit API clients with SDK JSON, a base address, and the standard resilience pipeline.</summary>
 public static class RefitClientServiceCollectionExtensions
 {
-    /// <summary>Builds SDK-conventional Refit settings (System.Text.Json using <see cref="JsonOptionsPresets.Default"/>); returns a fresh instance per call.</summary>
+    /// <summary>Builds SDK-conventional Refit settings (System.Text.Json using <see cref="JsonOptionsConstants.Default"/>); returns a fresh instance per call.</summary>
     public static RefitSettings CreateDefaultRefitSettings() => new()
     {
-        ContentSerializer = new SystemTextJsonContentSerializer(JsonOptionsPresets.Default),
+        ContentSerializer = new SystemTextJsonContentSerializer(JsonOptionsConstants.Default),
     };
 
     /// <summary>Registers Refit typed client <typeparamref name="TApi"/> at <paramref name="baseAddress"/> using SDK JSON and the SDK resilience pipeline (retry, circuit breaker, and timeouts).</summary>

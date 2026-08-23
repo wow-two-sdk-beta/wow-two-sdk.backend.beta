@@ -71,7 +71,7 @@ public sealed record EventEnvelope
     /// </summary>
     /// <remarks>
     /// The address is transport-abstract — a queue/subject name, resolved by the adapter to its native reply mechanism
-    /// (AMQP <c>reply-to</c>, a NATS inbox subject) or carried as <see cref="Transport.MessageHeaders.ReplyTo"/> where
+    /// (AMQP <c>reply-to</c>, a NATS inbox subject) or carried as <see cref="Transport.MessageHeaderConstants.ReplyTo"/> where
     /// none exists. The SDK carries it and correlates by it; it does not itself send replies.
     /// </remarks>
     public string? ReplyTo { get; init; }
@@ -139,13 +139,13 @@ public sealed record EventEnvelope
     /// <remarks>
     /// Set by a substituting transformation (claim check sends a claim reference; envelope encryption would send its
     /// ciphertext wrapper), left null by a transparent one (compression re-encodes the same contract). It governs the
-    /// <see cref="MessageHeaders.EventType"/> token only — see <see cref="WireBodyType"/> — and never routing, which
+    /// <see cref="MessageHeaderConstants.EventType"/> token only — see <see cref="WireBodyType"/> — and never routing, which
     /// stays on <see cref="BodyType"/> so the message still lands where consumers of the real contract are bound.
     /// </remarks>
     public Type? RawBodyType { get; init; }
 
     /// <summary>
-    /// The type an adapter stamps as <see cref="MessageHeaders.EventType"/>: the substituted wire type where there is
+    /// The type an adapter stamps as <see cref="MessageHeaderConstants.EventType"/>: the substituted wire type where there is
     /// one, else the logical <see cref="BodyType"/>. The receiving adapter deserializes the wire bytes into whatever
     /// this names, which is why it has to describe the shape actually on the wire rather than the logical one.
     /// </summary>
@@ -300,7 +300,7 @@ public sealed class EventContext<TEvent>
 }
 
 /// <summary>Optional options for <see cref="IEventBus.PublishAsync{TEvent}"/>. Transport hints are abstract — each adapter maps them to its native mechanism or ignores them.</summary>
-public sealed class PublishOptions
+public sealed record PublishOptions
 {
     /// <summary>Explicit message id (idempotency key). Generated when null.</summary>
     public string? MessageId { get; set; }
@@ -337,7 +337,7 @@ public sealed class PublishOptions
 }
 
 /// <summary>Optional options for <see cref="IEventBus.SendAsync{TEvent}"/>. Transport hints are abstract — each adapter maps them to its native mechanism or ignores them.</summary>
-public sealed class SendOptions
+public sealed record SendOptions
 {
     /// <summary>Explicit message id (idempotency key). Generated when null.</summary>
     public string? MessageId { get; set; }

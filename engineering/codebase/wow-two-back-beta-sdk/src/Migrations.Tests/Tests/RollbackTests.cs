@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Harness;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 
@@ -20,10 +21,10 @@ public sealed class RollbackTests : SqliteMigratorTestBase
             rollbackSql: "drop table t2;");
 
         await using var migrator = CreateMigrator(o => o.AllowRollback = true);
-        await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None);
+        (await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None)).ValueOrThrow();
 
         // Roll back the latest (002) only.
-        await migrator.Runner.RollbackAsync(targetOrdinal: null, CancellationToken.None);
+        (await migrator.Runner.RollbackAsync(targetOrdinal: null, CancellationToken.None)).ValueOrThrow();
 
         // 002's Rollback.sql ran (t2 dropped) and its history row is gone; 001 untouched.
         (await migrator.HasTableAsync("t2")).Should().BeFalse();
@@ -31,7 +32,7 @@ public sealed class RollbackTests : SqliteMigratorTestBase
         (await migrator.ReadHistoryAsync()).Select(h => h.Ordinal).Should().Equal(1);
 
         // 002 is pending again — rollback returned it to the source-but-not-applied state.
-        var status = await migrator.Runner.GetStatusAsync(CancellationToken.None);
+        var status = (await migrator.Runner.GetStatusAsync(CancellationToken.None)).ValueOrThrow();
         status.Applied.Select(a => a.Ordinal).Should().Equal(1);
         status.Pending.Select(p => p.Ordinal).Should().Equal(2);
     }
@@ -44,7 +45,7 @@ public sealed class RollbackTests : SqliteMigratorTestBase
             rollbackSql: "drop table t1;");
 
         await using var migrator = CreateMigrator(); // AllowRollback defaults to false
-        await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None);
+        (await migrator.Runner.ApplyPendingAsync("test", CancellationToken.None)).ValueOrThrow();
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => migrator.Runner.RollbackAsync(targetOrdinal: null, CancellationToken.None));

@@ -1,6 +1,6 @@
 # WoW.Two.Sdk.Backend.Beta.Testing.Auth
 
-> Test-auth bypass for E2E (`TestAuthHandler` + `AddTestAuth`), cookie round-tripping (`CookieExtraction`), and a handler-level current-user stub (`TestCurrentUser`).
+> Test-auth bypass for E2E (`TestAuthHandler` + `AddTestAuth`), cookie round-tripping (`CookieExtensions`), and a handler-level current-user stub (`TestCurrentUser`).
 
 Part of the `WoW.Two.Sdk.Backend.Beta.Testing` package. Lets tests authenticate without real OAuth and lift `Secure` cookies the test host's `http://` transport won't auto-attach.
 
@@ -37,7 +37,7 @@ ConfigureServicesHook = services =>
 };
 ```
 
-The handler stamps the SDK's canonical `wt:*` claims (`TestClaimTypes`, mirroring `Identity.Claims.NormalizedClaimTypes`) plus `ClaimTypes.Name` / `ClaimTypes.Role`, so the SDK's `ClaimsPrincipalExtensions` (`GetUserId()`, `GetEmail()`, …) and `[Authorize(Roles = …)]` both resolve. `AddTestAuth` runs after the app's own auth and overrides the default scheme.
+The handler stamps the SDK's canonical `wt:*` claims (`TestClaimTypeConstants`, mirroring `Identity.Claims.NormalizedClaimTypeConstants`) plus `ClaimTypes.Name` / `ClaimTypes.Role`, so the SDK's `ClaimsPrincipalExtensions` (`GetUserId()`, `GetEmail()`, …) and `[Authorize(Roles = …)]` both resolve. `AddTestAuth` runs after the app's own auth and overrides the default scheme.
 
 ### Header-gated mode — test the 401 path too
 
@@ -70,7 +70,7 @@ Assert.Equal(HttpStatusCode.Unauthorized, anonResp.StatusCode);
 ```csharp
 var signIn = await client.PostAsync("/api/identity/guest", null);
 
-var cookie = CookieExtraction.ExtractCookie(signIn, "app-auth"); // value or null
+var cookie = CookieExtensions.ExtractCookie(signIn, "app-auth"); // value or null
 var authed = host.CreateClient().AttachCookie(signIn, "app-auth"); // lift + re-attach in one step
 // or: host.CreateClient().AttachCookie("app-auth", cookie);
 ```
@@ -93,5 +93,5 @@ services.AddSingleton<IAuditCurrentUserAccessor>(new TestCurrentUser());
 ## See also
 
 - `WebApiTestHost<T>` — the host whose `ConfigureServicesHook` seam these helpers plug into.
-- `Identity.Claims.NormalizedClaimTypes` (core lib) — the canonical `wt:*` claims `TestClaimTypes` mirrors.
+- `Identity.Claims.NormalizedClaimTypeConstants` (core lib) — the canonical `wt:*` claims `TestClaimTypeConstants` mirrors.
 - `Identity.Cookies.AddCookieAuthentication` (core lib) — the real cookie scheme `TestAuthHandler` substitutes under test.

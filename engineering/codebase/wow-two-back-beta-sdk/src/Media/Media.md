@@ -10,7 +10,7 @@ Namespace root: `WoW.Two.Sdk.Backend.Beta.Media`.
 |---|---|---|
 | `Captions/` | `AddCaptionParsing()`, `ICaptionParser` (+ VTT/SRT/TTML/json3) | Parse/convert caption formats (see `Captions/captions.md`) |
 | `Tabular/` | `ITabularExporter`, `TabularFormat` | Shared row-export abstraction (CSV / XLSX) |
-| `Csv/` | `AddCsvExport()`, `CsvTabularExporter`, `ICsvReader` | CSV read + write via CsvHelper |
+| `Csv/` | `AddCsvExport()`, `CsvTabularExporter`, `ICsvParser` | CSV read + write via CsvHelper |
 | `Excel/` | `AddExcelExport()`, `ExcelTabularExporter` | XLSX write via ClosedXML |
 
 ## Tabular export — quickstart
@@ -18,7 +18,7 @@ Namespace root: `WoW.Two.Sdk.Backend.Beta.Media`.
 ```csharp
 builder.Services.AddCsvExport().AddExcelExport();
 
-public sealed class Reports(IEnumerable<ITabularExporter> exporters, ICsvReader csv)
+public sealed class Reports(IEnumerable<ITabularExporter> exporters, ICsvParser csv)
 {
     public Task ExportAsync(IEnumerable<Invoice> rows, Stream output, TabularFormat format, CancellationToken ct)
     {

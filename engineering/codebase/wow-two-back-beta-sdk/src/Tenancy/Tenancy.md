@@ -9,7 +9,7 @@ Namespace root: `WoW.Two.Sdk.Backend.Beta.Tenancy`. Builds on the Data vector's 
 | Folder | Surface | Role |
 |---|---|---|
 | `Core/` | `AddTenancy(o => …)`, `UseTenantResolution()` | Resolve tenant (header/route/claim/subdomain) → ambient context |
-| `Core/` | `ITenantContext` / `AmbientTenantContext`, `ITenantStore` / `InMemoryTenantStore`, `TenantInfo` | AsyncLocal-backed current tenant + tenant registry |
+| `Core/` | `ITenantContext` / `AmbientTenantContext`, `ITenantRepository` / `InMemoryTenantRepository`, `TenantInfo` | AsyncLocal-backed current tenant + tenant registry |
 | `PerRow/` | `AddTenantRowStamping()`, `ModelBuilder.ApplyTenantFilter(ctx)` | Stamp tenant on insert + isolate reads via query filter |
 
 ## Quickstart

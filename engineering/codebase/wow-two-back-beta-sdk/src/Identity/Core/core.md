@@ -37,8 +37,8 @@ var alice   = await manager.FindByNameAsync("ALICE");   // case-insensitive via 
 | `IdentityUser.cs` / `IdentityRole.cs` | user + role entities (`IdentityUser<TKey>` + `IdentityUser : IdentityUser<Guid>`) |
 | `IdentityRelations.cs` | user-role / user-claim / role-claim / user-login / user-token entities |
 | `IdentitySchema.cs` | `ApplyIdentitySchema<TUser,TRole,TKey>()` — EF mapping (keys, unique indexes, lengths) |
-| `LookupNormalizer.cs` | `ILookupNormalizer` + upper-invariant default |
-| `IUserStore.cs` / `EfUserStore.cs` | core store slice + EF impl |
+| `NormalizeMapper.cs` | `INormalizeMapper` + upper-invariant default |
+| `IUserRepository.cs` / `EfUserRepository.cs` | core store slice + EF impl |
 | `UserAccountManager.cs` | thin facade — normalize, enforce uniqueness, stamp, persist |
 | `IdentityResult.cs` | `IdentityResult` / `IdentityError` |
 | `IdentityBuilder.cs` / `IdentityCoreServiceCollectionExtensions.cs` | `AddIdentityCore` + `.AddEntityFrameworkStores` |
@@ -49,7 +49,7 @@ var alice   = await manager.FindByNameAsync("ALICE");   // case-insensitive via 
   library schema consumers migrate via EF. Casing comes from `UseSnakeCaseNamingConvention()`.
 - Uniqueness is enforced **both** in the facade (`DuplicateUserName`/`DuplicateEmail`) and by the DB unique index.
 - A capability that isn't registered is **absent** — resolving `UserAccountManager` without `.AddEntityFrameworkStores`
-  (or another `IUserStore`) fails fast at resolution, rather than silently no-op'ing.
+  (or another `IUserRepository`) fails fast at resolution, rather than silently no-op'ing.
 - Entry point is **`AddUserAccounts`** (not `AddIdentityCore` as the deep-dive drafted) — ASP.NET's own
   `AddIdentityCore<TUser>` extension is always in scope via the shared framework and would collide.
 

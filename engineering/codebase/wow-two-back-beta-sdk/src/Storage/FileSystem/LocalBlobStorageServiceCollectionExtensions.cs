@@ -4,11 +4,11 @@ using WoW.Two.Sdk.Backend.Beta.Storage.Core;
 
 namespace WoW.Two.Sdk.Backend.Beta.Storage.FileSystem;
 
-/// <summary>Registers the local-filesystem <see cref="IBlobStorage"/> implementation.</summary>
+/// <summary>Registers the local-filesystem <see cref="IBlobRepository"/> implementation.</summary>
 public static class LocalBlobStorageServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers <see cref="LocalFileBlobStorage"/> as the <see cref="IBlobStorage"/> singleton, rooted at
+    /// Registers <see cref="LocalFileBlobRepository"/> as the <see cref="IBlobRepository"/> singleton, rooted at
     /// <paramref name="rootPath"/>. Suitable for development and single-node deployments; swap for a cloud
     /// adapter (S3/Azure/GCS) in production without changing call sites.
     /// </summary>
@@ -20,7 +20,7 @@ public static class LocalBlobStorageServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
 
-        services.TryAddSingleton<IBlobStorage>(_ => new LocalFileBlobStorage(rootPath));
+        services.TryAddSingleton<IBlobRepository>(_ => new LocalFileBlobRepository(rootPath));
         return services;
     }
 }

@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp.Telegram;
 
 /// <summary>Message shaping for Telegram OTP delivery.</summary>
-public sealed class TelegramOtpOptions
+public sealed record TelegramOtpOptions
 {
     /// <summary>Gets or sets the message template: <c>{0}</c> = scope display name, <c>{1}</c> = code, <c>{2}</c> = lifetime minutes.</summary>
     public string MessageTemplate { get; set; } =

@@ -73,7 +73,7 @@ public sealed class NatsEventBusTests : IAsyncLifetime
     private async Task<IHost> StartHostAsync(Action<NatsOptions> configure, Action<InMemoryEventBusOptions>? retry = null)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<EventCollector>();
+        builder.Services.AddScannedHandlerDependencies();
         builder.Services.AddNatsEventBus(
             o =>
             {

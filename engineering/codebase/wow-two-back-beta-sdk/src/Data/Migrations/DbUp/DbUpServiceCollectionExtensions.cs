@@ -1,24 +1,27 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.DbUp;
 
 /// <summary>Registration helpers for the DbUp runner.</summary>
 public static class DbUpServiceCollectionExtensions
 {
-    /// <summary>Registers the DbUp hosted service with the given options.</summary>
+    /// <summary>Registers the DbUp background service against <paramref name="connectionString"/>.</summary>
     /// <param name="services">The service collection to configure.</param>
-    /// <param name="configure">A hook to configure the DbUp runner options.</param>
+    /// <param name="connectionString">The connection string for the target database.</param>
+    /// <param name="configure">A hook to configure the rest of the DbUp runner options.</param>
     public static IServiceCollection AddDbUpRunner(
         this IServiceCollection services,
-        Action<DbUpOptions> configure)
+        string connectionString,
+        Action<DbUpOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configure);
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
-        services.AddOptions<DbUpOptions>()
-            .Configure(configure)
-            .ValidateOnStart();
-        services.AddHostedService<DbUpHostedService>();
+        var dbUpOptions = new DbUpOptions { ConnectionString = connectionString };
+        configure?.Invoke(dbUpOptions);
+        services.TryAddSingleton(dbUpOptions);
+        services.AddHostedService<DbUpBackgroundService>();
         return services;
     }
 }

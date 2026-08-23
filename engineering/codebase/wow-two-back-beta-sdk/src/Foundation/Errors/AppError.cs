@@ -52,7 +52,7 @@ public record AppError
         var metadata = new Dictionary<string, object?>
         {
             ["cause"] = exception.GetType().Name,
-            ["causeChain"] = ExceptionChain.Flatten(exception),
+            ["causeChain"] = ExceptionChainMapper.Flatten(exception),
         };
 
         return new AppError { Type = type, Message = message, Metadata = metadata, Origin = ErrorOrigin.FromException(exception) };

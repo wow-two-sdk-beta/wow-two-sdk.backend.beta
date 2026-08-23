@@ -25,11 +25,11 @@ public sealed class ExceptionToResultBehavior<TRequest, TResponse>(AppErrorObser
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return Convert(AppErrors.Canceled());
+            return Convert(AppErrorFactory.Canceled());
         }
         catch (OperationCanceledException)
         {
-            return Convert(AppErrors.OperationTimeout());
+            return Convert(AppErrorFactory.OperationTimeout());
         }
         catch (Exception exception)
         {

@@ -37,7 +37,7 @@ public sealed class AppExceptionHandlingEndToEndTests
     private sealed class CustomDomainExceptionRule : IExceptionMappingRule
     {
         public AppError? TryMap(Exception exception)
-            => exception is CustomDomainException ? AppErrors.NotFound("custom mapped") : null;
+            => exception is CustomDomainException ? AppErrorFactory.NotFound("custom mapped") : null;
     }
 
     /// <summary>Boots an in-memory TestServer host wired exactly as <c>AddApiDefaults</c> wires the error pipeline, with one endpoint per failure shape; <paramref name="configure"/> registers extra mapping rules.</summary>
@@ -58,7 +58,7 @@ public sealed class AppExceptionHandlingEndToEndTests
         // Outermost, exactly as UseApiDefaults wires it — routes throws through the registered handlers.
         app.UseExceptionHandler();
 
-        app.MapGet("/throw/app-notfound", void () => AppErrors.NotFound("Order 3f2 not found.").Throw());
+        app.MapGet("/throw/app-notfound", void () => AppErrorFactory.NotFound("Order 3f2 not found.").Throw());
         app.MapGet("/throw/validation", void () => throw new ValidationException(ValidationError.From(
         [
             new FieldError { Property = "email", Message = "Email is required.", Code = "NotEmptyValidator" },

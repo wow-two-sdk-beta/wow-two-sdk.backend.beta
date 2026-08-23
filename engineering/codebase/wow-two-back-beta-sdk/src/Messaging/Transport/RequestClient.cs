@@ -56,7 +56,7 @@ public interface IRequestClient<in TRequest, TResponse>
 }
 
 /// <summary>Process-wide defaults for <see cref="IRequestClient{TRequest, TResponse}"/>.</summary>
-public sealed class RequestClientOptions
+public sealed record RequestClientOptions
 {
     /// <summary>How long a request waits for its response before <see cref="RequestTimeoutException"/>. Default 30s. <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> waits forever (bounded only by the caller's token).</summary>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
@@ -70,7 +70,7 @@ public sealed class RequestClientOptions
 }
 
 /// <summary>Per-call overrides for one <see cref="IRequestClient{TRequest, TResponse}"/> request.</summary>
-public sealed class RequestOptions
+public sealed record RequestOptions
 {
     /// <summary>Response timeout for this call; null uses <see cref="RequestClientOptions.Timeout"/>.</summary>
     public TimeSpan? Timeout { get; set; }
@@ -185,11 +185,11 @@ public sealed class DefaultReplyAddressProvider : IReplyAddressProvider
     /// <summary>Create the provider.</summary>
     /// <param name="options">Request-client options; <see cref="RequestClientOptions.ReplyAddress"/> wins when set.</param>
     /// <param name="topology">The topology, when one is registered — its first consume endpoint is this process's address.</param>
-    public DefaultReplyAddressProvider(IOptions<RequestClientOptions> options, ITopologyProvider? topology = null)
+    public DefaultReplyAddressProvider(RequestClientOptions options, ITopologyProvider? topology = null)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        var configured = options.Value.ReplyAddress;
+        var configured = options.ReplyAddress;
         if (!string.IsNullOrWhiteSpace(configured))
         {
             _replyAddress = configured;
@@ -313,7 +313,7 @@ internal sealed class RequestClient<TRequest, TResponse>(
     PendingRequestRegistry pending,
     IReplyAddressProvider replyAddresses,
     TimeProvider timeProvider,
-    IOptions<RequestClientOptions> defaults) : IRequestClient<TRequest, TResponse>
+    RequestClientOptions defaults) : IRequestClient<TRequest, TResponse>
     where TRequest : class, IEvent
     where TResponse : class, IEvent
 {
@@ -323,7 +323,7 @@ internal sealed class RequestClient<TRequest, TResponse>(
 
         var conversationId = Guid.NewGuid().ToString("N");
         var replyTo = replyAddresses.ReplyAddress;
-        var timeout = options?.Timeout ?? defaults.Value.Timeout;
+        var timeout = options?.Timeout ?? defaults.Timeout;
 
         // Registered before the send, not after: the in-memory transport can deliver the request, run the handler and
         // deliver the reply before PublishAsync returns, and a reply with nowhere to land is a guaranteed timeout.
@@ -476,9 +476,8 @@ public static class RequestClientServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var optionsBuilder = services.AddOptions<RequestClientOptions>();
-        if (configure is not null)
-            optionsBuilder.Configure(configure);
+        services.AddOptions<RequestClientOptions>().Configure(options => configure?.Invoke(options));
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<RequestClientOptions>>().Value);
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<PendingRequestRegistry>();

@@ -16,17 +16,19 @@ public static class AppErrorProblemDetailsFactory
     /// <param name="error">The error to render.</param>
     /// <param name="httpContext">The current request context.</param>
     /// <param name="statusMapper">The error-to-status mapper.</param>
-    /// <param name="messageResolver">The display-message resolver.</param>
+    /// <param name="messageMapper">The mapper for the top-level display message.</param>
+    /// <param name="fieldMessageMapper">The mapper for each field message.</param>
     public static Microsoft.AspNetCore.Mvc.ProblemDetails Create(
         AppError error,
         HttpContext httpContext,
         IErrorHttpStatusCodeMapper statusMapper,
-        IErrorMessageResolver messageResolver)
+        IErrorMessageMapper messageMapper,
+        IFieldErrorMessageMapper? fieldMessageMapper = null)
     {
         ArgumentNullException.ThrowIfNull(error);
         ArgumentNullException.ThrowIfNull(httpContext);
         ArgumentNullException.ThrowIfNull(statusMapper);
-        ArgumentNullException.ThrowIfNull(messageResolver);
+        ArgumentNullException.ThrowIfNull(messageMapper);
 
         var status = statusMapper.ToStatusCode(error);
         httpContext.Response.StatusCode = status;
@@ -35,7 +37,7 @@ public static class AppErrorProblemDetailsFactory
         {
             Type = $"urn:wow-two:error:{error.Type}",
             Status = status,
-            Detail = messageResolver.Resolve(error, httpContext),
+            Detail = messageMapper.Map(error, httpContext),
         };
 
         problem.Extensions["code"] = error.Type.ToString();
@@ -43,12 +45,36 @@ public static class AppErrorProblemDetailsFactory
         var failures = ExtractFailures(error);
         if (failures is not null)
         {
-            problem.Extensions["errors"] = failures;
+            problem.Extensions["errors"] = ResolveMessages(failures, httpContext, fieldMessageMapper);
         }
 
         PromoteReservedHeaders(error, httpContext);
 
         return problem;
+    }
+
+    /// <summary>Rewrites each failure's message through <paramref name="fieldMessageMapper"/>, returning the list unchanged when there is none.</summary>
+    /// <param name="failures">The field failures to render.</param>
+    /// <param name="httpContext">The current request context.</param>
+    /// <param name="fieldMessageMapper">The mapper for each field message.</param>
+    private static IReadOnlyList<FieldError> ResolveMessages(
+        IReadOnlyList<FieldError> failures,
+        HttpContext httpContext,
+        IFieldErrorMessageMapper? fieldMessageMapper)
+    {
+        if (fieldMessageMapper is null)
+        {
+            return failures;
+        }
+
+        var resolved = new FieldError[failures.Count];
+        for (var index = 0; index < failures.Count; index++)
+        {
+            var failure = failures[index];
+            resolved[index] = failure with { Message = fieldMessageMapper.Map(failure, httpContext) };
+        }
+
+        return resolved;
     }
 
     private static IReadOnlyList<FieldError>? ExtractFailures(AppError error)

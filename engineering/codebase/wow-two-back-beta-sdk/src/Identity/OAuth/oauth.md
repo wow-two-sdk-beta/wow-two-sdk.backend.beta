@@ -37,7 +37,7 @@ auth.Add{X}(o =>
 2. **Scopes** — each passed scope merged into `o.Scope` (deduped; blank scopes skipped).
 3. **Provider stamp** — `OnCreatingTicket` is wrapped *after* `configure` so the `wt:provider` claim runs after any host-supplied handler and **cannot be dropped**. The stamp chains the pre-existing handler, then adds `new Claim("wt:provider", context.Scheme.Name)` to `context.Identity`.
 
-We do **not** add any `ClaimActions` / claim mapping here. Claim normalization is owned by the `Identity/Claims` leaf, which reads the `wt:provider` stamp via `NormalizedClaimTypes.Provider` (`"wt:provider"`).
+We do **not** add any `ClaimActions` / claim mapping here. Claim normalization is owned by the `Identity/Claims` leaf, which reads the `wt:provider` stamp via `NormalizedClaimTypeConstants.Provider` (`"wt:provider"`).
 
 ## Conformance checklist — adding a provider
 
@@ -74,6 +74,6 @@ We do **not** add any `ClaimActions` / claim mapping here. Claim normalization i
 
 ## See also
 
-- `Identity/Claims` — the normalized-claim contract; consumes the `wt:provider` stamp via `NormalizedClaimTypes.Provider`.
+- `Identity/Claims` — the normalized-claim contract; consumes the `wt:provider` stamp via `NormalizedClaimTypeConstants.Provider`.
 - `Identity/Cookies` — pair `AddCookieAuthentication` with any provider for the sign-in cookie.
 - Underlying libs: [aspnet-contrib OAuth providers](https://github.com/aspnet-contrib/AspNet.Security.OAuth.Providers).

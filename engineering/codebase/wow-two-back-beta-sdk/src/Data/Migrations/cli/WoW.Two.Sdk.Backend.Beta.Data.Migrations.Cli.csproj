@@ -41,6 +41,13 @@
   <!-- Link (do NOT reference) the SQL migrator engine — compiles it web-free into this tool. -->
   <ItemGroup>
     <Compile Include="../../Migrations/Bespoke/**/*.cs" />
+    <!--
+      The migrator returns Result<T> for its domain failures (N81), so the carrier and its AppError come along. Both are
+      BCL-only; only the DI registration extensions reach for a container, and a console tool wires its own.
+    -->
+    <Compile Include="../../../Foundation/Results/**/*.cs" />
+    <Compile Include="../../../Foundation/Errors/**/*.cs"
+             Exclude="../../../Foundation/Errors/**/*ServiceCollectionExtensions.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,6 +55,8 @@
     <PackageReference Include="Npgsql" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Dapper" />
+    <!-- AppError guards its message; the carrier's only third-party dependency. -->
+    <PackageReference Include="Ardalis.GuardClauses" />
     <!-- DI host + logging: the engine references only the abstractions; the CLI brings the concrete container. -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging" />

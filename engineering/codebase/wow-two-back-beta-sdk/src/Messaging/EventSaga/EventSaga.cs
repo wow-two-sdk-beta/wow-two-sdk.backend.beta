@@ -251,7 +251,7 @@ public enum UnroutableDestinationBehavior
 }
 
 /// <summary>Options for declarative (routing-slip) event sagas.</summary>
-public sealed class EventSagaOptions
+public sealed record EventSagaOptions
 {
     /// <summary>
     /// How a send to an unbound destination is handled. Default <see cref="UnroutableDestinationBehavior.Warn"/>.

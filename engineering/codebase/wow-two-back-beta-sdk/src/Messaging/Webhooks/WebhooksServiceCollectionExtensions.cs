@@ -29,7 +29,7 @@ public static class WebhooksServiceCollectionExtensions
 
         // Delivery client: block targets that resolve to private/loopback/link-local addresses at connect time
         // (defeats DNS-rebinding), unless the app opts into private targets.
-        services.AddHttpClient(WebhookDefaults.HttpClientName)
+        services.AddHttpClient(WebhookDefaultConstants.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(static sp =>
             {
                 var webhookOptions = sp.GetRequiredService<IOptions<WebhookOptions>>().Value;
@@ -42,7 +42,7 @@ public static class WebhooksServiceCollectionExtensions
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IRetryPolicy, DefaultRetryPolicy>();
         services.TryAddSingleton<IWebhookDeliveryLog, NoopWebhookDeliveryLog>();
-        services.TryAddSingleton<IWebhookSubscriptionStore, InMemoryWebhookSubscriptionStore>();
+        services.TryAddSingleton<IWebhookSubscriptionRepository, InMemoryWebhookSubscriptionRepository>();
         services.TryAddSingleton<HttpWebhookDispatcher>();
         services.TryAddSingleton<IWebhookPublisher, WebhookPublisher>();
         return services;

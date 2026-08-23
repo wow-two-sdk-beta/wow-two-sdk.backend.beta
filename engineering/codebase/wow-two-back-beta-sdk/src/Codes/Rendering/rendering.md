@@ -12,7 +12,7 @@ IQrMatrixGenerator (QRCoder, quiet-zone stripped)
 
 - `QrCodeRenderer` orchestrates the three; `CodeRenderer` is the QR-vs-barcode facade.
 - Barcodes are plain ZXing SVG (unify under the emitter later).
-- `StyleSpecNormalizer` runs pre-emit: quiet-zone floor (4), ECC floor to H when a logo is present, ECC floor to Q for a stylised module body.
+- `StyleSpecMapper` runs pre-emit: quiet-zone floor (4), ECC floor to H when a logo is present, ECC floor to Q for a stylised module body.
 
 ## StyleSpec extensibility
 

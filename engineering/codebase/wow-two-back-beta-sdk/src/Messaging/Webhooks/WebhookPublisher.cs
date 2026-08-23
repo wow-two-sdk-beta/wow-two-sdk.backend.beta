@@ -8,7 +8,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 
 /// <summary>Default <see cref="IWebhookPublisher"/> — resolves matching subscriptions and fans a signed delivery out to each.</summary>
-internal sealed class WebhookPublisher(IWebhookSubscriptionStore store, HttpWebhookDispatcher dispatcher) : IWebhookPublisher
+internal sealed class WebhookPublisher(IWebhookSubscriptionRepository store, HttpWebhookDispatcher dispatcher) : IWebhookPublisher
 {
     public async ValueTask PublishAsync(string eventType, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken = default)
     {
@@ -26,9 +26,9 @@ internal sealed class WebhookPublisher(IWebhookSubscriptionStore store, HttpWebh
 
         // Deliberately NOT routed through IMessageSerializer / IMessageTypeResolver, unlike the transports and the outbox:
         // both seams change bytes that leave the process and that subscribers already depend on.
-        //   - Body: the seam's default serializer uses JsonOptionsPresets (camelCase, null-omitting, relaxed escaping,
+        //   - Body: the seam's default serializer uses JsonOptionsConstants (camelCase, null-omitting, relaxed escaping,
         //     NodaTime converters); this call uses JsonSerializerOptions.Default (PascalCase, nulls written, strict
-        //     escaping). Different bytes mean a different signed body (WebhookSignature signs the payload verbatim) and
+        //     escaping). Different bytes mean a different signed body (WebhookSignatureHasher signs the payload verbatim) and
         //     a renamed JSON property on every field, breaking every existing subscriber's parser.
         //   - Event type: the resolver emits a FullName token ("MyApp.Events.OrderPlaced"); this sends Type.Name
         //     ("OrderPlaced"), which is what subscribers' EventTypeFilter globs and X-Webhook-Event routing match on.
@@ -56,7 +56,7 @@ internal sealed partial class HttpWebhookDispatcher(
 
     /// <summary>Deliver <paramref name="payload"/> to one subscription, signing and retrying per the configured budget.</summary>
     /// <param name="subscription">The target subscription.</param>
-    /// <param name="eventType">The event type (sent as <see cref="WebhookHeaders.Event"/>).</param>
+    /// <param name="eventType">The event type (sent as <see cref="WebhookHeaderConstants.Event"/>).</param>
     /// <param name="payload">The request body.</param>
     /// <param name="cancellationToken">Cancellation token — cancellation propagates without retry or drop.</param>
     public async ValueTask DeliverAsync(WebhookSubscription subscription, string eventType, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
@@ -74,7 +74,7 @@ internal sealed partial class HttpWebhookDispatcher(
         }
 
         var retryConfig = new RetryConfig(opt.MaxAttempts, BackoffKind.ExponentialJitter, opt.BaseRetryDelay, opt.MaxRetryDelay);
-        var client = httpClientFactory.CreateClient(WebhookDefaults.HttpClientName);
+        var client = httpClientFactory.CreateClient(WebhookDefaultConstants.HttpClientName);
 
         var attempts = 0;
         int? lastStatus = null;
@@ -121,17 +121,17 @@ internal sealed partial class HttpWebhookDispatcher(
         CancellationToken cancellationToken)
     {
         var timestamp = timeProvider.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
-        var signature = WebhookSignature.Create(subscription.Secret, timestamp, payload.Span);
+        var signature = WebhookSignatureHasher.Create(subscription.Secret, timestamp, payload.Span);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, subscription.Url)
         {
             Content = new ReadOnlyMemoryContent(payload),
         };
         request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-        request.Headers.TryAddWithoutValidation(WebhookHeaders.Signature, signature);
-        request.Headers.TryAddWithoutValidation(WebhookHeaders.Timestamp, timestamp);
-        request.Headers.TryAddWithoutValidation(WebhookHeaders.Event, eventType);
-        request.Headers.TryAddWithoutValidation(WebhookHeaders.Id, Guid.NewGuid().ToString("N"));
+        request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Signature, signature);
+        request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Timestamp, timestamp);
+        request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Event, eventType);
+        request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Id, Guid.NewGuid().ToString("N"));
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(timeout);

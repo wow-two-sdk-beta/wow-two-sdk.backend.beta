@@ -1,5 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
@@ -47,14 +48,13 @@ public static class MessagingServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var optionsBuilder = services.AddOptions<InMemoryEventBusOptions>();
-        if (configure is not null)
-            optionsBuilder.Configure(configure);
+        services.AddOptions<InMemoryEventBusOptions>().Configure(options => configure?.Invoke(options));
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<InMemoryEventBusOptions>>().Value);
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<InMemoryEventChannel>();
         services.TryAddSingleton<IEventScheduler, InMemoryEventScheduler>();
-        services.TryAddSingleton<IDeadLetterStore, InMemoryDeadLetterStore>();
+        services.TryAddSingleton<IDeadLetterRepository, InMemoryDeadLetterRepository>();
         services.TryAddSingleton<ISendTransport, InMemorySendTransport>();
         services.TryAddSingleton<IReceiveTransport, InMemoryReceiveTransport>();
         services.TryAddSingleton<ITransportCapabilities, InMemoryCapabilities>();
@@ -62,7 +62,7 @@ public static class MessagingServiceCollectionExtensions
         services.TryAddSingleton<EventProcessingPipeline>();
         services.AddMessagePump();
         GetOrAddRegistry(services); // ensure the dispatcher registry exists even with no handlers registered yet
-        services.AddHostedService<TransportConsumerHostedService>();
+        services.AddHostedService<TransportConsumerBackgroundService>();
         return services;
     }
 
@@ -73,6 +73,7 @@ public static class MessagingServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddOptions<InMemoryEventBusOptions>();
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<InMemoryEventBusOptions>>().Value);
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IRetryPolicy, DefaultRetryPolicy>();
         services.TryAddSingleton<IEventResiliencePipeline, DefaultEventResiliencePipeline>();
@@ -98,7 +99,8 @@ public static class MessagingServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.AddOptions<ConcurrencyOptions>().Configure(configure);
+        services.AddOptions<ConcurrencyOptions>().Configure(options => configure?.Invoke(options));
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<ConcurrencyOptions>>().Value);
         services.AddMessagePump();
         return services;
     }
@@ -107,6 +109,7 @@ public static class MessagingServiceCollectionExtensions
     private static IServiceCollection AddMessagePump(this IServiceCollection services)
     {
         services.AddOptions<ConcurrencyOptions>();
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<ConcurrencyOptions>>().Value);
         services.TryAddSingleton<MessagePump>();
         services.AddMessagingMetrics(); // pipeline, bus and pump all take IMessagingMetrics — every transport path lands here
         services.TryAddSingleton<IMessageHeaderPropagationPolicy>(MessageHeaderPropagationPolicy.Default);
@@ -115,7 +118,7 @@ public static class MessagingServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Register the in-memory reliability defaults — resilience (<see cref="AddEventResilienceDefaults"/>) plus the in-memory <see cref="IDeadLetterStore"/> and <see cref="IEventScheduler"/>. A broker adapter uses its native DLQ/scheduling instead.</summary>
+    /// <summary>Register the in-memory reliability defaults — resilience (<see cref="AddEventResilienceDefaults"/>) plus the in-memory <see cref="IDeadLetterRepository"/> and <see cref="IEventScheduler"/>. A broker adapter uses its native DLQ/scheduling instead.</summary>
     /// <param name="services">The service collection.</param>
     public static IServiceCollection AddInMemoryReliability(this IServiceCollection services)
     {
@@ -123,7 +126,7 @@ public static class MessagingServiceCollectionExtensions
 
         services.AddEventResilienceDefaults();
         services.TryAddSingleton<InMemoryEventChannel>();
-        services.TryAddSingleton<IDeadLetterStore, InMemoryDeadLetterStore>();
+        services.TryAddSingleton<IDeadLetterRepository, InMemoryDeadLetterRepository>();
         services.TryAddSingleton<IEventScheduler, InMemoryEventScheduler>();
         return services;
     }
@@ -163,9 +166,8 @@ public static class MessagingServiceCollectionExtensions
         services.TryAddSingleton<IEventSagaTransport, InProcessEventSagaTransport>();
         services.AddSingleton(definition);
 
-        var optionsBuilder = services.AddOptions<EventSagaOptions>();
-        if (configure is not null)
-            optionsBuilder.Configure(configure);
+        services.AddOptions<EventSagaOptions>().Configure(options => configure?.Invoke(options));
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<EventSagaOptions>>().Value);
 
         // Bind every address the steps send to, so an explicit send is delivered rather than dropped unrouted — the
         // per-type topology that replaced RabbitMQ's `#` catch-all binds no arbitrary logical destination.

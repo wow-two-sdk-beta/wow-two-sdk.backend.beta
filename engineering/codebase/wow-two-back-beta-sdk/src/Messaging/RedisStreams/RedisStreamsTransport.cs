@@ -13,7 +13,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams;
 
 /// <summary>Options for the Redis Streams event-bus adapter.</summary>
-public sealed class RedisStreamsOptions
+public sealed record RedisStreamsOptions
 {
     /// <summary>StackExchange.Redis configuration string. Default <c>localhost:6379</c>.</summary>
     public string Configuration { get; set; } = "localhost:6379";
@@ -133,7 +133,7 @@ public sealed class RedisStreamsOptions
 
 /// <summary>Well-known stream-entry field names carrying SDK envelope metadata. A stream entry is a flat field/value map, so each header is its own field alongside the body.</summary>
 /// <remarks>
-/// Every cross-broker name is an alias of <see cref="MessageHeaders"/>, never a literal: the wire contract is one
+/// Every cross-broker name is an alias of <see cref="MessageHeaderConstants"/>, never a literal: the wire contract is one
 /// constant per key for all adapters, so a rename cannot leave Redis spelling the old string while Kafka and NATS
 /// spell the new one. Only the keys Redis alone needs — the body field and the dead-letter provenance fields — are
 /// declared here.
@@ -144,34 +144,34 @@ internal static class RedisStreamsFields
     /// The serialized body. Reserved, and stripped on send by <see cref="IsAdapterOwned"/> — not by the reserved
     /// prefix, which the send path stopped filtering on so that headers SDK features stamp survive the wire.
     /// </summary>
-    public const string Body = MessageHeaders.ReservedPrefix + "body";
+    public const string Body = MessageHeaderConstants.ReservedPrefix + "body";
 
     /// <summary>Carries the event's stable type token so the consumer can resolve the CLR type.</summary>
-    public const string EventType = MessageHeaders.EventType;
+    public const string EventType = MessageHeaderConstants.EventType;
 
     /// <summary>Carries the serializer content type, so the consumer selects the matching deserializer.</summary>
-    public const string ContentType = MessageHeaders.ContentType;
+    public const string ContentType = MessageHeaderConstants.ContentType;
 
     /// <summary>Carries <see cref="EventEnvelope.MessageId"/> — Redis assigns its own entry id, so the SDK's identity needs a field of its own.</summary>
-    public const string MessageId = MessageHeaders.MessageId;
+    public const string MessageId = MessageHeaderConstants.MessageId;
 
     /// <summary>Carries the envelope's ordering / partition key so the consumer can preserve per-key ordering.</summary>
-    public const string PartitionKey = MessageHeaders.PartitionKey;
+    public const string PartitionKey = MessageHeaderConstants.PartitionKey;
 
     /// <summary>Carries <see cref="EventEnvelope.CorrelationId"/>. Redis has no correlation property, so it rides a field.</summary>
-    public const string CorrelationId = MessageHeaders.CorrelationId;
+    public const string CorrelationId = MessageHeaderConstants.CorrelationId;
 
     /// <summary>Why the entry was dead-lettered, stamped on the copy written to the dead-letter stream.</summary>
-    public const string DeadLetterReason = MessageHeaders.DeadLetterReason;
+    public const string DeadLetterReason = MessageHeaderConstants.DeadLetterReason;
 
     /// <summary>Type name of the terminal exception, stamped alongside <see cref="DeadLetterReason"/>.</summary>
-    public const string DeadLetterExceptionType = MessageHeaders.DeadLetterExceptionType;
+    public const string DeadLetterExceptionType = MessageHeaderConstants.DeadLetterExceptionType;
 
     /// <summary>Stream the entry died on. The DLQ is one key for every routed stream, so without this a dead letter cannot be traced back to its source.</summary>
-    public const string DeadLetterSourceStream = MessageHeaders.ReservedPrefix + "dl-source-stream";
+    public const string DeadLetterSourceStream = MessageHeaderConstants.ReservedPrefix + "dl-source-stream";
 
     /// <summary>PEL delivery count at the moment of death — how many attempts the message actually consumed.</summary>
-    public const string DeadLetterDeliveryCount = MessageHeaders.ReservedPrefix + "dl-delivery-count";
+    public const string DeadLetterDeliveryCount = MessageHeaderConstants.ReservedPrefix + "dl-delivery-count";
 
     /// <summary>
     /// True when this adapter re-derives <paramref name="name"/> on every write, so a caller-supplied copy must be
@@ -179,7 +179,7 @@ internal static class RedisStreamsFields
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A Redis-scoped superset of <see cref="MessageHeaders.IsAdapterOwned"/>. That predicate is the cross-broker set
+    /// A Redis-scoped superset of <see cref="MessageHeaderConstants.IsAdapterOwned"/>. That predicate is the cross-broker set
     /// and deliberately cannot name a key only one broker has, so the fields declared here — the body and the
     /// dead-letter provenance — need an owner on this side of the seam.
     /// </para>
@@ -190,7 +190,7 @@ internal static class RedisStreamsFields
     /// </remarks>
     /// <param name="name">The field name.</param>
     public static bool IsAdapterOwned(string name)
-        => MessageHeaders.IsAdapterOwned(name) || name is Body || IsDeathField(name);
+        => MessageHeaderConstants.IsAdapterOwned(name) || name is Body || IsDeathField(name);
 
     /// <summary>
     /// True for the provenance fields stamped only on the dead-letter copy. Excludes <see cref="Body"/> on purpose —
@@ -301,11 +301,11 @@ internal static class RedisStreamsWireFormat
         // Redis has no reply-address, correlation or conversation property, so all three ride the SDK's reserved
         // fields. Stamped only when set, so ordinary one-way traffic carries exactly the fields it did before.
         if (!string.IsNullOrEmpty(envelope.ReplyTo))
-            fields.Add(new NameValueEntry(MessageHeaders.ReplyTo, envelope.ReplyTo));
+            fields.Add(new NameValueEntry(MessageHeaderConstants.ReplyTo, envelope.ReplyTo));
         if (!string.IsNullOrEmpty(envelope.CorrelationId))
             fields.Add(new NameValueEntry(RedisStreamsFields.CorrelationId, envelope.CorrelationId));
         if (!string.IsNullOrEmpty(envelope.ConversationId))
-            fields.Add(new NameValueEntry(MessageHeaders.ConversationId, envelope.ConversationId));
+            fields.Add(new NameValueEntry(MessageHeaderConstants.ConversationId, envelope.ConversationId));
 
         // Last, so an operator running XRANGE sees the metadata before a wall of serialized body.
         fields.Add(new NameValueEntry(RedisStreamsFields.Body, body));
@@ -1098,9 +1098,9 @@ internal sealed partial class RedisStreamsReceiveTransport(
             DeliveryCount = deliveryCount,
             ContentType = headers.TryGetValue(RedisStreamsFields.ContentType, out var contentType) ? contentType : "application/json",
             PartitionKey = ReadOptional(headers, RedisStreamsFields.PartitionKey),
-            ReplyTo = ReadOptional(headers, MessageHeaders.ReplyTo),
+            ReplyTo = ReadOptional(headers, MessageHeaderConstants.ReplyTo),
             CorrelationId = ReadOptional(headers, RedisStreamsFields.CorrelationId),
-            ConversationId = ReadOptional(headers, MessageHeaders.ConversationId),
+            ConversationId = ReadOptional(headers, MessageHeaderConstants.ConversationId),
             Headers = headers,
         };
     }
@@ -1242,6 +1242,10 @@ public static class RedisStreamsServiceCollectionExtensions
 
         services.AddOptions<RedisStreamsOptions>().Configure(configure);
 
+        // One shape at the injection site: consumers take the record, the builder keeps validation
+        // and post-configuration.
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<RedisStreamsOptions>>().Value);
+
         var assemblies = handlerAssemblies is { Length: > 0 } ? handlerAssemblies : [Assembly.GetCallingAssembly()];
         services.AddEventHandlersFromAssemblies(assemblies);
         services.AddEventResilienceDefaults();
@@ -1265,7 +1269,7 @@ public static class RedisStreamsServiceCollectionExtensions
         services.TryAddSingleton<IReceiveTransport, RedisStreamsReceiveTransport>();
         services.TryAddSingleton<IEventBus, TransportEventBus>();
         services.TryAddSingleton<EventProcessingPipeline>();
-        services.AddHostedService<TransportConsumerHostedService>();
+        services.AddHostedService<TransportConsumerBackgroundService>();
         return services;
     }
 }

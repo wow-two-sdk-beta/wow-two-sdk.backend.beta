@@ -12,7 +12,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 /// </summary>
 internal sealed class DefaultEventResiliencePipeline(
     IRetryPolicy retryPolicy,
-    IOptions<InMemoryEventBusOptions> options,
+    InMemoryEventBusOptions options,
     TimeProvider timeProvider,
     IEventFaultClassifier? classifier = null,
     DelayedRetryCoordinator? delayedRetry = null) : IEventResiliencePipeline
@@ -25,7 +25,7 @@ internal sealed class DefaultEventResiliencePipeline(
     {
         ArgumentNullException.ThrowIfNull(action);
 
-        var config = options.Value.Retry;
+        var config = options.Retry;
         var attempt = 0;
         while (true)
         {

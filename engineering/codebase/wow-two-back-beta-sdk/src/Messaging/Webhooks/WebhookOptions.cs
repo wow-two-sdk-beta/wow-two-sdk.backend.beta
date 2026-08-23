@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 
 /// <summary>Options for outbound webhook delivery. Uses settable properties so <c>Action&lt;WebhookOptions&gt;</c> configuration composes.</summary>
-public sealed class WebhookOptions
+public sealed record WebhookOptions
 {
     /// <summary>Subscriptions seeded into the store at startup. Add to this list inside the configure delegate.</summary>
     public IList<WebhookSubscription> Subscriptions { get; } = new List<WebhookSubscription>();

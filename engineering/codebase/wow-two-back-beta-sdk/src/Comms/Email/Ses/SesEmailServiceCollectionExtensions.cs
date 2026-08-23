@@ -26,6 +26,7 @@ public static class SesEmailServiceCollectionExtensions
         else
         {
             services.AddOptions<SesEmailOptions>();
+            services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<SesEmailOptions>>().Value);
         }
 
         services.TryAddSingleton<IAmazonSimpleEmailServiceV2>(sp =>

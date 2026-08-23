@@ -16,7 +16,7 @@ public enum TopologyStyle
     SharedEndpoint = 0,
 
     /// <summary>
-    /// One queue per consumed message type, named by <see cref="IEndpointNameFormatter"/>, each with its own
+    /// One queue per consumed message type, named by <see cref="IEndpointNameMapper"/>, each with its own
     /// dead-letter queue. Gives per-type prefetch, isolation and DLQ inspection; needs new queues, so it is opt-in.
     /// </summary>
     EndpointPerMessageType = 1,
@@ -27,7 +27,7 @@ public enum TopologyStyle
 /// via <see cref="MessageTopologyServiceCollectionExtensions.AddEndpointNameFormatter{TFormatter}"/> to impose a house
 /// naming scheme (per-team prefix, environment segment, an existing broker convention).
 /// </summary>
-public interface IEndpointNameFormatter
+public interface IEndpointNameMapper
 {
     /// <summary>The queue name of the endpoint that consumes <paramref name="messageType"/>.</summary>
     /// <param name="messageType">The message contract type.</param>
@@ -45,7 +45,7 @@ public interface IEndpointNameFormatter
 /// The simple name is used, not the full name: queue names stay readable, at the cost of collapsing two same-named
 /// types from different namespaces onto one endpoint. Register a replacement when that matters.
 /// </summary>
-public sealed class DefaultEndpointNameFormatter : IEndpointNameFormatter
+public sealed class DefaultEndpointNameMapper : IEndpointNameMapper
 {
     private readonly string? _prefix;
     private readonly string _deadLetterSuffix;
@@ -53,7 +53,7 @@ public sealed class DefaultEndpointNameFormatter : IEndpointNameFormatter
     /// <summary>Create the formatter.</summary>
     /// <param name="prefix">Dotted prefix put in front of every endpoint name (e.g. <c>wt.events</c>); null or empty for none.</param>
     /// <param name="deadLetterSuffix">Segment appended to an endpoint name to form its dead-letter queue. Default <c>dlq</c>.</param>
-    public DefaultEndpointNameFormatter(string? prefix = null, string deadLetterSuffix = "dlq")
+    public DefaultEndpointNameMapper(string? prefix = null, string deadLetterSuffix = "dlq")
     {
         ArgumentException.ThrowIfNullOrEmpty(deadLetterSuffix);
         _prefix = prefix;
@@ -294,7 +294,7 @@ public sealed class DestinationBindingRegistry
 }
 
 /// <summary>Topology shape — how endpoints are named and which routing keys each one binds.</summary>
-public sealed class TopologyOptions
+public sealed record TopologyOptions
 {
     /// <summary>Endpoint shape. Default <see cref="TopologyStyle.SharedEndpoint"/>, which keeps an existing deployment's queue names.</summary>
     public TopologyStyle Style { get; set; } = TopologyStyle.SharedEndpoint;
@@ -302,10 +302,10 @@ public sealed class TopologyOptions
     /// <summary>Queue name for <see cref="TopologyStyle.SharedEndpoint"/>. Null lets the transport supply its own configured queue name.</summary>
     public string? SharedEndpointName { get; set; }
 
-    /// <summary>Dead-letter queue for the shared endpoint. Null derives it from <see cref="IEndpointNameFormatter.DeadLetter"/>.</summary>
+    /// <summary>Dead-letter queue for the shared endpoint. Null derives it from <see cref="IEndpointNameMapper.DeadLetter"/>.</summary>
     public string? SharedDeadLetterQueueName { get; set; }
 
-    /// <summary>Prefix handed to the default <see cref="IEndpointNameFormatter"/> for generated endpoint names (e.g. <c>wt.events</c>). Ignored when a custom formatter is registered.</summary>
+    /// <summary>Prefix handed to the default <see cref="IEndpointNameMapper"/> for generated endpoint names (e.g. <c>wt.events</c>). Ignored when a custom formatter is registered.</summary>
     public string? EndpointPrefix { get; set; }
 
     /// <summary>
@@ -352,7 +352,7 @@ public sealed class DefaultTopologyProvider : ITopologyProvider
     public DefaultTopologyProvider(
         ConsumedMessageTypeRegistry consumedTypes,
         IMessageTypeResolver typeResolver,
-        IEndpointNameFormatter nameFormatter,
+        IEndpointNameMapper nameFormatter,
         IOptions<TopologyOptions> options,
         DestinationBindingRegistry? destinationBindings = null)
     {
@@ -396,7 +396,7 @@ public sealed class DefaultTopologyProvider : ITopologyProvider
 
     private List<EndpointTopology> Build(
         ConsumedMessageTypeRegistry consumedTypes,
-        IEndpointNameFormatter nameFormatter,
+        IEndpointNameMapper nameFormatter,
         TopologyOptions options,
         DestinationBindingRegistry? destinationBindings)
     {
@@ -495,7 +495,7 @@ public sealed class DefaultTopologyProvider : ITopologyProvider
 public static class MessageTopologyServiceCollectionExtensions
 {
     /// <summary>
-    /// Register the default topology — <see cref="ITopologyProvider"/>, <see cref="IEndpointNameFormatter"/>,
+    /// Register the default topology — <see cref="ITopologyProvider"/>, <see cref="IEndpointNameMapper"/>,
     /// <see cref="TopologyOptions"/> — and record every message type this process consumes.
     /// <para>
     /// Call it <em>after</em> handlers are registered (<c>AddEventHandlersFromAssemblies</c>): the consumed set is read
@@ -513,6 +513,9 @@ public static class MessageTopologyServiceCollectionExtensions
         if (configure is not null)
             optionsBuilder.Configure(configure);
 
+        // Consumers take the record; the builder above stays for validation and post-configuration.
+        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<TopologyOptions>>().Value);
+
         // Registered unconditionally so DefaultTopologyProvider always resolves the same instance, whichever of
         // AddMessageTopology / AddDestinationBinding the application calls first.
         GetOrAddDestinationBindings(services);
@@ -527,8 +530,8 @@ public static class MessageTopologyServiceCollectionExtensions
                 consumedTypes.Add(serviceType.GetGenericArguments()[0]);
         }
 
-        services.TryAddSingleton<IEndpointNameFormatter>(static provider =>
-            new DefaultEndpointNameFormatter(provider.GetRequiredService<IOptions<TopologyOptions>>().Value.EndpointPrefix));
+        services.TryAddSingleton<IEndpointNameMapper>(static provider =>
+            new DefaultEndpointNameMapper(provider.GetRequiredService<IOptions<TopologyOptions>>().Value.EndpointPrefix));
         services.TryAddSingleton<ITopologyProvider, DefaultTopologyProvider>();
         return services;
     }
@@ -537,10 +540,10 @@ public static class MessageTopologyServiceCollectionExtensions
     /// <typeparam name="TFormatter">The formatter implementation.</typeparam>
     /// <param name="services">The service collection.</param>
     public static IServiceCollection AddEndpointNameFormatter<TFormatter>(this IServiceCollection services)
-        where TFormatter : class, IEndpointNameFormatter
+        where TFormatter : class, IEndpointNameMapper
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.Replace(ServiceDescriptor.Singleton<IEndpointNameFormatter, TFormatter>());
+        services.Replace(ServiceDescriptor.Singleton<IEndpointNameMapper, TFormatter>());
         return services;
     }
 

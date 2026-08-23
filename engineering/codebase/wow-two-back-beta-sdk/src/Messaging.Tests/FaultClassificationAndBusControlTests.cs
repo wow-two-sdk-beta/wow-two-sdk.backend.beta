@@ -12,7 +12,7 @@ public sealed class FaultClassificationAndBusControlTests
     private static IHost BuildHost(Action<IServiceCollection>? configure = null)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<EventCollector>();
+        builder.Services.AddScannedHandlerDependencies();
         builder.Services.AddSingleton(new ConcurrencyProbe { Hold = TimeSpan.FromMilliseconds(20) });
         builder.Services.AddInMemoryEventBus(
             o => o.Retry = new RetryConfig(MaxAttempts: 5, Backoff: BackoffKind.None),
@@ -22,7 +22,7 @@ public sealed class FaultClassificationAndBusControlTests
         return builder.Build();
     }
 
-    private static async Task<DeadLetterRecord?> WaitForDeadLetterAsync(IDeadLetterStore store, string source, string messageId, TimeSpan timeout)
+    private static async Task<DeadLetterRecord?> WaitForDeadLetterAsync(IDeadLetterRepository store, string source, string messageId, TimeSpan timeout)
     {
         using var cts = new CancellationTokenSource(timeout);
         while (!cts.IsCancellationRequested)
@@ -44,7 +44,7 @@ public sealed class FaultClassificationAndBusControlTests
         await host.StartAsync();
 
         var bus = host.Services.GetRequiredService<IEventBus>();
-        var deadLetters = host.Services.GetRequiredService<IDeadLetterStore>();
+        var deadLetters = host.Services.GetRequiredService<IDeadLetterRepository>();
         await bus.PublishAsync(new BoomEvent("x"), new PublishOptions { MessageId = "nonretryable-1" });
 
         // MaxAttempts is 5 with no backoff; a classified-fatal fault must land in the DLQ on the first failure.
@@ -61,7 +61,7 @@ public sealed class FaultClassificationAndBusControlTests
         await host.StartAsync();
 
         var bus = host.Services.GetRequiredService<IEventBus>();
-        var deadLetters = host.Services.GetRequiredService<IDeadLetterStore>();
+        var deadLetters = host.Services.GetRequiredService<IDeadLetterRepository>();
         await bus.PublishAsync(new BoomEvent("x"), new PublishOptions { MessageId = "ignored-1" });
 
         // Ignore = treat as handled: the resilience pipeline swallows, the pipeline's success path acknowledges.
@@ -77,7 +77,7 @@ public sealed class FaultClassificationAndBusControlTests
         await host.StartAsync();
 
         var bus = host.Services.GetRequiredService<IEventBus>();
-        var deadLetters = host.Services.GetRequiredService<IDeadLetterStore>();
+        var deadLetters = host.Services.GetRequiredService<IDeadLetterRepository>();
         await bus.PublishAsync(new BoomEvent("x"), new PublishOptions { MessageId = "retried-1" });
 
         var record = await WaitForDeadLetterAsync(deadLetters, nameof(BoomEvent), "retried-1", TimeSpan.FromSeconds(5));

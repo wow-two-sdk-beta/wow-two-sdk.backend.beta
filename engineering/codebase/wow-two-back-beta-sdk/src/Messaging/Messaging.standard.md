@@ -18,13 +18,13 @@
 
 - Delivery **MUST** be at-least-once; the abstraction **MUST NOT** claim exactly-once at the transport layer. Consumers **SHOULD** be idempotent; the SDK **MUST** offer `IInboxProcessor` for exactly-once effect by `MessageId`. A durable `IInboxProcessor` **MUST** commit the dedupe mark in the **same transaction** as the handler's effect (both commit or neither).
 - Every `IEventResiliencePipeline` **MUST** route a thrown exception through the registered `IEventFaultClassifier` **before spending an attempt**, and **MUST** honour the verdict: `Retry` → retry as configured; `DeadLetter` → propagate at once, spending no attempt, so the consume pipeline dead-letters on the first failure; `Ignore` → swallow and return normally, so the consume pipeline's success path acknowledges. With no rules registered every exception classifies as `Retry`, which **MUST** be behaviourally identical to the pre-classification pipeline.
-- A failed handler invocation classified `Retry` **MUST** be retried per the resolved `RetryConfig` until `IRetryPolicy.NextDelay` returns `null`, then handed to `IDeadLetterStore`.
+- A failed handler invocation classified `Retry` **MUST** be retried per the resolved `RetryConfig` until `IRetryPolicy.NextDelay` returns `null`, then handed to `IDeadLetterRepository`.
 - `IRetryPolicy.NextDelay` **MUST** return `null` once `attempt >= MaxAttempts` and **MUST** never exceed `MaxDelay`.
 - Every terminal outcome **MUST** be counted exactly once on `IMessagingMetrics.RecordConsumed`, including an acknowledgement reached via an `Ignore` verdict (`ConsumeOutcome.Ignored`) — a settled message **MUST NOT** leave the pipeline uncounted.
 - `OperationCanceledException` from host shutdown **MUST NOT** be treated as a handler failure (no retry, no dead-letter), and **MUST NOT** be classified.
 - Under `DelayedRetryOptions.Enabled` an `IEventResiliencePipeline` **MUST** stop after a single attempt and propagate, so the wait happens between deliveries rather than in the loop with the message unsettled. The coordinator **MUST** schedule the next delivery **before** acknowledging the current one (a crash in between is a redelivery, never a loss) and **MUST** bound re-enqueues so a permanently-failing message cannot redeliver forever.
 - A duplicate `MessageId` (seen by `IInboxProcessor`) **MUST** be acknowledged and skipped.
-- `IDeadLetterStore.ReplayAsync` **MUST** re-deliver to the original destination with `DeliveryCount` reset to 0.
+- `IDeadLetterRepository.ReplayAsync` **MUST** re-deliver to the original destination with `DeliveryCount` reset to 0.
 - Scheduled delivery (`Delay` / `IEventScheduler`) **MUST NOT** deliver before `NotBeforeUtc`. The in-memory scheduler **MAY** drop scheduled messages on shutdown.
 
 ## Concurrency & runtime control
@@ -43,7 +43,7 @@
 - The `wt-` prefix is reserved for SDK control headers. A reserved header **MUST NOT** propagate from a consumed message onto one published while handling it — a control header describes the message it arrived on, so carrying one forward would stamp the previous body's type token or id onto a new body.
 - **An adapter MUST strip only the headers it re-derives.** `IsAdapterOwned` is a strict subset of `IsReserved`, and the send path **MUST** filter caller headers on `IsAdapterOwned`, never on `IsReserved`. An adapter **MUST** re-stamp each adapter-owned key from the envelope (so a caller-supplied copy is overwritten and cannot forge the wire contract) and **MUST** carry every other reserved header through untouched. Reserved-but-not-owned keys are stamped by SDK *features* and re-derived by nothing: stripping them leaves the feature working in-memory and silently dead behind every broker. A header added to `IsAdapterOwned` without a matching re-stamp **MUST** be treated as the same defect.
 - A reserved header belonging to a feature (`wt-slr-tier`, `wt-dl-redrive-count`, `wt-claim-check*`, `wt-saga-timeout-*`) **MUST** survive a re-publish — retry, delay or dead-letter redrive — or second-level retry, the redrive cap and claim check each break in a way no adapter reports.
-- Every reserved header name **MUST** be composed from `MessageHeaders.ReservedPrefix` rather than spelled as a raw `wt-…` literal, so the namespace has one definition and a header cannot drift out of the reserved set by typo.
+- Every reserved header name **MUST** be composed from `MessageHeaderConstants.ReservedPrefix` rather than spelled as a raw `wt-…` literal, so the namespace has one definition and a header cannot drift out of the reserved set by typo.
 - Header propagation **MUST** be allow-list based and default to W3C trace context only. Headers set explicitly on the outgoing message **MUST** win over propagated ones.
 
 ## Transactional outbox / inbox
@@ -65,7 +65,7 @@
 ## Claim check
 
 - Claim check **MUST** be off unless `AddEventClaimCheck(…)` was called. With it unregistered the send path **MUST** be byte-identical to one where the feature does not exist, and the consume path **MUST** cost no more than a single failed header lookup per message.
-- A body at or under `ThresholdBytes` **MUST** travel inline and **MUST NOT** cause a blob write. A body over it **MUST** be written to `IBlobStorage` before the envelope reaches the adapter, and the envelope **MUST** carry `wt-claim-check`, `wt-claim-check-size` and `wt-claim-check-type`.
+- A body at or under `ThresholdBytes` **MUST** travel inline and **MUST NOT** cause a blob write. A body over it **MUST** be written to `IBlobRepository` before the envelope reaches the adapter, and the envelope **MUST** carry `wt-claim-check`, `wt-claim-check-size` and `wt-claim-check-type`.
 - An offloaded message **MUST** leave `Body`/`BodyType` as the real contract and substitute only `RawBody`/`RawBodyType`, so routing still resolves from the published type.
 - The offloader **MUST NOT** offload a message that already carries a reference — a retry, delay or redrive hop re-publishes the pointer, and offloading again would store a blob whose content is a pointer and hand the handler a `ClaimCheckReference`.
 - The rehydrator **MUST** restore the real body before dispatch, and **MUST** leave settlement on the transport's own `ReceiveContext` so acknowledgement and dead-lettering still describe the message that arrived.
