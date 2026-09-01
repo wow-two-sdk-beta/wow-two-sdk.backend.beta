@@ -52,9 +52,9 @@
 
   <PropertyGroup>
     <!-- Source of truth. CI (publish.yml) bumps Version + FileVersion and commits this back on each release. -->
-    <Version>10.0.54-beta</Version>
+    <Version>10.0.55-beta</Version>
     <AssemblyVersion>10.0.0.0</AssemblyVersion>
-    <FileVersion>10.0.54</FileVersion>
+    <FileVersion>10.0.55</FileVersion>
   </PropertyGroup>
 
   <!-- Source-link & deterministic builds -->
