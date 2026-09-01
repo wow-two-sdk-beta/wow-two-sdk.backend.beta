@@ -35,6 +35,14 @@ publish → exchange "wt.events" (topic, routing key = destination)
 - **Consume**: `RabbitMqReceiveTransport` (prefetch, manual ack) → reconstruct envelope → `EventProcessingPipeline`.
 - **Ack / DLQ**: pipeline → `ctx.AcknowledgeAsync` = `BasicAck`; `ctx.DeadLetterAsync` (retries exhausted) = `BasicNack(requeue:false)` → **native DLX → DLQ**. Unparseable message → nacked to DLQ.
 
+## Publish semantics
+
+- **`mandatory: false`.** A publisher confirm attests that the broker accepted the message, not that a queue was bound
+  to receive it. Publishing before a consumer has declared its queue is normal, so an unroutable message is discarded
+  instead of failing the publish.
+- **No retry wraps the publish.** A republish after an ambiguous failure duplicates the message, so the idempotency
+  decision stays with the caller.
+
 ## Capabilities
 
 `RabbitMqCapabilities`: `NativeDeadLetter = true` · `NativeDelay/NativeDedupe/NativeOrdering = false` (delay/dedupe emulated by the SDK where needed; single-queue only).

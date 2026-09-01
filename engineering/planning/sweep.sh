@@ -22,8 +22,13 @@ for s in Manager Helper Util Utils Accessor Engine Strategy; do
 done
 echo
 echo "## 3 static form  (constructs.md:145 — Constants | Extensions | Mapper only)"
-grep -rhoE 'public static class [A-Za-z0-9_]+' --include='*.cs' . | awk '{print $4}' | sort -u \
-  | grep -vE '(Constants|Extensions|Mapper)$' | sed 's/^/  /'
+# internal counts too, and three carve-outs never appear here:
+#   *Factory passing both gates (constructs.md:210) · a non-generic companion of a same-named generic type
+#   (constructs.md § The non-generic companion) · types whose name already ends in an allowed form.
+GENERIC=$(grep -rhoE 'class [A-Za-z0-9_]+<' --include='*.cs' . | sed -E 's/class ([A-Za-z0-9_]+)</\1/' | sort -u)
+grep -rhoE '(public|internal) static class [A-Za-z0-9_]+' --include='*.cs' . | awk '{print $4}' | sort -u \
+  | grep -vE '(Constants|Extensions|Mapper)$' \
+  | while read -r t; do printf '%s\n' "$GENERIC" | grep -qx "$t" || echo "  $t"; done
 echo
 echo "## 4 bare IEntity on a concrete type  (entity-contracts.md:24)"
 grep -rlE ':\s*.*\bIEntity\b' --include='*.cs' . | while read -r f; do

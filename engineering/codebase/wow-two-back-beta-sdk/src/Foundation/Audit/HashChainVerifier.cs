@@ -9,6 +9,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Audit;
 public sealed class HashChainVerifier<TEntry> : IHashChainVerifier<TEntry>
     where TEntry : IHashChainedEntry
 {
+    private readonly HashChainHasher _hasher = new();
     private readonly IChainedEntryCanonicalizer<TEntry> _canonicalizer;
     private readonly HashChainAlgorithm _algorithm;
 
@@ -51,7 +52,7 @@ public sealed class HashChainVerifier<TEntry> : IHashChainVerifier<TEntry>
             }
 
             // Recompute from the same payload the sealer hashed — any altered field shows here.
-            var recomputed = HashChainHasher.Compute(entry, _canonicalizer, _algorithm, entry.Sequence, entry.PreviousHash);
+            var recomputed = _hasher.Compute(entry, _canonicalizer, _algorithm, entry.Sequence, entry.PreviousHash);
             if (!CryptographicOperations.FixedTimeEquals(entry.Hash, recomputed))
             {
                 return HashChainVerificationResult.Broken(HashChainBreakReason.HashMismatch, entry.Sequence, index);

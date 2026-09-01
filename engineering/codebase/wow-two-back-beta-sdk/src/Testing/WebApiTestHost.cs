@@ -8,11 +8,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing;
 
 /// <summary>
 /// Test host wrapping <see cref="WebApplicationFactory{TEntryPoint}"/> with conventional defaults:
-/// <list type="bullet">
-///   <item>Environment forced to <c>"Testing"</c>.</item>
-///   <item><see cref="FakeTimeProvider"/> registered as the default <see cref="TimeProvider"/>.</item>
-///   <item>Hooks for replacing services and tweaking configuration before the host builds.</item>
-/// </list>
+/// - Environment forced to <c>"Testing"</c>.
+/// - <see cref="FakeTimeProvider"/> registered as the default <see cref="TimeProvider"/>.
+/// - Hooks for replacing services and tweaking configuration before the host builds.
 /// </summary>
 /// <typeparam name="TEntryPoint">The application entry-point type (typically <c>Program</c>).</typeparam>
 public class WebApiTestHost<TEntryPoint> : WebApplicationFactory<TEntryPoint>
@@ -53,19 +51,5 @@ public class WebApiTestHost<TEntryPoint> : WebApplicationFactory<TEntryPoint>
     {
         ConfigureHostHook?.Invoke(builder);
         return base.CreateHost(builder);
-    }
-}
-
-internal static class ServiceCollectionInternalExtensions
-{
-    public static IServiceCollection RemoveAll<TService>(this IServiceCollection services)
-    {
-        for (var i = services.Count - 1; i >= 0; i--)
-        {
-            if (services[i].ServiceType == typeof(TService))
-                services.RemoveAt(i);
-        }
-
-        return services;
     }
 }

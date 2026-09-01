@@ -3,41 +3,19 @@ using System.Text;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 
-/// <summary>Well-known HTTP header keys set on every webhook delivery.</summary>
-public static class WebhookHeaderConstants
-{
-    /// <summary><c>X-Webhook-Signature</c> — <c>sha256=&lt;hex&gt;</c> HMAC of the signed content.</summary>
-    public const string Signature = "X-Webhook-Signature";
-
-    /// <summary><c>X-Webhook-Timestamp</c> — the unix-seconds timestamp fed into the signature.</summary>
-    public const string Timestamp = "X-Webhook-Timestamp";
-
-    /// <summary><c>X-Webhook-Event</c> — the delivered event type.</summary>
-    public const string Event = "X-Webhook-Event";
-
-    /// <summary><c>X-Webhook-Id</c> — per-delivery id, for receiver-side dedupe.</summary>
-    public const string Id = "X-Webhook-Id";
-}
-
-/// <summary>Well-known defaults for webhook delivery.</summary>
-public static class WebhookDefaultConstants
-{
-    /// <summary>Name of the delivery <c>HttpClient</c> resolved from <c>IHttpClientFactory</c>. Add handlers/policies via <c>AddHttpClient(WebhookDefaultConstants.HttpClientName)</c>.</summary>
-    public const string HttpClientName = "webhooks";
-}
-
 /// <summary>Computes the webhook signature: <c>sha256=&lt;hex&gt;</c> over <c>timestamp + "." + body</c>, keyed by the subscription secret (built-in <see cref="HMACSHA256"/>).</summary>
-public static class WebhookSignatureHasher
+/// <remarks>The scheme is chosen at registration, so a second one ships beside this rather than replacing it.</remarks>
+public sealed class WebhookSignatureHasher : IWebhookSignatureHasher
 {
     /// <summary>The signature scheme prefix (<c>sha256</c>).</summary>
-    public const string Scheme = "sha256";
+    public const string Sha256Scheme = "sha256";
 
-    /// <summary>Compute the <see cref="WebhookHeaderConstants.Signature"/> value for a payload.</summary>
-    /// <param name="secret">The subscription's HMAC-SHA256 secret.</param>
-    /// <param name="timestamp">The unix-seconds timestamp (also sent as <see cref="WebhookHeaderConstants.Timestamp"/>).</param>
-    /// <param name="payload">The request body bytes — signed verbatim.</param>
+    /// <inheritdoc />
+    public string Scheme => Sha256Scheme;
+
+    /// <inheritdoc />
     /// <returns><c>sha256=&lt;lowercase-hex&gt;</c>.</returns>
-    public static string Create(string secret, string timestamp, ReadOnlySpan<byte> payload)
+    public string Create(string secret, string timestamp, ReadOnlySpan<byte> payload)
     {
         ArgumentNullException.ThrowIfNull(secret);
         ArgumentNullException.ThrowIfNull(timestamp);
@@ -49,6 +27,6 @@ public static class WebhookSignatureHasher
 
         var key = Encoding.UTF8.GetBytes(secret);
         var hash = HMACSHA256.HashData(key, buffer);
-        return $"{Scheme}={Convert.ToHexStringLower(hash)}";
+        return $"{Sha256Scheme}={Convert.ToHexStringLower(hash)}";
     }
 }

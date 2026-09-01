@@ -5,44 +5,6 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Tests.Harness;
 
-/// <summary>An audited widget — the minimal entity the wiring and guard assertions write through.</summary>
-public sealed class Widget : IKeyedEntity<Guid>, IAuditable, IHasTableName
-{
-    /// <summary>The table this entity maps to.</summary>
-    public static string TableName => "widgets";
-
-    /// <summary>Row id.</summary>
-    public Guid Id { get; set; }
-
-    /// <summary>A mutable payload column, so an update has something to diff.</summary>
-    public string Name { get; set; } = string.Empty;
-
-    /// <summary>Creation stamp, written by <c>AuditInterceptor</c>.</summary>
-    public DateTimeOffset CreatedAt { get; set; }
-
-    /// <summary>Modification stamp, written by <c>AuditInterceptor</c>.</summary>
-    public DateTimeOffset UpdatedAt { get; set; }
-}
-
-/// <summary>A soft-deletable widget — carries the SDK's contract-driven query filter and soft-delete rewrite.</summary>
-public sealed class SoftWidget : IKeyedEntity<Guid>, ISoftDeletable, IHasTableName
-{
-    /// <summary>The table this entity maps to.</summary>
-    public static string TableName => "soft_widgets";
-
-    /// <summary>Row id.</summary>
-    public Guid Id { get; set; }
-
-    /// <summary>A mutable payload column.</summary>
-    public string Name { get; set; } = string.Empty;
-
-    /// <inheritdoc />
-    public bool IsDeleted { get; set; }
-
-    /// <inheritdoc />
-    public DateTimeOffset? DeletedAt { get; set; }
-}
-
 /// <summary>The suite's context — an <see cref="AppDbContextBase"/> so it flows through the SDK's own registration path, plus the outbox mapping the PR4 collision cases need.</summary>
 /// <param name="options">The options configuring this context.</param>
 public sealed class DataTestDbContext(DbContextOptions<DataTestDbContext> options) : AppDbContextBase(options)

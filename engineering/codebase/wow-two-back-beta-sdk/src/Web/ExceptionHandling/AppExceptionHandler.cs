@@ -13,7 +13,7 @@ public sealed class AppExceptionHandler(
     IErrorMessageMapper messageResolver,
     IFieldErrorMessageMapper fieldMessageResolver,
     IProblemDetailsService problemDetailsService,
-    AppErrorObserver observer) : IExceptionHandler
+    ErrorRecordingService observer) : IExceptionHandler
 {
     /// <inheritdoc/>
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)

@@ -35,6 +35,12 @@ public sealed record ApiDefaultsOptions
     /// <summary>Host-header allowlist (host filtering). Empty (default) = allow any host; set to lock the app to known hostnames.</summary>
     public IList<string> AllowedHosts { get; } = [];
 
+    /// <summary>Gets or sets whether a response carries <c>Cross-Origin-Opener-Policy: same-origin</c>, which severs the <c>window.opener</c> handle of a cross-origin popup. Default on.</summary>
+    public bool EnableCrossOriginOpenerPolicy { get; set; } = true;
+
+    /// <summary>Gets or sets whether a response carries <c>Cross-Origin-Embedder-Policy: require-corp</c>, which blocks a cross-origin subresource that ships no CORP opt-in. Default on.</summary>
+    public bool EnableCrossOriginEmbedderPolicy { get; set; } = true;
+
     /// <summary>Liveness endpoint path. Default <c>/health</c>.</summary>
     public string HealthEndpointPath { get; set; } = "/health";
 }

@@ -27,7 +27,7 @@ public static class ExceptionHandlingServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddErrorHttpStatusMapping();
-        services.AddAppErrorObserver();
+        services.AddErrorRecordingService();
         services.AddExceptionMapping();
 
         services.AddExceptionHandler<ValidationExceptionHandler>();

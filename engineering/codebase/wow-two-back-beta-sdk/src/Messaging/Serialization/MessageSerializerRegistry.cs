@@ -5,25 +5,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 /// serializer that produced it rather than by whichever one this service happens to send with.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Every adapter stamps <see cref="Transport.MessageHeaderConstants.ContentType"/> on send and reads it back into
-/// <see cref="EventEnvelope.ContentType"/> on receive. Without this map that value was carried and ignored: the single
-/// injected <see cref="IMessageSerializer"/> decoded every message, so a service consuming from two producers on
-/// different formats mis-deserialized one of them silently.
-/// </para>
-/// <para>
-/// Registration is additive. The map is built from every <see cref="IMessageSerializer"/> in the container, keyed by
-/// the content type each one declares, and anything absent or unregistered falls back to <see cref="Default"/> — the
-/// singular registered serializer. With one serializer registered (the shipped default) every lookup lands on it, so
-/// behaviour is identical to having no map at all.
-/// </para>
-/// <para>
-/// A second entry comes from <c>AddReceiveOnlyMessageSerializer&lt;T&gt;()</c>; <c>AddMessageSerializer&lt;T&gt;()</c>
-/// swaps the default and so leaves the count at one. Both register under <see cref="IMessageSerializer"/>, which is what
-/// puts them in the injected enumerable, and the default is the last of those descriptors — so it arrives here through
-/// both parameters as one shared singleton, keyed once. It is not instantiated twice and cannot be displaced by an entry
-/// declaring the same content type, because it is enumerated last.
-/// </para>
+///   - built from every registered <see cref="IMessageSerializer"/>, keyed by the content type each declares
+///   - add a receive-only format with <c>AddReceiveOnlyMessageSerializer&lt;T&gt;()</c>
+///   - a receive-only format never displaces <see cref="Default"/>
 /// </remarks>
 public sealed class MessageSerializerRegistry
 {
@@ -40,14 +24,12 @@ public sealed class MessageSerializerRegistry
         Default = defaultSerializer;
         _byMediaType = new Dictionary<string, IMessageSerializer>(StringComparer.OrdinalIgnoreCase);
 
-        // Last registration wins a contested content type, matching the container's own rule for resolving the
-        // singular IMessageSerializer — so the map and Default cannot disagree about who owns a format.
+        // Last registration wins a contested content type, matching the container's rule for the singular IMessageSerializer.
         foreach (var serializer in serializers)
             if (MediaType(serializer.ContentType) is { Length: > 0 } key)
                 _byMediaType[key] = serializer;
 
-        // Covers a hand-wired registry whose default was never in the enumerable. TryAdd rather than assign: a
-        // serializer that explicitly declared this content type keeps it, and Default still catches everything else.
+        // Default takes the key only when no registered serializer declared it — covers a hand-wired registry.
         if (MediaType(defaultSerializer.ContentType) is { Length: > 0 } defaultKey)
             _byMediaType.TryAdd(defaultKey, defaultSerializer);
     }
@@ -67,10 +49,8 @@ public sealed class MessageSerializerRegistry
     /// nothing registered.
     /// </summary>
     /// <remarks>
-    /// Falling back rather than failing is deliberate. An unknown content type most often means an older producer that
-    /// stamped nothing, or one on a format this service does not consume; letting <see cref="Default"/> try it keeps
-    /// the pre-existing behaviour, and a body it cannot decode still dead-letters through the adapter's unparseable
-    /// path instead of taking the consumer down.
+    ///   - an unknown content type usually means an older producer that stamped none
+    ///   - a body <see cref="Default"/> cannot decode dead-letters through the adapter's unparseable path
     /// </remarks>
     /// <param name="contentType">The content type read off the wire; null or empty when the producer stamped none.</param>
     public IMessageSerializer Resolve(string? contentType)

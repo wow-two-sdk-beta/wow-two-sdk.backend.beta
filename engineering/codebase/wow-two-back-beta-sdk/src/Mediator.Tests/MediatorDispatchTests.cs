@@ -13,7 +13,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests;
 /// </summary>
 public sealed class MediatorDispatchTests
 {
-    // --- a request whose handler completes synchronously (ValueTask.FromResult — no state machine) ---
 
     private sealed record SyncQuery(int N) : IRequest<int>;
 
@@ -22,8 +21,6 @@ public sealed class MediatorDispatchTests
         public ValueTask<int> HandleAsync(SyncQuery request, CancellationToken cancellationToken)
             => ValueTask.FromResult(request.N * 2); // completed synchronously
     }
-
-    // --- a request whose handler genuinely yields (Task.Yield → async continuation) ---
 
     private sealed record AsyncQuery(int N) : IRequest<int>;
 
@@ -36,8 +33,6 @@ public sealed class MediatorDispatchTests
             return request.N + 100;
         }
     }
-
-    // --- a void request via the primitive IRequestHandler<TRequest> (= IRequestHandler<TRequest, Unit>) ---
 
     private sealed record DoThing(string Tag) : IRequest;
 
@@ -138,11 +133,8 @@ public sealed class MediatorDispatchTests
 
         var act = async () => await sender.SendAsync(new SyncQuery(1));
 
-        // The typed dispatch is invoked through reflection (MethodInfo.Invoke), so the
-        // "no IRequestHandler registered" InvalidOperationException surfaces wrapped in a
-        // TargetInvocationException. (Known rough edge of the reflection-based dispatcher.)
-        var ex = await act.Should().ThrowAsync<TargetInvocationException>();
-        ex.Which.InnerException.Should().BeOfType<InvalidOperationException>();
+        // A missing handler registration is a composition error, and it reaches the caller as itself.
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]

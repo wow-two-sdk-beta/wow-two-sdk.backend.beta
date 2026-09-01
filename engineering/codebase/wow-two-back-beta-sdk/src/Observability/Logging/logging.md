@@ -16,6 +16,14 @@ builder.Host.UseSerilogConventional();
 // rest as normal — inject ILogger<T>
 ```
 
+Both default sinks render the ambient trace id ahead of the message, so a log line joins its trace:
+
+```
+2026-08-24 16:26:53.693 +05:00 [INF] [e9421149ccb8147aec30ca2876e6e37a] Code deleted
+```
+
+The brackets are empty when no activity is in scope, such as during startup.
+
 Override defaults via `appsettings.json` (`Serilog:` section is read automatically).
 
 ## See also

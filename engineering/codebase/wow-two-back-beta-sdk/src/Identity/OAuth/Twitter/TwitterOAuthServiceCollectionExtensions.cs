@@ -1,6 +1,7 @@
 using AspNet.Security.OAuth.Twitter;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
+using WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Twitter;
 
@@ -28,9 +29,9 @@ public static class TwitterOAuthServiceCollectionExtensions
         {
             o.ClientId = clientId;
             o.ClientSecret = clientSecret;
-            OAuthBaseline.ApplyBaseline(o, effectiveScopes);
+            o.ApplyBaseline(effectiveScopes);
             configure?.Invoke(o);
-            OAuthBaseline.StampProvider(o);
+            o.StampProvider();
         });
     }
 }

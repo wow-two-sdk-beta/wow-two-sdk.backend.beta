@@ -8,51 +8,40 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
 /// <summary>
 /// The harness's eyes on the bus — one observer implementing all three seams
-/// (<see cref="IPublishObserver"/>, <see cref="IReceiveObserver"/>, <see cref="IConsumeObserver"/>), recording every
+/// (<see cref="IPublishObservingInterceptor"/>, <see cref="IReceiveObservingInterceptor"/>, <see cref="IConsumeObservingInterceptor"/>), recording every
 /// hook into a <see cref="RecordedMessageLog"/> and stamping the activity clock that idle detection reads.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Observing rather than filtering is deliberate: the SDK guarantees an observer cannot short-circuit the chain,
-/// change settlement, or swallow a fault, so a test that watches the bus through this type is watching the same
-/// pipeline production runs. Registering it changes nothing about delivery.
-/// </para>
-/// <para>
-/// Which hook feeds which log is the whole contract, and the phases are NOT interchangeable:
-/// <see cref="Consumed"/> is per delivery <i>attempt</i> and carries the <see cref="ConsumeOutcome"/>, so a redelivered
-/// message appears once per attempt and a deduplicated one appears with <see cref="ConsumeOutcome.Duplicate"/>;
-/// <see cref="Faulted"/> is likewise per attempt, so its count is the retry budget actually spent;
-/// <see cref="DeadLettered"/> is terminal and fires <i>after</i> settlement, so by the time a wait on it returns the
-/// dead-letter store has already been written and can be read without polling.
-/// </para>
-/// <para>Registered as a singleton and hit from every consume worker — every member is thread-safe.</para>
+///   - an observer cannot short-circuit, re-settle, or swallow a fault
+///   - the log phases are not interchangeable (phase contract in <c>Testing.Messaging.md</c>)
+///   - every member is thread-safe
 /// </remarks>
-public sealed class MessagingRecorder : IPublishObserver, IReceiveObserver, IConsumeObserver
+public sealed class MessagingRecorder : IPublishObservingInterceptor, IReceiveObservingInterceptor, IConsumeObservingInterceptor
 {
     private readonly Lock _sync = new();
     private TaskCompletionSource _activity = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private long _lastActivity = Stopwatch.GetTimestamp();
 
-    /// <summary>Envelopes the transport accepted (<see cref="IPublishObserver.PostPublishAsync"/>). What acceptance proves is transport-specific — see <see cref="ITransportCapabilities.NativePublisherConfirms"/>.</summary>
+    /// <summary>Envelopes the transport accepted (<see cref="IPublishObservingInterceptor.PostPublishAsync"/>). What acceptance proves is transport-specific — see <see cref="ITransportCapabilities.NativePublisherConfirms"/>.</summary>
     public RecordedMessageLog Published { get; } = new(nameof(Published));
 
-    /// <summary>Sends the transport threw on (<see cref="IPublishObserver.PublishFaultAsync"/>). The exception still propagated to the caller.</summary>
+    /// <summary>Sends the transport threw on (<see cref="IPublishObservingInterceptor.PublishFaultAsync"/>). The exception still propagated to the caller.</summary>
     public RecordedMessageLog PublishFaults { get; } = new(nameof(PublishFaults));
 
-    /// <summary>Delivery attempts that completed without throwing, each carrying its <see cref="ConsumeOutcome"/> (<see cref="IConsumeObserver.PostConsumeAsync"/>).</summary>
+    /// <summary>Delivery attempts that completed without throwing, each carrying its <see cref="ConsumeOutcome"/> (<see cref="IConsumeObservingInterceptor.PostConsumeAsync"/>). A deduplicated message records as <see cref="ConsumeOutcome.Duplicate"/>, never as a missing entry.</summary>
     public RecordedMessageLog Consumed { get; } = new(nameof(Consumed));
 
-    /// <summary>Delivery attempts that threw (<see cref="IConsumeObserver.ConsumeFaultAsync"/>) — one entry per attempt, so the count is the retry budget spent.</summary>
+    /// <summary>Delivery attempts that threw (<see cref="IConsumeObservingInterceptor.ConsumeFaultAsync"/>) — one entry per attempt, so the count is the retry budget spent.</summary>
     public RecordedMessageLog Faulted { get; } = new(nameof(Faulted));
 
-    /// <summary>Messages that exhausted processing and were dead-lettered (<see cref="IReceiveObserver.ReceiveFaultAsync"/>), recorded after settlement.</summary>
+    /// <summary>Messages that exhausted processing and were dead-lettered (<see cref="IReceiveObservingInterceptor.ReceiveFaultAsync"/>), recorded after settlement.</summary>
     public RecordedMessageLog DeadLettered { get; } = new(nameof(DeadLettered));
 
     /// <summary>
     /// How long since the bus last did anything the recorder can see — a publish, an arrival, an attempt, a
     /// settlement. The quantity <see cref="MessagingTestHarness.WaitForIdleAsync"/> thresholds on.
     /// </summary>
-    /// <remarks>Measured on the monotonic clock, never on <c>TimeProvider</c>: a test that fakes time must still get a real quiet window.</remarks>
+    /// <remarks>Monotonic clock, never <c>TimeProvider</c> — faked time still gets a real quiet window.</remarks>
     public TimeSpan SinceLastActivity => Stopwatch.GetElapsedTime(Volatile.Read(ref _lastActivity));
 
     /// <summary>
@@ -82,8 +71,7 @@ public sealed class MessagingRecorder : IPublishObserver, IReceiveObserver, ICon
     /// <inheritdoc />
     public ValueTask PrePublishAsync(EventEnvelope envelope, CancellationToken cancellationToken)
     {
-        // Marked but not logged: a publish in progress is activity, and counting it here is what stops an idle wait
-        // returning in the gap between the send and the arrival.
+        // Marked but not logged — counting a publish in progress stops an idle wait in the send/arrival gap.
         MarkActivity();
         return ValueTask.CompletedTask;
     }
@@ -109,8 +97,7 @@ public sealed class MessagingRecorder : IPublishObserver, IReceiveObserver, ICon
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        // Terminal success. Not logged as Consumed — that log is per attempt and PostConsume already recorded this
-        // message's outcome; double-recording would make a single delivery look like two.
+        // Terminal success, not logged as Consumed — PostConsume already recorded it, and a second entry doubles it.
         MarkActivity();
         return ValueTask.CompletedTask;
     }
@@ -173,39 +160,5 @@ public sealed class MessagingRecorder : IPublishObserver, IReceiveObserver, ICon
         }
 
         activity.TrySetResult(); // outside the lock — continuations must never run under it
-    }
-}
-
-/// <summary>DI registration for the messaging test harness's observer.</summary>
-public static class MessagingTestingServiceCollectionExtensions
-{
-    /// <summary>
-    /// Register a <see cref="MessagingRecorder"/> on the bus. Use this to watch a host the test did not build — a
-    /// <c>WebApplicationFactory</c>, a broker-backed host — then hand its <c>IServiceProvider</c> to
-    /// <see cref="MessagingTestHarness.Attach"/>. <see cref="MessagingTestHarness.StartAsync"/> already does this.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <returns>The service collection, for chaining.</returns>
-    public static IServiceCollection AddMessagingRecorder(this IServiceCollection services)
-        => services.AddMessagingRecorder(new MessagingRecorder());
-
-    /// <summary>Register a specific <see cref="MessagingRecorder"/> instance — for holding a reference to it before the host exists.</summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="recorder">The recorder to register.</param>
-    /// <returns>The service collection, for chaining.</returns>
-    /// <remarks>Idempotent: a second call with a recorder already registered is a no-op, because registering the observer twice would notify it twice and double every count.</remarks>
-    public static IServiceCollection AddMessagingRecorder(this IServiceCollection services, MessagingRecorder recorder)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(recorder);
-
-        if (services.Any(static descriptor => descriptor.ServiceType == typeof(MessagingRecorder)))
-            return services;
-
-        // Registered BEFORE AddMessageObserver so its own TryAddSingleton<MessagingRecorder>() is the no-op and every
-        // observer facet resolves to this instance — the one the caller kept a reference to.
-        services.TryAddSingleton(recorder);
-        services.AddMessageObserver<MessagingRecorder>();
-        return services;
     }
 }

@@ -8,45 +8,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.MultiHost;
 /// container, or any "two services, one database" topology.
 /// </summary>
 /// <remarks>
-/// <para>
-/// <b>What it orchestrates</b> (one shared lifecycle for the whole test collection):
-/// </para>
-/// <list type="number">
-///   <item><b>Start</b> the shared backing fixtures (containers, etc.) via the composed <see cref="IAsyncFixtureCollection"/>.</item>
-///   <item><b>Inject</b> environment / configuration so every host targets those shared services (<see cref="ConfigureEnvironment"/>).</item>
-///   <item><b>Build</b> every registered host, forcing each to materialize — the first build runs the startup migrations against the shared store; later builds see the migrated schema.</item>
-///   <item><b>Initialize shared state</b> after migrations (<see cref="InitializeStateAsync"/>) — e.g. snapshot the post-migration schema for a between-test reset.</item>
-///   <item><b>Reset</b> per test by delegating to the shared collection's <see cref="IAsyncTestFixture.ResetAsync"/> — never to any one container's internals.</item>
-///   <item><b>Dispose</b> the hosts, then the shared fixtures (reverse order).</item>
-/// </list>
-/// <para>
-/// <b>Decoupling.</b> The base talks to its backing services only through the <see cref="IAsyncTestFixture"/>
-/// contract (<see cref="IAsyncTestFixture.StartAsync"/> / <see cref="IAsyncTestFixture.ResetAsync"/> /
-/// <see cref="IAsyncDisposable.DisposeAsync"/>). It does <i>not</i> know about Postgres, Respawn, or any
-/// concrete fixture. Anything provider-specific that must run <i>after</i> migrations (such as building a
-/// Respawn snapshot) goes in the app's <see cref="InitializeStateAsync"/> override, where the concrete
-/// fixture type is in scope.
-/// </para>
-/// <para>
-/// <b><c>extern alias</c> requirement.</b> When two entry points both expose the top-level
-/// <c>Program</c> symbol (the default for minimal-hosting apps, each emitting <c>Program</c> in its
-/// assembly's global namespace), the two <c>Program</c> types are ambiguous in one test project.
-/// Alias each referenced app project in the test <c>.csproj</c> and bind the aliases at the top of the
-/// fixture file:
-/// <code>
-/// &lt;!-- test .csproj --&gt;
-/// &lt;ProjectReference Include="..\App.Api\App.Api.csproj"      Aliases="apihost" /&gt;
-/// &lt;ProjectReference Include="..\App.Redirect\App.Redirect.csproj" Aliases="redirecthost" /&gt;
-/// </code>
-/// <code>
-/// // top of the fixture file
-/// extern alias apihost;
-/// extern alias redirecthost;
-/// using ApiProgram      = apihost::Program;
-/// using RedirectProgram = redirecthost::Program;
-/// </code>
-/// A single host needs no alias.
-/// </para>
+///   - register the shared fixtures and hosts in the derived constructor
+///   - put provider-specific post-migration init in <see cref="InitializeStateAsync"/>
+///   - alias each <c>ProjectReference</c> when two hosts both name their entry point <c>Program</c> (setup in <c>MultiHost.md</c>)
 /// </remarks>
 public abstract class MultiHostFixture : IAsyncDisposable
 {
@@ -96,8 +60,7 @@ public abstract class MultiHostFixture : IAsyncDisposable
             throw new InvalidOperationException("Cannot add a host after StartAsync has run.");
 
         _hosts.Add(host);
-        // Capture the typed build delegate here, where TEntryPoint is in scope — _hosts is a
-        // non-generic IDisposable list (for reverse-order disposal) and can't infer TEntryPoint.
+        // Capture the typed build delegate while TEntryPoint is in scope.
         _builders.Add(() => BuildHost(host));
         return host;
     }
@@ -116,17 +79,14 @@ public abstract class MultiHostFixture : IAsyncDisposable
         // 1. Shared backing services up first — connection strings / endpoints exist after this.
         await _shared.StartAsync(cancellationToken).ConfigureAwait(false);
 
-        // 2. Point the (not-yet-built) hosts at those shared services. The env overlay typically wins
-        //    over in-memory config, so env vars are the authoritative cross-host seam.
+        // 2. Point the (not-yet-built) hosts at those shared services, via the env overlay.
         ConfigureEnvironment();
 
-        // 3. Build each host. Touching `.Services` forces the host to build; the first one to build
-        //    runs the startup migrations against the shared store, the rest observe the migrated schema.
+        // 3. Build each host — the first build runs the startup migrations against the shared store.
         foreach (var build in _builders)
             build();
 
-        // 4. App-supplied, provider-specific init that must observe the MIGRATED schema
-        //    (e.g. snapshot the DB for a Respawn-backed reset).
+        // 4. App-supplied init that must observe the migrated schema.
         await InitializeStateAsync(cancellationToken).ConfigureAwait(false);
 
         _started = true;

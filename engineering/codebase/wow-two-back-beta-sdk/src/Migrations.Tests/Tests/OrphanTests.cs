@@ -8,7 +8,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 
 /// <summary>
 /// Orphan: an applied history row whose source folder is gone (binary older than DB, or folder deleted). Apply
-/// fails closed (<see cref="MigrationOrphanException"/>) unless <c>AllowOrphanedHistory</c> lets it proceed.
+/// fails closed with a <c>DataIntegrity</c> failure unless <c>AllowOrphanedHistory</c> lets it proceed.
 /// </summary>
 public sealed class OrphanTests : SqliteMigratorTestBase
 {

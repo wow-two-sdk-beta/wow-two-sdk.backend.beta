@@ -17,7 +17,20 @@ public sealed class JsonValueConverter<T> : ValueConverter<T, string>
     public JsonValueConverter(JsonSerializerOptions options)
         : base(
             v => JsonSerializer.Serialize(v, options),
-            v => JsonSerializer.Deserialize<T>(v, options)!)
+            v => Deserialize(v, options))
     {
+    }
+
+    private static T Deserialize(string json, JsonSerializerOptions options)
+    {
+        var value = JsonSerializer.Deserialize<T>(json, options);
+
+        // A column holding the JSON literal `null` decodes without error and yields nothing to materialize.
+        if (value is null)
+        {
+            throw new InvalidOperationException($"A JSON-mapped column decoded to null for '{typeof(T).Name}'.");
+        }
+
+        return value;
     }
 }

@@ -16,6 +16,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 /// </remarks>
 public sealed class KafkaAdapterOwnedHeaderTests : IAsyncLifetime
 {
+    private static readonly AdapterOwnedHeaderContract Contract = new();
     private readonly KafkaContainer _container = new KafkaBuilder().WithImage("confluentinc/cp-kafka:7.5.0").Build();
 
     public Task InitializeAsync() => _container.StartAsync();
@@ -30,9 +31,9 @@ public sealed class KafkaAdapterOwnedHeaderTests : IAsyncLifetime
         using var host = await StartHostAsync(suffix);
         var harness = MessagingTestHarness.Attach(host.Services);
 
-        var consumed = await AdapterOwnedHeaderContract.PublishUntilConsumedAsync(harness, tag);
+        var consumed = await Contract.PublishUntilConsumedAsync(harness, tag);
 
-        AdapterOwnedHeaderContract.AssertRoundTrip(consumed, tag);
+        Contract.AssertRoundTrip(consumed, tag);
 
         await host.StopAsync();
     }

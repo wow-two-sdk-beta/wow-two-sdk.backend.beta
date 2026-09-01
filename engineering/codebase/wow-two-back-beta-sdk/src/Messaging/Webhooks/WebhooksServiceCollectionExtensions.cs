@@ -35,7 +35,7 @@ public static class WebhooksServiceCollectionExtensions
                 var webhookOptions = sp.GetRequiredService<IOptions<WebhookOptions>>().Value;
                 var handler = new SocketsHttpHandler();
                 if (!webhookOptions.AllowPrivateNetworkTargets)
-                    handler.ConnectCallback = WebhookAddressPolicy.GuardedConnectAsync;
+                    handler.ConnectCallback = new WebhookSsrfGuard().GuardedConnectAsync;
                 return handler;
             });
 
@@ -43,6 +43,8 @@ public static class WebhooksServiceCollectionExtensions
         services.TryAddSingleton<IRetryPolicy, DefaultRetryPolicy>();
         services.TryAddSingleton<IWebhookDeliveryLog, NoopWebhookDeliveryLog>();
         services.TryAddSingleton<IWebhookSubscriptionRepository, InMemoryWebhookSubscriptionRepository>();
+        // The signature scheme is a registration choice; a subscriber requiring another one swaps this line.
+        services.TryAddSingleton<IWebhookSignatureHasher, WebhookSignatureHasher>();
         services.TryAddSingleton<HttpWebhookDispatcher>();
         services.TryAddSingleton<IWebhookPublisher, WebhookPublisher>();
         return services;

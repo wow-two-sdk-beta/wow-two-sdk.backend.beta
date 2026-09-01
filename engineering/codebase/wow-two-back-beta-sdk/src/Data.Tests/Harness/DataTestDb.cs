@@ -26,11 +26,3 @@ public sealed class DataTestDb : RelationalTestDb<DataTestDbContext>
         return new DataTestDbContext(builder.Options);
     }
 }
-
-/// <summary>The collection sharing one <see cref="DataTestDb"/> container across every test class in this suite.</summary>
-[CollectionDefinition(Name)]
-public sealed class DataTestCollection : ICollectionFixture<DataTestDb>
-{
-    /// <summary>The collection name test classes attach to.</summary>
-    public const string Name = "data";
-}

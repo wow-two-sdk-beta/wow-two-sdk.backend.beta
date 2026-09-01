@@ -11,7 +11,7 @@ public sealed class MessageTypeResolverTests
     {
         var registry = new MessageTypeRegistry();
         registry.Register(typeof(PingEvent));
-        var resolver = new DefaultMessageTypeResolver(registry);
+        var resolver = new MessageTypeMapper(registry);
 
         var token = resolver.ToTypeToken(typeof(PingEvent));
 
@@ -22,7 +22,7 @@ public sealed class MessageTypeResolverTests
     [Fact]
     public void Falls_back_to_assembly_qualified_name_for_unregistered_type()
     {
-        var resolver = new DefaultMessageTypeResolver(new MessageTypeRegistry());
+        var resolver = new MessageTypeMapper(new MessageTypeRegistry());
 
         var token = resolver.ToTypeToken(typeof(PingEvent));
 
@@ -33,7 +33,7 @@ public sealed class MessageTypeResolverTests
     [Fact]
     public void Returns_null_for_unknown_token()
     {
-        var resolver = new DefaultMessageTypeResolver(new MessageTypeRegistry());
+        var resolver = new MessageTypeMapper(new MessageTypeRegistry());
 
         resolver.ResolveType("Nonexistent.Contract.Type, Nowhere").Should().BeNull(); // caller dead-letters, does not drop
     }
@@ -44,7 +44,7 @@ public sealed class MessageTypeResolverTests
         var registry = new MessageTypeRegistry();
         registry.Register(typeof(PingEvent));
         registry.AddAlias("legacy.Renamed", typeof(PingEvent));
-        var resolver = new DefaultMessageTypeResolver(registry);
+        var resolver = new MessageTypeMapper(registry);
 
         resolver.ResolveType("legacy.Renamed").Should().Be<PingEvent>();
     }

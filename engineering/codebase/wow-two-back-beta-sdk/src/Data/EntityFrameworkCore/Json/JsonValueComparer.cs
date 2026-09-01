@@ -27,5 +27,15 @@ public sealed class JsonValueComparer<T> : ValueComparer<T>
         => JsonSerializer.Serialize(value, options);
 
     private static T Deserialize(T value, JsonSerializerOptions options)
-        => JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(value, options), options)!;
+    {
+        var clone = JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(value, options), options);
+
+        // A value serializing to the JSON literal `null` round-trips back to null and cannot become a snapshot.
+        if (clone is null)
+        {
+            throw new InvalidOperationException($"A JSON-mapped value round-tripped to null for '{typeof(T).Name}'.");
+        }
+
+        return clone;
+    }
 }

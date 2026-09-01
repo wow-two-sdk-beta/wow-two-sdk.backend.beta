@@ -13,11 +13,9 @@ public static class DapperServiceCollectionExtensions
 
     /// <summary>
     /// Applies the SDK's Dapper conventions:
-    /// <list type="bullet">
-    ///   <item>snake_case column → PascalCase property mapping (<c>image_urls</c> → <c>ImageUrls</c>)</item>
-    ///   <item><see cref="DateOnlyTypeHandler"/> for <c>DATE</c> ↔ <see cref="DateOnly"/></item>
-    ///   <item><see cref="ListTypeHandler{T}"/> for <c>TEXT[]</c> ↔ <see cref="List{T}"/> of string</item>
-    /// </list>
+    /// - snake_case column → PascalCase property mapping (<c>image_urls</c> → <c>ImageUrls</c>)
+    /// - <see cref="DateOnlyTypeHandler"/> for <c>DATE</c> ↔ <see cref="DateOnly"/>
+    /// - <see cref="ListTypeHandler{T}"/> for <c>TEXT[]</c> ↔ <see cref="List{T}"/> of string
     /// Idempotent — safe to call multiple times.
     /// </summary>
     /// <param name="services">The service collection to configure.</param>

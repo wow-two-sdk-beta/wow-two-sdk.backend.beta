@@ -5,35 +5,10 @@ using MessagePack;
 using MessagePack.Resolvers;
 using Microsoft.Extensions.DependencyInjection;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
-
-/// <summary>Grade of a shipment — an enum member of <see cref="SerializerPayload"/>, so every serializer's enum policy is exercised by the round trip.</summary>
-public enum ShipmentGrade
-{
-    Standard = 0,
-    Express = 1,
-    Overnight = 2,
-}
-
-/// <summary>
-/// The shared round-trip contract: a record (positional, so there is a constructor to bind), a collection, a nullable
-/// left null, an enum, and a <see cref="DateTimeOffset"/> carrying a non-UTC offset.
-/// </summary>
-/// <remarks>
-/// Deliberately carries no <c>[MessagePackObject]</c>/<c>[Key]</c> annotation — the contractless resolver has to bind it
-/// as-is, which is the promise that lets a contract survive the swap away from System.Text.Json.
-/// </remarks>
-public sealed record SerializerPayload(
-    string Name,
-    int Count,
-    ShipmentGrade Grade,
-    DateTimeOffset OccurredAt,
-    IReadOnlyList<string> Tags,
-    int? Optional);
-
-/// <summary>A contract given an explicit CloudEvents type token through <c>MapMessageType</c>.</summary>
-public sealed record CheckoutCompleted(string OrderId, decimal Total) : IEvent;
 
 /// <summary>
 /// The three shipped <see cref="IMessageSerializer"/> implementations: round trip, the exact content type each stamps,
@@ -53,9 +28,7 @@ public sealed class MessageSerializerTests
         Optional: null);
 
     private static CloudEventsMessageSerializer CloudEvents(CloudEventsSerializerOptions? options = null)
-        => new(new DefaultMessageTypeResolver(new MessageTypeRegistry()), options);
-
-    // ---- round trip -------------------------------------------------------------------------------------------
+        => new(new MessageTypeMapper(new MessageTypeRegistry()), options);
 
     [Theory]
     [InlineData("stj")]
@@ -66,7 +39,7 @@ public sealed class MessageSerializerTests
         var serializer = Resolve(name);
 
         var bytes = serializer.Serialize(Sample, typeof(SerializerPayload));
-        var back = serializer.Deserialize(bytes, typeof(SerializerPayload)).Should().BeOfType<SerializerPayload>().Subject;
+        var back = serializer.Deserialize(bytes, typeof(SerializerPayload)).ValueOrThrow().Should().BeOfType<SerializerPayload>().Subject;
 
         back.Name.Should().Be("crate-7");
         back.Count.Should().Be(3);
@@ -90,8 +63,6 @@ public sealed class MessageSerializerTests
         // it, so a drifted spelling is a silent cross-service break, not a compile error.
         Resolve(name).ContentType.Should().Be(expected);
     }
-
-    // ---- the additive guarantee -------------------------------------------------------------------------------
 
     [Fact]
     public void SystemTextJson_output_is_byte_identical_to_the_pre_batch_contract()
@@ -117,8 +88,6 @@ public sealed class MessageSerializerTests
         var data = JsonDocument.Parse(envelope).RootElement.GetProperty("data").GetRawText();
         data.Should().Be(Encoding.UTF8.GetString(stj));
     }
-
-    // ---- CloudEvents attribute contract -----------------------------------------------------------------------
 
     [Fact]
     public void CloudEvents_emits_all_four_required_attributes()
@@ -150,7 +119,7 @@ public sealed class MessageSerializerTests
             .MapMessageType<CheckoutCompleted>("com.acme.checkout.completed")
             .BuildServiceProvider()
             .GetRequiredService<MessageTypeRegistry>();
-        var serializer = new CloudEventsMessageSerializer(new DefaultMessageTypeResolver(registry));
+        var serializer = new CloudEventsMessageSerializer(new MessageTypeMapper(registry));
 
         var bytes = serializer.Serialize(new CheckoutCompleted("ord-1", 12.5m), typeof(CheckoutCompleted));
 
@@ -184,8 +153,6 @@ public sealed class MessageSerializerTests
         static string? IdOf(byte[] bytes) => JsonDocument.Parse(bytes).RootElement.GetProperty("id").GetString();
     }
 
-    // ---- CloudEvents interop (the entire point of the format) -------------------------------------------------
-
     /// <summary>
     /// A CloudEvent as a non-.NET producer actually writes one: attributes in arbitrary order, extension attributes
     /// this SDK knows nothing about (including a nested object), and the payload in <c>data_base64</c>.
@@ -211,7 +178,7 @@ public sealed class MessageSerializerTests
         var bytes = Encoding.UTF8.GetBytes(HandWrittenForeignEvent);
 
         var back = CloudEvents().Deserialize(bytes, typeof(SerializerPayload))
-            .Should().BeOfType<SerializerPayload>().Subject;
+            .ValueOrThrow().Should().BeOfType<SerializerPayload>().Subject;
 
         // A round trip against our own writer proves nothing here: it would emit `data`, in our order, with no
         // extensions. Interop means surviving a document this SDK did not write.
@@ -227,7 +194,7 @@ public sealed class MessageSerializerTests
     {
         var bytes = Encoding.UTF8.GetBytes(HandWrittenForeignEvent);
 
-        var back = CloudEvents().Deserialize(bytes, typeof(byte[])).Should().BeOfType<byte[]>().Subject;
+        var back = CloudEvents().Deserialize(bytes, typeof(byte[])).ValueOrThrow().Should().BeOfType<byte[]>().Subject;
 
         // data_base64 is the spec's carrier for payloads that are not JSON. A byte[] contract must get the decoded
         // bytes, not a JSON re-parse of them.
@@ -235,12 +202,12 @@ public sealed class MessageSerializerTests
     }
 
     [Fact]
-    public void Cloudevent_with_no_data_payload_yields_null()
+    public void Cloudevent_with_no_data_payload_fails()
     {
         var bytes = Encoding.UTF8.GetBytes(
             """{"specversion":"1.0","id":"1","source":"/acme","type":"com.acme.ping","time":"2026-07-19T09:15:00Z"}""");
 
-        CloudEvents().Deserialize(bytes, typeof(SerializerPayload)).Should().BeNull();
+        CloudEvents().Deserialize(bytes, typeof(SerializerPayload)).IsFailure(out _, out _).Should().BeTrue();
     }
 
     [Fact]
@@ -248,12 +215,13 @@ public sealed class MessageSerializerTests
     {
         var bytes = Encoding.UTF8.GetBytes("\"not-an-envelope\"");
 
-        var parse = () => CloudEvents().Deserialize(bytes, typeof(SerializerPayload));
+        var parsed = CloudEvents().Deserialize(bytes, typeof(SerializerPayload));
 
-        parse.Should().Throw<JsonException>(); // structured mode is a JSON object by definition
+        // Structured mode is a JSON object by definition; the seam returns the reason instead of throwing it,
+        // because TryReconstruct runs outside the adapters' try/catch.
+        parsed.IsFailure(out var shape, out _).Should().BeTrue();
+        shape!.Type.Should().Be(AppErrorType.SerializationFailed);
     }
-
-    // ---- MessagePack: contractless, and no typeless resolver anywhere near it ----------------------------------
 
     [Fact]
     public void Unannotated_record_serializes_under_the_contractless_resolver()
@@ -265,7 +233,7 @@ public sealed class MessageSerializerTests
         typeof(SerializerPayload).GetCustomAttributes(typeof(MessagePackObjectAttribute), inherit: false)
             .Should().BeEmpty(); // the premise: no annotation on the contract
         bytes.Should().NotBeEmpty();
-        serializer.Deserialize(bytes, typeof(SerializerPayload)).Should().BeOfType<SerializerPayload>();
+        serializer.Deserialize(bytes, typeof(SerializerPayload)).ValueOrThrow().Should().BeOfType<SerializerPayload>();
     }
 
     [Fact]
@@ -290,36 +258,38 @@ public sealed class MessageSerializerTests
             MessagePackSerializerOptions.Standard.WithResolver(TypelessContractlessStandardResolver.Instance));
         Encoding.UTF8.GetString(hostile).Should().Contain(nameof(SerializerPayload));
 
-        var deserialize = () => new MessagePackMessageSerializer().Deserialize(hostile, typeof(object));
+        var deserialized = new MessagePackMessageSerializer().Deserialize(hostile, typeof(object));
 
         // The SDK's options never reach a typeless resolver, so the ext-typed header is simply not decodable —
         // the sender does not get to choose the CLR type that gets constructed.
-        deserialize.Should().Throw<MessagePackSerializationException>();
+        deserialized.IsFailure(out var hostileError, out _).Should().BeTrue();
+        hostileError!.Type.Should().Be(AppErrorType.SerializationFailed);
     }
 
-    // ---- empty payload: all three return null, per the interface contract ---------------------------------------
-
     [Fact]
-    public void SystemTextJson_returns_null_on_an_empty_payload()
+    public void SystemTextJson_fails_on_an_empty_payload()
     {
         // Was the odd one out: it threw where the contract documents null, and TryReconstruct is called OUTSIDE the
         // adapters' try/catch — so the JsonException escaped the consume loop and killed the whole subscription
         // instead of costing one message. Null routes it to the unparseable path, which dead-letters.
         new SystemTextJsonMessageSerializer()
             .Deserialize(ReadOnlySpan<byte>.Empty, typeof(SerializerPayload))
-            .Should().BeNull();
+            .IsFailure(out var empty, out _).Should().BeTrue();
+        empty!.Type.Should().Be(AppErrorType.SerializationFailed);
     }
 
     [Fact]
-    public void MessagePack_returns_null_on_an_empty_payload()
+    public void MessagePack_fails_on_an_empty_payload()
     {
-        new MessagePackMessageSerializer().Deserialize(ReadOnlySpan<byte>.Empty, typeof(SerializerPayload)).Should().BeNull();
+        new MessagePackMessageSerializer().Deserialize(ReadOnlySpan<byte>.Empty, typeof(SerializerPayload))
+            .IsFailure(out _, out _).Should().BeTrue();
     }
 
     [Fact]
-    public void CloudEvents_returns_null_on_an_empty_payload()
+    public void CloudEvents_fails_on_an_empty_payload()
     {
-        CloudEvents().Deserialize(ReadOnlySpan<byte>.Empty, typeof(SerializerPayload)).Should().BeNull();
+        CloudEvents().Deserialize(ReadOnlySpan<byte>.Empty, typeof(SerializerPayload))
+            .IsFailure(out _, out _).Should().BeTrue();
     }
 
     private static IMessageSerializer Resolve(string name) => name switch

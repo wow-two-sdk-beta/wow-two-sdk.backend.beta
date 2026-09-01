@@ -18,30 +18,10 @@ public static class SagaServiceCollectionExtensions
     /// <param name="services">The service collection.</param>
     /// <param name="configure">Optional saga runtime options (concurrency retries, finalization).</param>
     /// <remarks>
-    /// <para>
-    /// <b>Call it before <c>AddMessageTopology</c>.</b> A saga consumes through ordinary
-    /// <see cref="IEventHandler{TEvent}"/> registrations, and the topology reads the consumed-type set from those
-    /// descriptors — registered afterwards, a saga's events get no broker binding and never arrive. Same rule the
-    /// handler scan already carries.
-    /// </para>
-    /// <para>
-    /// The machine is constructed here, not by the container: its constructor is the definition, so it must run before
-    /// anything can be registered from it. It is then validated — an observed event type with no declared correlation
-    /// throws at startup instead of silently dropping messages.
-    /// </para>
-    /// <para>
-    /// Repeat calls for the same machine are idempotent. One state machine per <typeparamref name="TState"/>: the state
-    /// type is the key the coordinator, the repository and the instance store are all resolved by.
-    /// </para>
+    ///   - Call before <c>AddMessageTopology</c> — a saga registered after it gets no broker binding and never arrives
+    ///   - repeat calls are idempotent
+    ///   - one state machine serves one <typeparamref name="TState"/>
     /// </remarks>
-    /// <example>
-    /// <code>
-    /// services.AddInMemoryEventBus(typeof(Program).Assembly);
-    /// services.AddSaga&lt;OrderStateMachine, OrderSagaState&gt;();
-    /// services.AddSagaRepository&lt;OrderSagaState, EfOrderSagaRepository&gt;();  // optional: durable instead of in-memory
-    /// services.AddMessageTopology();                                            // after the sagas
-    /// </code>
-    /// </example>
     public static IServiceCollection AddSaga<TStateMachine, TState>(this IServiceCollection services, Action<SagaOptions>? configure = null)
         where TStateMachine : SagaStateMachine<TState>, new()
         where TState : class, ISagaState, new()
@@ -55,7 +35,7 @@ public static class SagaServiceCollectionExtensions
         services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<SagaOptions>>().Value);
 
         services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<ISagaTimeoutScheduler, SagaTimeoutScheduler>();
+        services.TryAddSingleton<ISagaTimeoutService, SagaTimeoutService>();
         services.TryAdd(ServiceDescriptor.Singleton(typeof(ISagaRepository<>), typeof(InMemorySagaRepository<>)));
         services.TryAddSingleton(machine);
         services.TryAddSingleton<SagaStateMachine<TState>>(machine);
@@ -66,8 +46,7 @@ public static class SagaServiceCollectionExtensions
 
         foreach (var eventType in machine.ObservedEventTypes)
         {
-            // TryAddEnumerable, not AddTransient: registering the same saga twice would otherwise put two handlers
-            // behind one event type and run every transition twice per message.
+            // Deduplicated, so registering the same saga twice still runs each transition once per message.
             services.TryAddEnumerable(ServiceDescriptor.Transient(
                 typeof(IEventHandler<>).MakeGenericType(eventType),
                 typeof(SagaEventHandler<,>).MakeGenericType(typeof(TState), eventType)));
@@ -91,10 +70,9 @@ public static class SagaServiceCollectionExtensions
     /// <param name="services">The service collection.</param>
     /// <param name="lifetime">Repository lifetime. Scoped by default — a DbContext-backed repository belongs to the message's scope.</param>
     /// <remarks>
-    /// The implementation must honour the optimistic-concurrency contract on <see cref="ISagaRepository{TState}"/>: a
-    /// unique key on the correlation id, a version compare on update and delete, and
-    /// <see cref="SagaConcurrencyException"/> when either is violated. A repository that silently overwrites turns
-    /// concurrent transitions into lost updates, and nothing above it can detect that.
+    ///   - Guard the correlation id with a unique key, so a second insert loses
+    ///   - Compare the stored <see cref="ISagaState.Version"/> on update and delete
+    ///   - Throw <see cref="SagaConcurrencyException"/> on either violation
     /// </remarks>
     public static IServiceCollection AddSagaRepository<TState, TRepository>(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Scoped)
         where TState : class, ISagaState

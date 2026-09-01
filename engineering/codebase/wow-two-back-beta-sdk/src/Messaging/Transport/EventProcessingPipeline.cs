@@ -7,10 +7,10 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
 /// Transport-agnostic processing of one received message: start a CONSUMER span (extracting trace context), run the
-/// ordered <see cref="IConsumeFilter"/> chain around the core (resilience → dedupe via <see cref="IInboxProcessor"/> →
+/// ordered <see cref="IConsumeInterceptor"/> chain around the core (resilience → dedupe via <see cref="IInboxProcessor"/> →
 /// dispatch), then settle via the <see cref="ReceiveContext"/> — acknowledge on success, dead-letter on exhaustion.
 /// Shared by every receive transport (in-memory, RabbitMQ, …). With no filters registered the chain is the bare core.
-/// Registered <see cref="IReceiveObserver"/>s watch the whole message, <see cref="IConsumeObserver"/>s each delivery
+/// Registered <see cref="IReceiveObservingInterceptor"/>s watch the whole message, <see cref="IConsumeObservingInterceptor"/>s each delivery
 /// attempt; unlike a filter, neither can short-circuit the chain or change settlement.
 /// Under <see cref="DelayedRetryOptions"/> a retryable failure is settled and re-published for a later delivery instead
 /// of waiting inside the resilience pipeline, so the backoff no longer holds the consumer slot.
@@ -20,16 +20,16 @@ internal sealed partial class EventProcessingPipeline(
     EventDispatcherRegistry registry,
     IEventBus bus,
     IEventResiliencePipeline resilience,
-    IEnumerable<IConsumeFilter> filters,
-    IEnumerable<IReceiveObserver> receiveObservers,
-    IEnumerable<IConsumeObserver> consumeObservers,
+    IEnumerable<IConsumeInterceptor> filters,
+    IEnumerable<IReceiveObservingInterceptor> receiveObservers,
+    IEnumerable<IConsumeObservingInterceptor> consumeObservers,
     IMessagingMetrics metrics,
     ILogger<EventProcessingPipeline> logger,
     DelayedRetryCoordinator? delayedRetry = null)
 {
     // Materialized once: the hot path only pays a length check when nothing is observing.
-    private readonly IReceiveObserver[] _receiveObservers = [.. receiveObservers];
-    private readonly IConsumeObserver[] _consumeObservers = [.. consumeObservers];
+    private readonly IReceiveObservingInterceptor[] _receiveObservers = [.. receiveObservers];
+    private readonly IConsumeObservingInterceptor[] _consumeObservers = [.. consumeObservers];
 
     private ConsumeDelegate? _chain;
 
@@ -38,7 +38,7 @@ internal sealed partial class EventProcessingPipeline(
         ArgumentNullException.ThrowIfNull(context);
         var envelope = context.Envelope;
 
-        using var activity = MessagingDiagnostics.Source.StartActivity(envelope.Destination, ActivityKind.Consumer, ExtractParentContext(envelope.Headers));
+        using var activity = MessagingDiagnosticConstants.Source.StartActivity(envelope.Destination, ActivityKind.Consumer, ExtractParentContext(envelope.Headers));
         if (activity is not null)
         {
             activity.SetTag("messaging.operation.name", "process");
@@ -174,9 +174,9 @@ internal sealed partial class EventProcessingPipeline(
 
     private static ActivityContext ExtractParentContext(IReadOnlyDictionary<string, string> headers)
     {
-        if (headers.TryGetValue(MessagingDiagnostics.TraceParentHeader, out var traceParent))
+        if (headers.TryGetValue(MessagingDiagnosticConstants.TraceParentHeader, out var traceParent))
         {
-            headers.TryGetValue(MessagingDiagnostics.TraceStateHeader, out var traceState);
+            headers.TryGetValue(MessagingDiagnosticConstants.TraceStateHeader, out var traceState);
             if (ActivityContext.TryParse(traceParent, traceState, out var context))
                 return context;
         }

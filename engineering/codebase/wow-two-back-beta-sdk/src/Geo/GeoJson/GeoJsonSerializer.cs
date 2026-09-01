@@ -3,20 +3,15 @@ using System.Text.Json;
 
 namespace WoW.Two.Sdk.Backend.Beta.Geo.GeoJson;
 
-/// <summary>
-/// Reads and writes the supported GeoJSON objects (RFC 7946) — Point / LineString / Polygon geometries,
-/// Features, and FeatureCollections — with the correct <c>[longitude, latitude(, altitude)]</c> position
-/// ordering. Feature <c>properties</c> round-trip as raw <see cref="JsonElement"/> values. Hand-rolled over
-/// <see cref="Utf8JsonWriter"/>/<see cref="JsonDocument"/>; no external dependency.
-/// </summary>
-public static class GeoJsonSerializer
+/// <summary>Reads and writes GeoJSON through System.Text.Json.</summary>
+public sealed class GeoJsonSerializer : IGeoJsonSerializer
 {
     private static readonly JsonWriterOptions WriterOptions = new() { Indented = false };
 
     /// <summary>Serializes a geometry to a GeoJSON string.</summary>
     /// <param name="geometry">The geometry to serialize.</param>
     /// <returns>The GeoJSON text.</returns>
-    public static string Serialize(GeoJsonGeometry geometry)
+    public string Serialize(GeoJsonGeometry geometry)
     {
         ArgumentNullException.ThrowIfNull(geometry);
         return Write(writer => WriteGeometry(writer, geometry));
@@ -25,7 +20,7 @@ public static class GeoJsonSerializer
     /// <summary>Serializes a feature to a GeoJSON string.</summary>
     /// <param name="feature">The feature to serialize.</param>
     /// <returns>The GeoJSON text.</returns>
-    public static string Serialize(GeoJsonFeature feature)
+    public string Serialize(GeoJsonFeature feature)
     {
         ArgumentNullException.ThrowIfNull(feature);
         return Write(writer => WriteFeature(writer, feature));
@@ -34,7 +29,7 @@ public static class GeoJsonSerializer
     /// <summary>Serializes a feature collection to a GeoJSON string.</summary>
     /// <param name="collection">The collection to serialize.</param>
     /// <returns>The GeoJSON text.</returns>
-    public static string Serialize(GeoJsonFeatureCollection collection)
+    public string Serialize(GeoJsonFeatureCollection collection)
     {
         ArgumentNullException.ThrowIfNull(collection);
         return Write(writer =>
@@ -53,7 +48,7 @@ public static class GeoJsonSerializer
     /// <param name="json">The GeoJSON geometry text.</param>
     /// <returns>The parsed geometry.</returns>
     /// <exception cref="NotSupportedException">The geometry <c>type</c> is not one of Point/LineString/Polygon.</exception>
-    public static GeoJsonGeometry ParseGeometry(string json)
+    public GeoJsonGeometry ParseGeometry(string json)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
         using var document = JsonDocument.Parse(json);
@@ -63,7 +58,7 @@ public static class GeoJsonSerializer
     /// <summary>Parses a GeoJSON Feature.</summary>
     /// <param name="json">The GeoJSON feature text.</param>
     /// <returns>The parsed feature.</returns>
-    public static GeoJsonFeature ParseFeature(string json)
+    public GeoJsonFeature ParseFeature(string json)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
         using var document = JsonDocument.Parse(json);
@@ -73,7 +68,7 @@ public static class GeoJsonSerializer
     /// <summary>Parses a GeoJSON FeatureCollection.</summary>
     /// <param name="json">The GeoJSON feature-collection text.</param>
     /// <returns>The parsed collection (empty when there are no features).</returns>
-    public static GeoJsonFeatureCollection ParseFeatureCollection(string json)
+    public GeoJsonFeatureCollection ParseFeatureCollection(string json)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
         using var document = JsonDocument.Parse(json);

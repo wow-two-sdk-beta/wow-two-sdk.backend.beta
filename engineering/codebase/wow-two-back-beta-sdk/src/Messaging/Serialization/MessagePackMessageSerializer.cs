@@ -1,5 +1,7 @@
 using MessagePack;
 using MessagePack.Resolvers;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 
@@ -9,31 +11,13 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 /// <c>services.AddMessageSerializer&lt;MessagePackMessageSerializer&gt;()</c>.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Defaults to <see cref="ContractlessStandardResolver"/> so plain event records serialize with no
-/// <c>[MessagePackObject]</c> annotation — a contract that works under the System.Text.Json default keeps working
-/// after the swap. The resolver still honours <c>[MessagePackObject]</c>/<c>[Key]</c> where a contract declares them,
-/// so integer-keyed contracts (smaller and faster still) remain available per type.
-/// </para>
-/// <para>
-/// Security: the default options apply <see cref="MessagePackSecurity.UntrustedData"/> — broker payloads are untrusted
-/// input, and this caps object-graph depth and uses collision-resistant hashing for map keys. The <em>typeless</em>
-/// resolvers (<c>TypelessContractlessStandardResolver</c>) are deliberately NOT used: they embed CLR type names in the
-/// payload and instantiate whatever the sender names, which is a remote-code-execution vector. Type identity belongs
-/// to <see cref="IMessageTypeResolver"/> and travels in the <c>wt-event-type</c> header, not in the body.
-/// </para>
-/// <para>
-/// Compression is off by default. <c>MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4Block)</c>
-/// changes the bytes on the wire, so every producer and consumer of a stream has to be switched together.
-/// </para>
+///   - defaults to <see cref="ContractlessStandardResolver"/>, so a plain event record needs no <c>[MessagePackObject]</c>
+///   - Never pass a typeless resolver — it instantiates whatever type the sender names
+///   - turning compression on changes the bytes on the wire, so every producer and consumer of a stream switches together
 /// </remarks>
 public sealed class MessagePackMessageSerializer : IMessageSerializer
 {
     /// <summary>The content type this serializer stamps — the de-facto MessagePack media type.</summary>
-    /// <remarks>
-    /// IANA also registers <c>application/vnd.msgpack</c>; <c>application/x-msgpack</c> is the spelling in widest
-    /// production use. A peer expecting the other spelling needs the value aligned on both ends.
-    /// </remarks>
     public const string MessagePackContentType = "application/x-msgpack";
 
     private static readonly MessagePackSerializerOptions DefaultOptions = MessagePackSerializerOptions.Standard
@@ -58,14 +42,30 @@ public sealed class MessagePackMessageSerializer : IMessageSerializer
     }
 
     /// <inheritdoc />
-    /// <remarks>
-    /// The <see cref="ReadOnlySpan{T}"/> parameter is copied once via <see cref="ReadOnlySpan{T}.ToArray"/>: MessagePack's
-    /// entry points take <see cref="ReadOnlyMemory{T}"/> or a <see cref="System.Buffers.ReadOnlySequence{T}"/>, neither of
-    /// which can wrap a span. See the seam note in <c>serialization.md</c>.
-    /// </remarks>
-    public object? Deserialize(ReadOnlySpan<byte> data, Type bodyType)
+    public Result<object> Deserialize(ReadOnlySpan<byte> data, Type bodyType)
     {
         ArgumentNullException.ThrowIfNull(bodyType);
-        return data.IsEmpty ? null : MessagePackSerializer.Deserialize(bodyType, data.ToArray(), _options);
+
+        if (data.IsEmpty)
+        {
+            return Result<object>.Fail(AppErrorFactory.SerializationFailed(
+                $"An empty payload cannot be decoded into '{bodyType.Name}'."));
+        }
+
+        try
+        {
+            // MessagePack's entry points take ReadOnlyMemory or a ReadOnlySequence, so the span is copied once — seam note in serialization.md.
+            var body = MessagePackSerializer.Deserialize(bodyType, data.ToArray(), _options);
+
+            return body is null
+                ? Result<object>.Fail(AppErrorFactory.SerializationFailed(
+                    $"The payload decoded to null for '{bodyType.Name}'."))
+                : Result<object>.Ok(body);
+        }
+        catch (MessagePackSerializationException exception)
+        {
+            return Result<object>.Fail(AppErrorFactory.SerializationFailed(
+                $"The payload is not valid MessagePack for '{bodyType.Name}'.", exception));
+        }
     }
 }

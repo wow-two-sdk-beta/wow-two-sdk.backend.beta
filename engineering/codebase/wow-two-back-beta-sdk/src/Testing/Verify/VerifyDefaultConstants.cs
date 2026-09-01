@@ -5,11 +5,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Verify;
 
 /// <summary>
 /// Conventional Verify defaults applied for the Wow Two backend SDK:
-/// <list type="bullet">
-///   <item>Sub-folder per test class (`UseDirectory("Snapshots")`).</item>
-///   <item>Counter-name suffix for stable ordering.</item>
-///   <item>Pre-registered scrubbers for <c>traceId</c>, <c>spanId</c>, <c>requestId</c>, ULID/GUID values, RFC-3339 timestamps.</item>
-/// </list>
+/// - Sub-folder per test class (`UseDirectory("Snapshots")`).
+/// - Counter-name suffix for stable ordering.
+/// - Pre-registered scrubbers for <c>traceId</c>, <c>spanId</c>, <c>requestId</c>, ULID/GUID values, RFC-3339 timestamps.
 ///
 /// Wire by adding to a `ModuleInitializer` in the consumer test project:
 /// <code>

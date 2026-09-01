@@ -12,15 +12,3 @@ public interface IErrorMessageMapper
     /// <param name="context">The current request context (carries the culture).</param>
     string Map(AppError error, HttpContext context);
 }
-
-/// <summary>Maps an <see cref="AppError"/> to its own <see cref="AppError.Message"/> — the default passthrough.</summary>
-public sealed class DefaultErrorMessageMapper : IErrorMessageMapper
-{
-    /// <inheritdoc/>
-    public string Map(AppError error, HttpContext context)
-    {
-        ArgumentNullException.ThrowIfNull(error);
-
-        return error.Message;
-    }
-}

@@ -1,6 +1,7 @@
 using AspNet.Security.OAuth.GitHub;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
+using WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.GitHub;
 
@@ -23,9 +24,9 @@ public static class GitHubOAuthServiceCollectionExtensions
         {
             o.ClientId = clientId;
             o.ClientSecret = clientSecret;
-            OAuthBaseline.ApplyBaseline(o, scopes);
+            o.ApplyBaseline(scopes);
             configure?.Invoke(o);
-            OAuthBaseline.StampProvider(o);
+            o.StampProvider();
         });
     }
 }

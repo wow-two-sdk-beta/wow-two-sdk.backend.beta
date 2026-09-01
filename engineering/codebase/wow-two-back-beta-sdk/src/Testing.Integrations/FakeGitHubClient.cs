@@ -7,11 +7,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Integrations;
 /// calls the real GitHub REST API (which would also need a signed-in user's OAuth token).
 /// </summary>
 /// <remarks>
-/// Generalizes drydock's <c>StubGitHubClient</c>. Defaults to the happy path (<see cref="RepoCheck.Exists"/>,
-/// file present, no releases, no workflow runs); flip the settable properties — or use the fluent
-/// <c>With…</c> helpers — to drive the NotFound / Unauthorized / no-CI / never-built / latest-not-ready branches.
-/// Each setting is a single canned outcome returned for every call, mirroring the proven stub; richer
-/// per-repo behaviour is out of scope for the canned fake.
+///   - defaults to the happy path — repo exists, file present, no releases, no workflow runs
+///   - flip the properties, or chain the <c>With…</c> helpers, for the failure branches
+///   - each setting is one canned outcome for every call, never varying per repo
 /// </remarks>
 public sealed class FakeGitHubClient : IGitHubClient
 {

@@ -53,7 +53,7 @@ public static class MessagingServiceCollectionExtensions
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<InMemoryEventChannel>();
-        services.TryAddSingleton<IEventScheduler, InMemoryEventScheduler>();
+        services.TryAddSingleton<IDelayedDeliveryService, InMemoryDelayedDeliveryService>();
         services.TryAddSingleton<IDeadLetterRepository, InMemoryDeadLetterRepository>();
         services.TryAddSingleton<ISendTransport, InMemorySendTransport>();
         services.TryAddSingleton<IReceiveTransport, InMemoryReceiveTransport>();
@@ -82,7 +82,7 @@ public static class MessagingServiceCollectionExtensions
         services.TryAddSingleton<IMessageSerializer, SystemTextJsonMessageSerializer>();
         services.TryAddSingleton<MessageSerializerRegistry>(); // selects the deserializer by the received wt-content-type; one registered serializer = today's behaviour
         GetOrAddMessageTypeRegistry(services); // ensure the type registry singleton exists (populated by the handler/contract scan)
-        services.TryAddSingleton<IMessageTypeResolver, DefaultMessageTypeResolver>();
+        services.TryAddSingleton<IMessageTypeMapper, MessageTypeMapper>();
         services.AddMessagePump();
         return services;
     }
@@ -118,7 +118,7 @@ public static class MessagingServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Register the in-memory reliability defaults — resilience (<see cref="AddEventResilienceDefaults"/>) plus the in-memory <see cref="IDeadLetterRepository"/> and <see cref="IEventScheduler"/>. A broker adapter uses its native DLQ/scheduling instead.</summary>
+    /// <summary>Register the in-memory reliability defaults — resilience (<see cref="AddEventResilienceDefaults"/>) plus the in-memory <see cref="IDeadLetterRepository"/> and <see cref="IDelayedDeliveryService"/>. A broker adapter uses its native DLQ/scheduling instead.</summary>
     /// <param name="services">The service collection.</param>
     public static IServiceCollection AddInMemoryReliability(this IServiceCollection services)
     {
@@ -127,7 +127,7 @@ public static class MessagingServiceCollectionExtensions
         services.AddEventResilienceDefaults();
         services.TryAddSingleton<InMemoryEventChannel>();
         services.TryAddSingleton<IDeadLetterRepository, InMemoryDeadLetterRepository>();
-        services.TryAddSingleton<IEventScheduler, InMemoryEventScheduler>();
+        services.TryAddSingleton<IDelayedDeliveryService, InMemoryDelayedDeliveryService>();
         return services;
     }
 
@@ -186,10 +186,8 @@ public static class MessagingServiceCollectionExtensions
     /// this service no longer sends.
     /// </summary>
     /// <remarks>
-    /// Swaps the <em>default</em> descriptor specifically — the last <see cref="IMessageSerializer"/> registered, which is
-    /// the one MS DI resolves for the singular service. <c>Replace</c> removes the <em>first</em> match instead, which with
-    /// a receive-only serializer registered would drop that format and leave the default untouched — the exact inverse of
-    /// what the call says. With only the shipped default registered the two are the same descriptor.
+    ///   - swaps the last-registered <see cref="IMessageSerializer"/> — the one MS DI resolves as the default
+    ///   - leaves a receive-only serializer in place, its format still decodable
     /// </remarks>
     /// <typeparam name="TSerializer">The serializer implementation.</typeparam>
     /// <param name="services">The service collection.</param>
@@ -211,20 +209,9 @@ public static class MessagingServiceCollectionExtensions
     /// send path keeps whatever <see cref="AddMessageSerializer{TSerializer}"/> (or the shipped default) put there.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// This is what fills <see cref="MessageSerializerRegistry"/>. The registry selects a deserializer by the received
-    /// <c>wt-content-type</c>, but it is built from <c>IEnumerable&lt;IMessageSerializer&gt;</c> — and with
-    /// <see cref="AddMessageSerializer{TSerializer}"/> as the only registration path that enumerable could never hold more
-    /// than one entry, so the selection had nothing to select between. Call this once per extra format a producer on this
-    /// stream might send.
-    /// </para>
-    /// <para>
-    /// The descriptor is inserted <em>ahead of</em> the default rather than appended, because MS DI resolves the singular
-    /// <see cref="IMessageSerializer"/> to the last descriptor: appending would silently hand the send path to a serializer
-    /// registered for receive. Registering the default first is for the same reason — <c>TryAddSingleton</c> in
-    /// <see cref="AddEventResilienceDefaults"/> matches on service type alone, so a bare call placed ahead of it would
-    /// suppress the System.Text.Json default entirely. Repeat calls for one implementation type are no-ops.
-    /// </para>
+    ///   - call once per extra format a producer on this stream might send
+    ///   - fills <see cref="MessageSerializerRegistry"/>, which picks the deserializer by <c>wt-content-type</c>
+    ///   - idempotent — a repeat call for one implementation type is a no-op
     /// </remarks>
     /// <typeparam name="TSerializer">The serializer implementation whose <see cref="IMessageSerializer.ContentType"/> becomes decodable.</typeparam>
     /// <param name="services">The service collection.</param>
@@ -257,11 +244,11 @@ public static class MessagingServiceCollectionExtensions
     /// <summary>Replace the default message-type resolver (e.g. a URN- or schema-registry-backed one).</summary>
     /// <typeparam name="TResolver">The resolver implementation.</typeparam>
     /// <param name="services">The service collection.</param>
-    public static IServiceCollection AddMessageTypeResolver<TResolver>(this IServiceCollection services)
-        where TResolver : class, IMessageTypeResolver
+    public static IServiceCollection AddMessageTypeMapper<TResolver>(this IServiceCollection services)
+        where TResolver : class, IMessageTypeMapper
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.Replace(ServiceDescriptor.Singleton<IMessageTypeResolver, TResolver>());
+        services.Replace(ServiceDescriptor.Singleton<IMessageTypeMapper, TResolver>());
         return services;
     }
 
@@ -292,11 +279,11 @@ public static class MessagingServiceCollectionExtensions
     /// <summary>Register a consume-pipeline filter — ordered by registration, runs once per message around the resilience/dedupe/dispatch core (fault-publish, wire-tap, claim-check, rate-limit, …).</summary>
     /// <typeparam name="TFilter">The filter implementation.</typeparam>
     /// <param name="services">The service collection.</param>
-    public static IServiceCollection AddConsumeFilter<TFilter>(this IServiceCollection services)
-        where TFilter : class, IConsumeFilter
+    public static IServiceCollection AddConsumeInterceptor<TFilter>(this IServiceCollection services)
+        where TFilter : class, IConsumeInterceptor
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.AddSingleton<IConsumeFilter, TFilter>();
+        services.AddSingleton<IConsumeInterceptor, TFilter>();
         return services;
     }
 

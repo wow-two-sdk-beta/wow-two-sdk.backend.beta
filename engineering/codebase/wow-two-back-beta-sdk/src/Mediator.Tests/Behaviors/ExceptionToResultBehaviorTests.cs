@@ -10,7 +10,7 @@ using Xunit;
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests.Behaviors;
 
 /// <summary>
-/// <see cref="ExceptionToResultBehavior{TRequest,TResponse}"/> — converts handler throws into an
+/// <see cref="ExceptionMappingInterceptor{TRequest,TResponse}"/> — converts handler throws into an
 /// <c>AppResult.Failure</c> for AppResult-returning requests; OCE maps to Canceled/OperationTimeout;
 /// non-AppResult responses rethrow as an <see cref="AppException"/>.
 /// </summary>
@@ -22,10 +22,10 @@ public sealed class ExceptionToResultBehaviorTests
 
     private sealed record PlainReq : IRequest<string>;
 
-    private static AppErrorObserver Observer()
-        => new(NullLogger<AppErrorObserver>.Instance, new DefaultErrorNatureClassifier());
+    private static ErrorRecordingService Observer()
+        => new(NullLogger<ErrorRecordingService>.Instance, new DefaultErrorNatureClassifier());
 
-    private static ExceptionToResultBehavior<TReq, TResp> Behavior<TReq, TResp>()
+    private static ExceptionMappingInterceptor<TReq, TResp> Behavior<TReq, TResp>()
         where TReq : notnull
         => new(Observer(), new ExceptionMapper([]));
 

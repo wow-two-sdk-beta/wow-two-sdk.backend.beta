@@ -65,18 +65,3 @@ public sealed class Argon2PasswordHasher<TUser> : IPasswordHasher<TUser> where T
         return argon.GetBytes(HashSize);
     }
 }
-
-/// <summary>Registration helpers.</summary>
-public static class Argon2ServiceCollectionExtensions
-{
-    /// <summary>Replaces the default <c>IPasswordHasher&lt;TUser&gt;</c> with Argon2id; must run after <c>AddIdentityCore</c> / <c>AddDefaultIdentity</c>.</summary>
-    /// <param name="services">The service collection to configure.</param>
-    public static IServiceCollection UseArgon2PasswordHasher<TUser>(this IServiceCollection services)
-        where TUser : class
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        services.RemoveAll<IPasswordHasher<TUser>>();
-        services.AddSingleton<IPasswordHasher<TUser>, Argon2PasswordHasher<TUser>>();
-        return services;
-    }
-}

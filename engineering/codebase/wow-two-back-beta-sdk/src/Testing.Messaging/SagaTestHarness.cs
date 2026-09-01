@@ -9,19 +9,6 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
-/// <summary>Timing and clock defaults for a <see cref="SagaTestHarness{TState}"/>.</summary>
-public sealed record SagaHarnessOptions
-{
-    /// <summary>Where the harness's <see cref="FakeTimeProvider"/> starts. Fixed by default, so <see cref="ISagaState.FinalizedAtUtc"/> and a timeout's due time are exact values a test can assert on.</summary>
-    public DateTimeOffset StartTime { get; set; } = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-
-    /// <summary>How far past a timeout's due time <see cref="SagaTestHarness{TState}.FireTimeoutAsync"/> advances. Default 1s — enough that a due-at-exactly-now comparison cannot go the wrong way.</summary>
-    public TimeSpan TimeoutOvershoot { get; set; } = TimeSpan.FromSeconds(1);
-
-    /// <summary>Timings for the message harness underneath — quiet period, wait budget.</summary>
-    public MessagingHarnessOptions Messaging { get; set; } = new();
-}
-
 /// <summary>Entry point for <see cref="SagaTestHarness{TState}"/> — non-generic so both type arguments can be given explicitly.</summary>
 public static class SagaTestHarness
 {
@@ -39,6 +26,9 @@ public static class SagaTestHarness
     /// <param name="options">Harness timings and clock start. Defaults to <see cref="SagaHarnessOptions"/>'s own defaults.</param>
     /// <param name="cancellationToken">Cancellation token for host startup.</param>
     /// <returns>A started harness. Dispose it (<c>await using</c>) to stop the host.</returns>
+    /// <remarks>
+    ///   - <paramref name="configureSaga"/> and <paramref name="configureBus"/> run after the harness defaults, so a test can set a real schedule back
+    /// </remarks>
     public static async Task<SagaTestHarness<TState>> StartAsync<TStateMachine, TState>(
         Action<IServiceCollection>? configureServices = null,
         Action<SagaOptions>? configureSaga = null,
@@ -57,30 +47,23 @@ public static class SagaTestHarness
         var messaging = await MessagingTestHarness.StartAsync(
             services =>
             {
-                // Replace, not TryAdd: AddInMemoryEventBus has already registered TimeProvider.System by the time this
-                // runs, and everything time-driven — the scheduler that parks a timeout, the coordinator's retry delay,
-                // FinalizedAtUtc — has to read the same faked clock the test advances.
+                // Everything time-driven reads one clock, so the registered TimeProvider is replaced with the fake.
                 services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
 
                 configureServices?.Invoke(services);
                 services.AddSaga<TStateMachine, TState>(saga =>
                 {
-                    // Zero, because the clock is faked: the coordinator sleeps on TimeProvider between concurrency
-                    // retries, and a delay that only elapses when a test advances time would deadlock the replay this
-                    // harness exists to make observable. Overridable — configureSaga runs after.
+                    // Under the faked clock a retry delay only elapses on a test advance, deadlocking the replay.
                     saga.ConcurrencyRetryDelay = TimeSpan.Zero;
                     configureSaga?.Invoke(saga);
                 });
 
-                // Last, and closed over TState, so the decorator wins over the open-generic repository AddSaga just
-                // registered.
+                // Last, and closed over TState, so the decorator wins over AddSaga's open-generic repository.
                 services.AddSagaRecorder(recorder, repository);
             },
             bus =>
             {
-                // Same reason as the concurrency delay above: the resilience pipeline backs off on TimeProvider, so a
-                // faulting message under a faked clock would never reach its second attempt. The attempt *budget* is
-                // untouched — only the wait between attempts goes. Overridable — configureBus runs after.
+                // Under the faked clock a backoff never elapses, so a faulting message never reaches attempt two.
                 bus.Retry = bus.Retry with { Backoff = BackoffKind.None };
                 configureBus?.Invoke(bus);
             },
@@ -99,24 +82,9 @@ public static class SagaTestHarness
 /// </summary>
 /// <typeparam name="TState">The saga state type.</typeparam>
 /// <remarks>
-/// <para>
-/// Wraps a <see cref="MessagingTestHarness"/> rather than replacing it — <see cref="Messaging"/> is the same message
-/// surface, because most saga assertions are about both halves: this event arrived, so the instance moved <i>and</i>
-/// published that one. The saga half is recorded at the <see cref="ISagaRepository{TState}"/>; see
-/// <see cref="SagaRecorder{TState}"/> for why the observer seam cannot reach it.
-/// </para>
-/// <para>
-/// The clock is a <see cref="FakeTimeProvider"/>, always. A saga is the part of the SDK most driven by time, and a real
-/// clock makes a timeout test a race — <see cref="FireTimeoutAsync"/> waits for the timeout to be parked on the
-/// transport, advances exactly to its due time, and returns when the saga has consumed it, so no step is a guess.
-/// </para>
-/// <para>
-/// A faked clock has one consequence worth knowing: every backoff in the SDK sleeps on <c>TimeProvider</c>, so a delay
-/// nothing advances past never elapses. The harness therefore zeroes the two that would otherwise hang a test rather
-/// than slow it — <see cref="SagaOptions.ConcurrencyRetryDelay"/> and the consume pipeline's retry backoff. Attempt
-/// budgets are untouched, and <c>configureSaga</c> / <c>configureBus</c> both run afterwards, so a test that wants a
-/// real schedule sets one and advances <see cref="Time"/> itself.
-/// </para>
+///   - the clock is always a <see cref="FakeTimeProvider"/>
+///   - advance <see cref="Time"/>, or fire a parked timeout with <see cref="FireTimeoutAsync"/>
+///   - a faked clock never elapses a backoff, so <see cref="SagaOptions.ConcurrencyRetryDelay"/> and the consume retry backoff are zeroed, never the attempt budgets
 /// </remarks>
 public sealed class SagaTestHarness<TState> : IAsyncDisposable
     where TState : class, ISagaState, new()
@@ -334,9 +302,9 @@ public sealed class SagaTestHarness<TState> : IAsyncDisposable
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The timeout as it went out.</returns>
     /// <remarks>
-    /// Consuming a timeout is not the same as acting on it: one the instance has cancelled or superseded arrives with a
-    /// stale token and is dropped. That is the point — this returns either way, and
-    /// <see cref="Transitions"/> is where the difference shows.
+    ///   - a cancelled or superseded timeout arrives with a stale token and is dropped
+    ///   - returns either way
+    ///   - <see cref="Transitions"/> is where the difference shows
     /// </remarks>
     public async Task<RecordedSagaTimeout> FireTimeoutAsync(
         string? name = null,
@@ -353,17 +321,14 @@ public sealed class SagaTestHarness<TState> : IAsyncDisposable
         if (delta > TimeSpan.Zero)
             Time.Advance(delta);
 
-        // The scheduler re-enqueues the envelope it parked, so the delivery carries the same message id — which makes
-        // this a wait on the exact timeout rather than on any message of its type.
+        // The scheduler re-enqueues the parked envelope, so the delivery carries the same message id.
         await Messaging.Consumed.WaitForAsync(
             message => string.Equals(message.MessageId, scheduled.MessageId, StringComparison.Ordinal),
             count: 1,
             timeout,
             cancellationToken);
 
-        // Delivery is not the end of it. A dropped timeout writes nothing, so its record is only appended when the
-        // message finishes — after the consume observers — and returning on the delivery alone would hand back a
-        // harness whose Transitions log is a beat behind.
+        // A dropped timeout writes nothing, so its record lands only when the message finishes.
         await Transitions.WaitForAsync(
             transition => string.Equals(transition.Envelope?.MessageId, scheduled.MessageId, StringComparison.Ordinal),
             count: 1,

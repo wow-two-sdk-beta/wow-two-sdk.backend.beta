@@ -1,4 +1,4 @@
-namespace WoW.Two.Sdk.Backend.Beta.Geo.GeohashEncoder;
+namespace WoW.Two.Sdk.Backend.Beta.Geo.Geohash;
 
 /// <summary>A cardinal direction for locating an adjacent geohash cell.</summary>
 public enum GeohashDirection

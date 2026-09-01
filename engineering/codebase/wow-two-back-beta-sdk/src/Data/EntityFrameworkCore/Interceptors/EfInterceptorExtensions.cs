@@ -12,17 +12,16 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Interceptors;
 /// routes through <see cref="AddRegisteredInterceptors"/>; a bespoke registration should call it too.
 /// </summary>
 /// <remarks>
-/// <para><strong>Ordering.</strong> Interceptors attach in DI registration order, and the whole DI set is attached
-/// <em>before</em> the caller's provider configurator runs. So an interceptor registered first via
-/// <c>AddEfInterceptor</c> runs first, and anything a caller attaches by hand inside its
-/// <c>configureProvider</c> callback runs after the entire DI set. A guard interceptor that must see the change
-/// tracker before audit/soft-delete/tenant stamping only has to be registered before them.</para>
-/// <para><strong>Idempotence.</strong> Attachment is de-duplicated by reference, so calling this twice, or calling it
-/// alongside <c>UseAuditInterceptor</c>/<c>UseSoftDeleteInterceptor</c>, cannot double-stamp.</para>
+///   - interceptors attach in DI registration order
+///   - register a guard ahead of audit / soft-delete / tenant stamping
+///   - de-duplicates by reference, so repeating the call or mixing it with <c>UseAuditInterceptor</c> / <c>UseSoftDeleteInterceptor</c> cannot double-stamp
 /// </remarks>
 public static class EfInterceptorExtensions
 {
     /// <summary>Attaches every <see cref="IInterceptor"/> registered via <c>AddEfInterceptor</c>/<c>AddEfSaveChangesInterceptor</c> that is not already attached to this builder.</summary>
+    /// <remarks>
+    ///   - call before configuring the database provider, so a hand-attached interceptor runs after the DI set
+    /// </remarks>
     /// <param name="builder">The DbContext options builder being configured.</param>
     /// <param name="serviceProvider">The provider the interceptors are resolved from.</param>
     /// <returns>The same <paramref name="builder"/> for chaining.</returns>

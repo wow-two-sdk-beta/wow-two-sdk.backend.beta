@@ -17,6 +17,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 /// </remarks>
 public sealed class NatsAdapterOwnedHeaderTests : IAsyncLifetime
 {
+    private static readonly AdapterOwnedHeaderContract Contract = new();
     // Generic Testcontainers (no NATS module) — nats:2.10 with `-js` enables JetStream.
     // The nats image is shell-less (distroless), so an exec-based port probe can't run; wait on the
     // server's ready log line instead (read via the Docker API, no in-container shell needed).
@@ -41,9 +42,9 @@ public sealed class NatsAdapterOwnedHeaderTests : IAsyncLifetime
         using var host = await StartHostAsync(suffix);
         var harness = MessagingTestHarness.Attach(host.Services);
 
-        var consumed = await AdapterOwnedHeaderContract.PublishUntilConsumedAsync(harness, tag);
+        var consumed = await Contract.PublishUntilConsumedAsync(harness, tag);
 
-        AdapterOwnedHeaderContract.AssertRoundTrip(consumed, tag);
+        Contract.AssertRoundTrip(consumed, tag);
 
         await host.StopAsync();
     }

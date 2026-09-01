@@ -8,41 +8,6 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
-/// <summary>A request contract answered by <see cref="PriceRequestedHandler"/>.</summary>
-public sealed record PriceRequested(string OrderId) : IEvent;
-
-/// <summary>The response contract for <see cref="PriceRequested"/>.</summary>
-public sealed record PriceQuoted(string OrderId, decimal Amount) : IEvent;
-
-/// <summary>A request nothing ever answers — the timeout path.</summary>
-public sealed record SilentRequested(string OrderId) : IEvent;
-
-/// <summary>Responds through the documented responder-side helper.</summary>
-public sealed class PriceRequestedHandler : IEventHandler<PriceRequested>
-{
-    public ValueTask HandleAsync(EventContext<PriceRequested> context, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        return context.RespondAsync(new PriceQuoted(context.Event.OrderId, 42m), cancellationToken);
-    }
-}
-
-/// <summary>Consumes a request and deliberately never replies.</summary>
-public sealed class SilentRequestedHandler : IEventHandler<SilentRequested>
-{
-    public ValueTask HandleAsync(EventContext<SilentRequested> context, CancellationToken cancellationToken) => ValueTask.CompletedTask;
-}
-
-/// <summary>
-/// Exists so a <see cref="PriceQuoted"/> that reaches the pipeline dispatches to something. Nothing asserts on this
-/// handler's behaviour — what matters is the <see cref="ConsumeOutcome"/>, which is <c>Success</c> only when a reply was
-/// <i>not</i> intercepted by the request client's consume filter.
-/// </summary>
-public sealed class PriceQuotedHandler : IEventHandler<PriceQuoted>
-{
-    public ValueTask HandleAsync(EventContext<PriceQuoted> context, CancellationToken cancellationToken) => ValueTask.CompletedTask;
-}
-
 /// <summary>Request/response over the shared bus: the round trip, the timeout, and that a timed-out request leaves nothing behind.</summary>
 public sealed class RequestClientTests
 {

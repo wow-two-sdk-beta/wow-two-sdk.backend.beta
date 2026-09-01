@@ -16,7 +16,7 @@ public static class MigrationServiceCollectionExtensions
     /// <param name="configure">An optional hook to override <see cref="MigrationOptions"/> (e.g. enable rollback for dev hosts).</param>
     public static IServiceCollection AddDatabaseBespokeMigrations(
         this IServiceCollection services, Assembly sqlAssembly, Action<MigrationOptions>? configure = null) =>
-        services.AddDatabaseBespokeMigrations(_ => new EmbeddedResourceMigrationSource(sqlAssembly), configure);
+        services.AddDatabaseBespokeMigrations(_ => new EmbeddedResourceMigrationBroker(sqlAssembly), configure);
 
     /// <summary>Adds the filesystem SQL migrator over an on-disk migrations root (the CLI and dev default — schema is edited live).</summary>
     /// <remarks>Wire from the CLI host; reads <c>{root}/NNN-name/{Apply,Rollback}.sql</c> and requires an <see cref="IDbConnectionFactory"/> registered alongside.</remarks>
@@ -25,19 +25,19 @@ public static class MigrationServiceCollectionExtensions
     /// <param name="configure">An optional hook to override <see cref="MigrationOptions"/> (e.g. enable rollback for dev hosts).</param>
     public static IServiceCollection AddDatabaseBespokeMigrations(
         this IServiceCollection services, string migrationsRoot, Action<MigrationOptions>? configure = null) =>
-        services.AddDatabaseBespokeMigrations(_ => new FileSystemMigrationSource(migrationsRoot), configure);
+        services.AddDatabaseBespokeMigrations(_ => new FileSystemMigrationBroker(migrationsRoot), configure);
 
     /// <summary>Adds the SQL migrator over a caller-supplied source factory — the shared core both public overloads delegate to.</summary>
     /// <param name="services">The service collection to configure.</param>
-    /// <param name="sourceFactory">A factory that builds the migration source from the provider.</param>
+    /// <param name="brokerFactory">A factory that builds the migration broker from the provider.</param>
     /// <param name="configure">An optional hook to override <see cref="MigrationOptions"/>.</param>
     private static IServiceCollection AddDatabaseBespokeMigrations(
-        this IServiceCollection services, Func<IServiceProvider, IMigrationSource> sourceFactory, Action<MigrationOptions>? configure)
+        this IServiceCollection services, Func<IServiceProvider, IMigrationBroker> brokerFactory, Action<MigrationOptions>? configure)
     {
         services.AddOptions<MigrationOptions>().Configure(options => configure?.Invoke(options));
         services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<MigrationOptions>>().Value);
 
-        services.AddSingleton(sourceFactory);
+        services.AddSingleton(brokerFactory);
         // Resolved rather than captured, so the dialect reads the provider AFTER Configure has run.
         services.AddSingleton<IMigrationDialect>(serviceProvider =>
             CreateDialect(serviceProvider.GetRequiredService<MigrationOptions>().Provider));

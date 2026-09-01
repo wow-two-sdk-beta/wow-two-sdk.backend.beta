@@ -7,11 +7,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Integrations;
 /// so a test never reaches the real registry.
 /// </summary>
 /// <remarks>
-/// Generalizes drydock's <c>StubContainerRegistryClient</c>. Defaults to <see cref="ImageCheck.Missing"/> for
-/// every tag. Resolution order per probe: <see cref="Override"/> (if set) wins; otherwise a <c>{repo}:{tag}</c>
-/// entry in <see cref="ExistingImages"/> wins; otherwise a bare <c>tag</c> in <see cref="ExistingTags"/>
-/// (any repo) reports <see cref="ImageCheck.Exists"/>. Use the bare-tag set for the common single-repo suite and
-/// the <c>{repo}:{tag}</c> set when a test spans repos.
+///   - probe order: <see cref="Override"/> wins, then <see cref="ExistingImages"/>, then <see cref="ExistingTags"/>
+///   - a tag matching none of them reports <see cref="ImageCheck.Missing"/>
+///   - use <see cref="ExistingTags"/> for a single-repo suite, <see cref="ExistingImages"/> across repos
 /// </remarks>
 public sealed class FakeContainerRegistryClient : IContainerRegistryClient
 {

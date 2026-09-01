@@ -15,21 +15,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 /// list as an honest delivery counter, recovery of an entry stranded by a consumer that never acked, and the emulated
 /// dead-letter stream.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Every test provisions the consumer group itself, at <see cref="StreamPosition.Beginning"/>, before anything is
-/// published. The adapter's own <c>EnsureGroups</c> then answers BUSYGROUP and keeps it. That removes the one race a
-/// broker test otherwise sleeps on: the group is created at the stream's tail by the consume loop, which
-/// <c>BackgroundService</c> starts without awaiting, so a publish racing startup lands ahead of the group's position and
-/// is never delivered. Reading from the beginning makes publish order irrelevant instead of merely unlikely to matter.
-/// </para>
-/// <para>
-/// The two claim-path tests strand an entry with a raw <c>XREADGROUP</c> under a consumer name the SDK never uses and
-/// never acknowledge it — the crashed-instance shape the claim path exists to survive, reproduced without crashing
-/// anything. Time is driven through <see cref="RedisStreamsOptions.ClaimInterval"/> and
-/// <see cref="RedisStreamsOptions.MinIdleTimeBeforeClaim"/> rather than by waiting out the 5-minute default.
-/// </para>
-/// </remarks>
 public sealed class RedisStreamsEventBusTests : IAsyncLifetime
 {
     private readonly RedisContainer _container = new RedisBuilder().WithImage("redis:7-alpine").Build();
@@ -70,8 +55,7 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
         consumed[0].Outcome.Should().Be(ConsumeOutcome.Success);
         consumed[0].Destination.Should().Be(stream);
 
-        // A read of ">" is by definition a first delivery — the contrast that makes the count of 2 in
-        // Redelivered_entry_reports_the_pending_list_delivery_count a measurement rather than a constant.
+        // A read of ">" is by definition a first delivery.
         consumed[0].Envelope.DeliveryCount.Should().Be(1);
 
         await harness.WaitForIdleAsync();
@@ -90,9 +74,7 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
         await using var multiplexer = await ConnectionMultiplexer.ConnectAsync(Configuration);
         await EnsureGroupFromBeginningAsync(multiplexer.GetDatabase(), stream, group);
 
-        // Both handlers park on entry. With concurrency 1 the pump dispatches inline, so a parked handler holds its
-        // consume loop — and BatchSize 1 caps a single read at one entry. Neither instance can therefore be holding
-        // both entries when both gates report started.
+        // Concurrency 1 dispatches inline and BatchSize 1 caps a read at one entry, so neither instance holds both.
         var gateA = new HarnessGate { Hold = true };
         var gateB = new HarnessGate { Hold = true };
 
@@ -121,8 +103,7 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
         await harnessA.WaitForIdleAsync();
         await harnessB.WaitForIdleAsync();
 
-        // The point of XREADGROUP: 2 entries over 2 members is 1 each. A broadcast adapter puts both entries in front
-        // of both instances, and each of these counts reads 2.
+        // XREADGROUP splits 2 entries over 2 members as 1 each; a broadcast adapter would read 2 on both.
         harnessA.Consumed.Count<HarnessEvent>().Should().Be(1);
         harnessB.Consumed.Count<HarnessEvent>().Should().Be(1);
 
@@ -155,8 +136,7 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
 
         var consumed = await harness.Consumed.WaitForAsync<PingEvent>(timeout: Budget);
 
-        // Redis counts deliveries in the PEL, so this is the broker's own number and not a header the producer stamped:
-        // 1 for the ghost's read, 2 for the claim that recovered it.
+        // Redis counts deliveries in the PEL: 1 for the ghost's read, 2 for the claim that recovered it.
         consumed[0].Envelope.DeliveryCount.Should().Be(2);
 
         await host.StopAsync();
@@ -213,8 +193,7 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
 
         await harness.Bus.PublishAsync(new BoomEvent("bad"));
 
-        // DeadLettered is recorded after settlement, so the XADD to the dead-letter stream has already landed when this
-        // returns — the assertion below reads it rather than polling for it.
+        // DeadLettered is recorded after settlement, so the XADD has already landed when this returns.
         await harness.DeadLettered.WaitForAsync<BoomEvent>(timeout: Budget);
         harness.Faulted.Count<BoomEvent>().Should().Be(2); // the retry budget actually spent
 
@@ -242,8 +221,7 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
     {
         Configure(options, stream, group);
 
-        // The derived default is {machine}-{pid}, which is the SAME name for two buses in one test process — they would
-        // share a pending-entries list. An explicit name makes these two behave as two deployed instances.
+        // The derived default {machine}-{pid} is one name for both buses in a test process, sharing a pending list.
         options.ConsumerName = consumerName;
 
         // One entry per read, so a single instance cannot drain the stream before the other polls.

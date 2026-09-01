@@ -6,17 +6,8 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Data.EntityFrameworkCore;
 namespace WoW.Two.Sdk.Backend.Beta.Data.Tests.Tests;
 
 /// <summary>
-/// P0-11 / P0-12 — arch-doc probe PR1, promoted whole.
+/// Pins EF's automatic per-<c>SaveChanges</c> savepoint events on Npgsql and the synthetic-frame fallback's depth tags.
 /// </summary>
-/// <remarks>
-/// <para>PR1 asks whether <c>CreatedSavepoint</c> / <c>RolledBackToSavepoint</c> fire for EF's <b>automatic</b>
-/// per-<c>SaveChanges</c> savepoint on Npgsql. It is a fork, not a yes/no: the session's depth counter and hook frames
-/// are built on one branch, and the synthetic-frame fallback on the other. A one-off script settles today's
-/// EF/Npgsql and pins nothing.</para>
-/// <para>So both branches ship. P0-11 pins the version-dependent behaviour; P0-12 pins the fallback's contract —
-/// depth tags that do not move whether or not those events arrive. An EF/Npgsql upgrade that flips the answer fails
-/// P0-11 loudly instead of silently mis-tagging every hook frame.</para>
-/// </remarks>
 [Collection(DataTestCollection.Name)]
 public sealed class SavepointEventsTests(DataTestDb testDb) : RelationalTestBase<DataTestDb, DataTestDbContext>(testDb)
 {
@@ -39,15 +30,13 @@ public sealed class SavepointEventsTests(DataTestDb testDb) : RelationalTestBase
 
         await unit.RollbackAsync();
 
-        // Measured on EF 10.0.3 / Npgsql 10.0.0 — pinned verbatim, so an upgrade that changes ANY part of the
-        // sequence (drops an event, stops releasing, reorders rollback and release) fails here rather than silently
-        // mis-tagging every hook frame. Per save: created → (rolled-back-to, on failure) → released.
+        // Pinned verbatim on EF 10.0.3 / Npgsql 10.0.0 — per save: created → (rolled-back-to, on failure) → released.
         string.Join(" | ", recorder.Events)
             .Should()
             .Be("started | created:auto | released:auto | created:auto | rolledback-to:auto | released:auto | rolledback");
 
         recorder.AutomaticSavepointsCreated.Should().Be(2);  // one automatic savepoint per SaveChanges inside the caller's unit — the events DO fire
-        recorder.AutomaticSavepointRollbacks.Should().Be(1); // and the failed batch's rollback to it is observable too
+        recorder.AutomaticSavepointRollbacks.Should().Be(1); // the failed batch's rollback to its savepoint is observable
     }
 
     [Fact]
@@ -96,8 +85,8 @@ public sealed class SavepointEventsTests(DataTestDb testDb) : RelationalTestBase
         await unit.CommitAsync();
 
         recorder.SyntheticDepthPerSave.Should().Equal(0, 1, 2, 2);   // the fallback's depth tags, derived without any automatic-savepoint event
-        recorder.AutomaticSavepointsCreated.Should().BeGreaterThan(0); // EF's own savepoints DID fire here…
-        recorder.SyntheticDepthPerSave.Should().Equal(0, 1, 2, 2);    // …and did not perturb the tags, so the fallback stays correct if they stop firing
+        recorder.AutomaticSavepointsCreated.Should().BeGreaterThan(0); // EF's own savepoints DID fire here
+        recorder.SyntheticDepthPerSave.Should().Equal(0, 1, 2, 2);    // tags unchanged despite EF's savepoints, so the fallback stays correct if they stop firing
     }
 
     private DataTestDbContext NewRecordedContext(SavepointFrameRecorder recorder)

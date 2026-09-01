@@ -13,24 +13,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 /// <summary>
 /// <see cref="AdapterOwnedHeaderContract"/> over Redis Streams — see that type for the bug this covers.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The consumer group is provisioned at <see cref="StreamPosition.Beginning"/> before anything is published, exactly as
-/// in <see cref="RedisStreamsEventBusTests"/>: the adapter's own <c>EnsureGroups</c> then answers BUSYGROUP and keeps
-/// it. That removes the one race this test would otherwise sleep on — the group being created at the stream's tail by a
-/// consume loop that <c>BackgroundService</c> starts without awaiting, which lets a publish racing startup land ahead of
-/// the group's position and never be delivered. So one publish suffices here, where the other brokers need
-/// <see cref="AdapterOwnedHeaderContract.PublishUntilConsumedAsync"/>.
-/// </para>
-/// <para>
-/// Redis is also the one broker where the wire can be inspected cheaply after the fact (<c>XRANGE</c> is a read, not a
-/// second consumer), so this suite adds an assertion the others cannot afford: exactly one <c>wt-event-type</c> field on
-/// the entry. Stream fields are a list, so a caller copy the send path failed to filter would sit there beside the
-/// adapter's — invisible to the decoded envelope, whose dictionary keeps only the last write.
-/// </para>
-/// </remarks>
 public sealed class RedisStreamsAdapterOwnedHeaderTests : IAsyncLifetime
 {
+    private static readonly AdapterOwnedHeaderContract Contract = new();
     private readonly RedisContainer _container = new RedisBuilder().WithImage("redis:7-alpine").Build();
 
     public Task InitializeAsync() => _container.StartAsync();
@@ -63,17 +48,15 @@ public sealed class RedisStreamsAdapterOwnedHeaderTests : IAsyncLifetime
 
         await harness.Bus.PublishAsync(
             new HarnessEvent(tag),
-            new PublishOptions { Headers = AdapterOwnedHeaderContract.CallerHeaders });
+            new PublishOptions { Headers = Contract.CallerHeaders });
 
         var consumed = await harness.Consumed.WaitForAsync<HarnessEvent>(
             match: e => e.Tag == tag,
             timeout: TimeSpan.FromSeconds(30));
 
-        AdapterOwnedHeaderContract.AssertRoundTrip(consumed[0], tag);
+        Contract.AssertRoundTrip(consumed[0], tag);
 
-        // What the decoded envelope cannot show. The entry the adapter wrote carries the adapter's type token once, not
-        // the caller's forgery plus the adapter's correction — a duplicate would decode to the right value here (last
-        // field wins) while a lookup by field name elsewhere returns the first, which is the caller's.
+        // Re-read the wire: each adapter-owned field appears exactly once on the entry, never duplicated by a forgery.
         var entries = await database.StreamRangeAsync(stream);
         entries.Should().ContainSingle();
         CountField(entries[0], MessageHeaderConstants.EventType).Should().Be(1);

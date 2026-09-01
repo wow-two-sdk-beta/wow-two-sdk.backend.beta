@@ -9,7 +9,6 @@ public static class EnumNameMapper<TEnum> where TEnum : struct, Enum
     private static readonly ConcurrentDictionary<CaseStyle, (Dictionary<TEnum, string> Forward, Dictionary<string, TEnum> Reverse)> Maps = new();
 
     /// <summary>Returns the case-styled label for <paramref name="value"/>.</summary>
-    /// <example><c>ToLabel(AiProvider.OpenAi, CaseStyle.Snake)</c> → <c>"open_ai"</c>.</example>
     /// <param name="value">The enum member to render.</param>
     /// <param name="style">The casing style for the label.</param>
     public static string ToLabel(TEnum value, CaseStyle style) => GetMaps(style).Forward[value];

@@ -7,7 +7,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests;
 
 public sealed class AppResultTests
 {
-    // --- fixtures: the collapsed AppResult<TSuccess> shape (failure is always an AppError) ---
 
     private sealed record SampleSuccess(string Value);
 
@@ -20,8 +19,6 @@ public sealed class AppResultTests
 
     private static AppResult<SampleSuccess> Fail(AppErrorType type = AppErrorType.Unexpected, string message = "boom", IAppFailureContext? ctx = null)
         => new AppResult<SampleSuccess>.Failure { Error = AppError.Of(type, message), Context = ctx };
-
-    // --- construction ---
 
     [Fact]
     public void Success_ShouldCarryTypedPayload()
@@ -84,8 +81,6 @@ public sealed class AppResultTests
             .Which.RetryAfterSeconds.Should().Be(30);
     }
 
-    // --- Match: case-object overload ---
-
     [Fact]
     public void Match_ShouldRouteToSuccessArm_WhenSuccess()
     {
@@ -120,8 +115,6 @@ public sealed class AppResultTests
         fail.Match(_ => 99, f => f.Error.Message.Length).Should().Be(1);
     }
 
-    // --- Match: no-arg success overload (void-ish commands → NoContent) ---
-
     [Fact]
     public void Match_ShouldIgnorePayload_WhenNoArgSuccessArm()
     {
@@ -145,8 +138,6 @@ public sealed class AppResultTests
 
         output.Should().Be("err:denied");
     }
-
-    // --- guards ---
 
     [Fact]
     public void Match_ShouldThrow_WhenSuccessDelegateNull()

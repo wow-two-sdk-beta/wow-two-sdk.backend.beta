@@ -7,7 +7,7 @@ using Xunit;
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests.Behaviors;
 
 /// <summary>
-/// <see cref="IdempotencyBehavior{TRequest,TResponse}"/> — requests marked <see cref="IIdempotent"/> execute once
+/// <see cref="DeduplicatingInterceptor{TRequest,TResponse}"/> — requests marked <see cref="IIdempotent"/> execute once
 /// and replay the cached response on a same-key repeat; unmarked requests pass straight through. The
 /// <see cref="InMemoryIdempotencyRepository"/> honours the supplied TTL.
 /// </summary>
@@ -24,7 +24,7 @@ public sealed class IdempotencyBehaviorTests
     public async Task HandleAsync_ShouldExecuteOnceAndReplayCachedResponse_WhenSameKey()
     {
         var store = NewStore();
-        var behavior = new IdempotencyBehavior<PayRequest, int>(store);
+        var behavior = new DeduplicatingInterceptor<PayRequest, int>(store);
         var calls = 0;
         ValueTask<int> Next() { calls++; return ValueTask.FromResult(42); }
 
@@ -41,7 +41,7 @@ public sealed class IdempotencyBehaviorTests
     public async Task HandleAsync_ShouldExecuteHandler_WhenDifferentKeys()
     {
         var store = NewStore();
-        var behavior = new IdempotencyBehavior<PayRequest, int>(store);
+        var behavior = new DeduplicatingInterceptor<PayRequest, int>(store);
         var calls = 0;
 
         await behavior.HandleAsync(new PayRequest("a", 1), () => { calls++; return ValueTask.FromResult(1); }, CancellationToken.None);
@@ -54,7 +54,7 @@ public sealed class IdempotencyBehaviorTests
     public async Task HandleAsync_ShouldPassThroughEveryTime_WhenNonIdempotentRequest()
     {
         var store = NewStore();
-        var behavior = new IdempotencyBehavior<PlainRequest, int>(store);
+        var behavior = new DeduplicatingInterceptor<PlainRequest, int>(store);
         var calls = 0;
         ValueTask<int> Next() { calls++; return ValueTask.FromResult(7); }
 

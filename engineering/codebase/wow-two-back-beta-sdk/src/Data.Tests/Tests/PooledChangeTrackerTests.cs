@@ -10,16 +10,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Tests.Tests;
 /// Arch-doc probe PR2, promoted — does a <c>ChangeTracker.Tracked</c> subscription survive a <c>DbContextPool</c>
 /// return and re-rent?
 /// </summary>
-/// <remarks>
-/// <para><b>Measured answer: no.</b> The pool hands back the same context instance with the subscription gone.</para>
-/// <para>That is the load-bearing consequence for the write-guard design (Rule A), which arms itself by subscribing
-/// to <c>ChangeTracker.Tracked</c>: subscribing once at construction arms the guard on request 1 and silently
-/// disarms it from request 2 on — armed in dev, off in prod, no error either way. The guard must therefore
-/// re-subscribe per rent (context-scoped resolution, an interceptor, or <c>IDbContextFactory</c>), never once per
-/// instance. Both cases below ship: the first pins the disarm, the second pins that re-subscribing is a working
-/// mitigation. An EF change that flips either answer fails loudly instead of quietly re-arming a guard the design
-/// no longer relies on.</para>
-/// </remarks>
 [Collection(DataTestCollection.Name)]
 public sealed class PooledChangeTrackerTests(DataTestDb testDb) : RelationalTestBase<DataTestDb, DataTestDbContext>(testDb)
 {
@@ -82,8 +72,7 @@ public sealed class PooledChangeTrackerTests(DataTestDb testDb) : RelationalTest
     {
         var services = new ServiceCollection();
 
-        // AddTestEntityFrameworkCore routes through AddEntityFrameworkCore, whose default is the POOLED branch
-        // (AddDbContextPool) — the registration this probe is about.
+        // AddTestEntityFrameworkCore routes through AddEntityFrameworkCore's default pooled branch (AddDbContextPool).
         services.AddTestEntityFrameworkCore(TestDb);
         return services.BuildServiceProvider();
     }

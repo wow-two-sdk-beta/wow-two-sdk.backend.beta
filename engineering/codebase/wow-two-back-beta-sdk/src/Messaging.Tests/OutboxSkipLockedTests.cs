@@ -7,7 +7,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
 /// <summary>
-/// Verifies <see cref="PostgresSkipLockedOutboxClaimStrategy"/> is multi-instance-safe: two dispatcher/claim loops draining
+/// Verifies <see cref="PostgresSkipLockedOutboxClaimRepository"/> is multi-instance-safe: two dispatcher/claim loops draining
 /// one outbox concurrently claim every pending row exactly once — no double-claim, no lost row — via
 /// <c>FOR UPDATE SKIP LOCKED</c> row locks held until each stamp commits.
 /// </summary>
@@ -55,7 +55,7 @@ public sealed class OutboxSkipLockedTests : IAsyncLifetime
     {
         await SeedPendingRowsAsync(RowCount);
 
-        var strategy = new PostgresSkipLockedOutboxClaimStrategy();
+        var strategy = new PostgresSkipLockedOutboxClaimRepository();
         var claimedByLoop = new ConcurrentDictionary<int, ConcurrentBag<Guid>>
         {
             [1] = [],
@@ -83,7 +83,7 @@ public sealed class OutboxSkipLockedTests : IAsyncLifetime
 
     // Mirrors the dispatcher's per-pass flow (claim → stamp processed_on_utc → SaveChanges) on its own context/connection,
     // so two loops exercise cross-connection FOR UPDATE SKIP LOCKED exactly like two dispatcher instances would.
-    private async Task DrainAsync(int loopId, PostgresSkipLockedOutboxClaimStrategy strategy, ConcurrentBag<Guid> claimed, CancellationToken cancellationToken)
+    private async Task DrainAsync(int loopId, PostgresSkipLockedOutboxClaimRepository strategy, ConcurrentBag<Guid> claimed, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {

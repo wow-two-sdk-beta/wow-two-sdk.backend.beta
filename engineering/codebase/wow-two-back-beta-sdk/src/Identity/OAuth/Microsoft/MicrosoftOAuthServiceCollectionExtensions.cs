@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.Extensions.DependencyInjection;
+using WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Microsoft;
 
@@ -23,9 +24,9 @@ public static class MicrosoftOAuthServiceCollectionExtensions
         {
             o.ClientId = clientId;
             o.ClientSecret = clientSecret;
-            OAuthBaseline.ApplyBaseline(o, scopes);
+            o.ApplyBaseline(scopes);
             configure?.Invoke(o);
-            OAuthBaseline.StampProvider(o);
+            o.StampProvider();
         });
     }
 }

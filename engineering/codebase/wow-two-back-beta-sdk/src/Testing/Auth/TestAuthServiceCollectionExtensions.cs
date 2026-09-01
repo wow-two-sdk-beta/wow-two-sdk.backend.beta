@@ -16,10 +16,9 @@ public static class TestAuthServiceCollectionExtensions
     /// been registered — calling <see cref="AuthenticationBuilder"/> again here overrides the default scheme.
     /// </summary>
     /// <remarks>
-    /// By default every request authenticates. Set <see cref="TestAuthOptions.RequiredHeader"/> in
-    /// <paramref name="configure"/> (e.g. <c>o.RequiredHeader = "X-Test-Auth"</c>) to gate authentication on that
-    /// header — requests carrying it get the configured identity (200), requests omitting it stay anonymous (401 on
-    /// <c>[Authorize]</c> endpoints) — so one host covers both the authed and the anonymous-gate paths.
+    ///   - every request authenticates by default
+    ///   - set <see cref="TestAuthOptions.RequiredHeader"/> in <paramref name="configure"/> to gate on that header
+    ///   - gated, a request omitting that header stays anonymous, so <c>[Authorize]</c> returns 401
     /// </remarks>
     /// <param name="services">The host's service collection.</param>
     /// <param name="configure">Optional callback to set the test identity (user id, email, roles, …) and, optionally, <see cref="TestAuthOptions.RequiredHeader"/>.</param>
@@ -42,24 +41,9 @@ public static class TestAuthServiceCollectionExtensions
 
     /// <summary>
     /// Builds a service-configuration delegate that calls <see cref="AddTestAuth"/>, shaped for direct assignment to
-    /// a test host's <c>ConfigureServicesHook</c>:
-    /// <code>
-    /// var host = new WebApiTestHost&lt;Program&gt;
-    /// {
-    ///     ConfigureServicesHook = TestAuthServiceCollectionExtensions.UseTestUser(o => o.UserId = "u-123"),
-    /// };
-    /// </code>
-    /// Compose with other hook logic by invoking the returned delegate inside your own hook. To exercise the
-    /// anonymous-gate (401) path alongside the authed (200) path, opt into header-gating via
-    /// <see cref="TestAuthOptions.RequiredHeader"/>:
-    /// <code>
-    /// ConfigureServicesHook = TestAuthServiceCollectionExtensions.UseTestUser(o =>
-    /// {
-    ///     o.RequiredHeader = "X-Test-Auth"; // present → authenticated (200); absent → anonymous (401)
-    ///     o.UserId = "u-123";
-    /// });
-    /// </code>
+    /// a test host's <c>ConfigureServicesHook</c>.
     /// </summary>
+    /// <remarks>Compose with other hook logic by invoking the returned delegate inside your own hook.</remarks>
     /// <param name="configure">Optional callback to set the test identity and, optionally, <see cref="TestAuthOptions.RequiredHeader"/>.</param>
     /// <returns>An <see cref="Action{T}"/> over <see cref="IServiceCollection"/> that registers test auth.</returns>
     public static Action<IServiceCollection> UseTestUser(Action<TestAuthOptions>? configure = null)

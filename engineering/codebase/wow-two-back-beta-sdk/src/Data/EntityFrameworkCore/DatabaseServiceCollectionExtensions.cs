@@ -23,7 +23,7 @@ public static class DatabaseServiceCollectionExtensions
             .Bind(configuration.GetSection(sectionName))
             .ValidateOnStart();
 
-        // Consumers take the record, never the wrapper — the bind pipeline stays for validation and reload.
+        // Projects the bound record so consumers take it, never the wrapper.
         services.AddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value);
 
         return services;

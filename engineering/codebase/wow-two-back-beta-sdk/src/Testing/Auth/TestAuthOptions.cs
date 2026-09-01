@@ -8,9 +8,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Auth;
 /// test-auth scheme is the active handler. Tweak per test via <c>AddTestAuth</c>'s configure callback.
 /// </summary>
 /// <remarks>
-/// The handler stamps the SDK's canonical <c>wt:*</c> claims (mirrored in <see cref="TestClaimTypeConstants"/>) so code that
-/// reads identity via the SDK's <c>ClaimsPrincipalExtensions</c> (<c>GetUserId()</c>, <c>GetEmail()</c>, …) works
-/// unchanged under test. Add anything provider-specific via <see cref="ExtraClaims"/>.
+///   - stamps the canonical <c>wt:*</c> claims mirrored in <see cref="TestClaimTypeConstants"/>
+///   - <c>ClaimsPrincipalExtensions</c> (<c>GetUserId()</c>, <c>GetEmail()</c>, …) reads them unchanged under test
+///   - add provider-specific claims via <see cref="ExtraClaims"/>
 /// </remarks>
 public sealed class TestAuthOptions : AuthenticationSchemeOptions
 {
@@ -37,14 +37,9 @@ public sealed class TestAuthOptions : AuthenticationSchemeOptions
     /// path and the anonymous-gate (401) path. Default <c>null</c> — preserving the always-authenticate behavior.
     /// </summary>
     /// <remarks>
-    /// <list type="bullet">
-    /// <item><description><c>null</c> (default): every request authenticates as this identity — back-compatible.</description></item>
-    /// <item><description>Set (e.g. <c>"X-Test-Auth"</c>): only requests carrying this header (any value) authenticate;
-    /// requests lacking it stay anonymous, so <see cref="TestAuthHandler.HandleAuthenticateAsync"/> returns
-    /// <see cref="Microsoft.AspNetCore.Authentication.AuthenticateResult.NoResult"/> and <c>[Authorize]</c> endpoints
-    /// challenge with 401.</description></item>
-    /// </list>
-    /// A test sends the header to assert the 200 path and omits it to assert the 401 path, from the same SDK helper.
+    ///   - set: only requests carrying the header authenticate, whatever its value
+    ///   - requests lacking it stay anonymous, so <c>[Authorize]</c> endpoints challenge with 401
+    ///   - send the header to assert the 200 path, omit it to assert the 401 path
     /// </remarks>
     public string? RequiredHeader { get; set; }
 }

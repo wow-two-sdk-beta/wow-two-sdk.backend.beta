@@ -4,13 +4,13 @@ using Cronos;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Time;
 
-/// <summary>Provides a thin wrapper around <see cref="T:Cronos.CronExpression"/> with conventional defaults.</summary>
-public static class CronExpressionParser
+/// <summary>Parses cron expressions through Cronos, accepting the 5-field and 6-field forms.</summary>
+public sealed class CronExpressionParser : ICronExpressionParser
 {
     /// <summary>Parses a cron expression, accepting both 5-field (standard) and 6-field (with-seconds) forms via heuristic.</summary>
     /// <param name="expression">The cron expression to parse.</param>
     /// <exception cref="T:Cronos.CronFormatException">Invalid expression.</exception>
-    public static CronExpression Parse(string expression)
+    public CronExpression Parse(string expression)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(expression);
         var fieldCount = expression.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
@@ -22,7 +22,7 @@ public static class CronExpressionParser
     /// <param name="expression">The cron expression to evaluate.</param>
     /// <param name="from">The instant to search forward from, exclusive.</param>
     /// <param name="zone">The time zone the schedule is interpreted in.</param>
-    public static DateTimeOffset? NextOccurrence(string expression, DateTimeOffset from, TimeZoneInfo zone)
+    public DateTimeOffset? NextOccurrence(string expression, DateTimeOffset from, TimeZoneInfo zone)
     {
         ArgumentNullException.ThrowIfNull(zone);
         var expr = Parse(expression);

@@ -9,7 +9,7 @@ public static class TenancyServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the ambient <see cref="ITenantContext"/> (AsyncLocal-backed singleton), the request
-    /// <see cref="ITenantResolver"/>, and an in-memory <see cref="ITenantRepository"/> over
+    /// <see cref="ITenantIdService"/>, and an in-memory <see cref="ITenantRepository"/> over
     /// <see cref="TenancyConventionOptions.KnownTenants"/>. Apply the middleware with
     /// <c>UseTenantResolution()</c>; register a custom <see cref="ITenantRepository"/> before this call to override the default.
     /// </summary>
@@ -26,7 +26,7 @@ public static class TenancyServiceCollectionExtensions
         services.TryAddSingleton<AmbientTenantContext>();
         services.TryAddSingleton<ITenantContext>(static sp => sp.GetRequiredService<AmbientTenantContext>());
         services.TryAddSingleton<ISettableTenantContext>(static sp => sp.GetRequiredService<AmbientTenantContext>());
-        services.TryAddSingleton<ITenantResolver, RequestTenantResolver>();
+        services.TryAddSingleton<ITenantIdService, TenantIdService>();
         services.TryAddSingleton<ITenantRepository>(static sp =>
             new InMemoryTenantRepository(sp.GetRequiredService<IOptions<TenancyConventionOptions>>().Value.KnownTenants));
 

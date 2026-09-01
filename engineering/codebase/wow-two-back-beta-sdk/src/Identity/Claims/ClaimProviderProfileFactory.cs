@@ -149,8 +149,6 @@ public static class ClaimProviderProfileFactory
             UsernameClaims: [],
             AvatarClaims: [OidcPicture, "picture"]);
 
-        // ── Best-effort ("verify" in claims.md): id + email where available; ClaimTypes.Name is a handle only
-        //    for Reddit/Yandex, a display name for Amazon, and unknown for Slack/Notion/Vkontakte. ──
 
         // Amazon — ClaimTypes.Name is the display name; no handle.
         yield return new ClaimProviderProfile(
@@ -205,5 +203,6 @@ public static class ClaimProviderProfileFactory
             DisplayNameClaims: [ClaimTypes.Name, OidcName],
             UsernameClaims: [],
             AvatarClaims: [OidcPicture, "picture"]);
+
     }
 }

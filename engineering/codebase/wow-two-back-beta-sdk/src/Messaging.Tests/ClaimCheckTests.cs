@@ -8,119 +8,22 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Storage.Core;
 using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
-
-/// <summary>
-/// An <see cref="IBlobRepository"/> that keeps blobs in memory and records every call, so a test can assert both what was
-/// stored and that nothing was stored at all.
-/// </summary>
-/// <remarks>
-/// The local file store would serve the happy paths, but not the two assertions that matter most here: "the feature is
-/// off, so the store was never touched" needs call counts, and "the blob is gone" needs a write that reports success
-/// and keeps nothing — <see cref="DropWrites"/> — which is the retention-expired / purged shape without a sweep or a
-/// sleep to produce it.
-/// </remarks>
-internal sealed class RecordingBlobRepository : IBlobRepository
-{
-    private readonly ConcurrentDictionary<string, BlobEntry> _blobs = new(StringComparer.Ordinal);
-    private readonly ConcurrentQueue<string> _calls = new();
-
-    /// <summary>Accept writes and store nothing — the blob a later read cannot find.</summary>
-    public bool DropWrites { get; set; }
-
-    /// <summary>Every call made against this store, as <c>verb path</c>, in order.</summary>
-    public IReadOnlyList<string> Calls => [.. _calls];
-
-    /// <summary>How many blobs are actually held.</summary>
-    public int BlobCount => _blobs.Count;
-
-    /// <summary>Calls that read a blob or its metadata — what a rehydrate costs.</summary>
-    public int ReadCalls => _calls.Count(call => call.StartsWith("GetInfo ", StringComparison.Ordinal) || call.StartsWith("OpenRead ", StringComparison.Ordinal));
-
-    /// <summary>Calls that wrote a blob.</summary>
-    public int SaveCalls => _calls.Count(call => call.StartsWith("Save ", StringComparison.Ordinal));
-
-    /// <summary>The stored bytes at <paramref name="path"/>, or null when nothing is there.</summary>
-    public byte[]? Read(string path) => _blobs.TryGetValue(path, out var entry) ? entry.Content : null;
-
-    public Task SaveAsync(string path, Stream content, string? contentType = null, CancellationToken cancellationToken = default)
-    {
-        _calls.Enqueue("Save " + path);
-        if (DropWrites)
-            return Task.CompletedTask;
-
-        using var buffer = new MemoryStream();
-        content.CopyTo(buffer);
-        _blobs[path] = new BlobEntry(buffer.ToArray(), contentType, DateTimeOffset.UtcNow);
-        return Task.CompletedTask;
-    }
-
-    public Task<Stream?> OpenReadAsync(string path, CancellationToken cancellationToken = default)
-    {
-        _calls.Enqueue("OpenRead " + path);
-        return Task.FromResult<Stream?>(_blobs.TryGetValue(path, out var entry) ? new MemoryStream(entry.Content, writable: false) : null);
-    }
-
-    public Task<bool> ExistsAsync(string path, CancellationToken cancellationToken = default)
-    {
-        _calls.Enqueue("Exists " + path);
-        return Task.FromResult(_blobs.ContainsKey(path));
-    }
-
-    public Task<bool> DeleteAsync(string path, CancellationToken cancellationToken = default)
-    {
-        _calls.Enqueue("Delete " + path);
-        return Task.FromResult(_blobs.TryRemove(path, out _));
-    }
-
-    public Task<BlobInfo?> GetInfoAsync(string path, CancellationToken cancellationToken = default)
-    {
-        _calls.Enqueue("GetInfo " + path);
-        return Task.FromResult(_blobs.TryGetValue(path, out var entry)
-            ? new BlobInfo { Path = path, SizeBytes = entry.Content.LongLength, LastModified = entry.LastModified, ContentType = entry.ContentType }
-            : null);
-    }
-
-    public async IAsyncEnumerable<BlobInfo> ListAsync(string? prefix = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        await Task.CompletedTask; // an in-memory listing has nothing to await; the iterator still has to be async
-
-        _calls.Enqueue("List " + (prefix ?? string.Empty));
-        foreach (var (path, entry) in _blobs)
-        {
-            if (prefix is not null && !path.StartsWith(prefix, StringComparison.Ordinal))
-                continue;
-
-            cancellationToken.ThrowIfCancellationRequested();
-            yield return new BlobInfo { Path = path, SizeBytes = entry.Content.LongLength, LastModified = entry.LastModified, ContentType = entry.ContentType };
-        }
-    }
-
-    private sealed record BlobEntry(byte[] Content, string? ContentType, DateTimeOffset LastModified);
-}
 
 /// <summary>
 /// The claim-check pattern end to end: an oversized body is written to blob storage and a pointer travels instead, the
 /// pointer is fetched back before the handler runs, and a pointer that cannot be honoured fails safely.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Run against the in-memory transport, which hands the consumer the very envelope the bus built. That makes the wire
-/// assertions read off <see cref="EventEnvelope.RawBody"/> and <see cref="EventEnvelope.WireBodyType"/> — the two fields
-/// every adapter serializes from (<see cref="EventEnvelope.ToWireBody"/>) — rather than off bytes observed on a broker.
-/// It also makes the rehydrate assertion a reference check: with the body arriving intact by construction, the only
-/// proof the fetch happened is that the handler's body is a <i>different instance</i> that compares equal.
-/// </para>
-/// <para>
-/// <see cref="ClaimCheckOptions.SweepEnabled"/> is off throughout. The retention sweeper is a background loop that
-/// lists the prefix and deletes; leaving it on would race every assertion about what the store holds.
-/// </para>
+///   - runs on the in-memory transport, so wire assertions read <see cref="EventEnvelope.RawBody"/> and <see cref="EventEnvelope.WireBodyType"/>
+///   - the body arrives intact, so only a different-but-equal instance proves the rehydrate fetch ran
+///   - <see cref="ClaimCheckOptions.SweepEnabled"/> stays off — the sweeper would race every assertion about the store
 /// </remarks>
 public sealed class ClaimCheckTests
 {
-    // Comfortably over the 4 KiB threshold below, and far enough over that no header or envelope field could account
-    // for the difference when the wire body is asserted to be small.
+    // LargePayload sits far enough over the threshold that no header or envelope field explains a small wire body.
     private const int ThresholdBytes = 4 * 1024;
     private static readonly string LargePayload = new('x', 16 * 1024);
 
@@ -141,9 +44,7 @@ public sealed class ClaimCheckTests
         published.RawBodyType.Should().BeNull();
         published.WireBodyType.Should().Be<HarnessEvent>();
 
-        // RawBody IS set under the threshold — the offloader carries the bytes it measured so the adapter spends that
-        // serialization instead of repeating it. Asserting they decode back to the same event is what makes carrying
-        // them a pure optimization rather than a change to what travels.
+        // RawBody IS set under the threshold: the offloader carries the bytes it measured so the adapter re-uses them.
         var serializer = harness.Services.GetRequiredService<IMessageSerializer>();
         published.RawBody.Should().NotBeNull();
         published.ToWireBody(serializer).Should().BeEquivalentTo(serializer.Serialize(new HarnessEvent("small"), typeof(HarnessEvent)));
@@ -175,8 +76,7 @@ public sealed class ClaimCheckTests
         published.Headers[ClaimCheckHeaderConstants.Size].Should().Be(stored!.LongLength.ToString(CultureInfo.InvariantCulture));
         published.Headers[ClaimCheckHeaderConstants.BodyType].Should().Be(typeof(HarnessEvent).FullName);
 
-        // The substitution: the bytes and the type token that travel are the reference's, while BodyType — what routing
-        // and metrics read — stays the real contract, so the message still lands where its consumers are bound.
+        // The substitution: the reference travels, while BodyType keeps routing on the real contract.
         published.WireBodyType.Should().Be<ClaimCheckReference>();
         published.RawBodyType.Should().Be<ClaimCheckReference>();
         published.BodyType.Should().Be<HarnessEvent>();
@@ -185,7 +85,7 @@ public sealed class ClaimCheckTests
         wire.Length.Should().BeLessThan(ThresholdBytes); // the reason the feature exists: the broker sees a small message
         stored.LongLength.Should().BeGreaterThan(ThresholdBytes);
 
-        var reference = (ClaimCheckReference)serializer.Deserialize(wire, typeof(ClaimCheckReference))!;
+        var reference = (ClaimCheckReference)serializer.Deserialize(wire, typeof(ClaimCheckReference)).ValueOrThrow();
         reference.Path.Should().Be(path);
         reference.SizeBytes.Should().Be(stored.LongLength);
         reference.ContentType.Should().Be(serializer.ContentType);
@@ -202,17 +102,14 @@ public sealed class ClaimCheckTests
         await harness.Bus.PublishAsync(sent);
         var consumed = await harness.Consumed.WaitForAsync<HarnessEvent>();
 
-        // Not "no blob written" — no call of any kind. Without AddEventClaimCheck() nothing resolves the offloader, so
-        // the send path is the one that existed before the feature did.
+        // Without AddEventClaimCheck() nothing resolves the offloader, so the store sees no call of any kind.
         store.Calls.Should().BeEmpty();
 
         var published = harness.Published.Of<HarnessEvent>()[0].Envelope;
         published.RawBody.Should().BeNull();
         published.Headers.Should().NotContainKey(ClaimCheckHeaderConstants.Reference);
 
-        // Same instance the test published — this transport passes the envelope by reference when nothing intercepts
-        // it. It is also the negative control for the rehydrate test above: that one asserts NOT-same-instance, which
-        // only discriminates because this line shows same-instance is what an unintercepted body actually looks like.
+        // This transport passes the envelope by reference when nothing intercepts it, so the instance is unchanged.
         consumed[0].BodyAs<HarnessEvent>().Should().BeSameAs(sent);
     }
 
@@ -232,9 +129,7 @@ public sealed class ClaimCheckTests
         consumed[0].Envelope.BodyType.Should().Be<HarnessEvent>();
         consumed[0].Body.Should().NotBeOfType<ClaimCheckReference>();
 
-        // The proof the round trip actually went through storage. This transport hands the consumer the same envelope
-        // instance the bus built, so an equal body proves nothing on its own — a body that is equal but NOT the same
-        // instance can only have come back out of the blob.
+        // Equal but NOT the same instance is the only proof the body came back out of the blob.
         body.Should().NotBeSameAs(sent);
         body.Should().Be(sent);
         store.ReadCalls.Should().BeGreaterThan(0);
@@ -252,13 +147,11 @@ public sealed class ClaimCheckTests
         deadLettered[0].Exception.Should().BeOfType<ClaimCheckPayloadException>();
         deadLettered[0].Exception!.Message.Should().Contain("missing from blob storage"); // the reason an operator triages on
 
-        // The claim: the rehydrate filter throws BEFORE calling next, so the resilience pipeline — which lives inside
-        // the core the filter wraps — never runs. No attempt is spent on a fault that redelivery cannot fix.
+        // The rehydrate filter throws BEFORE calling next, so the resilience pipeline inside the core never runs.
         harness.Faulted.Count<HarnessEvent>().Should().Be(0);
         harness.Consumed.Count<HarnessEvent>().Should().Be(0);
 
-        // The control that keeps the two lines above from passing vacuously: on this same host, with this same retry
-        // schedule, a fault raised INSIDE the core does spend the budget and the recorder does see every attempt.
+        // The control: on the same host and schedule, a fault raised INSIDE the core does spend the budget.
         await harness.Bus.PublishAsync(new BoomEvent("control"));
         await harness.DeadLettered.WaitForAsync<BoomEvent>();
         harness.Faulted.Count<BoomEvent>().Should().Be(5);
@@ -272,9 +165,7 @@ public sealed class ClaimCheckTests
         var store = new RecordingBlobRepository();
         await using var harness = await StartAsync(store, claimCheck: true);
 
-        // A small body, so nothing was offloaded and the reference is purely the attacker's. It rides through because
-        // the in-memory transport does not strip caller headers — which is the position a compromised or buggy producer
-        // puts a real consumer in behind any broker that carries reserved headers through.
+        // A small body, so the reference is purely the attacker's: this transport does not strip caller headers.
         await harness.Bus.PublishAsync(
             new HarnessEvent("forged"),
             new PublishOptions { Headers = new Dictionary<string, string>(StringComparer.Ordinal) { [ClaimCheckHeaderConstants.Reference] = forgedPath } });
@@ -283,8 +174,7 @@ public sealed class ClaimCheckTests
         deadLettered[0].Exception.Should().BeOfType<ClaimCheckPayloadException>();
         deadLettered[0].Exception!.Message.Should().Contain(expectedReason);
 
-        // Refused before the store, not after: the guard must not become a read of an arbitrary blob whose result is
-        // then discarded, because on a shared store that read is the disclosure.
+        // The guard refuses before the store — on a shared store, reading an arbitrary blob is the disclosure.
         store.ReadCalls.Should().Be(0);
         harness.Consumed.Count<HarnessEvent>().Should().Be(0);
     }
@@ -298,19 +188,16 @@ public sealed class ClaimCheckTests
         await harness.Bus.PublishAsync(new BoomEvent(LargePayload)); // offloaded, rehydrated, then the handler throws
         var deadLettered = await harness.DeadLettered.WaitForAsync<BoomEvent>();
 
-        // Consuming never deletes. A fan-out sibling, the next retry and a redrive days later all read this same blob,
-        // so the only thing that may remove it is the retention sweep.
+        // Consuming never deletes: a fan-out sibling, the next retry and a later redrive read this same blob.
         store.BlobCount.Should().Be(1);
         store.Calls.Should().NotContain(call => call.StartsWith("Delete ", StringComparison.Ordinal));
 
-        // What the dead-letter record holds is the pointer, not the payload — which is what a redrive follows and what
-        // keeps the dead-letter store from growing by the size of every oversized body.
+        // The dead-letter record holds the pointer a redrive follows, never the payload.
         var record = deadLettered[0].Envelope;
         record.Headers.Should().ContainKey(ClaimCheckHeaderConstants.Reference);
         store.Read(record.Headers[ClaimCheckHeaderConstants.Reference]).Should().NotBeNull();
 
-        // The rehydrate is a filter wrapping the core, and the retry loop lives inside that core: the body is fetched
-        // once and every attempt reuses it, rather than re-reading the blob per attempt.
+        // The retry loop lives inside the wrapped core, so the body is fetched once and every attempt reuses it.
         harness.Faulted.Count<BoomEvent>().Should().Be(5);
         store.Calls.Count(call => call.StartsWith("OpenRead ", StringComparison.Ordinal)).Should().Be(1);
     }

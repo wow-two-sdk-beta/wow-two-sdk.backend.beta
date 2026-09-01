@@ -7,7 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Security;
 /// <remarks>
 /// AES-GCM is an AEAD (Authenticated Encryption with Associated Data) cipher — one call gives both confidentiality (the ciphertext) and integrity (the tag), and binds in a non-secret <c>associatedData</c> string that is authenticated but not encrypted. A fresh random 96-bit nonce is generated per <see cref="Encrypt"/> call (the GCM-recommended size); never reuse a nonce under the same key. Stateless and thread-safe — every operation constructs its own <see cref="AesGcm"/>.
 /// </remarks>
-internal static class AesGcmCipher
+internal sealed class AesGcmCipher
 {
     /// <summary>96-bit nonce — the size AES-GCM is designed and standardized for; using it lets the runtime generate the nonce directly rather than re-hashing.</summary>
     private const int NonceSize = 12;
@@ -20,7 +20,7 @@ internal static class AesGcmCipher
     /// <param name="plaintext">The bytes to encrypt.</param>
     /// <param name="associatedData">Context bound into the tag but left unencrypted — e.g. a logical key or owner id. The same value must be supplied to <see cref="Decrypt"/> or authentication fails.</param>
     /// <returns>An <see cref="EncryptedPayload"/> carrying the nonce, tag, and ciphertext.</returns>
-    public static EncryptedPayload Encrypt(byte[] key, byte[] plaintext, string associatedData)
+    public EncryptedPayload Encrypt(byte[] key, byte[] plaintext, string associatedData)
     {
         ArgumentNullException.ThrowIfNull(key);
         ArgumentNullException.ThrowIfNull(plaintext);
@@ -43,7 +43,7 @@ internal static class AesGcmCipher
     /// <param name="associatedData">The exact context string supplied at encryption time; any difference fails authentication.</param>
     /// <returns>The recovered plaintext.</returns>
     /// <exception cref="AuthenticationTagMismatchException">The tag, ciphertext, key, nonce, or associated data does not match what was encrypted — the data is corrupt, tampered with, or decrypted with the wrong key.</exception>
-    public static byte[] Decrypt(byte[] key, EncryptedPayload payload, string associatedData)
+    public byte[] Decrypt(byte[] key, EncryptedPayload payload, string associatedData)
     {
         ArgumentNullException.ThrowIfNull(key);
         ArgumentNullException.ThrowIfNull(payload);

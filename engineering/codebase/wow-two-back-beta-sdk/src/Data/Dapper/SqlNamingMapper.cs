@@ -12,7 +12,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper;
 /// </remarks>
 public static class SqlNamingMapper
 {
-    // ── Columns ──
+    #region Columns
 
     /// <summary>Column name for a property: <c>Col("OrderLineId")</c> → <c>order_line_id</c>.</summary>
     /// <param name="propertyName">The CLR property name to convert to a column name.</param>
@@ -38,7 +38,9 @@ public static class SqlNamingMapper
     /// <param name="style">The casing emitted for the column name.</param>
     public static string Col<T>(Expression<Func<T, object?>> selector, string alias, CaseStyle style) => Col(PropertyName(selector), alias, style);
 
-    // ── Parameters ──
+    #endregion
+
+    #region Parameters
 
     /// <summary>Bare parameter name (no <c>@</c>): <c>Par("OrderLineId")</c> → <c>orderLineId</c>.</summary>
     /// <param name="propertyName">The CLR property name to convert to a parameter name.</param>
@@ -62,7 +64,9 @@ public static class SqlNamingMapper
     /// <param name="style">The casing emitted for the parameter name.</param>
     public static string ParRef<T>(Expression<Func<T, object?>> selector, CaseStyle style) => "@" + Par(PropertyName(selector), style);
 
-    // ── Tables ──
+    #endregion
+
+    #region Tables
 
     /// <summary>Table name for an entity declaring <see cref="IHasTableName"/>.</summary>
     public static string Table<TEntity>() where TEntity : IHasTableName => TEntity.TableName;
@@ -71,6 +75,8 @@ public static class SqlNamingMapper
     /// <typeparam name="TEntity">The entity type declaring <see cref="IHasTableName"/>.</typeparam>
     /// <param name="alias">The table alias appended to the table name.</param>
     public static string Table<TEntity>(string alias) where TEntity : IHasTableName => $"{TEntity.TableName} {alias}";
+
+    #endregion
 
     /// <summary>Extracts the property name from a member-access selector, unwrapping the boxing convert that
     /// <c>Func&lt;T, object?&gt;</c> inserts for value-typed properties.</summary>

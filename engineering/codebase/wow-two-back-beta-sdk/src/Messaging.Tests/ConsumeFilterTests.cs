@@ -11,7 +11,7 @@ public sealed class ConsumeFilterTests
 {
     private static readonly ConcurrentQueue<string> Trace = new();
 
-    private sealed class FilterA : IConsumeFilter
+    private sealed class FilterA : IConsumeInterceptor
     {
         public async ValueTask InvokeAsync(ReceiveContext context, ConsumeDelegate next, CancellationToken cancellationToken)
         {
@@ -21,7 +21,7 @@ public sealed class ConsumeFilterTests
         }
     }
 
-    private sealed class FilterB : IConsumeFilter
+    private sealed class FilterB : IConsumeInterceptor
     {
         public async ValueTask InvokeAsync(ReceiveContext context, ConsumeDelegate next, CancellationToken cancellationToken)
         {
@@ -39,8 +39,8 @@ public sealed class ConsumeFilterTests
             static services =>
             {
                 services.AddScannedHandlerDependencies();
-                services.AddConsumeFilter<FilterA>();
-                services.AddConsumeFilter<FilterB>();
+                services.AddConsumeInterceptor<FilterA>();
+                services.AddConsumeInterceptor<FilterB>();
             },
             handlerAssemblies: [typeof(PingHandler).Assembly]);
 

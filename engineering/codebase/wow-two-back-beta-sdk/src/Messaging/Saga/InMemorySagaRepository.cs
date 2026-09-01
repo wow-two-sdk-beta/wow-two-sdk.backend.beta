@@ -8,15 +8,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 /// </summary>
 /// <typeparam name="TState">The saga state type.</typeparam>
 /// <remarks>
-/// <para>
-/// It implements the same optimistic-concurrency contract a durable repository must, rather than a simplified one, so a
-/// concurrency bug shows up in a unit test instead of first appearing in production against a real database:
-/// </para>
-/// <list type="bullet">
-///   <item><description>every stored value is a <see cref="ISagaState.Copy"/>, so a caller cannot mutate the store through the object it loaded;</description></item>
-///   <item><description>an insert is a <see cref="ConcurrentDictionary{TKey,TValue}.TryAdd"/> — the dictionary key plays the role of the unique index that makes a double-initiate race safe;</description></item>
-///   <item><description>an update or delete compares the stored version and swaps atomically, so the loser of a race is rejected rather than silently overwriting the winner.</description></item>
-/// </list>
+///   - enforces the full optimistic-concurrency contract a durable repository must
+///   - every stored value is a <see cref="ISagaState.Copy"/>, so mutating a loaded or passed-in state never reaches the store
+///   - a losing insert, update, or delete throws <see cref="SagaConcurrencyException"/> rather than overwriting the winner
 /// </remarks>
 public sealed class InMemorySagaRepository<TState> : ISagaRepository<TState>
     where TState : class, ISagaState
@@ -41,8 +35,7 @@ public sealed class InMemorySagaRepository<TState> : ISagaRepository<TState>
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
         cancellationToken.ThrowIfCancellationRequested();
 
-        // A copy, not the stored instance: a handler mutating what it loaded must not reach into the store, or the
-        // version check would compare an object against itself and every conflict would pass.
+        // Hand back a copy, so a handler mutating what it loaded cannot reach into the store.
         return _instances.TryGetValue(correlationId, out var stored)
             ? ValueTask.FromResult<TState?>((TState)stored.Copy())
             : ValueTask.FromResult<TState?>(null);
@@ -58,6 +51,7 @@ public sealed class InMemorySagaRepository<TState> : ISagaRepository<TState>
         var stored = (TState)state.Copy();
         stored.Version = state.Version + 1;
 
+        // The key stands in for the unique index: a second initiate on the same correlation id loses the race here.
         if (!_instances.TryAdd(state.CorrelationId, stored))
             throw SagaConcurrencyException.For(state.CorrelationId, state.Version);
 
@@ -78,8 +72,7 @@ public sealed class InMemorySagaRepository<TState> : ISagaRepository<TState>
         var updated = (TState)state.Copy();
         updated.Version = state.Version + 1;
 
-        // Compare-and-swap against the exact instance that was read: between the check above and here, another writer
-        // may have committed, and TryUpdate is what rejects this write instead of clobbering theirs.
+        // Compare-and-swap against the instance read above, so a writer that committed since the check keeps its write.
         if (!_instances.TryUpdate(state.CorrelationId, updated, current))
             throw SagaConcurrencyException.For(state.CorrelationId, state.Version);
 

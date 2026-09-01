@@ -8,7 +8,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests;
 
 public sealed class CqrsMediatorTests
 {
-    // --- CQRS requests + handlers (markers layered over IRequest / IRequestHandler) ---
 
     private sealed record Ping(string Text) : IQuery<string>;
 
@@ -45,7 +44,6 @@ public sealed class CqrsMediatorTests
             .BuildServiceProvider()
             .GetRequiredService<ISender>();
 
-    // --- the existing DI scan binds CQRS handlers as the primitive IRequestHandler<,> the dispatcher
     //     looks up — no scanner change needed. (The scan whitelists IRequestHandler<,> / INotificationHandler<>;
     //     a refinement like IQueryHandler<,> is reachable via its base, which is the type dispatch resolves.) ---
 
@@ -61,8 +59,6 @@ public sealed class CqrsMediatorTests
         provider.GetService<IRequestHandler<Add, int>>().Should().BeOfType<AddHandler>();
         provider.GetService<IRequestHandler<Touch, Unit>>().Should().BeOfType<TouchHandler>();
     }
-
-    // --- SendAsync (native on ISender) dispatches each CQRS shape; a query IS an IRequest<T> ---
 
     [Fact]
     public async Task SendAsync_ShouldDispatchQuery()

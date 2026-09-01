@@ -5,40 +5,6 @@ using Microsoft.Extensions.Options;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Consume-side concurrency for every transport. A receive loop hands each message to the pump instead of awaiting the
-/// pipeline inline, so the loop keeps pulling while handlers run on worker tasks.
-/// </summary>
-/// <remarks>
-/// The default (<see cref="MaxConcurrentMessages"/> = 1) is behaviour-preserving: dispatch stays inline and sequential,
-/// exactly as before the pump existed. Raise it to consume in parallel; a broker's own prefetch/fetch window should be
-/// at least as large or it becomes the limit instead.
-/// </remarks>
-public sealed record ConcurrencyOptions
-{
-    /// <summary>
-    /// Messages processed concurrently. <c>1</c> (default) dispatches inline on the consume loop. Values above 1 start
-    /// that many worker tasks. Forced to 1 for a transport reporting <see cref="ITransportCapabilities.ThreadAffineConsume"/>.
-    /// </summary>
-    public int MaxConcurrentMessages { get; set; } = 1;
-
-    /// <summary>
-    /// Messages a single worker may have queued ahead of the one it is processing. The default <c>1</c> makes the pump
-    /// apply backpressure to the consume loop as soon as every worker is busy, leaving unclaimed messages at the broker.
-    /// </summary>
-    public int MaxQueuedMessagesPerWorker { get; set; } = 1;
-
-    /// <summary>
-    /// Route messages sharing an <see cref="EventEnvelope.PartitionKey"/> to the same worker, so they stay ordered
-    /// relative to each other while unrelated keys run in parallel. Disable for maximum throughput when order is
-    /// irrelevant. Messages with no partition key are distributed round-robin either way.
-    /// </summary>
-    public bool PreserveKeyOrder { get; set; } = true;
-
-    /// <summary>How long shutdown draining waits for in-flight handlers before giving up and letting the host stop. Default 30s.</summary>
-    public TimeSpan DrainTimeout { get; set; } = TimeSpan.FromSeconds(30);
-}
-
-/// <summary>
 /// Sits between an <see cref="IReceiveTransport"/> and the <see cref="EventProcessingPipeline"/>, turning a sequential
 /// receive loop into N workers. Tracks in-flight count for graceful drain (and, later, the in-flight gauge and bus control).
 /// </summary>
@@ -71,8 +37,7 @@ internal sealed partial class MessagePump : IAsyncDisposable
         _logger = logger;
         _options = options;
 
-        // The gauge pulls; the pump never pushes. Registered before the sequential early-return because _inFlight is
-        // maintained in both modes.
+        // The gauge pulls the count; the pump never pushes it.
         _inFlightGauge = metrics.TrackInFlight(() => InFlight);
 
         var requested = Math.Max(1, _options.MaxConcurrentMessages);
@@ -129,10 +94,7 @@ internal sealed partial class MessagePump : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        // Pause gates ENTRY, and sits upstream of both modes and of the in-flight counter. Two consequences, both
-        // deliberate: a message already admitted still completes (pause never abandons work), and a parked message is
-        // invisible to InFlight — so a drain against a paused pump reaches zero instead of waiting on gated work.
-        // The token is the transport's, so host shutdown unwinds a parked loop rather than deadlocking on the gate.
+        // The transport's token unwinds a loop parked here on shutdown, instead of deadlocking on the gate.
         await Gate.WaitAsync(cancellationToken);
 
         if (_sequential)
@@ -168,8 +130,9 @@ internal sealed partial class MessagePump : IAsyncDisposable
     /// inert in sequential mode, where there are none), this one covers work executing inline on the consume loop.
     /// </summary>
     /// <remarks>
-    /// Only terminates if arrivals have been stopped first — shutting <see cref="Gate"/>, cancelling the consume loop,
-    /// or both. Signal-based, never polled: the last completing message hands the waiter its result.
+    ///   - terminates only once arrivals stop
+    ///   - shut <see cref="Gate"/>, cancel the consume loop, or both
+    ///   - signal-based, never polled — the last completing message hands the waiter its result
     /// </remarks>
     /// <param name="cancellationToken">Bounds the wait — an overrunning handler must not hang a caller forever.</param>
     public Task WaitForIdleAsync(CancellationToken cancellationToken)
@@ -177,9 +140,7 @@ internal sealed partial class MessagePump : IAsyncDisposable
         Task idle;
         lock (_idleSync)
         {
-            // Read under the lock that CompleteOne signals under: a decrement landing between this read and the
-            // registration below either already drove the count to zero (seen here) or wakes the source it just saw
-            // published. Never both missed.
+            // Read under the lock CompleteOne signals under — otherwise a decrement racing this read is a lost wakeup.
             if (Volatile.Read(ref _inFlight) == 0)
                 return Task.CompletedTask;
 
@@ -195,10 +156,8 @@ internal sealed partial class MessagePump : IAsyncDisposable
     /// Called after the consume loop stops and before the transport is released, so settlement still has a live channel.
     /// </summary>
     /// <remarks>
-    /// Safe to call on a paused pump. <see cref="Gate"/> sits in front of <see cref="DispatchAsync"/>, not inside the
-    /// worker loop, so a shut gate cannot hold a worker back from finishing what it already accepted — draining a
-    /// paused pump retires exactly the admitted work and returns. Terminal: the worker channels are completed, so a
-    /// drained pump does not accept messages again.
+    ///   - safe on a paused pump — retires the admitted work, never waits on gated messages
+    ///   - terminal: the worker channels close, so a drained pump never accepts messages again
     /// </remarks>
     public async Task DrainAsync(CancellationToken cancellationToken)
     {
@@ -224,15 +183,12 @@ internal sealed partial class MessagePump : IAsyncDisposable
     {
         try
         {
-            // Deliberately NOT the transport's stopping token: that is already cancelled by the time draining starts, so
-            // handing it to the handler would abandon exactly the in-flight work the drain exists to finish. _shutdown
-            // outlives the drain and is cancelled only on dispose, which is what bounds a handler that overruns.
+            // _shutdown outlives the drain and cancels only on dispose, so draining work runs to completion.
             await foreach (var context in reader.ReadAllAsync(_shutdown.Token))
             {
                 try
                 {
-                    // ProcessAsync owns its own failure path (retry → dead-letter); a throw here is the pipeline itself
-                    // faulting, and must not kill the worker and silently stop this partition.
+                    // A throw here is the pipeline itself faulting — catching it keeps this worker's partition alive.
                     await _pipeline.ProcessAsync(context, _shutdown.Token);
                 }
                 catch (OperationCanceledException) when (_shutdown.IsCancellationRequested)
@@ -256,11 +212,6 @@ internal sealed partial class MessagePump : IAsyncDisposable
     }
 
     // Every in-flight decrement funnels through here so no site can miss the idle signal.
-    //
-    // Do NOT add a lock-free `if (_idleSignal is null) return;` fast path: WaitForIdleAsync reads _inFlight and
-    // publishes its source inside _idleSync, and only that mutual exclusion rules out the lost wakeup where the waiter
-    // reads a stale non-zero count AND this method reads a not-yet-published source. Uncontended, the lock is noise
-    // next to the deserialize + dispatch + settle the message just paid for.
     private void CompleteOne()
     {
         if (Interlocked.Decrement(ref _inFlight) != 0)

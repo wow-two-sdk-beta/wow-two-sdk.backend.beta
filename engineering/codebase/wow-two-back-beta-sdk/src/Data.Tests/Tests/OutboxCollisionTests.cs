@@ -10,13 +10,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Tests.Tests;
 /// <summary>
 /// Arch-doc probe PR4, promoted — the outbox claim strategy versus an open session unit on the same context.
 /// </summary>
-/// <remarks>
-/// <see cref="PostgresSkipLockedOutboxClaimStrategy"/> opens <b>its own</b> transaction and hand-rolls ~35 lines of
-/// commit bridging onto the context's <c>SavedChanges</c> event, settled by an <c>Interlocked</c> flag. EF throws on a
-/// second <c>BeginTransaction</c>, so the collision is a standing regression risk, not a one-time question: a
-/// dispatcher scope that shares a context with an open unit must fail loudly, and — critically — must not leave its
-/// commit bridge attached to someone else's unit.
-/// </remarks>
 [Collection(DataTestCollection.Name)]
 public sealed class OutboxCollisionTests(DataTestDb testDb) : RelationalTestBase<DataTestDb, DataTestDbContext>(testDb)
 {
@@ -26,19 +19,19 @@ public sealed class OutboxCollisionTests(DataTestDb testDb) : RelationalTestBase
         await using var context = TestDb.NewContext();
         await SeedPendingOutboxRowAsync(context);
 
-        var strategy = new PostgresSkipLockedOutboxClaimStrategy();
+        var strategy = new PostgresSkipLockedOutboxClaimRepository();
         await using var unit = await context.Database.BeginTransactionAsync();
 
         var claim = async () => await strategy.ClaimPendingAsync(context, 10, CancellationToken.None);
 
-        await claim.Should().ThrowAsync<InvalidOperationException>(); // EF refuses the strategy's own BeginTransaction — the dispatcher must skip units, or the strategy must join one
+        await claim.Should().ThrowAsync<InvalidOperationException>(); // EF refuses the strategy's own BeginTransaction
     }
 
     [Fact]
     public async Task A_failed_claim_leaves_no_commit_bridge_on_the_callers_unit()
     {
         var id = Guid.NewGuid();
-        var strategy = new PostgresSkipLockedOutboxClaimStrategy();
+        var strategy = new PostgresSkipLockedOutboxClaimRepository();
 
         await using (var context = TestDb.NewContext())
         {
@@ -52,8 +45,7 @@ public sealed class OutboxCollisionTests(DataTestDb testDb) : RelationalTestBase
             var claim = async () => await strategy.ClaimPendingAsync(context, 10, CancellationToken.None);
             await claim.Should().ThrowAsync<InvalidOperationException>();
 
-            // If the strategy had attached its SavedChanges bridge before failing, this save would commit — and
-            // dispose — the caller's unit under it.
+            // A second save inside the caller's unit — it stays uncommitted, so no bridge took the unit over.
             context.Widgets.Single(widget => widget.Id == id).Name = "still-uncommitted";
             await context.SaveChangesAsync();
 

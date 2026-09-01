@@ -5,21 +5,21 @@ using System.Text.Json;
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Web;
 
 /// <summary>
-/// Compact JSON request/response helpers for E2E HTTP tests. All serialization uses <see cref="TestJson.Options"/>
+/// Compact JSON request/response helpers for E2E HTTP tests. All serialization uses <see cref="TestJsonConstants.Options"/>
 /// so requests and responses follow the same wire contract as the SDK API serializer.
 /// </summary>
 public static class HttpExtensions
 {
-    /// <summary>Serializes <paramref name="body"/> as a UTF-8 <c>application/json</c> payload using <see cref="TestJson.Options"/>.</summary>
+    /// <summary>Serializes <paramref name="body"/> as a UTF-8 <c>application/json</c> payload using <see cref="TestJsonConstants.Options"/>.</summary>
     /// <param name="body">The object to serialize.</param>
     public static StringContent AsJson(this object body)
     {
         ArgumentNullException.ThrowIfNull(body);
-        var json = JsonSerializer.Serialize(body, TestJson.Options);
+        var json = JsonSerializer.Serialize(body, TestJsonConstants.Options);
         return new StringContent(json, Encoding.UTF8, "application/json");
     }
 
-    /// <summary>Sends a POST with <paramref name="body"/> serialized via <see cref="TestJson.Options"/>.</summary>
+    /// <summary>Sends a POST with <paramref name="body"/> serialized via <see cref="TestJsonConstants.Options"/>.</summary>
     /// <param name="client">The HTTP client.</param>
     /// <param name="url">The request URL.</param>
     /// <param name="body">The request body.</param>
@@ -29,7 +29,7 @@ public static class HttpExtensions
         return client.PostAsync(url, body.AsJson());
     }
 
-    /// <summary>Sends a PUT with <paramref name="body"/> serialized via <see cref="TestJson.Options"/>.</summary>
+    /// <summary>Sends a PUT with <paramref name="body"/> serialized via <see cref="TestJsonConstants.Options"/>.</summary>
     /// <param name="client">The HTTP client.</param>
     /// <param name="url">The request URL.</param>
     /// <param name="body">The request body.</param>
@@ -39,7 +39,7 @@ public static class HttpExtensions
         return client.PutAsync(url, body.AsJson());
     }
 
-    /// <summary>Sends a PATCH with <paramref name="body"/> serialized via <see cref="TestJson.Options"/>.</summary>
+    /// <summary>Sends a PATCH with <paramref name="body"/> serialized via <see cref="TestJsonConstants.Options"/>.</summary>
     /// <param name="client">The HTTP client.</param>
     /// <param name="url">The request URL.</param>
     /// <param name="body">The request body.</param>
@@ -71,7 +71,7 @@ public static class HttpExtensions
         ApiEnvelope<T>? envelope;
         try
         {
-            envelope = await response.Content.ReadFromJsonAsync<ApiEnvelope<T>>(TestJson.Options).ConfigureAwait(false);
+            envelope = await response.Content.ReadFromJsonAsync<ApiEnvelope<T>>(TestJsonConstants.Options).ConfigureAwait(false);
         }
         catch (JsonException ex)
         {

@@ -2,6 +2,7 @@ using AspNet.Security.OAuth.Apple;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders.Physical;
+using WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Apple;
 
@@ -37,9 +38,9 @@ public static class AppleOAuthServiceCollectionExtensions
             o.TeamId = teamId;
             o.KeyId = keyId;
             o.UsePrivateKey(_ => new PhysicalFileInfo(new FileInfo(privateKeyPath)));
-            OAuthBaseline.ApplyBaseline(o, scopes);
+            o.ApplyBaseline(scopes);
             configure?.Invoke(o);
-            OAuthBaseline.StampProvider(o);
+            o.StampProvider();
         });
     }
 }

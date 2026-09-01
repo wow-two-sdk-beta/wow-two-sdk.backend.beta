@@ -13,7 +13,3 @@ public sealed record GeoJsonFeature(
     GeoJsonGeometry? Geometry,
     IReadOnlyDictionary<string, JsonElement>? Properties = null,
     string? Id = null);
-
-/// <summary>A GeoJSON <c>FeatureCollection</c> — an ordered set of features.</summary>
-/// <param name="Features">The features in the collection.</param>
-public sealed record GeoJsonFeatureCollection(IReadOnlyList<GeoJsonFeature> Features);

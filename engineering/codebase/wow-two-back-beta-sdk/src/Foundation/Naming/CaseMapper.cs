@@ -4,7 +4,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 public static class CaseMapper
 {
     /// <summary>Converts <paramref name="value"/> to <paramref name="style"/>. Returns the input unchanged when null/empty.</summary>
-    /// <example><c>ToCase("OrderLineItem", CaseStyle.Snake)</c> → <c>"order_line_item"</c>.</example>
     /// <param name="value">The identifier to convert.</param>
     /// <param name="style">The target casing style.</param>
     public static string ToCase(string? value, CaseStyle style)

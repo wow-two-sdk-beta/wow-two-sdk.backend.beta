@@ -7,7 +7,7 @@ using Xunit;
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests.Behaviors;
 
 /// <summary>
-/// <see cref="LoggingBehavior{TRequest,TResponse}"/> — wraps the handler, logs start + completion on success,
+/// <see cref="LoggingInterceptor{TRequest,TResponse}"/> — wraps the handler, logs start + completion on success,
 /// logs an error and rethrows on failure.
 /// </summary>
 public sealed class LoggingBehaviorTests
@@ -35,8 +35,8 @@ public sealed class LoggingBehaviorTests
     [Fact]
     public async Task HandleAsync_ShouldLogStartAndCompletionAndReturnResult_WhenSuccess()
     {
-        var logger = new CapturingLogger<LoggingBehavior<Req, string>>();
-        var behavior = new LoggingBehavior<Req, string>(logger);
+        var logger = new CapturingLogger<LoggingInterceptor<Req, string>>();
+        var behavior = new LoggingInterceptor<Req, string>(logger);
 
         var result = await behavior.HandleAsync(new Req("x"), () => ValueTask.FromResult("ok"), CancellationToken.None);
 
@@ -49,8 +49,8 @@ public sealed class LoggingBehaviorTests
     [Fact]
     public async Task HandleAsync_ShouldLogFailureAndRethrow_WhenHandlerThrows()
     {
-        var logger = new CapturingLogger<LoggingBehavior<Req, string>>();
-        var behavior = new LoggingBehavior<Req, string>(logger);
+        var logger = new CapturingLogger<LoggingInterceptor<Req, string>>();
+        var behavior = new LoggingInterceptor<Req, string>(logger);
 
         var act = async () => await behavior.HandleAsync(
             new Req("x"),
@@ -66,8 +66,8 @@ public sealed class LoggingBehaviorTests
     [Fact]
     public async Task HandleAsync_ShouldThrow_WhenNextNull()
     {
-        var logger = new CapturingLogger<LoggingBehavior<Req, string>>();
-        var behavior = new LoggingBehavior<Req, string>(logger);
+        var logger = new CapturingLogger<LoggingInterceptor<Req, string>>();
+        var behavior = new LoggingInterceptor<Req, string>(logger);
 
         var act = async () => await behavior.HandleAsync(new Req("x"), null!, CancellationToken.None);
 

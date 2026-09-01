@@ -8,25 +8,22 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 /// Transport-agnostic <see cref="IEventBus"/> — builds the <see cref="EventEnvelope"/> (id, correlation, transport
 /// hints), starts a PRODUCER span and injects W3C trace-context into the headers, then hands the envelope to the
 /// registered <see cref="ISendTransport"/>. Shared by every transport (in-memory channel, RabbitMQ, …).
-/// Registered <see cref="IPublishObserver"/>s are notified around the hand-off; they only watch, and cannot change it.
+/// Registered <see cref="IPublishObservingInterceptor"/>s are notified around the hand-off; they only watch, and cannot change it.
 /// </summary>
 /// <remarks>
-/// <paramref name="claimCheck"/> is the one thing here that <i>may</i> change the envelope: it decides what goes on the
-/// wire in place of an oversized body. Optional by constructor default, on the same reasoning as
-/// <c>EventProcessingPipeline</c>'s delayed-retry coordinator — an application that never called
-/// <c>AddEventClaimCheck()</c> registers nothing, DI supplies null, and the send path is byte-identical to before it
-/// existed.
+///   - <paramref name="claimCheck"/> alone may change the envelope, putting a pointer on the wire in place of an oversized body
+///   - wire one with <c>AddEventClaimCheck()</c>
 /// </remarks>
 internal sealed class TransportEventBus(
     ISendTransport sendTransport,
     TimeProvider timeProvider,
     IMessagingMetrics metrics,
-    IEnumerable<IPublishObserver> publishObservers,
+    IEnumerable<IPublishObservingInterceptor> publishObservers,
     ILogger<TransportEventBus> logger,
     ClaimCheckOffloader? claimCheck = null) : IEventBus
 {
     // Materialized once: the send path only pays a length check when nothing is observing.
-    private readonly IPublishObserver[] _publishObservers = [.. publishObservers];
+    private readonly IPublishObservingInterceptor[] _publishObservers = [.. publishObservers];
 
     public ValueTask PublishAsync<TEvent>(TEvent @event, PublishOptions? options = null, CancellationToken cancellationToken = default)
         where TEvent : class, IEvent
@@ -64,7 +61,7 @@ internal sealed class TransportEventBus(
         var notBefore = delay is { } d && d > TimeSpan.Zero ? now + d : (DateTimeOffset?)null;
         var id = messageId ?? Guid.NewGuid().ToString("N");
 
-        using var activity = MessagingDiagnostics.Source.StartActivity(destination, ActivityKind.Producer);
+        using var activity = MessagingDiagnosticConstants.Source.StartActivity(destination, ActivityKind.Producer);
         if (activity is not null)
         {
             activity.SetTag("messaging.operation.name", "publish");
@@ -91,10 +88,7 @@ internal sealed class TransportEventBus(
             Headers = BuildPropagatedHeaders(headers, activity),
         };
 
-        // Before the observers and the transport. The claim check decides what actually travels — the body's bytes, or
-        // a pointer to them plus the headers that let the consumer fetch them back — so notifying first would hand
-        // observers an envelope that is not the one sent. Null on a default wiring, and even when registered it hands
-        // the same instance straight back for a message it has nothing to do to.
+        // Runs before the observers and the transport, so both see the envelope that actually travels.
         if (claimCheck is not null)
             envelope = await claimCheck.PrepareAsync(envelope, cancellationToken);
 
@@ -104,7 +98,7 @@ internal sealed class TransportEventBus(
         {
             await sendTransport.SendAsync(envelope, cancellationToken);
         }
-        // The filter keeps the no-observer path identical: with nothing registered the catch is never entered and the fault propagates untouched.
+        // With no observer registered the catch is never entered and the fault propagates untouched.
         catch (Exception ex) when (_publishObservers.Length != 0 && !MessageObserverNotifications.IsCancellation(ex, cancellationToken))
         {
             await _publishObservers.NotifyPublishFaultAsync(envelope, ex, logger, cancellationToken);
@@ -126,9 +120,9 @@ internal sealed class TransportEventBus(
             : new Dictionary<string, string>(headers, StringComparer.Ordinal);
 
         if (current.Id is { } traceParent)
-            propagated[MessagingDiagnostics.TraceParentHeader] = traceParent;
+            propagated[MessagingDiagnosticConstants.TraceParentHeader] = traceParent;
         if (!string.IsNullOrEmpty(current.TraceStateString))
-            propagated[MessagingDiagnostics.TraceStateHeader] = current.TraceStateString;
+            propagated[MessagingDiagnosticConstants.TraceStateHeader] = current.TraceStateString;
 
         return propagated;
     }

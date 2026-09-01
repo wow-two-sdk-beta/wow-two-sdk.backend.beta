@@ -16,12 +16,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Tests.Tests;
 /// P0-01 / P0-02 / P0-03 — what actually ends up on the resolved <see cref="DbContextOptions"/> of the flagship
 /// <c>AddPostgresPersistence</c> registration.
 /// </summary>
-/// <remarks>
-/// D5 / D7: <c>AddPostgresPersistence</c> registers its context with <c>AddDbContext</c> directly, so unless it runs
-/// the <c>AddEfInterceptor</c> auto-wire loop, every pluggable interceptor — hooks, guards, outbox — is silently
-/// dropped. There is no warning; the concern simply never happens. These cases resolve the context from DI (never
-/// <c>RelationalTestDb.NewContext</c>, which builds options directly and would bypass the very code under test).
-/// </remarks>
 [Collection(DataTestCollection.Name)]
 public sealed class InterceptorWiringTests(DataTestDb testDb) : RelationalTestBase<DataTestDb, DataTestDbContext>(testDb)
 {
@@ -35,6 +29,8 @@ public sealed class InterceptorWiringTests(DataTestDb testDb) : RelationalTestBa
         await using var provider = BuildFlagshipProvider(log);
 
         using var scope = provider.CreateScope();
+
+        // Resolve from DI — RelationalTestDb.NewContext bypasses the wiring under test.
         var context = scope.ServiceProvider.GetRequiredService<DataTestDbContext>();
         context.Widgets.Add(NewWidget());
         await context.SaveChangesAsync();
@@ -83,7 +79,7 @@ public sealed class InterceptorWiringTests(DataTestDb testDb) : RelationalTestBa
         var interceptors = ResolvedInterceptors(scope.ServiceProvider);
 
         interceptors.OfType<AuditInterceptor>().Should().ContainSingle();      // one arrival only — a second would stamp UpdatedAt twice, silently
-        interceptors.OfType<SoftDeleteInterceptor>().Should().ContainSingle(); // and re-enter the delete rewrite
+        interceptors.OfType<SoftDeleteInterceptor>().Should().ContainSingle(); // one arrival only — a second would re-enter the delete rewrite
     }
 
     [Fact]

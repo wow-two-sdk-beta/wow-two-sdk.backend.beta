@@ -35,8 +35,8 @@ public sealed partial class SrtCaptionParser : ISrtCaptionParser
             if (timingIndex < 0) continue;
 
             var timing = TimingLine().Match(lines[timingIndex]);
-            var start = CaptionTimecode.ParseClock(timing.Groups[1].Value);
-            var end = CaptionTimecode.ParseClock(timing.Groups[2].Value);
+            var start = CaptionTimecodeMapper.ParseClock(timing.Groups[1].Value);
+            var end = CaptionTimecodeMapper.ParseClock(timing.Groups[2].Value);
 
             var text = new StringBuilder();
             for (var j = timingIndex + 1; j < lines.Length; j++)

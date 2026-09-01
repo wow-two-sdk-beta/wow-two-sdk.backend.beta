@@ -1,6 +1,7 @@
 using AspNet.Security.OAuth.Vkontakte;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
+using WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Vkontakte;
 
@@ -23,9 +24,9 @@ public static class VkontakteOAuthServiceCollectionExtensions
         {
             o.ClientId = clientId;
             o.ClientSecret = clientSecret;
-            OAuthBaseline.ApplyBaseline(o, scopes);
+            o.ApplyBaseline(scopes);
             configure?.Invoke(o);
-            OAuthBaseline.StampProvider(o);
+            o.StampProvider();
         });
     }
 }

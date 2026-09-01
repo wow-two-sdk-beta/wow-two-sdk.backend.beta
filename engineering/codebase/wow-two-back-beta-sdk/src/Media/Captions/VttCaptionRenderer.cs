@@ -18,9 +18,9 @@ public sealed class VttCaptionRenderer : ICaptionRenderer
 
         foreach (var segment in segments)
         {
-            builder.Append(CaptionTimecode.FormatClock(segment.Start, '.'))
+            builder.Append(CaptionTimecodeMapper.FormatClock(segment.Start, '.'))
                    .Append(" --> ")
-                   .Append(CaptionTimecode.FormatClock(segment.End, '.'))
+                   .Append(CaptionTimecodeMapper.FormatClock(segment.End, '.'))
                    .Append('\n')
                    .Append(segment.Text)
                    .Append("\n\n");

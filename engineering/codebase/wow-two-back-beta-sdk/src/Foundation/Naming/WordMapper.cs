@@ -6,7 +6,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 public static class WordMapper
 {
     /// <summary>Splits <paramref name="value"/> into lowercased words. Returns an empty array for null/empty/separator-only input.</summary>
-    /// <example><c>"HTTPStatusCode"</c> → <c>["http", "status", "code"]</c>; <c>"order_line2"</c> → <c>["order", "line", "2"]</c>.</example>
     /// <param name="value">The identifier to tokenize into words.</param>
     public static IReadOnlyList<string> Split(string? value)
     {

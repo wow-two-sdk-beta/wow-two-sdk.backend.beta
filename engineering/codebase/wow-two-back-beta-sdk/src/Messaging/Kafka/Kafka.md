@@ -30,6 +30,20 @@ builder.Services.AddKafkaEventBus(o =>
 - **Ack**: `ctx.Acknowledge` → `StoreOffset` (offset committed by the auto-committer).
 - **DLQ (emulated)**: `ctx.DeadLetter` (retries exhausted) → re-produce the original message to `DeadLetterTopic`, then `StoreOffset` (advance past the poison message).
 
+## Destination routing rollout
+
+`KafkaOptions.RouteByDestination` is off by default — every message rides `KafkaOptions.Topic`. Turning it on changes
+which topic a message lands on, so the switch is **consumers first**:
+
+1. Deploy the consumers with `RouteByDestination = true`. A consumer with it on subscribes to `Topic` **as well as**
+   every routed topic (one per consumed type, plus the endpoint's own name), so it keeps receiving from producers that
+   have not been switched yet.
+2. Once every consumer is across, turn it on for the producers. A publish then lands on the message type's own topic;
+   an explicit `SendAsync` lands on the addressed endpoint's topic.
+3. A routing key that sanitizes away to nothing (`KafkaTopicNameMapper`) falls back to `Topic`.
+
+A producer switched ahead of its consumers produces to a topic nobody subscribes to.
+
 ## Capabilities
 
 `KafkaCapabilities`: `NativeDeadLetter = false` (emulated) · `NativeOrdering = true` (per-partition) · `NativeDelay/NativeDedupe = false`.

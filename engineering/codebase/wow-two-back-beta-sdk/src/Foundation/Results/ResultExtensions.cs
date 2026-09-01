@@ -38,10 +38,7 @@ public static class ResultExtensions
     /// <param name="result">The result to inspect.</param>
     /// <param name="error">The failure's error, set only when this returns <see langword="true"/>.</param>
     /// <param name="value">The success value, set only when this returns <see langword="false"/>.</param>
-    /// <remarks>
-    /// The carrier has <c>Map</c> but no <c>Bind</c>, so propagating a failure through an async operation otherwise costs a
-    /// cast per hop. This keeps the closed union intact and reads as the guard clause the call sites already want.
-    /// </remarks>
+    /// <remarks>Reads as a guard clause, so a failure propagates without a cast at each hop.</remarks>
     public static bool IsFailure<T>(
         this Result<T> result,
         [NotNullWhen(true)] out AppError? error,

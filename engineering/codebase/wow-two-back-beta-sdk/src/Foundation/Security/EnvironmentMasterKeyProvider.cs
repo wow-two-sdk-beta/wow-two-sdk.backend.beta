@@ -28,12 +28,12 @@ internal sealed class EnvironmentMasterKeyProvider(EnvelopeCryptographyOptions o
             throw new MasterKeyFormatException($"Master key in '{envVar}' is not valid base64.", ex);
         }
 
-        if (key.Length != KeySizes.SymmetricKeyBytes)
+        if (key.Length != KeySizeConstants.SymmetricKeyBytes)
         {
             // Clear the wrong-sized buffer before throwing — it may still hold partial key material.
             CryptographicOperations.ZeroMemory(key);
             throw new MasterKeyFormatException(
-                $"Master key in '{envVar}' must decode to {KeySizes.SymmetricKeyBytes} bytes.");
+                $"Master key in '{envVar}' must decode to {KeySizeConstants.SymmetricKeyBytes} bytes.");
         }
 
         return key;

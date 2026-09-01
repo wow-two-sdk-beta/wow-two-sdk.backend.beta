@@ -9,13 +9,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Tests.Tests;
 /// <summary>
 /// P0-08 — the harness self-test the whole suite's isolation premise rests on.
 /// </summary>
-/// <remarks>
-/// <c>PostgresFixture.ResetAsync</c> returns early when the respawner is null, so a fixture whose respawner was never
-/// initialized truncates nothing and every isolation assumption in this suite silently becomes "passes on leftover
-/// rows". These cases assert the reset contract explicitly rather than assuming it ran. Also covers harness delta H1:
-/// a second, real <see cref="System.Data.Common.DbConnection"/> — the Dapper tier and every cross-connection
-/// visibility assertion are unbuildable without one.
-/// </remarks>
 [Collection(DataTestCollection.Name)]
 public sealed class HarnessSelfTests(DataTestDb testDb) : RelationalTestBase<DataTestDb, DataTestDbContext>(testDb)
 {
@@ -31,8 +24,8 @@ public sealed class HarnessSelfTests(DataTestDb testDb) : RelationalTestBase<Dat
         await TestDb.ResetAsync();
 
         await using var verify = TestDb.NewContext();
-        (await verify.Widgets.CountAsync()).Should().Be(0);                     // Respawn actually truncated — the reset did not silently return early
-        (await verify.Database.CanConnectAsync()).Should().BeTrue();            // and the schema survived the truncate, so the next test has tables to write to
+        (await verify.Widgets.CountAsync()).Should().Be(0);                     // truncated for real — an uninitialized respawner returns early and truncates nothing
+        (await verify.Database.CanConnectAsync()).Should().BeTrue();            // the schema survived the truncate, so the next test has tables to write to
     }
 
     [Theory]
@@ -42,7 +35,7 @@ public sealed class HarnessSelfTests(DataTestDb testDb) : RelationalTestBase<Dat
     {
         await using var context = TestDb.NewContext();
 
-        (await context.Widgets.CountAsync()).Should().Be(0); // run 2 proves run 1's row is gone — the per-test reset, not the assertion, does the isolating
+        (await context.Widgets.CountAsync()).Should().Be(0); // run 2 proves run 1's row is gone — the per-test reset does the isolating
 
         context.Widgets.Add(new Widget { Id = Guid.NewGuid(), Name = $"run-{run}" });
         await context.SaveChangesAsync();
@@ -60,8 +53,6 @@ public sealed class HarnessSelfTests(DataTestDb testDb) : RelationalTestBase<Dat
 
         await using var connection = await TestDb.OpenConnectionAsync();
 
-        // A raw Dapper read on a genuinely separate connection — on SQLite's DataSource=:memory: this would open a
-        // different, empty database and return null while still "passing" a weaker assertion.
         var name = await connection.QuerySingleOrDefaultAsync<string>(
             "select name from widgets where id = @id",
             new { id });

@@ -83,7 +83,8 @@ read-modify-write that can lose.
 - The coordinator answers a conflict by **reloading and re-running the transition**, up to
   `SagaOptions.MaxConcurrencyRetries`; after that the exception escapes into the normal retry / dead-letter path.
 - Consequence: **an activity can run twice for one message** — keep activities idempotent, which at-least-once
-  delivery already demands.
+  delivery already demands. A side effect that must not repeat belongs behind `IInboxProcessor` or an idempotent
+  downstream API.
 - **Avoid the race instead:** set `PartitionKey` = the saga's correlation key on every message that drives it. The
   pump hashes it onto one worker, so an instance's messages are serialized in arrival order. Timeouts and anything
   published via `ctx.PublishAsync` already carry it.
@@ -118,7 +119,7 @@ topology and logs an unbound one once (`EventSagaRunner.cs`).
 | `SagaTransitionContext<TState,TEvent>` | instance · message · DI scope · publish · branch · schedule/cancel timeout |
 | `SagaCoordinator<TState>` | correlate → load → transition → write, with concurrency replay |
 | `SagaOptions` | concurrency retries · remove-on-finalize |
-| `AddSaga<TMachine,TState>()` | DI registration (machine + repository + one handler per observed event) |
+| `AddSaga<TMachine,TState>()` | DI registration (singleton machine + repository + one handler per observed event) |
 
 ## NEXT
 

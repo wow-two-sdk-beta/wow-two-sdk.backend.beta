@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
@@ -13,7 +14,7 @@ public static class AppResultFactory
     /// <typeparam name="TResponse">The mediator response type.</typeparam>
     /// <param name="error">The error to carry in the failure.</param>
     /// <param name="failure">The constructed failure, when <typeparamref name="TResponse"/> is an <see cref="AppResult{TSuccess}"/>.</param>
-    public static bool TryCreateFailure<TResponse>(AppError error, out TResponse failure)
+    public static bool TryCreateFailure<TResponse>(AppError error, [MaybeNullWhen(false)] out TResponse failure)
     {
         ArgumentNullException.ThrowIfNull(error);
 
@@ -21,7 +22,7 @@ public static class AppResultFactory
 
         if (factory is null)
         {
-            failure = default!;
+            failure = default;
 
             return false;
         }

@@ -26,7 +26,7 @@ public sealed class PipelineBehaviorTests
     }
 
     // Position-recording behaviors. Three distinct closed types so DI keeps them as separate registrations.
-    private abstract class TracingBehavior<TRequest, TResponse>(string label) : IPipelineBehavior<TRequest, TResponse>
+    private abstract class TracingInterceptor<TRequest, TResponse>(string label) : IRequestInterceptor<TRequest, TResponse>
         where TRequest : notnull
     {
         public async ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> nextStep, CancellationToken cancellationToken)
@@ -38,14 +38,14 @@ public sealed class PipelineBehaviorTests
         }
     }
 
-    private sealed class BehaviorOne<TRequest, TResponse>() : TracingBehavior<TRequest, TResponse>("one") where TRequest : notnull;
+    private sealed class BehaviorOne<TRequest, TResponse>() : TracingInterceptor<TRequest, TResponse>("one") where TRequest : notnull;
 
-    private sealed class BehaviorTwo<TRequest, TResponse>() : TracingBehavior<TRequest, TResponse>("two") where TRequest : notnull;
+    private sealed class BehaviorTwo<TRequest, TResponse>() : TracingInterceptor<TRequest, TResponse>("two") where TRequest : notnull;
 
-    private sealed class BehaviorThree<TRequest, TResponse>() : TracingBehavior<TRequest, TResponse>("three") where TRequest : notnull;
+    private sealed class BehaviorThree<TRequest, TResponse>() : TracingInterceptor<TRequest, TResponse>("three") where TRequest : notnull;
 
     // A behavior that short-circuits — never calls nextStep, returns a canned value.
-    private sealed class ShortCircuitBehavior<TRequest, TResponse>(TResponse canned) : IPipelineBehavior<TRequest, TResponse>
+    private sealed class ShortCircuitingInterceptor<TRequest, TResponse>(TResponse canned) : IRequestInterceptor<TRequest, TResponse>
         where TRequest : notnull
     {
         public ValueTask<TResponse> HandleAsync(TRequest request, RequestHandlerDelegate<TResponse> nextStep, CancellationToken cancellationToken)
@@ -66,7 +66,7 @@ public sealed class PipelineBehaviorTests
     public async Task SingleBehavior_ShouldWrapTheHandler()
     {
         Trace.Value = [];
-        var sender = BuildSender(s => s.AddMediatorBehavior(typeof(BehaviorOne<,>)));
+        var sender = BuildSender(s => s.AddMediatorInterceptor(typeof(BehaviorOne<,>)));
 
         var result = await sender.SendAsync(new Probe("x"));
 
@@ -79,9 +79,9 @@ public sealed class PipelineBehaviorTests
     {
         Trace.Value = [];
         var sender = BuildSender(s => s
-            .AddMediatorBehavior(typeof(BehaviorOne<,>))    // outermost
-            .AddMediatorBehavior(typeof(BehaviorTwo<,>))
-            .AddMediatorBehavior(typeof(BehaviorThree<,>))); // innermost
+            .AddMediatorInterceptor(typeof(BehaviorOne<,>))    // outermost
+            .AddMediatorInterceptor(typeof(BehaviorTwo<,>))
+            .AddMediatorInterceptor(typeof(BehaviorThree<,>))); // innermost
 
         await sender.SendAsync(new Probe("x"));
 
@@ -101,8 +101,8 @@ public sealed class PipelineBehaviorTests
         // The canned TResponse is supplied via a closed registration so DI can construct the behavior.
         var sender = BuildSender(s =>
         {
-            s.AddTransient<IPipelineBehavior<Probe, string>>(_ => new ShortCircuitBehavior<Probe, string>("canned"));
-            s.AddMediatorBehavior(typeof(BehaviorOne<,>));
+            s.AddTransient<IRequestInterceptor<Probe, string>>(_ => new ShortCircuitingInterceptor<Probe, string>("canned"));
+            s.AddMediatorInterceptor(typeof(BehaviorOne<,>));
         });
 
         var result = await sender.SendAsync(new Probe("ignored"));
@@ -115,7 +115,7 @@ public sealed class PipelineBehaviorTests
     public void AddMediatorBehavior_ShouldReject_WhenClosedGenericType()
     {
         var services = new ServiceCollection();
-        var act = () => services.AddMediatorBehavior(typeof(BehaviorOne<Probe, string>));
+        var act = () => services.AddMediatorInterceptor(typeof(BehaviorOne<Probe, string>));
 
         act.Should().Throw<ArgumentException>();
     }

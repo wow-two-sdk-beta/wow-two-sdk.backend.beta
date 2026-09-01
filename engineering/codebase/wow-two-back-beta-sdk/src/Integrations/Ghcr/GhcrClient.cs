@@ -10,15 +10,13 @@ namespace WoW.Two.Sdk.Backend.Beta.Integrations.Ghcr;
 
 /// <summary>Wraps the GitHub Container Registry (GHCR) v2 API to confirm a published image tag exists.</summary>
 /// <remarks>
-/// Auth flow per probe:
-///   1. Fetch an anonymous GHCR pull token (works for public images) and HEAD the manifest.
-///   2. On 401/403, mint a pull token authenticated with the token from <see cref="IAccessTokenProvider"/>
-///      (needs <c>read:packages</c>) via GHCR's Bearer realm, then re-HEAD — covers private images.
-///   3. Still refused → report <see cref="ImageCheck.Unauthorized"/> rather than throwing.
+///   - a private image needs <see cref="IAccessTokenService"/> to supply a <c>read:packages</c> token
+///   - a refused probe reports <see cref="ImageCheck.Unauthorized"/> rather than throwing
+///   - auth flow: ghcr.md § Pull-token flow
 /// </remarks>
 internal sealed partial class GhcrClient(
     HttpClient http,
-    IAccessTokenProvider tokenProvider,
+    IAccessTokenService tokenProvider,
     ILogger<GhcrClient> logger) : IContainerRegistryClient
 {
     /// <summary>The manifest media types a HEAD must accept so GHCR returns the tag's manifest.</summary>
@@ -45,8 +43,7 @@ internal sealed partial class GhcrClient(
         if (anonymous is ImageCheck.Exists or ImageCheck.Missing or ImageCheck.Failed)
             return anonymous;
 
-        // Anonymous was refused → the image may be private. Mint a pull token authenticated with the
-        // configured access token (needs read:packages), then re-probe.
+        // Refused anonymously → mint a pull token from the configured access token (read:packages) and re-probe.
         var authToken = await tokenProvider.GetAccessTokenAsync(ct);
         if (authToken is null)
             return ImageCheck.Unauthorized;
@@ -94,8 +91,7 @@ internal sealed partial class GhcrClient(
         using var request = new HttpRequestMessage(
             HttpMethod.Get, $"https://ghcr.io/token?service=ghcr.io&scope=repository:{imagePath}:pull");
 
-        // For a private image, authenticate the token request with the access token. GHCR validates
-        // the token (the Basic username is ignored), then mints a pull-scoped registry bearer.
+        // Authenticate the token request so GHCR mints a pull-scoped bearer for a private image.
         if (accessToken is not null)
         {
             var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{BasicAuthUser}:{accessToken}"));

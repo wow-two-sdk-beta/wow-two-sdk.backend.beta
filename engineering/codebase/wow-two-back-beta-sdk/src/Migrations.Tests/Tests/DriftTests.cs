@@ -8,7 +8,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Migrations.Tests.Tests;
 
 /// <summary>
 /// Drift: editing an already-applied Apply.sql changes its checksum, so the next apply fails closed
-/// (<see cref="MigrationDriftException"/>). Repair (needs <c>AllowRollback</c>) re-records and clears the drift.
+/// (a <c>DataIntegrity</c> failure). Repair (needs <c>AllowRollback</c>) re-records and clears the drift.
 /// </summary>
 public sealed class DriftTests : SqliteMigratorTestBase
 {

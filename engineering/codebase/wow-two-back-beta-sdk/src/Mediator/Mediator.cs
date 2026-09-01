@@ -58,14 +58,16 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
             .MakeGenericMethod(requestType, responseType);
 
         // Returns ValueTask<TResponse> boxed to object; SendAsync<TResponse> unboxes it — one box per dispatch, no Task wrap.
-        return (sp, req, ct) => method.Invoke(null, [sp, req, ct])!;
+        // DoNotWrapExceptions keeps a synchronous throw as itself: the mapper matches on AppException, and a
+        // TargetInvocationException around one maps to Unexpected instead of the status the error names.
+        return (sp, req, ct) => method.Invoke(null, BindingFlags.DoNotWrapExceptions, binder: null, [sp, req, ct], culture: null)!;
     }
 
     private static ValueTask<TResponse> DispatchTyped<TRequest, TResponse>(IServiceProvider sp, TRequest request, CancellationToken ct)
         where TRequest : IRequest<TResponse>
     {
         var handler = sp.GetRequiredService<IRequestHandler<TRequest, TResponse>>();
-        var behaviors = sp.GetServices<IPipelineBehavior<TRequest, TResponse>>().Reverse().ToArray();
+        var behaviors = sp.GetServices<IRequestInterceptor<TRequest, TResponse>>().Reverse().ToArray();
 
         RequestHandlerDelegate<TResponse> pipeline = () => handler.HandleAsync(request, ct);
         foreach (var behavior in behaviors)

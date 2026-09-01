@@ -10,17 +10,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 /// update and delete that <see cref="IDeadLetterAdmin"/> needs to do more than replay one message at a time.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Transport-neutral despite the name: storage is in process, but replay goes through the registered
-/// <see cref="ISendTransport"/>, so it also works behind a broker adapter whose DLQ the SDK owns rather than the broker
-/// (Kafka's dead-letter topic, NATS' dead-letter subject). The default store writes the in-memory channel directly and
-/// is therefore usable only with the in-memory transport.
-/// </para>
-/// <para>
-/// Records live for the life of the process — the same durability as what it replaces. Nothing here is a substitute for
-/// a broker's own DLQ or a durable store; it is the implementation that makes the administration surface exercisable
-/// end-to-end without one.
-/// </para>
+///   - storage is in process — records are lost when the process ends
+///   - replay goes through the registered <see cref="ISendTransport"/>, so it works behind a broker adapter whose DLQ the SDK owns rather than the broker
+///   - the default <c>InMemoryDeadLetterRepository</c> writes the in-memory channel directly — in-memory transport only
 /// </remarks>
 internal sealed partial class InMemoryDeadLetterQueryRepository(ISendTransport sendTransport, ILogger<InMemoryDeadLetterQueryRepository> logger) : IDeadLetterQueryRepository
 {
@@ -52,8 +44,7 @@ internal sealed partial class InMemoryDeadLetterQueryRepository(ISendTransport s
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        // Ordered newest-first so a browse without a time filter shows the fresh failures an operator is looking for,
-        // rather than whatever order the dictionary happens to hold.
+        // Order newest-first so a browse without a time filter shows the freshest failures.
         var ordered = _records.Values.OrderByDescending(static record => record.DeadLetteredAtUtc);
         var remaining = query.Limit > 0 ? query.Limit : int.MaxValue;
 
@@ -85,8 +76,7 @@ internal sealed partial class InMemoryDeadLetterQueryRepository(ISendTransport s
         ArgumentNullException.ThrowIfNull(record);
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Update, never insert: a record removed by a concurrent purge or replay must not be resurrected by an admin
-        // write that was decided before it went.
+        // Update, never insert — a stale admin write must not resurrect a concurrently purged or replayed record.
         if (!_records.TryGetValue(record.MessageId, out var existing))
             return ValueTask.FromResult(false);
 
@@ -115,14 +105,12 @@ internal sealed partial class InMemoryDeadLetterQueryRepository(ISendTransport s
 
         try
         {
-            // Replays what is stored, not a copy taken earlier — the admin writes the redrive marker onto the record
-            // before calling this, and that is how the marker reaches the wire.
+            // Send the stored record, so the redrive marker the admin wrote onto it reaches the wire.
             await sendTransport.SendAsync(record.Envelope with { DeliveryCount = 0 }, cancellationToken);
         }
         catch (Exception)
         {
-            // Put it back: a replay that failed to publish has neither delivered the message nor kept it, and losing a
-            // poison message to a transient broker fault is the one outcome a dead-letter store must not have.
+            // Put it back — a publish that failed neither delivered the message nor kept it.
             _records.TryAdd(messageId, record);
             throw;
         }

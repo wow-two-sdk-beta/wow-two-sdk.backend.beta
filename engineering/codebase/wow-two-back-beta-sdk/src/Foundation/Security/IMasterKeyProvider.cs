@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Security;
 
-/// <summary>Supplies the master key (KEK) material to an <see cref="ISealKeeper"/>, abstracting where the key comes from.</summary>
+/// <summary>Supplies the master key (KEK) material to an <see cref="ISealService"/>, abstracting where the key comes from.</summary>
 /// <remarks>The seam that makes the key source swappable — an environment variable today (<see cref="EnvironmentMasterKeyProvider"/>), a cloud KMS or HSM later — without touching the seal keeper or the crypto plane. Implementations should treat the returned bytes as sensitive and avoid caching them; the seal keeper holds the single in-memory copy.</remarks>
 public interface IMasterKeyProvider
 {

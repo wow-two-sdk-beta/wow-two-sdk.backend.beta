@@ -26,8 +26,7 @@ public static class PostgresPersistenceStartupExtensions
 
         var runner = serviceProvider.GetRequiredService<IMigrationRunnerService>();
 
-        // Startup is the bridge back to a throw: the host has no result channel before the pipeline exists, and booting on
-        // a schema that failed to migrate is worse than failing to boot.
+        // The host has no result channel before its pipeline exists, and it must not boot on a schema that failed to migrate.
         (await runner.ApplyPendingAsync("startup", cancellationToken).ConfigureAwait(false)).ValueOrThrow();
     }
 }

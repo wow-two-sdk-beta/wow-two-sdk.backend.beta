@@ -5,47 +5,6 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
-/// <summary>An event whose handler fails until an operator flips <see cref="FlakyToggle"/> — the fix-then-redrive story.</summary>
-public sealed record FlakyEvent(string Value) : IEvent;
-
-/// <summary>An event whose handler never recovers — the infinite-redrive guard's subject.</summary>
-public sealed record RedrivePoison(string Value) : IEvent;
-
-/// <summary>The "deploy the fix" switch a redrive test flips between laps.</summary>
-public sealed class FlakyToggle
-{
-    private volatile bool _fail = true;
-
-    /// <summary>Whether <see cref="FlakyHandler"/> throws. Written from the test thread, read on a consume worker.</summary>
-    public bool Fail
-    {
-        get => _fail;
-        set => _fail = value;
-    }
-}
-
-/// <summary>
-/// Throws while the toggle says to. The toggle is pulled from the provider rather than injected, because this handler is
-/// scanned into every host in the assembly and most of them never register one.
-/// </summary>
-public sealed class FlakyHandler(IServiceProvider services) : IEventHandler<FlakyEvent>
-{
-    public ValueTask HandleAsync(EventContext<FlakyEvent> context, CancellationToken cancellationToken)
-    {
-        if (services.GetService<FlakyToggle>() is { Fail: true })
-            throw new TimeoutException("flaky downstream");
-
-        return ValueTask.CompletedTask;
-    }
-}
-
-/// <summary>Always throws — every redrive lap ends back in the dead-letter store.</summary>
-public sealed class RedrivePoisonHandler : IEventHandler<RedrivePoison>
-{
-    public ValueTask HandleAsync(EventContext<RedrivePoison> context, CancellationToken cancellationToken)
-        => throw new InvalidOperationException("poison");
-}
-
 /// <summary>The operator surface over the dead-letter store: browse, peek, redrive, the redrive cap, purge.</summary>
 public sealed class DeadLetterAdminTests
 {

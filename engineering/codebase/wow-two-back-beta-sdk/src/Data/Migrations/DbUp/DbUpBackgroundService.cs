@@ -32,7 +32,7 @@ public sealed partial class DbUpBackgroundService : IHostedService
         if (_options.UpgradeEngineFactory is null)
             throw new InvalidOperationException(
                 $"{nameof(DbUpOptions)}.{nameof(DbUpOptions.UpgradeEngineFactory)} must be set " +
-                $"(use {nameof(DbUpProviderFactory)}.Postgres/SqlServer/MySql/Sqlite).");
+                "(call UsePostgres(), UseSqlServer() or UseMySql() on the options, or assign UpgradeEngineFactory).");
 
         if (string.IsNullOrWhiteSpace(_options.ConnectionString))
             throw new InvalidOperationException($"{nameof(DbUpOptions)}.{nameof(DbUpOptions.ConnectionString)} is required.");

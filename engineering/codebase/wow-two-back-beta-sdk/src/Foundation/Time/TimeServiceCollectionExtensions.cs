@@ -33,18 +33,3 @@ public static class TimeServiceCollectionExtensions
         return services;
     }
 }
-
-internal static class ServiceCollectionTryAddExtensions
-{
-    public static IServiceCollection TryAddSingleton<TService>(this IServiceCollection services, TService instance)
-        where TService : class
-    {
-        for (var i = 0; i < services.Count; i++)
-        {
-            if (services[i].ServiceType == typeof(TService))
-                return services;
-        }
-        services.AddSingleton(instance);
-        return services;
-    }
-}

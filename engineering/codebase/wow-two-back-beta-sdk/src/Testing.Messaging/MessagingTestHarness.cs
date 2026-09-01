@@ -9,42 +9,15 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
-/// <summary>Timing defaults for a <see cref="MessagingTestHarness"/>.</summary>
-public sealed record MessagingHarnessOptions
-{
-    /// <summary>How long the bus must be silent before <see cref="MessagingTestHarness.WaitForIdleAsync"/> calls it idle. Default 100ms.</summary>
-    /// <remarks>
-    /// This is the harness's one real assumption: that a message which has been handed to the transport reaches an
-    /// observer within this window. An in-process channel needs microseconds; raise it for a broker, where the hop is
-    /// a network round-trip and too short a window reports idle while a message is still in flight on the wire.
-    /// </remarks>
-    public TimeSpan QuietPeriod { get; set; } = TimeSpan.FromMilliseconds(100);
-
-    /// <summary>Overall budget for a harness wait that does not pass its own. Default 5s.</summary>
-    public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(5);
-
-    /// <summary>Re-check interval for the one condition that has no signal behind it — the in-flight count. Default 10ms.</summary>
-    public TimeSpan PollInterval { get; set; } = TimeSpan.FromMilliseconds(10);
-}
-
 /// <summary>
 /// A running event bus plus the assertions to interrogate it: what was published, consumed, faulted and
 /// dead-lettered, and a wait that returns when the bus goes quiet. Turns a messaging test into
 /// arrange harness → publish → await an assertion.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Built entirely on the SDK's observer seam, so the harness watches the real pipeline without altering it: nothing
-/// here can change routing, settlement, retries or dead-lettering. The same harness therefore works against the
-/// in-memory transport and against a broker-backed host — see <see cref="Attach"/>.
-/// </para>
-/// <para>
-/// <see cref="WaitForIdleAsync"/> is the replacement for the sleep. A test that needs to assert something did
-/// <i>not</i> happen (no duplicate handled, nothing consumed while paused) has no message to await, and the usual
-/// answer is an arbitrary <c>Task.Delay</c> that is simultaneously too slow for CI and too fast under load. Waiting
-/// for the bus to fall silent — no observable move for <see cref="MessagingHarnessOptions.QuietPeriod"/> and nothing
-/// in flight — is the same assertion, expressed as a condition instead of a guess.
-/// </para>
+///   - watches the real pipeline through the observer seam, never altering routing, settlement, retries or dead-lettering
+///   - works against the in-memory transport and a broker-backed host alike — see <see cref="Attach"/>
+///   - to assert something did <i>not</i> happen, await <see cref="WaitForIdleAsync"/> rather than a <c>Task.Delay</c>
 /// </remarks>
 public sealed class MessagingTestHarness : IAsyncDisposable
 {
@@ -141,9 +114,8 @@ public sealed class MessagingTestHarness : IAsyncDisposable
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <exception cref="TimeoutException">The bus never went quiet within the budget — the message names what was still moving.</exception>
     /// <remarks>
-    /// Signal-driven, not polled: any observed move restarts the window immediately. The in-flight check is what
-    /// separates "quiet" from "busy in a handler that publishes nothing" — a long-running handler keeps the harness
-    /// waiting even though no hook has fired.
+    ///   - any observed move restarts the quiet window
+    ///   - a handler still running keeps the wait going, even with no bus activity
     /// </remarks>
     public async Task WaitForIdleAsync(TimeSpan? quietPeriod = null, TimeSpan? timeout = null, CancellationToken cancellationToken = default)
     {
@@ -155,8 +127,7 @@ public sealed class MessagingTestHarness : IAsyncDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Captured BEFORE the reads below: a hook firing in between completes this task, so the wait re-evaluates
-            // instead of sleeping through the very move it was watching for.
+            // Captured before the reads below — a move landing in between completes this task and the wait re-evaluates.
             var activity = _recorder.NextActivityAsync();
             var sinceLast = _recorder.SinceLastActivity;
             var inFlight = InFlight;
@@ -169,8 +140,7 @@ public sealed class MessagingTestHarness : IAsyncDisposable
                 throw new TimeoutException(
                     $"Bus was not idle within {budget}: {inFlight} message(s) in flight, last activity {sinceLast.TotalMilliseconds:F0}ms ago (quiet period {quiet.TotalMilliseconds:F0}ms). {_recorder}");
 
-            // Silence not yet long enough → wait out the rest of the window. Silent but still working → the in-flight
-            // count is the only unsignalled condition here, so it is the only thing this method polls.
+            // Silence too short → wait out the window; silent but still working → poll the unsignalled in-flight count.
             var wait = sinceLast >= quiet ? _options.PollInterval : quiet - sinceLast;
             if (wait > remaining)
                 wait = remaining;
@@ -191,8 +161,9 @@ public sealed class MessagingTestHarness : IAsyncDisposable
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <exception cref="TimeoutException">Messages were still in flight when the budget ran out.</exception>
     /// <remarks>
-    /// The narrower primitive: it says handlers have finished, not that no more work is coming. Use it after pausing
-    /// or stopping the bus, where no arrivals are possible; use <see cref="WaitForIdleAsync"/> otherwise.
+    ///   - reports that handlers finished, never that no more work is coming
+    ///   - use only after pausing or stopping the bus, where no arrival is possible
+    ///   - prefer <see cref="WaitForIdleAsync"/> otherwise
     /// </remarks>
     public async Task WaitForInFlightZeroAsync(TimeSpan? timeout = null, CancellationToken cancellationToken = default)
     {

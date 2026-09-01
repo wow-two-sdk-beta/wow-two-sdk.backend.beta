@@ -4,7 +4,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Audit;
 
 /// <summary>Computes an entry's chain hash by prepending the SDK-owned chain fields, then the consumer's canonical payload.</summary>
 /// <remarks>Single source of the hashing recipe — both <see cref="HashChainSealer{TEntry}"/> and <see cref="HashChainVerifier{TEntry}"/> route through it so seal and verify can never diverge. The prepended order is fixed — scheme version, sequence, previous hash — so a consumer canonicalizer cannot omit a chain field and silently weaken the proof.</remarks>
-internal static class HashChainHasher
+internal sealed class HashChainHasher
 {
     /// <summary>Computes the hash for an entry positioned at <paramref name="sequence"/> after <paramref name="previousHash"/>.</summary>
     /// <typeparam name="TEntry">The consumer's entry type whose domain fields are hashed.</typeparam>
@@ -13,7 +13,7 @@ internal static class HashChainHasher
     /// <param name="algorithm">The hash function to apply.</param>
     /// <param name="sequence">The chain position to bind into the hash.</param>
     /// <param name="previousHash">The prior entry's hash to bind into the hash, empty for the genesis entry.</param>
-    public static byte[] Compute<TEntry>(
+    public byte[] Compute<TEntry>(
         TEntry entry,
         IChainedEntryCanonicalizer<TEntry> canonicalizer,
         HashChainAlgorithm algorithm,

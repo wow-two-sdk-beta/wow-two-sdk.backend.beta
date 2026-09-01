@@ -11,12 +11,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Containers.Postgres;
 /// Async fixture spinning up a PostgreSQL container with a Respawn-backed <see cref="ResetAsync"/>
 /// and an open <see cref="Connection"/> for between-test data wipes.
 /// </summary>
-/// <remarks>
-/// Lifecycle for consumers: <c>StartAsync</c> the container → let the host apply migrations →
-/// call <see cref="InitializeRespawnerAsync"/> once (snapshots the post-migration schema) →
-/// <see cref="ResetAsync"/> before/after each test to truncate data.
-/// The migration-history table is ignored so reseting never re-runs or desyncs migrations.
-/// </remarks>
 public sealed class PostgresFixture : ContainerFixtureBase<PostgreSqlContainer>
 {
     // The migrator's bookkeeping table — never truncate, or migrations re-run/desync.

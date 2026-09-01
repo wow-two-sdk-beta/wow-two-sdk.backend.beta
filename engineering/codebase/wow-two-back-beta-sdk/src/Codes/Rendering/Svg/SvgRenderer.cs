@@ -288,7 +288,7 @@ public sealed class SvgRenderer
         }
     }
 
-    // ── Finder eyes ──
+    #region Finder eyes
 
     /// <summary>Appends one finder eye — the outer hollow frame (<paramref name="frame"/>) then the inner solid pupil (<paramref name="dot"/>), in module coordinates offset by the quiet zone.</summary>
     private static void AppendFinderEye(
@@ -356,7 +356,9 @@ public sealed class SvgRenderer
 
     #endregion
 
-    // ── Geometry primitives (module units, SVG path data) ──
+    #endregion
+
+    #region Geometry primitives (module units, SVG path data)
 
     /// <summary>Appends a 1×1 filled square at (<paramref name="x"/>,<paramref name="y"/>).</summary>
     private static void AppendUnitSquare(StringBuilder sb, double x, double y) =>
@@ -546,4 +548,6 @@ public sealed class SvgRenderer
         .Replace("\"", "&quot;", StringComparison.Ordinal)
         .Replace("<", "&lt;", StringComparison.Ordinal)
         .Replace(">", "&gt;", StringComparison.Ordinal);
+
+    #endregion
 }

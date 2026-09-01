@@ -10,30 +10,13 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 /// </summary>
 /// <typeparam name="TState">The saga state type.</typeparam>
 /// <remarks>
-/// <para>
-/// <b>Concurrency is optimistic, resolved by replay.</b> Two messages for one instance can be processed at once (the
-/// pump runs N workers), so a transition is a read-modify-write that can lose. Losing means
-/// <see cref="SagaConcurrencyException"/> from the repository, and the answer is to <b>reload and run the transition
-/// again against the fresh state</b> — up to <see cref="SagaOptions.MaxConcurrencyRetries"/> times, after which the
-/// exception escapes into the ordinary retry / dead-letter path. A conflict therefore costs a replay and never a lost
-/// update; the alternative, a pessimistic lock held across the handler, would put a database lock's lifetime in the
-/// hands of arbitrary user code and turn a slow activity into a stalled partition.
-/// </para>
-/// <para>
-/// The price of replay: <b>an activity can run more than once for one message</b>, so activities must be idempotent —
-/// the same requirement at-least-once delivery already imposes. Side effects that must not repeat belong behind
-/// <c>IInboxProcessor</c> or an idempotent downstream API.
-/// </para>
-/// <para>
-/// <b>Avoiding the conflict entirely:</b> set <see cref="EventEnvelope.PartitionKey"/> to the saga's correlation key on
-/// every message that drives it. The pump hashes that key onto one worker, so an instance's messages are processed one
-/// at a time in arrival order and never race — conflicts then only come from other processes. Timeouts and anything
-/// published through <c>SagaTransitionContext.PublishAsync</c> already carry it.
-/// </para>
+///   - concurrency is optimistic, resolved by replay — the cap, the escape and the remedies are in <c>Saga.md</c>
+///   - a replay can run an activity more than once for one message, so keep every activity idempotent
+///   - set <see cref="EventEnvelope.PartitionKey"/> to the correlation key so an instance's messages never race
 /// </remarks>
 internal sealed class SagaCoordinator<TState>(
     SagaStateMachine<TState> machine,
-    ISagaTimeoutScheduler timeouts,
+    ISagaTimeoutService timeouts,
     SagaOptions options,
     TimeProvider timeProvider,
     ILogger<SagaCoordinator<TState>> logger)
@@ -106,8 +89,7 @@ internal sealed class SagaCoordinator<TState>(
 
         if (loaded is null)
         {
-            // No instance: only an Initially clause may create one — a DuringAny clause does not, because an instance
-            // that does not exist is not in "any" state. Anything else is an event for a flow that already finished.
+            // No instance: only an Initially clause creates one, never a DuringAny clause.
             if (!binding.Transitions.TryGetValue(SagaStateConstants.Initial, out var initiating))
             {
                 if (binding.MissingInstance == SagaMissingInstance.Fault)
@@ -150,8 +132,7 @@ internal sealed class SagaCoordinator<TState>(
 
         await PersistAsync(repository, state, isNew, finalized, cancellationToken);
 
-        // Timeouts go out only once the new state is durable. Scheduling before the write would leave a timeout in
-        // flight for a transition that a concurrency conflict then rolled back and replayed.
+        // Schedule only once the new state is durable, so a rolled-back transition leaves no timeout in flight.
         foreach (var pending in transitionContext.PendingTimeouts)
             await timeouts.ScheduleAsync(pending, cancellationToken);
 
@@ -162,8 +143,7 @@ internal sealed class SagaCoordinator<TState>(
     {
         if (finalized && _options.RemoveOnFinalize)
         {
-            // An instance created and finalized by the same message never existed as far as the store is concerned;
-            // inserting it only to delete it would be two writes for no observable difference.
+            // An instance created and finalized by one message is never written to the store.
             return isNew ? ValueTask.CompletedTask : repository.DeleteAsync(state, cancellationToken);
         }
 
@@ -177,8 +157,7 @@ internal sealed class SagaCoordinator<TState>(
         if (binding.Transitions.TryGetValue(sourceState, out var exact))
             return exact;
 
-        // A retained finalized instance takes no wildcard clause: "any state" means any state the saga is running in,
-        // and a finished flow reacting to a late cancellation would restart work that already ended.
+        // A finalized instance takes no wildcard clause, so a late event cannot restart a finished flow.
         if (string.Equals(sourceState, SagaStateConstants.Final, StringComparison.Ordinal))
             return null;
 
@@ -232,44 +211,4 @@ internal sealed class SagaCoordinator<TState>(
         state.TimeoutTokens.Remove(name); // fired once; a redelivery of the same timeout is stale from here on
         return true;
     }
-}
-
-/// <summary>
-/// Adapts one observed event type onto the saga — an ordinary <see cref="IEventHandler{TEvent}"/>, so a saga consumes
-/// through the same pump, filters, retry and dead-lettering as everything else, and shows up in the consumed-type set
-/// the broker topology is built from.
-/// </summary>
-/// <typeparam name="TState">The saga state type.</typeparam>
-/// <typeparam name="TEvent">The event type.</typeparam>
-internal sealed class SagaEventHandler<TState, TEvent>(SagaCoordinator<TState> coordinator, IServiceProvider services) : IEventHandler<TEvent>
-    where TState : class, ISagaState, new()
-    where TEvent : class, IEvent
-{
-    public ValueTask HandleAsync(EventContext<TEvent> context, CancellationToken cancellationToken)
-        => coordinator.HandleAsync(context, services, cancellationToken);
-}
-
-/// <summary>Saga log messages. Non-generic on purpose — the logging source generator emits into the declaring type, and the coordinator is generic.</summary>
-internal static partial class SagaLog
-{
-    [LoggerMessage(EventId = 6111, Level = LogLevel.Debug, Message = "Saga {Saga}: {Event} {MessageId} carries no correlation key; ignored")]
-    public static partial void Uncorrelated(ILogger logger, string saga, string @event, string messageId);
-
-    [LoggerMessage(EventId = 6112, Level = LogLevel.Debug, Message = "Saga {Saga}: no instance {CorrelationId} for {Event}, and no clause initiates one; ignored")]
-    public static partial void InstanceNotFound(ILogger logger, string saga, string @event, string correlationId);
-
-    [LoggerMessage(EventId = 6113, Level = LogLevel.Debug, Message = "Saga {Saga}: {Event} has no clause in state {State} (instance {CorrelationId}); ignored")]
-    public static partial void NoTransition(ILogger logger, string saga, string @event, string state, string correlationId);
-
-    [LoggerMessage(EventId = 6114, Level = LogLevel.Debug, Message = "Saga {Saga}: timeout {Timeout} for instance {CorrelationId} was cancelled or superseded; dropped")]
-    public static partial void StaleTimeout(ILogger logger, string saga, string timeout, string correlationId);
-
-    [LoggerMessage(EventId = 6115, Level = LogLevel.Debug, Message = "Saga {Saga}: instance {CorrelationId} changed concurrently on attempt {Attempt}; reloading and replaying the transition")]
-    public static partial void ConcurrencyConflict(ILogger logger, string saga, string correlationId, int attempt);
-
-    [LoggerMessage(EventId = 6116, Level = LogLevel.Error, Message = "Saga {Saga}: instance {CorrelationId} still contended after {Attempts} attempts; the message goes to retry / dead-letter")]
-    public static partial void ConcurrencyExhausted(ILogger logger, Exception exception, string saga, string correlationId, int attempts);
-
-    [LoggerMessage(EventId = 6117, Level = LogLevel.Debug, Message = "Saga {Saga} instance {CorrelationId}: {Event} moved {From} -> {To}")]
-    public static partial void Transitioned(ILogger logger, string saga, string correlationId, string @event, string from, string to);
 }

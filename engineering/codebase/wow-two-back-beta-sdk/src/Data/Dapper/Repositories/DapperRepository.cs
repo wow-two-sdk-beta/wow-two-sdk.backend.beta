@@ -7,10 +7,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper.Repositories;
 
 /// <summary>Dapper implementation of <see cref="IRepository{TEntity, TId}"/> for the hot read/CRUD path. SQL is generated from <see cref="IHasTableName"/> + <see cref="SqlNamingMapper"/> + the entity's public read-write properties; intended for straightforward tables, complex queries are hand-written SQL.</summary>
 /// <remarks>
-/// - column set defaults to every public instance property with both a getter and a setter
-/// - casing comes from the injected <see cref="SqlNamingOptions"/>, never from a static
-/// - override <see cref="ExcludedOnInsert"/> / <see cref="ExcludedOnUpdate"/> to omit generated columns
-/// - the id column is taken from <c>nameof(IKeyedEntity&lt;TId&gt;.Id)</c>
+///   - column set defaults to every public instance property with both a getter and a setter
+///   - override <see cref="ExcludedOnInsert"/> / <see cref="ExcludedOnUpdate"/> to omit generated columns
+///   - id column comes from the <c>Id</c> property name
 /// </remarks>
 /// <typeparam name="TEntity">The entity type — must declare <see cref="IHasTableName"/>.</typeparam>
 /// <typeparam name="TId">The primary-key type.</typeparam>

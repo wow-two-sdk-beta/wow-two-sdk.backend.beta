@@ -104,7 +104,11 @@ public static class ApiDefaultsExtensions
         if (options.EnableHttpsRedirection)
             app.UseHttpsRedirection();
 
-        app.UseOwaspSecureHeaders();
+        app.UseOwaspSecureHeaders(headers =>
+        {
+            headers.EnableCrossOriginOpenerPolicy = options.EnableCrossOriginOpenerPolicy;
+            headers.EnableCrossOriginEmbedderPolicy = options.EnableCrossOriginEmbedderPolicy;
+        });
 
         if (options.CorsOrigins.Count > 0)
         {

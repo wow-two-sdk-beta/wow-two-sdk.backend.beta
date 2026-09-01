@@ -41,6 +41,26 @@ builder.Services.AddNatsEventBus(o =>
 - **Crash safety-net**: an unhandled failure leaves the message unacked → JetStream redelivers after `AckWait`
   (capped by `MaxDeliver`); the SDK inbox dedupes the replay.
 
+## Consume-loop faults
+
+The consume loop is `ExecuteAsync`'s body, so a fault it cannot absorb propagates to the host, where
+`BackgroundServiceExceptionBehavior` decides the outcome: the .NET default `StopHost` takes the process down; an app
+that would rather keep serving sets `Ignore`.
+
+## Destination routing rollout
+
+`NatsOptions.RouteByDestination` is off by default — every message rides `NatsOptions.Subject`. Turning it on changes
+which subject a message lands on, widens the stream, and raises the server floor, so it is opt-in:
+
+1. **Consumers first.** Deploy the consumers with `RouteByDestination = true`. A consumer with it on filters `Subject`
+   **as well as** every routed subject, so it keeps receiving from publishers that have not been switched yet.
+2. **The stream's subject list widens** with `{Subject}.>` — a real change to an already-provisioned stream.
+   `NatsTopologyBroker` widens it in place (read-modify-write), leaving retention, max-age and replicas untouched.
+3. **nats-server 2.10 or newer** is required: the durable consumer then uses JetStream's multi-subject filter.
+4. Once every consumer is across, turn it on for the publishers. A publish lands on the message type's own subject;
+   an explicit `SendAsync` lands on the addressed endpoint's subject. Routed subjects nest under the root
+   (`wt.events.order-placed`).
+
 ## Capabilities
 
 `NatsCapabilities`: `NativeDeadLetter = false` (emulated) · `NativeOrdering = true` (per-subject) ·

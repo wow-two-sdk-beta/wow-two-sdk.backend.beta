@@ -60,7 +60,7 @@ public sealed class WebhookTests
         var signature = handler.Request!.Headers.GetValues(WebhookHeaderConstants.Signature).Single();
 
         signature.Should().StartWith("sha256=");
-        signature.Should().Be(WebhookSignatureHasher.Create("shh-secret", timestamp, payload));
+        signature.Should().Be(new WebhookSignatureHasher().Create("shh-secret", timestamp, payload));
     }
 
     [Fact]

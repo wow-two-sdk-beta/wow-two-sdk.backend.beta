@@ -12,21 +12,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Auth;
 /// exercise authenticated endpoints deterministically.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Two modes, selected by <see cref="TestAuthOptions.RequiredHeader"/>:
-/// <list type="bullet">
-/// <item><description><b>Always-authenticate</b> (<see cref="TestAuthOptions.RequiredHeader"/> is <c>null</c>, the
-/// default): every request authenticates — the original behavior.</description></item>
-/// <item><description><b>Header-gated</b> (<see cref="TestAuthOptions.RequiredHeader"/> set): only requests carrying
-/// that header authenticate; requests without it yield <see cref="AuthenticateResult.NoResult"/> so they stay
-/// anonymous and <c>[Authorize]</c> endpoints return 401. This lets one host cover both the 200 and 401 paths.</description></item>
-/// </list>
-/// </para>
-/// <para>
-/// When authenticated, the principal is stamped with the SDK's canonical <c>wt:*</c> claims (<see cref="TestClaimTypeConstants"/>)
-/// plus standard <see cref="ClaimTypes.Name"/> / <see cref="ClaimTypes.Role"/> claims, so both the SDK's
-/// <c>ClaimsPrincipalExtensions</c> and framework <c>[Authorize(Roles = …)]</c> checks resolve correctly.
-/// </para>
+///   - authenticates every request while <see cref="TestAuthOptions.RequiredHeader"/> is <c>null</c>, the default
+///   - with it set, a request missing that header yields <see cref="AuthenticateResult.NoResult"/>, so <c>[Authorize]</c> returns 401
+///   - stamps <c>wt:*</c> claims plus <c>ClaimTypes.Name</c> / <c>Role</c>, so SDK and framework role checks resolve
 /// </remarks>
 public sealed class TestAuthHandler : AuthenticationHandler<TestAuthOptions>
 {
@@ -50,8 +38,7 @@ public sealed class TestAuthHandler : AuthenticationHandler<TestAuthOptions>
     {
         var o = Options;
 
-        // Header-gated mode: when a header is required but absent, stay anonymous so [Authorize] endpoints return 401.
-        // When RequiredHeader is null (default), this is skipped → every request authenticates (back-compat).
+        // Required header absent — stay anonymous so [Authorize] endpoints return 401.
         if (!string.IsNullOrEmpty(o.RequiredHeader) && !Request.Headers.ContainsKey(o.RequiredHeader))
             return Task.FromResult(AuthenticateResult.NoResult());
 

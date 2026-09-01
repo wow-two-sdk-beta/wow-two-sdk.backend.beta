@@ -11,26 +11,11 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 /// RabbitMQ, Kafka, NATS JetStream and Redis Streams.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Regression cover for the bug where adapters stripped the whole <c>wt-</c> namespace on send while re-stamping only
-/// the eight they own. Every reserved header belonging to an SDK <em>feature</em> — the second-level retry tier, the
-/// dead-letter redrive count, the claim-check reference — was silently dropped at the broker, so those features worked
-/// in-memory and were dead behind every real transport. <see cref="MessageHeaderConstants.IsAdapterOwned"/> is the fix, and it
-/// is called by five adapters; one broker proving the round trip left the other four uncovered.
-/// </para>
-/// <para>
-/// One definition rather than one copy per broker, because a per-broker copy is free to drift: the value of asserting
-/// through each feature's own reader (<see cref="SecondLevelRetryHeaderConstants.ReadTier"/>,
-/// <see cref="DeadLetterHeaderConstants.ReadRedriveCount"/>) instead of raw strings is that the test dies when the *feature*
-/// dies, and that property has to hold on all of them or the weakest copy is what the suite really asserts.
-/// </para>
-/// <para>
-/// Every one of these needs a container: the in-memory transport hands the same envelope instance to the consumer and
-/// never serializes headers, so it cannot observe a strip-on-send at all — which is exactly why the bug survived the
-/// in-memory suite.
-/// </para>
+///   - a reserved <c>wt-</c> header no adapter owns survives the round trip
+///   - an adapter-owned header is re-stamped
+///   - needs a real broker — the in-memory transport never serializes headers
 /// </remarks>
-internal static class AdapterOwnedHeaderContract
+internal sealed class AdapterOwnedHeaderContract
 {
     /// <summary>A type token nothing can resolve — what a caller forges onto an adapter-owned key.</summary>
     public const string ForgedEventType = "forged.contract.DoesNotExist";
@@ -45,7 +30,7 @@ internal static class AdapterOwnedHeaderContract
     /// What the caller hands the bus: two reserved-but-not-adapter-owned feature headers, an unreserved control, and a
     /// forgery attempt on an adapter-owned key.
     /// </summary>
-    public static IReadOnlyDictionary<string, string> CallerHeaders { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
+    public IReadOnlyDictionary<string, string> CallerHeaders { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         [SecondLevelRetryHeaderConstants.Tier] = "2",
         [DeadLetterHeaderConstants.RedriveCount] = "3",
@@ -56,28 +41,24 @@ internal static class AdapterOwnedHeaderContract
     /// <summary>Assert both halves of the contract on a message that made the round trip through a real broker.</summary>
     /// <param name="consumed">The recorded consumption.</param>
     /// <param name="tag">The tag the message was published with.</param>
-    public static void AssertRoundTrip(RecordedMessage consumed, string tag)
+    public void AssertRoundTrip(RecordedMessage consumed, string tag)
     {
         var received = consumed.Envelope.Headers;
 
-        // The regression. Reserved but not adapter-owned → the adapter has no value of its own to write, so dropping
-        // these is pure data loss and the feature that reads them downstream never fires.
+        // Reserved but not adapter-owned: dropping these is data loss, and the feature reading them never fires.
         received.Should().ContainKey(SecondLevelRetryHeaderConstants.Tier).WhoseValue.Should().Be("2");
         received.Should().ContainKey(DeadLetterHeaderConstants.RedriveCount).WhoseValue.Should().Be("3");
         received.Should().ContainKey("tenant-id").WhoseValue.Should().Be("acme");
 
-        // Asserted through each feature's own reader too: the header surviving as text is only half the promise —
-        // what broke was second-level retry and the redrive cap reading 0 behind every broker.
+        // Read back through each feature's own reader — surviving as text is only half the promise.
         SecondLevelRetryHeaderConstants.ReadTier(consumed.Envelope).Should().Be(2);
         DeadLetterHeaderConstants.ReadRedriveCount(consumed.Envelope).Should().Be(3);
 
-        // The other half: adapter-owned headers stay adapter-owned. The caller asked for a bogus type token; the
-        // adapter overwrote it with the real one rather than letting the caller redirect type resolution.
+        // The other half: the adapter overwrites the caller's forged type token with the real one.
         received.Should().ContainKey(MessageHeaderConstants.EventType).WhoseValue.Should().Be(typeof(HarnessEvent).FullName);
         received[MessageHeaderConstants.EventType].Should().NotBe(ForgedEventType);
 
-        // Consumption at all is itself the proof: the receive side resolves the CLR type from wt-event-type, so had the
-        // forgery stuck, reconstruction would have failed and nothing would ever have been recorded.
+        // Consumption is itself the proof: a forgery that stuck would fail type resolution and record nothing.
         consumed.BodyAs<HarnessEvent>().Tag.Should().Be(tag);
         received.Should().ContainKey(MessageHeaderConstants.ContentType).WhoseValue.Should().Be("application/json");
     }
@@ -86,21 +67,11 @@ internal static class AdapterOwnedHeaderContract
     /// <param name="harness">The harness attached to the started host.</param>
     /// <param name="tag">A tag unique to this test, so the wait cannot match another suite's traffic.</param>
     /// <remarks>
-    /// <para>
-    /// Each broker has its own reason a publish issued at t=0 can go nowhere: RabbitMQ's exchange discards a
-    /// non-mandatory publish while no queue is bound, Kafka's consumer has not joined the group and been assigned a
-    /// partition, and the NATS durable consumer is provisioned inside the hosted service rather than before
-    /// <c>StartAsync</c> returns. Re-publishing until a copy lands is the condition-based form of the fixed sleep each
-    /// would otherwise need; duplicates are harmless because every copy carries the same headers, which is all that is
-    /// asserted.
-    /// </para>
-    /// <para>
-    /// Redis Streams does not need this — its suite provisions the consumer group at
-    /// <c>StreamPosition.Beginning</c> before publishing, which makes publish order irrelevant rather than merely
-    /// unlikely to matter.
-    /// </para>
+    ///   - a publish at t=0 can go nowhere: unbound RabbitMQ queue, unassigned Kafka partition, late NATS consumer
+    ///   - re-publishing until a copy lands replaces a fixed sleep
+    ///   - duplicates carry the same headers
     /// </remarks>
-    public static async Task<RecordedMessage> PublishUntilConsumedAsync(MessagingTestHarness harness, string tag)
+    public async Task<RecordedMessage> PublishUntilConsumedAsync(MessagingTestHarness harness, string tag)
     {
         var started = Stopwatch.GetTimestamp();
 

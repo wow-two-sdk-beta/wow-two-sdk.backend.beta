@@ -8,6 +8,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Audit;
 public sealed class HashChainSealer<TEntry> : IHashChainSealer<TEntry>
     where TEntry : IHashChainedEntry
 {
+    private readonly HashChainHasher _hasher = new();
     private readonly IChainedEntryCanonicalizer<TEntry> _canonicalizer;
     private readonly HashChainAlgorithm _algorithm;
 
@@ -34,6 +35,6 @@ public sealed class HashChainSealer<TEntry> : IHashChainSealer<TEntry>
 
         entry.Sequence = sequence;
         entry.PreviousHash = previousHash;
-        entry.Hash = HashChainHasher.Compute(entry, _canonicalizer, _algorithm, sequence, previousHash);
+        entry.Hash = _hasher.Compute(entry, _canonicalizer, _algorithm, sequence, previousHash);
     }
 }

@@ -20,9 +20,9 @@ public sealed class SrtCaptionRenderer : ICaptionRenderer
         foreach (var segment in segments)
         {
             builder.Append(index.ToString(CultureInfo.InvariantCulture)).Append('\n')
-                   .Append(CaptionTimecode.FormatClock(segment.Start, ','))
+                   .Append(CaptionTimecodeMapper.FormatClock(segment.Start, ','))
                    .Append(" --> ")
-                   .Append(CaptionTimecode.FormatClock(segment.End, ','))
+                   .Append(CaptionTimecodeMapper.FormatClock(segment.End, ','))
                    .Append('\n')
                    .Append(segment.Text)
                    .Append("\n\n");

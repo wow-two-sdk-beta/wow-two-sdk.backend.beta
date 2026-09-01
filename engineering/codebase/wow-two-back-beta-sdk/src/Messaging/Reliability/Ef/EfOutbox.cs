@@ -62,26 +62,3 @@ internal sealed class EfOutbox<TContext>(TContext context, IMessageSerializer se
         return headers is { Count: > 0 } ? JsonSerializer.Serialize(headers) : "{}";
     }
 }
-
-/// <summary>DI registration for the EF-backed transactional outbox.</summary>
-public static class EfOutboxServiceCollectionExtensions
-{
-    /// <summary>
-    /// Register the EF-backed <see cref="IOutbox"/> over <typeparamref name="TContext"/>. The context must map
-    /// <see cref="OutboxMessageEntity"/> (call <c>modelBuilder.ApplyOutboxModel()</c> in <c>OnModelCreating</c>) and the
-    /// <c>outbox_messages</c> table must exist (author a bespoke migration — see <c>Ef.md</c>).
-    /// </summary>
-    /// <typeparam name="TContext">The application's DbContext.</typeparam>
-    /// <param name="services">The service collection.</param>
-    public static IServiceCollection AddEfOutbox<TContext>(this IServiceCollection services)
-        where TContext : DbContext
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        // Default serializer, in case the outbox is registered for staging only (no transport/bus registration, which
-        // is what normally supplies it via AddEventResilienceDefaults). TryAdd → a registered serializer still wins.
-        services.TryAddSingleton<IMessageSerializer, SystemTextJsonMessageSerializer>();
-        services.TryAddScoped<IOutbox, EfOutbox<TContext>>();
-        return services;
-    }
-}

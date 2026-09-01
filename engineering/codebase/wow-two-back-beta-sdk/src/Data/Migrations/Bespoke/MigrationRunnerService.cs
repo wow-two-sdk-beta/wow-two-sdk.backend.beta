@@ -5,27 +5,28 @@ using Dapper;
 using Microsoft.Extensions.Logging;
 using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
-using WoW.Two.Sdk.Backend.Beta.Foundation.Results; // IDbConnectionFactory — the SDK connection seam (returns BCL DbConnection).
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
 /// <summary>Provides the migration apply, status, rollback, and repair operations behind every host.</summary>
 /// <remarks>
-/// Apply flow:
-///   1. Scan the source into ordered, checksummed descriptors
-///   2. Open a connection and acquire the session advisory lock
-///   3. Ensure the history table, read applied rows, verify no drift
-///   4. Apply each pending migration (per-file transaction unless no-transaction)
-///   5. Release the lock
+///   - one host migrates at a time
+///   - checksum drift or orphaned history fails the apply before any script runs
+///   - apply flow, lock scope, and transaction handling: bespoke.md
 /// </remarks>
 public sealed partial class MigrationRunnerService(
-    IMigrationSource source,
+    IMigrationBroker migrations,
     IMigrationHistoryRepository history,
     IDbConnectionFactory connections,
     MigrationOptions options,
     ILogger<MigrationRunnerService> logger) : IMigrationRunnerService
 {
     /// <inheritdoc />
+    /// <remarks>
+    ///   - a crash between a no-transaction script and its history row leaves it applied but unrecorded
+    ///   - the next run re-executes that script, so its Apply SQL must be idempotent
+    /// </remarks>
     public async Task<Result<IReadOnlyList<string>>> ApplyPendingAsync(string appliedBy, CancellationToken ct = default)
     {
         if (Scan().IsFailure(out var malformed, out var migrations))
@@ -86,8 +87,6 @@ public sealed partial class MigrationRunnerService(
         var stopwatch = Stopwatch.StartNew();
 
         // No-transaction migrations run bare (e.g. CREATE INDEX CONCURRENTLY), then record in a separate statement.
-        // A crash between the two leaves the change applied but unrecorded, so the next run RE-EXECUTES the script —
-        // the author MUST make the Apply SQL idempotent (IF NOT EXISTS / guarded DO blocks).
         if (migration.NoTransaction)
         {
             await conn.ExecuteAsync(new CommandDefinition(migration.ApplySql, cancellationToken: ct));
@@ -142,8 +141,6 @@ public sealed partial class MigrationRunnerService(
     /// <inheritdoc />
     public async Task<Result<IReadOnlyList<string>>> RollbackAsync(int? targetOrdinal = null, CancellationToken ct = default)
     {
-        // Configuration, not a domain failure: a host that disabled rollback and called it anyway is misconfigured, and the
-        // framework's own seams only catch what is thrown. Stays an exception under N82.
         if (!options.AllowRollback)
             throw new InvalidOperationException(
                 "Rollback is disabled (MigrationOptions.AllowRollback = false). Enable it to permit this guarded recovery op (allowed in any environment, prod included).");
@@ -203,7 +200,6 @@ public sealed partial class MigrationRunnerService(
     /// <inheritdoc />
     public async Task<Result<IReadOnlyList<string>>> RepairAsync(CancellationToken ct = default)
     {
-        // Configuration, same as RollbackAsync — stays an exception under N82.
         if (!options.AllowRollback)
             throw new InvalidOperationException(
                 "Repair is disabled (MigrationOptions.AllowRollback = false) — it rewrites recorded checksums; enable it to permit this guarded recovery op.");
@@ -243,15 +239,12 @@ public sealed partial class MigrationRunnerService(
         }
     }
 
-    // Scanning is a private step, not a seam: source pluggability lives in IMigrationSource, and this parse is the only
-    // reading of a RawMigration there will ever be. Splitting it behind an interface bought one implementation, one
-    // consumer and no test fake.
     /// <summary>Reads the source, parses <c>NNN-name</c>, computes checksums, and returns migrations ordered by ordinal.</summary>
     private Result<List<MigrationDescriptor>> Scan()
     {
         var descriptors = new List<MigrationDescriptor>();
 
-        foreach (var raw in source.Read())
+        foreach (var raw in migrations.Read())
         {
             // Parse the NNN-name prefix; reject anything that does not match.
             var match = MigrationConventions.FolderPattern().Match(raw.Name);

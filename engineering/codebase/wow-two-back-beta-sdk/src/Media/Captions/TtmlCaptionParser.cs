@@ -38,13 +38,13 @@ public sealed partial class TtmlCaptionParser : ITtmlCaptionParser
             var beginRaw = AttributeByLocalName(paragraph, "begin");
             if (beginRaw is null) continue;
 
-            var start = CaptionTimecode.ParseTtml(beginRaw);
+            var start = CaptionTimecodeMapper.ParseTtml(beginRaw);
 
             var endRaw = AttributeByLocalName(paragraph, "end");
             var end = endRaw is not null
-                ? CaptionTimecode.ParseTtml(endRaw)
+                ? CaptionTimecodeMapper.ParseTtml(endRaw)
                 : AttributeByLocalName(paragraph, "dur") is { } durRaw
-                    ? start + CaptionTimecode.ParseTtml(durRaw)
+                    ? start + CaptionTimecodeMapper.ParseTtml(durRaw)
                     : start;
 
             var builder = new StringBuilder();

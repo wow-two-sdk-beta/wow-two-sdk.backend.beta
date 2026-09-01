@@ -11,7 +11,7 @@ using Xunit;
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests.Behaviors;
 
 /// <summary>
-/// <see cref="AuthorizationBehavior{TRequest,TResponse}"/> — requests marked <see cref="IRequireAuthorization"/>
+/// <see cref="AuthorizingInterceptor{TRequest,TResponse}"/> — requests marked <see cref="IRequireAuthorization"/>
 /// are gated by ASP.NET Core authorization: unmarked passes through, unauthenticated throws an
 /// <see cref="AppException"/> (Unauthorized), authenticated-but-denied throws an <see cref="AppException"/> (Forbidden).
 /// </summary>
@@ -44,7 +44,7 @@ public sealed class AuthorizationBehaviorTests
         return new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationType: "test"));
     }
 
-    private static AuthorizationBehavior<TReq, string> Behavior<TReq>(ClaimsPrincipal? user)
+    private static AuthorizingInterceptor<TReq, string> Behavior<TReq>(ClaimsPrincipal? user)
         where TReq : notnull
         => new(Accessor(user), BuildAuthService());
 
@@ -52,7 +52,7 @@ public sealed class AuthorizationBehaviorTests
     public async Task HandleAsync_ShouldPassThroughWithoutAuth_WhenRequestUnmarked()
     {
         // No HttpContext at all → still fine because the request isn't IRequireAuthorization.
-        var behavior = new AuthorizationBehavior<Open, string>(new HttpContextAccessor(), BuildAuthService());
+        var behavior = new AuthorizingInterceptor<Open, string>(new HttpContextAccessor(), BuildAuthService());
 
         var result = await behavior.HandleAsync(new Open(), () => ValueTask.FromResult("ok"), CancellationToken.None);
 
@@ -87,7 +87,7 @@ public sealed class AuthorizationBehaviorTests
     [Fact]
     public async Task HandleAsync_ShouldThrowInvalidOperation_WhenHttpContextMissing()
     {
-        var behavior = new AuthorizationBehavior<Secured, string>(new HttpContextAccessor { HttpContext = null }, BuildAuthService());
+        var behavior = new AuthorizingInterceptor<Secured, string>(new HttpContextAccessor { HttpContext = null }, BuildAuthService());
 
         var act = async () => await behavior.HandleAsync(new Secured(), () => ValueTask.FromResult("ok"), CancellationToken.None);
 

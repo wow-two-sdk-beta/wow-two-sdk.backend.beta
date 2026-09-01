@@ -7,7 +7,7 @@ using Xunit;
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests.Behaviors;
 
 /// <summary>
-/// <see cref="ValidationBehavior{TRequest,TResponse}"/> — runs every registered <see cref="IValidator{T}"/>;
+/// <see cref="ValidatingInterceptor{TRequest,TResponse}"/> — runs every registered <see cref="IValidator{T}"/>;
 /// passes through to the handler when all are valid, throws (short-circuiting the handler) when any fails.
 /// </summary>
 public sealed class ValidationBehaviorTests
@@ -35,7 +35,7 @@ public sealed class ValidationBehaviorTests
     public async Task HandleAsync_ShouldPassThroughToHandler_WhenAllValidatorsPass()
     {
         var handlerRan = false;
-        var behavior = new ValidationBehavior<Req, string>([new PredicateValidator(r => r.Age >= 0)]);
+        var behavior = new ValidatingInterceptor<Req, string>([new PredicateValidator(r => r.Age >= 0)]);
 
         var result = await behavior.HandleAsync(
             new Req(18),
@@ -50,7 +50,7 @@ public sealed class ValidationBehaviorTests
     public async Task HandleAsync_ShouldThrowAndSkipHandler_WhenValidatorFails()
     {
         var handlerRan = false;
-        var behavior = new ValidationBehavior<Req, string>([new PredicateValidator(r => r.Age >= 0)]);
+        var behavior = new ValidatingInterceptor<Req, string>([new PredicateValidator(r => r.Age >= 0)]);
 
         var act = async () => await behavior.HandleAsync(
             new Req(-1),
@@ -65,7 +65,7 @@ public sealed class ValidationBehaviorTests
     public async Task HandleAsync_ShouldThrow_WhenAnyValidatorFails()
     {
         // First passes, second fails → still throws.
-        var behavior = new ValidationBehavior<Req, string>(
+        var behavior = new ValidatingInterceptor<Req, string>(
         [
             new PredicateValidator(_ => true),
             new PredicateValidator(_ => false),
@@ -79,7 +79,7 @@ public sealed class ValidationBehaviorTests
     [Fact]
     public async Task HandleAsync_ShouldPassThrough_WhenNoValidatorsRegistered()
     {
-        var behavior = new ValidationBehavior<Req, string>([]);
+        var behavior = new ValidatingInterceptor<Req, string>([]);
 
         var result = await behavior.HandleAsync(new Req(-99), () => ValueTask.FromResult("ok"), CancellationToken.None);
 
