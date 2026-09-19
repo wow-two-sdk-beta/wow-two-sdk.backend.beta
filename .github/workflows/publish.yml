@@ -70,6 +70,9 @@ jobs:
       - name: Restore
         run: dotnet restore src/WoW.Two.Sdk.Backend.Beta.slnx -m:1
 
+      - name: Test publication verifier
+        run: python3 scripts/test-verify-published-packages.py
+
       - name: Build release projects
         run: dotnet build src/WoW.Two.Sdk.Backend.Beta.slnx -c Release --no-restore -m:1
 
@@ -111,21 +114,14 @@ jobs:
           git push --follow-tags
 
       - name: Verify published version and tag
+        timeout-minutes: 17
         env:
           VERSION: ${{ steps.bump.outputs.version }}
+          REVISION: ${{ steps.bump.outputs.revision }}
         run: |
-          git ls-remote --exit-code --tags origin "refs/tags/v$VERSION"
-          for ID in \
-            WoW2.Sdk.Backend.Beta \
-            WoW2.Sdk.Backend.Beta.Data.Abstractions \
-            WoW2.Sdk.Backend.Beta.Data.Migrations.Cli \
-            WoW2.Sdk.Backend.Beta.Testing \
-            WoW2.Sdk.Backend.Beta.Testing.Data \
-            WoW2.Sdk.Backend.Beta.Testing.Integrations \
-            WoW2.Sdk.Backend.Beta.Testing.Messaging
-          do
-            PACKAGE_ID=${ID,,}
-            PACKAGE_VERSION=${VERSION,,}
-            URL="https://api.nuget.org/v3-flatcontainer/$PACKAGE_ID/$PACKAGE_VERSION/$PACKAGE_ID.$PACKAGE_VERSION.nupkg"
-            curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 10 --output /dev/null "$URL"
-          done
+          PUBLISHED_REVISION=$(git ls-remote --exit-code --tags origin "refs/tags/v$VERSION^{}" | cut -f1)
+          if [ "$PUBLISHED_REVISION" != "$REVISION" ]; then
+            echo "::error::Release tag v$VERSION points to $PUBLISHED_REVISION; expected $REVISION"
+            exit 1
+          fi
+          bash scripts/verify-published-packages.sh "$VERSION"
