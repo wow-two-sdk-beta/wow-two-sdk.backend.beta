@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.DataProtection;
+using WoW.Two.Sdk.Backend.Beta.Identity.Guest.Serializers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Guest.Services;
 
@@ -9,35 +10,35 @@ public sealed class CookieGuestSessionService : IGuestSessionService
 {
     private readonly IHttpContextAccessor _accessor;
     private readonly GuestSessionOptions _options;
-    private Guid? _provisioned;
+    private readonly GuestCookieSerializer _serializer;
 
     /// <summary>Creates the service over the request accessor and cookie options.</summary>
     /// <param name="accessor">Accessor for the ambient <see cref="HttpContext"/>.</param>
     /// <param name="options">Cookie name, lifetime, and SameSite policy.</param>
-    public CookieGuestSessionService(IHttpContextAccessor accessor, GuestSessionOptions options)
+    /// <param name="protection">Application-scoped Data Protection provider.</param>
+    /// <param name="clock">Clock used for the protected expiry.</param>
+    public CookieGuestSessionService(IHttpContextAccessor accessor, GuestSessionOptions options,
+        IDataProtectionProvider protection, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(accessor);
         ArgumentNullException.ThrowIfNull(options);
         _accessor = accessor;
         _options = options;
+        _serializer = new GuestCookieSerializer(protection, clock);
     }
 
     /// <inheritdoc />
     public Guid EnsureGuest()
     {
-        if (_provisioned.HasValue) return _provisioned.Value;
-
         var http = _accessor.HttpContext
             ?? throw new InvalidOperationException("No HttpContext — IGuestSessionService is only valid within a request scope.");
 
-        if (http.Request.Cookies.TryGetValue(_options.CookieName, out var raw) && Guid.TryParse(raw, out var existing))
-        {
-            _provisioned = existing;
-            return _provisioned.Value;
-        }
+        if (http.ReadGuest(_options.CookieName, _serializer) is { } existing)
+            return existing;
 
         var issued = Guid.NewGuid();
-        http.Response.Cookies.Append(_options.CookieName, issued.ToString(), new CookieOptions
+        var token = _serializer.Serialize(issued, _options.CookieName, _options.Lifetime);
+        http.Response.Cookies.Append(_options.CookieName, token, new CookieOptions
         {
             HttpOnly = true,
             Secure = true,
@@ -47,8 +48,8 @@ public sealed class CookieGuestSessionService : IGuestSessionService
             Path = "/",
         });
 
-        _provisioned = issued;
-        return _provisioned.Value;
+        http.SetGuest(_options.CookieName, issued);
+        return issued;
     }
 
     /// <inheritdoc />
@@ -65,6 +66,6 @@ public sealed class CookieGuestSessionService : IGuestSessionService
             SameSite = _options.SameSite,
             Path = "/",
         });
-        _provisioned = null;
+        http.SetGuest(_options.CookieName, null);
     }
 }

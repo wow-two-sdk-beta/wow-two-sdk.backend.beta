@@ -11,7 +11,9 @@ IQrMatrixGenerator (QRCoder, quiet-zone stripped)
 ```
 
 - `QrCodeRenderer` orchestrates the three; `CodeRenderer` is the QR-vs-barcode facade.
-- Barcodes are plain ZXing SVG (unify under the emitter later).
+- Barcodes use ZXing matrices with escaped plain SVG captions; PNG uses the same bounded rasterizer.
+- `ICodeRenderer.Render` returns `Result<RenderedCode>`; branch on validation failure before sending image bytes.
+- [Rendering contract](Rendering.spec.md) owns input budgets, reusable validators and supported inline logos.
 - `StyleSpecMapper` runs pre-emit: quiet-zone floor (4), ECC floor to H when a logo is present, ECC floor to Q for a stylised module body.
 
 ## StyleSpec extensibility

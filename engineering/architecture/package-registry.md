@@ -1,6 +1,6 @@
 # Package registry
 
-*Last updated: 2026-09-16*
+*Last updated: 2026-09-19*
 
 > The seven published NuGets and the capability areas compiled into them.
 
@@ -22,6 +22,20 @@ not additional package outputs.
 ---
 
 ## Capability status
+
+### Current release candidate
+
+The [ForeverPin SDK adoption cut](../planning/foreverpin-adoption/foreverpin-adoption.md) adds these mono-library capabilities;
+source completion does not claim NuGet publication.
+
+- `Codes`: bounded SVG/PNG for every declared symbology, reusable validators and typed render results.
+- `Codes.Payloads`: `AddCodePayloads`, typed scanner serializers, vCard and floating VEVENT exporters.
+- `Foundation.Identifiers`: `IIdGenerator` / `CryptographicIdGenerator`.
+- `Web.RequestContext`: `IAcceptLanguageParser` / `AcceptLanguageParser`, `UserAgentDeviceMapper`.
+- `Identity.Guest`: authenticated, expiring guest capabilities shared with current-user resolution.
+- `Web.ExceptionHandling`: `ControllerProblemExtensions.ToProblem` uses the registered factory.
+- `Data.Errors` and `Foundation.Serialization`: wrapped database classification and closed immutable subtype registration.
+
 
 > Status: **stub** = csproj exists, no impl · **scaffold** = registration + minimal API · **shipped** = real wrapper, tested · **planned** = not yet started.
 

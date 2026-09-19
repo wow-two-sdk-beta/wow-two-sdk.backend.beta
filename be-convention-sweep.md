@@ -4,7 +4,10 @@
 
 ## Status
 
-✅ **SDK commit batches and the follow-up convention sweep are complete.** Publication is pending.
+✅ **SDK commit batches and the follow-up convention sweep are complete.** `10.0.57-beta` contains the CI correction.
+The autonomous SDK adoption cut is implemented; its release verification is recorded in the adoption track.
+The [ForeverPin adoption sweep](engineering/planning/foreverpin-adoption/foreverpin-adoption.md) owns the newly
+identified behavioral fixes and the combined upgrade cut; earlier convention completion does not close those findings.
 Fresh verification and the signed commit inventory are in the
 [batch verification report](../../../system/sessions/backend-beta-build/commit-batches-verification.md).
 This is the active handoff. Completed/refuted rows, old measurements and superseded discussion
@@ -31,9 +34,10 @@ work is also complete; its fresh verification is linked below.
 
 1. Completed: drain the SDK's pending changes in cohesive, reviewed commit batches.
 2. Completed: sweep the SDK against the conventions again and resolve mechanical findings.
-3. Verify the release locally; the developer publishes the beta required for consumer repinning.
-4. Migrate ForeverPin using its own product track.
-5. Analyze the missing SDK pieces: data session, validation/errors, translation, identity and other platform vectors.
+3. Completed: CI publication-verifier correction committed as `a645d1b`, released in `10.0.57-beta`.
+4. Execute the full ForeverPin SDK-facing sweep: correct autonomous SDK gaps and preserve deferred policy decisions.
+5. Publish the completed candidate and upgrade ForeverPin once, including its product adoption changes.
+6. Resume missing SDK vectors from the recorded deferred decisions, rather than opening them during this cut.
 
 Other consumer repins remain recorded below; they do not precede the requested ForeverPin migration.
 

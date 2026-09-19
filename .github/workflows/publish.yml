@@ -82,13 +82,13 @@ jobs:
       - name: Pack         # version from Directory.Build.props (just bumped). Pack the 7 published projects:
         run: |
           # mono-lib + Data.Abstractions (the mono-lib's nuspec dependency) + the wow-migrate CLI tool + the Testing helper lib + the Testing.Data data-tier helper lib + the Testing.Integrations integration-client doubles + the Testing.Messaging harness (all referenced by app test projects).
-          dotnet pack src/WoW.Two.Sdk.Backend.Beta.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
-          dotnet pack src/Data/Abstractions/WoW.Two.Sdk.Backend.Beta.Data.Abstractions.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
-          dotnet pack src/Data/Migrations/cli/WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
-          dotnet pack src/Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
-          dotnet pack src/Testing.Data/WoW.Two.Sdk.Backend.Beta.Testing.Data.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
-          dotnet pack src/Testing.Integrations/WoW.Two.Sdk.Backend.Beta.Testing.Integrations.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
-          dotnet pack src/Testing.Messaging/WoW.Two.Sdk.Backend.Beta.Testing.Messaging.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/WoW.Two.Sdk.Backend.Beta.csproj -c Release --no-build --no-restore -m:1 -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/Data/Abstractions/WoW.Two.Sdk.Backend.Beta.Data.Abstractions.csproj -c Release --no-build --no-restore -m:1 -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/Data/Migrations/cli/WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli.csproj -c Release --no-build --no-restore -m:1 -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj -c Release --no-build --no-restore -m:1 -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/Testing.Data/WoW.Two.Sdk.Backend.Beta.Testing.Data.csproj -c Release --no-build --no-restore -m:1 -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/Testing.Integrations/WoW.Two.Sdk.Backend.Beta.Testing.Integrations.csproj -c Release --no-build --no-restore -m:1 -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/Testing.Messaging/WoW.Two.Sdk.Backend.Beta.Testing.Messaging.csproj -c Release --no-build --no-restore -m:1 -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
 
       - name: Verify release packages
         run: bash scripts/verify-release-packages.sh artifacts "${{ steps.bump.outputs.version }}" "${{ steps.bump.outputs.revision }}"

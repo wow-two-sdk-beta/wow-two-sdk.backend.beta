@@ -12,6 +12,36 @@ public sealed class DbExceptionMappingRuleTests
 {
     private static readonly DbExceptionMappingRule Rule = new();
 
+    [Fact]
+    public void EfWrappedUniqueViolation_PreservesOuterDiagnostics()
+    {
+        var exception = new DbUpdateException("private database details", Postgres("23505"));
+        var result = Rule.TryMap(exception)!;
+        Assert.Equal(AppErrorType.Conflict, result.Type);
+        Assert.Equal(nameof(DbUpdateException), result.Metadata!["cause"]);
+        Assert.DoesNotContain("private database details", result.Message);
+    }
+
+    [Fact]
+    public void NestedEfWrapper_ClassifiesProviderFailure()
+        => Assert.Equal(AppErrorType.DbTimeout,
+            Rule.TryMap(new DbUpdateException("outer", new DbUpdateException("inner", new TimeoutException())))!.Type);
+
+    [Fact]
+    public void ArbitraryWrappersAndCancellation_AreNotReclassified()
+    {
+        Assert.Null(Rule.TryMap(new InvalidOperationException("outer", Postgres("23505"))));
+        Assert.Null(Rule.TryMap(new DbUpdateException("outer", new OperationCanceledException())));
+    }
+
+    [Fact]
+    public void ProviderTimeoutCancellationAndUnknownServerErrors_KeepTheirMeaning()
+    {
+        Assert.Equal(AppErrorType.DbTimeout, Rule.TryMap(new DbUpdateException("outer", new NpgsqlException("inner", new TimeoutException())))!.Type);
+        Assert.Null(Rule.TryMap(new NpgsqlException("canceled", new OperationCanceledException())));
+        Assert.Null(Rule.TryMap(Postgres("42601")));
+    }
+
     private static PostgresException Postgres(string sqlState)
         => new("boom", "ERROR", "ERROR", sqlState);
 

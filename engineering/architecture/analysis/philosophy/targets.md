@@ -762,3 +762,12 @@ Things we deliberately won't build, with rationale.
 **P6 (heavy domain extensions)** — SignalR + storage + search + workflow + Aspire integrations + OpenIddict + GraphQL + OData + AOT cert + payments + geo + OCR + docs site.
 
 Beta-forever rule applies throughout — fix-forward, no version gates, push to main, breaking changes go in normally.
+
+
+## Product-triggered scanner and request primitives
+
+- **DONE (source; candidate awaiting publication)**: typed scanner payloads, vCard 3 and floating VEVENT export;
+  unbiased cryptographic IDs; weighted Accept-Language parsing and heuristic User-Agent mapping.
+- **DONE (source; candidate awaiting publication)**: bounded QR/barcode rendering and protected guest cookies.
+- **LATER (decision required)**: timezone/delivery policy, full calendar documents, barcode styling and expanded identity/CSRF.
+- Scope, verification and consumer adoption: [ForeverPin adoption](../../../planning/foreverpin-adoption/foreverpin-adoption.md).

@@ -1,13 +1,14 @@
 namespace WoW.Two.Sdk.Backend.Beta.Codes.Models.Style;
 
-/// <summary>Maps a <see cref="StyleSpec"/> to a normalized, render-safe copy.</summary>
+/// <summary>Maps a <see cref="StyleSpec"/> to a normalized copy.</summary>
 /// <remarks>Run before the emitter consumes the spec.</remarks>
 public static class StyleSpecMapper
 {
-    /// <summary>Returns a render-safe copy of <paramref name="spec"/> — quiet-zone clamped to the floor, ECC floored to H when a logo is present, and ECC floored to Q when the modules are stylised.</summary>
+    /// <summary>Returns a normalized copy of <paramref name="spec"/> — quiet-zone clamped to the floor, ECC floored to H when a logo is present, and ECC floored to Q when the modules are stylised.</summary>
     /// <param name="spec">The caller-supplied style to normalize.</param>
     public static StyleSpec Normalize(StyleSpec spec)
     {
+        ArgumentNullException.ThrowIfNull(spec);
         var quietZone = Math.Max(QuietZoneConstants.MinModules, spec.QuietZoneModules);
         var ecc = ResolveEcc(spec);
 

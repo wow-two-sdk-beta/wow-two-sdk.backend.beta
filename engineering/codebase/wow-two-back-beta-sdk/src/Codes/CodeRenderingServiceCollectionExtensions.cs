@@ -1,4 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using WoW.Two.Sdk.Backend.Beta.Codes.Models;
+using WoW.Two.Sdk.Backend.Beta.Codes.Models.Style;
+using WoW.Two.Sdk.Backend.Beta.Codes.Validators;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 using WoW.Two.Sdk.Backend.Beta.Codes.Rendering;
 using WoW.Two.Sdk.Backend.Beta.Codes.Rendering.Matrix;
 using WoW.Two.Sdk.Backend.Beta.Codes.Rendering.Raster;
@@ -19,6 +24,10 @@ public static class CodeRenderingServiceCollectionExtensions
     /// </remarks>
     public static IServiceCollection AddCodeRendering(this IServiceCollection services)
     {
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<FluentValidation.IValidator<StyleSpec>, StyleSpecValidator>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<FluentValidation.IValidator<CodeRenderRequest>, CodeRenderRequestValidator>());
+        services.TryAddSingleton<IValidator<StyleSpec>, FluentValidationAdapter<StyleSpec>>();
+        services.TryAddSingleton<IValidator<CodeRenderRequest>, FluentValidationAdapter<CodeRenderRequest>>();
         services.AddSingleton<IQrMatrixGenerator, QrMatrixGenerator>();
         services.AddSingleton<SvgRenderer>();
         services.AddSingleton<ISvgRasterizer, SkiaSvgRasterizer>();

@@ -1,6 +1,6 @@
 # Backend Beta — Platform Planning
 
-*Last updated: 2026-09-16*
+*Last updated: 2026-09-19*
 
 > Standing **roadmap + backlog** for the backend SDK. Format follows
 > `conventions/planning/platform-planning/`. This is the durable home for everything we intend to
@@ -17,10 +17,11 @@
 
 ## Active sequence
 
-1. Verify and publish the completed convention-sweep SDK release.
-2. Repin every direct consumer and repair its used breaking APIs; apply ForeverPin's product track separately.
-3. Build the residual data-session vector: shared EF/Dapper transaction, soft-delete/xmin read hardening, unit of work and commit hooks.
-4. Complete translated error rendering: SDK resx mappers, fallback rules, plural/message formatting and pseudo-localization tests.
+1. Completed: publication-verifier correction released in `10.0.57-beta`; the workflow passed.
+2. Publish the implemented [SDK adoption cut](foreverpin-adoption/foreverpin-adoption.md), then apply one coordinated
+   ForeverPin upgrade. Policy/architecture decisions remain explicitly deferred.
+3. Repin other direct consumers without putting them ahead of the requested ForeverPin cut.
+4. Resume the residual data-session and translation vectors from their existing architecture documents.
 
 Request validation, aggregated validation failures and RFC 9457 ProblemDetails rendering already ship. They are inputs to translated error rendering, not a separate unfinished validation rebuild.
 

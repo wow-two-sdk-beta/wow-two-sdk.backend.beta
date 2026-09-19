@@ -1,11 +1,12 @@
 using System.Globalization;
 using System.Text;
+using WoW.Two.Sdk.Backend.Beta.Codes.Validators;
 using WoW.Two.Sdk.Backend.Beta.Codes.Models.Style;
 using WoW.Two.Sdk.Backend.Beta.Codes.Rendering.Matrix;
 
 namespace WoW.Two.Sdk.Backend.Beta.Codes.Rendering.Svg;
 
-/// <summary>Provides the framework-agnostic SVG emitter that turns a <see cref="ModuleMatrix"/> and <see cref="StyleSpec"/> into an SVG string — the single styled render path every export and the live preview share.</summary>
+/// <summary>Renders SVG through a framework-agnostic emitter that turns a <see cref="ModuleMatrix"/> and <see cref="StyleSpec"/> into an SVG string — the single styled render path every export and the live preview share.</summary>
 /// <remarks>Run <see cref="StyleSpecMapper"/> over the style before calling <see cref="Emit"/>. The all-square style takes a byte-parity fast path identical to the legacy output; any other style splits the foreground into a data body (<see cref="ModuleShape"/>) and geometry-driven finder eyes (<see cref="FinderShape"/> and <see cref="FinderDotShape"/>), which keeps a stylised code scannable.</remarks>
 public sealed class SvgRenderer
 {
@@ -32,6 +33,10 @@ public sealed class SvgRenderer
     /// <summary>Emits the styled SVG for <paramref name="matrix"/> under <paramref name="style"/>. The style is consumed as-is — run <see cref="StyleSpecMapper"/> first.</summary>
     public string Emit(ModuleMatrix matrix, StyleSpec style)
     {
+        ArgumentNullException.ThrowIfNull(matrix);
+        style.ValidateForRendering();
+        if (matrix.Size is < 1 or > 177)
+            throw CodeRenderValidationExtensions.Invalid("Matrix", "Use a matrix of 1..177 modules per side.");
         var quietZone = style.QuietZoneModules;
         var size = matrix.Size + (2 * quietZone); // full canvas side in modules (symbol + quiet zone both sides)
         var pixels = size * PixelsPerModule;
@@ -47,7 +52,7 @@ public sealed class SvgRenderer
         // L1 — background: a full-canvas rect, or nothing when transparent.
         if (!style.TransparentBackground)
             sb.Append("<rect x=\"0\" y=\"0\" width=\"").Append(size).Append("\" height=\"").Append(size)
-                .Append("\" fill=\"").Append(style.BackgroundColor).Append("\"/>\n");
+                .Append("\" fill=\"").Append(EscapeAttr(style.BackgroundColor)).Append("\"/>\n");
 
         // L1b — foreground gradient def (when set, ≥2 stops); referenced by the data + eye fills below.
         var hasGradient = style.Gradient is { Stops.Count: >= 2 };
@@ -90,7 +95,7 @@ public sealed class SvgRenderer
     /// <summary>Appends the single foreground <c>&lt;path&gt;</c> with dark modules merged into horizontal runs, shifted by the quiet zone.</summary>
     private static void EmitLegacyForegroundPath(StringBuilder sb, ModuleMatrix matrix, string foregroundFill, int quietZone)
     {
-        sb.Append("<path fill=\"").Append(foregroundFill).Append("\" d=\"");
+        sb.Append("<path fill=\"").Append(EscapeAttr(foregroundFill)).Append("\" d=\"");
 
         for (var row = 0; row < matrix.Size; row++)
             AppendRowRuns(sb, matrix, row, quietZone);
@@ -139,7 +144,7 @@ public sealed class SvgRenderer
         var body = new StringBuilder();
         EmitDataBody(body, matrix, style.ModuleShape, finders, quietZone);
         if (body.Length > 0)
-            sb.Append("<path fill=\"").Append(foregroundFill).Append("\" d=\"").Append(body).Append("\"/>\n");
+            sb.Append("<path fill=\"").Append(EscapeAttr(foregroundFill)).Append("\" d=\"").Append(body).Append("\"/>\n");
 
         // Draw complete finder eyes from geometry rather than styled matrix bits.
         if (finders.Count == 0)
@@ -149,7 +154,7 @@ public sealed class SvgRenderer
         foreach (var f in finders)
             AppendFinderEye(eyes, f, style.FinderShape, style.FinderDotShape, quietZone);
 
-        sb.Append("<path fill=\"").Append(foregroundFill).Append("\" fill-rule=\"evenodd\" d=\"").Append(eyes).Append("\"/>\n");
+        sb.Append("<path fill=\"").Append(EscapeAttr(foregroundFill)).Append("\" fill-rule=\"evenodd\" d=\"").Append(eyes).Append("\"/>\n");
     }
 
     /// <summary>The top-left corners (in matrix coordinates) of the three 7×7 finder regions, or an empty list when <paramref name="size"/> is below a real QR symbol.</summary>
@@ -497,7 +502,7 @@ public sealed class SvgRenderer
         // Smooth the matrix-cut hole only when a solid background can paint it.
         if (!transparent)
             sb.Append("<circle cx=\"").Append(Num(center)).Append("\" cy=\"").Append(Num(center))
-                .Append("\" r=\"").Append(Num(side * EmojiHoleFactor)).Append("\" fill=\"").Append(backgroundColor).Append("\"/>\n");
+                .Append("\" r=\"").Append(Num(side * EmojiHoleFactor)).Append("\" fill=\"").Append(EscapeAttr(backgroundColor)).Append("\"/>\n");
 
         sb.Append("<text x=\"").Append(Num(center)).Append("\" y=\"").Append(Num(center))
             .Append("\" font-size=\"").Append(Num(side))
@@ -529,7 +534,7 @@ public sealed class SvgRenderer
 
         foreach (var stop in gradient.Stops)
             sb.Append("<stop offset=\"").Append(Num(Math.Clamp(stop.Offset, 0.0, 1.0)))
-                .Append("\" stop-color=\"").Append(stop.Color).Append("\"/>");
+                .Append("\" stop-color=\"").Append(EscapeAttr(stop.Color)).Append("\"/>");
 
         sb.Append(radial ? "</radialGradient>" : "</linearGradient>")
             .Append("</defs>\n");

@@ -3,7 +3,7 @@ using WoW.Two.Sdk.Backend.Beta.Codes.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Codes.Rendering.Matrix;
 
-/// <summary>Provides a QRCoder-backed <see cref="IQrMatrixGenerator"/>, stripping QRCoder's baked quiet border so the emitter owns the quiet zone.</summary>
+/// <summary>Generates code matrices through a QRCoder-backed <see cref="IQrMatrixGenerator"/>, stripping QRCoder's baked quiet border so the emitter owns the quiet zone.</summary>
 public sealed class QrMatrixGenerator : IQrMatrixGenerator
 {
     /// <summary>The quiet-zone width in modules per side that QRCoder bakes into its matrix.</summary>
@@ -14,7 +14,7 @@ public sealed class QrMatrixGenerator : IQrMatrixGenerator
     public ModuleMatrix Generate(string payload, EccLevel ecc)
     {
         using var generator = new QRCodeGenerator();
-        var data = generator.CreateQrCode(payload, Map(ecc));
+        using var data = generator.CreateQrCode(payload, Map(ecc));
         var rows = data.ModuleMatrix;
 
         var full = rows.Count;
@@ -39,6 +39,6 @@ public sealed class QrMatrixGenerator : IQrMatrixGenerator
         EccLevel.M => QRCodeGenerator.ECCLevel.M,
         EccLevel.Q => QRCodeGenerator.ECCLevel.Q,
         EccLevel.H => QRCodeGenerator.ECCLevel.H,
-        _ => QRCodeGenerator.ECCLevel.Q,
+        _ => throw new ArgumentOutOfRangeException(nameof(level), level, "Unsupported error correction level."),
     };
 }

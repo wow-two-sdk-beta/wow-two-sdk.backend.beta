@@ -1,4 +1,5 @@
 using WoW.Two.Sdk.Backend.Beta.Codes.Models;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Codes;
 
@@ -7,5 +8,5 @@ public interface ICodeRenderer
 {
     /// <summary>Renders the requested code image.</summary>
     /// <param name="request">The render request describing the payload, symbology, format, and style.</param>
-    RenderedCode Render(CodeRenderRequest request);
+    Result<RenderedCode> Render(CodeRenderRequest request);
 }

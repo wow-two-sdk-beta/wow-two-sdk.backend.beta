@@ -18,8 +18,12 @@ public static class GuestSessionServiceCollectionExtensions
 
         var options = new GuestSessionOptions();
         configure?.Invoke(options);
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.CookieName);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(options.Lifetime, TimeSpan.Zero);
         services.TryAddSingleton(options);
 
+        services.AddDataProtection();
+        services.TryAddSingleton(TimeProvider.System);
         services.AddHttpContextAccessor();
         services.TryAddScoped<IGuestSessionService, CookieGuestSessionService>();
         return services;

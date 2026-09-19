@@ -11,6 +11,7 @@ public sealed class ModuleMatrix
     /// <exception cref="ArgumentException">The grid is not square.</exception>
     public ModuleMatrix(bool[,] modules)
     {
+        ArgumentNullException.ThrowIfNull(modules);
         var rows = modules.GetLength(0);
         var cols = modules.GetLength(1);
         if (rows != cols)

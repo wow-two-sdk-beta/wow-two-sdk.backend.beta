@@ -17,8 +17,11 @@ public static class CurrentUserServiceCollectionExtensions
 
         var options = new CurrentUserOptions();
         configure?.Invoke(options);
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.GuestCookieName);
         services.TryAddSingleton(options);
 
+        services.AddDataProtection();
+        services.TryAddSingleton(TimeProvider.System);
         services.AddHttpContextAccessor();
         services.TryAddSingleton<ICurrentUserService, CookieCurrentUserService>();
         return services;

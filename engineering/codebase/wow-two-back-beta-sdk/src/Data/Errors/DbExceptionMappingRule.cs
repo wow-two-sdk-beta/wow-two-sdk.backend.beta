@@ -26,8 +26,12 @@ public sealed class DbExceptionMappingRule : IExceptionMappingRule
         {
             TimeoutException => AppErrorType.DbTimeout,
             DbUpdateConcurrencyException => AppErrorType.Conflict,
+            DbUpdateException { InnerException: { } cause } => Classify(cause),
             PostgresException { SqlState: "23505" } => AppErrorType.Conflict,
             PostgresException { SqlState: "57P03" or "53300" } => AppErrorType.ExternalUnavailable,
+            PostgresException => null,
+            NpgsqlException { InnerException: TimeoutException } => AppErrorType.DbTimeout,
+            NpgsqlException { InnerException: OperationCanceledException } => null,
             NpgsqlException => AppErrorType.ExternalUnavailable,
             _ => null,
         };

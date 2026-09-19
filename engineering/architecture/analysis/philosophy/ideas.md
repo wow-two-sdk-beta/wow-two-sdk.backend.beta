@@ -2775,3 +2775,11 @@ The agent's bundled-package recommendations (consider for `targets.md`):
 - Microsoft.Extensions.AI: <https://learn.microsoft.com/en-us/dotnet/ai/>
 - Companion UI catalog: `wow-two-sdk-beta.ui/engineering/architecture/analysis/ui-philosophy/ideas.md`
 - Internal companion: [`targets.md`](./targets.md)
+
+
+## Product-triggered scanner and request primitives
+
+- Typed WIFI/mailto/SMSTO/tel/geo serialization; vCard contact documents; explicitly floating VEVENT fragments.
+- Weighted Accept-Language ranges and exclusions; heuristic User-Agent device mapping.
+- Unbiased cryptographic text IDs with caller-selected length and alphabet.
+- Bounded QR/barcode SVG/PNG rendering; authenticated, expiring anonymous ownership cookies.

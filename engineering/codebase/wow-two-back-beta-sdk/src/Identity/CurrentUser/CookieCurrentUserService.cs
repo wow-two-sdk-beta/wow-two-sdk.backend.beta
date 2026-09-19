@@ -1,5 +1,7 @@
+using WoW.Two.Sdk.Backend.Beta.Identity.Guest.Serializers;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.DataProtection;
+using WoW.Two.Sdk.Backend.Beta.Identity.Guest;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.CurrentUser;
 
@@ -9,16 +11,21 @@ public sealed class CookieCurrentUserService : ICurrentUserService
 {
     private readonly IHttpContextAccessor _accessor;
     private readonly CurrentUserOptions _options;
+    private readonly GuestCookieSerializer _serializer;
 
     /// <summary>Creates the resolver over the request accessor and resolution options.</summary>
     /// <param name="accessor">Accessor for the ambient <see cref="HttpContext"/>.</param>
     /// <param name="options">Guest-cookie name and subject-claim type.</param>
-    public CookieCurrentUserService(IHttpContextAccessor accessor, CurrentUserOptions options)
+    /// <param name="protection">Application-scoped Data Protection provider.</param>
+    /// <param name="clock">Clock used to verify capability expiry.</param>
+    public CookieCurrentUserService(IHttpContextAccessor accessor, CurrentUserOptions options,
+        IDataProtectionProvider protection, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(accessor);
         ArgumentNullException.ThrowIfNull(options);
         _accessor = accessor;
         _options = options;
+        _serializer = new GuestCookieSerializer(protection, clock);
     }
 
     /// <inheritdoc />
@@ -41,8 +48,7 @@ public sealed class CookieCurrentUserService : ICurrentUserService
             return (userId, UserKind.User);
         }
 
-        if (http.Request.Cookies.TryGetValue(_options.GuestCookieName, out var raw)
-            && Guid.TryParse(raw, out var guestId))
+        if (http.ReadGuest(_options.GuestCookieName, _serializer) is { } guestId)
         {
             return (guestId, UserKind.Guest);
         }

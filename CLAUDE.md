@@ -105,6 +105,9 @@ dotnet restore -m:1                                  # -m:1 avoids EMFILE on mac
 dotnet build WoW.Two.Sdk.Backend.Beta.slnx --no-restore -m:1
 ```
 
+Use `-m:1` for `dotnet pack` as well, including `--no-build --no-restore` invocations: packing still evaluates project references.
+Verify the package family with `scripts/verify-release-packages.sh`; an exit code alone does not establish package output.
+
 Set `MSBUILDDISABLENODEREUSE=1` and `ulimit -n 65535` if you hit "too many open files."
 
 ## Package naming

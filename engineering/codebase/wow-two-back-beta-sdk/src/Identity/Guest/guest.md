@@ -5,7 +5,7 @@ Idempotent anonymous-session cookie — gives an unregistered visitor a stable `
 
 | Seam | Default |
 |---|---|
-| `IGuestSessionService` | `CookieGuestSessionService` — `EnsureGuest()` returns the existing cookie's Guid or mints + appends one (at most once per request); `Clear()` deletes it after sign-in |
+| `IGuestSessionService` | `CookieGuestSessionService` — `EnsureGuest()` returns the valid capability's Guid or mints + appends one (at most once per request); `Clear()` deletes it after sign-in |
 
 ```csharp
 builder.Services.AddGuestSession(o =>
@@ -27,3 +27,9 @@ _guest.Clear();
 - Request-scoped: throws outside an HTTP request.
 - Read the guest back (and tell guest from authenticated) via [`../CurrentUser`](../CurrentUser/current-user.md)
   — register both on the **same** cookie name.
+
+- Cookies carry an authenticated capability, never a trusted raw GUID; raw/forged/expired values resolve as anonymous.
+- `Clear()` masks the inbound cookie immediately for this request; `EnsureGuest()` creates a new identity after clearing.
+- Configure durable ASP.NET Core Data Protection keys in persistent deployments. Share application name and key ring
+  only between hosts that intentionally share guest identity. Key loss loses guest access; Clear is not server-side revocation.
+- [Guest capability contract](GuestSession.spec.md) defines purpose isolation and expiry through `TimeProvider`.

@@ -32,8 +32,11 @@ public sealed class SubtypeRegistry<TBase, TKind>
     {
         ArgumentNullException.ThrowIfNull(subtypes);
 
-        foreach (var (_, type) in subtypes)
+        foreach (var (kind, type) in subtypes)
         {
+            if (!Enum.IsDefined(kind) || type is null || type.ContainsGenericParameters)
+                throw new ArgumentException("Each entry must bind a declared kind to a closed concrete subtype.", nameof(subtypes));
+
             if (!typeof(TBase).IsAssignableFrom(type))
             {
                 throw new ArgumentException($"'{type.Name}' does not derive from '{typeof(TBase).Name}'.", nameof(subtypes));
@@ -67,9 +70,11 @@ public sealed class SubtypeRegistry<TBase, TKind>
             throw new ArgumentException($"'{typeof(TKind).Name}' members without a subtype: {string.Join(", ", missing)}.", nameof(subtypes));
         }
 
-        Subtypes = subtypes
+        Subtypes = Array.AsReadOnly(subtypes
             .Select(subtype => (subtype.Kind, subtype.Type, Discriminator: ToDiscriminator(subtype.Kind)))
-            .ToArray();
+            .ToArray());
+        if (Subtypes.Select(subtype => subtype.Discriminator).Distinct(StringComparer.Ordinal).Count() != Subtypes.Count)
+            throw new ArgumentException("Subtype discriminator tokens must be unique.", nameof(subtypes));
 
         VerifyAgainstAttributes();
     }
@@ -101,7 +106,7 @@ public sealed class SubtypeRegistry<TBase, TKind>
 
     private static string ToDiscriminator(TKind kind)
     {
-        return JsonSerializer.Serialize(kind, DiscriminatorOptions).Trim('"');
+        return JsonSerializer.SerializeToElement(kind, DiscriminatorOptions).GetString()!;
     }
 
     private void VerifyAgainstAttributes()

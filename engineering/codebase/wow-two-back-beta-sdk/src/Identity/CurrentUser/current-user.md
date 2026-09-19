@@ -24,7 +24,7 @@ switch (_currentUser.Kind)
 }
 ```
 
-- Resolution order: an authenticated principal wins; else a parseable guest cookie; else anonymous.
+- Resolution order: an authenticated principal wins; else a valid protected, unexpired guest cookie; else anonymous.
 - `Id` is the account id when authenticated, the guest id when guest, `null` when anonymous.
 - Pair with [`../Guest`](../Guest/guest.md) (issues the guest cookie) on the **same** cookie name.
 - Singleton and request-safe: it retains no principal between requests.

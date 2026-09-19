@@ -7,6 +7,25 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Tests.Serialization;
 
 public sealed class SubtypeRegistryTests
 {
+    [Fact]
+    public void Discriminator_UsesDecodedJsonTokenAndExposesReadOnlyEntries()
+    {
+        var registry = new SubtypeRegistry<Pet, EscapedKind>((EscapedKind.Cat, typeof(Cat)));
+        Assert.Equal("cat\"é", registry.Subtypes[0].Discriminator);
+        Assert.Throws<NotSupportedException>(() => ((IList<(EscapedKind, Type, string)>)registry.Subtypes)[0] = default);
+    }
+
+    [Fact]
+    public void Construction_RejectsUndefinedKindsAndNullTypes()
+    {
+        Assert.Throws<ArgumentException>(() => new SubtypeRegistry<Pet, PetKind>(((PetKind)99, typeof(Cat))));
+        Assert.Throws<ArgumentException>(() => new SubtypeRegistry<Pet, PetKind>((PetKind.Cat, null!)));
+        Assert.Throws<ArgumentException>(() => new SubtypeRegistry<Pet, DuplicateKind>((DuplicateKind.Cat, typeof(Cat)), (DuplicateKind.Dog, typeof(Dog))));
+    }
+
+    private enum EscapedKind { [JsonStringEnumMemberName("cat\"é")] Cat }
+    private enum DuplicateKind { [JsonStringEnumMemberName("same")] Cat, [JsonStringEnumMemberName("same")] Dog }
+
     private enum PetKind
     {
         Cat,
