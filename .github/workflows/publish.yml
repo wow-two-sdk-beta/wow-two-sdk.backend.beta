@@ -1,7 +1,7 @@
 name: publish
 
-# Beta-forever: every push to main bumps the version, packs, publishes to nuget.org,
-# then commits the bumped version back (so the repo always reflects what's published).
+# Beta-forever: every push to main creates a local version-bump commit and tag,
+# tests and verifies its packages, publishes to nuget.org, then pushes that commit and tag.
 #
 # Every `run:` step below executes from the code dir — `defaults.run.working-directory:
 # engineering/codebase/wow-two-back-beta-sdk` (per conventions/development/repo/structure/
@@ -32,6 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.bump.outputs.version }}
+      revision: ${{ steps.bump.outputs.revision }}
     defaults:
       run:
         working-directory: engineering/codebase/wow-two-back-beta-sdk
@@ -42,7 +43,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: engineering/codebase/wow-two-back-beta-sdk/global.json
 
       - name: Bump version (10.y.z-beta)
         id: bump
@@ -57,34 +58,74 @@ jobs:
           FILEVERSION="10.$Y.$Z"
           sed -i "s|<Version>[^<]*</Version>|<Version>$VERSION</Version>|" "$PROPS"
           sed -i "s|<FileVersion>[^<]*</FileVersion>|<FileVersion>$FILEVERSION</FileVersion>|" "$PROPS"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$PROPS"
+          git commit -m "chore: release $VERSION [skip ci]"
+          git tag -a "v$VERSION" -m "Release $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "::notice::Releasing $VERSION (was $CUR)"
+
+      - name: Restore
+        run: dotnet restore src/WoW.Two.Sdk.Backend.Beta.slnx -m:1
+
+      - name: Build release projects
+        run: dotnet build src/WoW.Two.Sdk.Backend.Beta.slnx -c Release --no-restore -m:1
+
+      - name: Test release revision
+        run: dotnet test src/WoW.Two.Sdk.Backend.Beta.slnx -c Release --no-build --no-restore -m:1
 
       - name: Pack         # version from Directory.Build.props (just bumped). Pack the 7 published projects:
         run: |
           # mono-lib + Data.Abstractions (the mono-lib's nuspec dependency) + the wow-migrate CLI tool + the Testing helper lib + the Testing.Data data-tier helper lib + the Testing.Integrations integration-client doubles + the Testing.Messaging harness (all referenced by app test projects).
-          dotnet pack src/WoW.Two.Sdk.Backend.Beta.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
-          dotnet pack src/Data/Abstractions/WoW.Two.Sdk.Backend.Beta.Data.Abstractions.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
-          dotnet pack src/Data/Migrations/cli/WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
-          dotnet pack src/Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
-          dotnet pack src/Testing.Data/WoW.Two.Sdk.Backend.Beta.Testing.Data.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
-          dotnet pack src/Testing.Integrations/WoW.Two.Sdk.Backend.Beta.Testing.Integrations.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
-          dotnet pack src/Testing.Messaging/WoW.Two.Sdk.Backend.Beta.Testing.Messaging.csproj -c Release -p:ContinuousIntegrationBuild=true -o artifacts
+          dotnet pack src/WoW.Two.Sdk.Backend.Beta.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/Data/Abstractions/WoW.Two.Sdk.Backend.Beta.Data.Abstractions.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/Data/Migrations/cli/WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/Testing.Data/WoW.Two.Sdk.Backend.Beta.Testing.Data.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/Testing.Integrations/WoW.Two.Sdk.Backend.Beta.Testing.Integrations.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+          dotnet pack src/Testing.Messaging/WoW.Two.Sdk.Backend.Beta.Testing.Messaging.csproj -c Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:RepositoryCommit=${{ steps.bump.outputs.revision }} -o artifacts
+
+      - name: Verify release packages
+        run: bash scripts/verify-release-packages.sh artifacts "${{ steps.bump.outputs.version }}" "${{ steps.bump.outputs.revision }}"
+
+      - name: Retain verified packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ steps.bump.outputs.version }}
+          path: engineering/codebase/wow-two-back-beta-sdk/artifacts
+          if-no-files-found: error
 
       - name: Authenticate to NuGet (Trusted Publishing)   # OIDC → short-lived API key, no stored secret
         uses: NuGet/login@v1
         id: nuget-login
         with:
-          user: MaxDev   # nuget.org username — VERIFY input name/value against the TP "Learn more" docs
+          user: MaxDev
 
       - name: Push to nuget.org   # the adjacent .snupkg is pushed automatically
         run: dotnet nuget push "artifacts/*.nupkg" -s https://api.nuget.org/v3/index.json -k ${{ steps.nuget-login.outputs.NUGET_API_KEY }} --skip-duplicate
 
-      - name: Commit + tag the bump
+      - name: Push release commit and tag
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/Directory.Build.props
-          git commit -m "chore: release ${{ steps.bump.outputs.version }} [skip ci]"
-          git tag "v${{ steps.bump.outputs.version }}"
           git push --follow-tags
+
+      - name: Verify published version and tag
+        env:
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          git ls-remote --exit-code --tags origin "refs/tags/v$VERSION"
+          for ID in \
+            WoW2.Sdk.Backend.Beta \
+            WoW2.Sdk.Backend.Beta.Data.Abstractions \
+            WoW2.Sdk.Backend.Beta.Data.Migrations.Cli \
+            WoW2.Sdk.Backend.Beta.Testing \
+            WoW2.Sdk.Backend.Beta.Testing.Data \
+            WoW2.Sdk.Backend.Beta.Testing.Integrations \
+            WoW2.Sdk.Backend.Beta.Testing.Messaging
+          do
+            PACKAGE_ID=${ID,,}
+            PACKAGE_VERSION=${VERSION,,}
+            URL="https://api.nuget.org/v3-flatcontainer/$PACKAGE_ID/$PACKAGE_VERSION/$PACKAGE_ID.$PACKAGE_VERSION.nupkg"
+            curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 10 --output /dev/null "$URL"
+          done
