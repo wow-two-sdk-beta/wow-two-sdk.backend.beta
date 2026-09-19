@@ -5,7 +5,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga;
 
 /// <summary>
-/// One step in a declarative event saga (routing slip). Steps run in order; each may write its result into the
+/// Defines one step in a declarative event saga (routing slip). Steps run in order; each may write its result into the
 /// shared <see cref="EventSagaContext"/> (the "result passed along"). On a downstream failure the runner walks the
 /// completed steps in reverse calling <see cref="CompensateAsync"/> — automatic rollback.
 /// </summary>

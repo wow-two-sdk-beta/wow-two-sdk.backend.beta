@@ -8,4 +8,8 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
 /// <summary>Published when the timeout fires instead of the payment.</summary>
-public sealed record OrderCancelled(string OrderId) : IEvent;
+public sealed record OrderCancelled : IEvent
+{
+    /// <summary>Gets the cancelled order's id.</summary>
+    public required string OrderId { get; init; }
+}

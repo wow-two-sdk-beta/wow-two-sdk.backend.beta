@@ -2,14 +2,16 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Messaging;
+using WoW.Two.Sdk.Backend.Beta.Testing.Messaging.Trackers;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
 /// <summary>
 /// The harness's eyes on the bus — one observer implementing all three seams
 /// (<see cref="IPublishObservingInterceptor"/>, <see cref="IReceiveObservingInterceptor"/>, <see cref="IConsumeObservingInterceptor"/>), recording every
-/// hook into a <see cref="RecordedMessageLog"/> and stamping the activity clock that idle detection reads.
+/// hook into a <see cref="RecordedMessageTracker"/> and stamping the activity clock that idle detection reads.
 /// </summary>
 /// <remarks>
 ///   - an observer cannot short-circuit, re-settle, or swallow a fault
@@ -23,19 +25,19 @@ public sealed class MessagingRecorder : IPublishObservingInterceptor, IReceiveOb
     private long _lastActivity = Stopwatch.GetTimestamp();
 
     /// <summary>Envelopes the transport accepted (<see cref="IPublishObservingInterceptor.PostPublishAsync"/>). What acceptance proves is transport-specific — see <see cref="ITransportCapabilities.NativePublisherConfirms"/>.</summary>
-    public RecordedMessageLog Published { get; } = new(nameof(Published));
+    public RecordedMessageTracker Published { get; } = new(nameof(Published));
 
     /// <summary>Sends the transport threw on (<see cref="IPublishObservingInterceptor.PublishFaultAsync"/>). The exception still propagated to the caller.</summary>
-    public RecordedMessageLog PublishFaults { get; } = new(nameof(PublishFaults));
+    public RecordedMessageTracker PublishFaults { get; } = new(nameof(PublishFaults));
 
     /// <summary>Delivery attempts that completed without throwing, each carrying its <see cref="ConsumeOutcome"/> (<see cref="IConsumeObservingInterceptor.PostConsumeAsync"/>). A deduplicated message records as <see cref="ConsumeOutcome.Duplicate"/>, never as a missing entry.</summary>
-    public RecordedMessageLog Consumed { get; } = new(nameof(Consumed));
+    public RecordedMessageTracker Consumed { get; } = new(nameof(Consumed));
 
     /// <summary>Delivery attempts that threw (<see cref="IConsumeObservingInterceptor.ConsumeFaultAsync"/>) — one entry per attempt, so the count is the retry budget spent.</summary>
-    public RecordedMessageLog Faulted { get; } = new(nameof(Faulted));
+    public RecordedMessageTracker Faulted { get; } = new(nameof(Faulted));
 
     /// <summary>Messages that exhausted processing and were dead-lettered (<see cref="IReceiveObservingInterceptor.ReceiveFaultAsync"/>), recorded after settlement.</summary>
-    public RecordedMessageLog DeadLettered { get; } = new(nameof(DeadLettered));
+    public RecordedMessageTracker DeadLettered { get; } = new(nameof(DeadLettered));
 
     /// <summary>
     /// How long since the bus last did anything the recorder can see — a publish, an arrival, an attempt, a
@@ -45,7 +47,7 @@ public sealed class MessagingRecorder : IPublishObservingInterceptor, IReceiveOb
     public TimeSpan SinceLastActivity => Stopwatch.GetElapsedTime(Volatile.Read(ref _lastActivity));
 
     /// <summary>
-    /// A task that completes on the bus's next observable move. Capture it <b>before</b> reading state, so an event
+    /// A task that completes on the bus's next observable move. Capture it before reading state, so an event
     /// racing the read completes the task instead of being missed.
     /// </summary>
     public Task NextActivityAsync()
@@ -69,7 +71,7 @@ public sealed class MessagingRecorder : IPublishObservingInterceptor, IReceiveOb
     public override string ToString() => string.Join(" | ", Published, PublishFaults, Consumed, Faulted, DeadLettered);
 
     /// <inheritdoc />
-    public ValueTask PrePublishAsync(EventEnvelope envelope, CancellationToken cancellationToken)
+    public ValueTask PrePublishAsync(EventEnvelopeModel envelope, CancellationToken cancellationToken)
     {
         // Marked but not logged — counting a publish in progress stops an idle wait in the send/arrival gap.
         MarkActivity();
@@ -77,25 +79,25 @@ public sealed class MessagingRecorder : IPublishObservingInterceptor, IReceiveOb
     }
 
     /// <inheritdoc />
-    public ValueTask PostPublishAsync(EventEnvelope envelope, CancellationToken cancellationToken)
+    public ValueTask PostPublishAsync(EventEnvelopeModel envelope, CancellationToken cancellationToken)
         => Record(Published, envelope, outcome: null, exception: null);
 
     /// <inheritdoc />
-    public ValueTask PublishFaultAsync(EventEnvelope envelope, Exception exception, CancellationToken cancellationToken)
+    public ValueTask PublishFaultAsync(EventEnvelopeModel envelope, Exception exception, CancellationToken cancellationToken)
         => Record(PublishFaults, envelope, outcome: null, exception);
 
     /// <inheritdoc />
-    public ValueTask PreReceiveAsync(ReceiveContext context, CancellationToken cancellationToken)
+    public ValueTask PreReceiveAsync(EventEnvelopeModel envelope, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(envelope);
         MarkActivity(); // an arrival is activity even though nothing has been decided about it yet
         return ValueTask.CompletedTask;
     }
 
     /// <inheritdoc />
-    public ValueTask PostReceiveAsync(ReceiveContext context, CancellationToken cancellationToken)
+    public ValueTask PostReceiveAsync(EventEnvelopeModel envelope, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(envelope);
 
         // Terminal success, not logged as Consumed — PostConsume already recorded it, and a second entry doubles it.
         MarkActivity();
@@ -103,35 +105,35 @@ public sealed class MessagingRecorder : IPublishObservingInterceptor, IReceiveOb
     }
 
     /// <inheritdoc />
-    public ValueTask ReceiveFaultAsync(ReceiveContext context, Exception exception, CancellationToken cancellationToken)
+    public ValueTask ReceiveFaultAsync(EventEnvelopeModel envelope, Exception exception, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(context);
-        return Record(DeadLettered, context.Envelope, outcome: null, exception);
+        ArgumentNullException.ThrowIfNull(envelope);
+        return Record(DeadLettered, envelope, outcome: null, exception);
     }
 
     /// <inheritdoc />
-    public ValueTask PreConsumeAsync(ReceiveContext context, CancellationToken cancellationToken)
+    public ValueTask PreConsumeAsync(EventEnvelopeModel envelope, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(envelope);
         MarkActivity();
         return ValueTask.CompletedTask;
     }
 
     /// <inheritdoc />
-    public ValueTask PostConsumeAsync(ReceiveContext context, ConsumeOutcome outcome, CancellationToken cancellationToken)
+    public ValueTask PostConsumeAsync(EventEnvelopeModel envelope, ConsumeOutcome outcome, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(context);
-        return Record(Consumed, context.Envelope, outcome, exception: null);
+        ArgumentNullException.ThrowIfNull(envelope);
+        return Record(Consumed, envelope, outcome, exception: null);
     }
 
     /// <inheritdoc />
-    public ValueTask ConsumeFaultAsync(ReceiveContext context, Exception exception, CancellationToken cancellationToken)
+    public ValueTask ConsumeFaultAsync(EventEnvelopeModel envelope, Exception exception, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(context);
-        return Record(Faulted, context.Envelope, outcome: null, exception);
+        ArgumentNullException.ThrowIfNull(envelope);
+        return Record(Faulted, envelope, outcome: null, exception);
     }
 
-    private ValueTask Record(RecordedMessageLog log, EventEnvelope envelope, ConsumeOutcome? outcome, Exception? exception)
+    private ValueTask Record(RecordedMessageTracker log, EventEnvelopeModel envelope, ConsumeOutcome? outcome, Exception? exception)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 

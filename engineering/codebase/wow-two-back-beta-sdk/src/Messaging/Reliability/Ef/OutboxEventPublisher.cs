@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 

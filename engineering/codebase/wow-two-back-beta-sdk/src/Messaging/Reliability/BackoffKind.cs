@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
-/// <summary>Backoff curve applied between retry attempts.</summary>
+/// <summary>Refers to backoff curve applied between retry attempts.</summary>
 public enum BackoffKind
 {
     /// <summary>No delay — retry immediately.</summary>

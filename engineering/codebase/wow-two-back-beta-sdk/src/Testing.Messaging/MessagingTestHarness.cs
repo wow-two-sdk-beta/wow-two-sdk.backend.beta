@@ -4,8 +4,10 @@ using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using WoW.Two.Sdk.Backend.Beta.Messaging;
+using WoW.Two.Sdk.Backend.Beta.Testing.Messaging.Trackers;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
@@ -17,7 +19,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 /// <remarks>
 ///   - watches the real pipeline through the observer seam, never altering routing, settlement, retries or dead-lettering
 ///   - works against the in-memory transport and a broker-backed host alike — see <see cref="Attach"/>
-///   - to assert something did <i>not</i> happen, await <see cref="WaitForIdleAsync"/> rather than a <c>Task.Delay</c>
+///   - to assert something did not happen, await <see cref="WaitForIdleAsync"/> rather than a <c>Task.Delay</c>
 /// </remarks>
 public sealed class MessagingTestHarness : IAsyncDisposable
 {
@@ -49,19 +51,19 @@ public sealed class MessagingTestHarness : IAsyncDisposable
     public MessagingRecorder Recorder => _recorder;
 
     /// <summary>Envelopes the transport accepted.</summary>
-    public RecordedMessageLog Published => _recorder.Published;
+    public RecordedMessageTracker Published => _recorder.Published;
 
     /// <summary>Sends the transport threw on.</summary>
-    public RecordedMessageLog PublishFaults => _recorder.PublishFaults;
+    public RecordedMessageTracker PublishFaults => _recorder.PublishFaults;
 
     /// <summary>Delivery attempts that completed, each carrying its <see cref="ConsumeOutcome"/> — one entry per attempt, so a duplicate and a redelivery are both visible.</summary>
-    public RecordedMessageLog Consumed => _recorder.Consumed;
+    public RecordedMessageTracker Consumed => _recorder.Consumed;
 
     /// <summary>Delivery attempts that threw — the count is the retry budget actually spent, which is how a test tells a classified-fatal fault from an exhausted one.</summary>
-    public RecordedMessageLog Faulted => _recorder.Faulted;
+    public RecordedMessageTracker Faulted => _recorder.Faulted;
 
     /// <summary>Messages that were dead-lettered. Recorded after settlement, so the dead-letter store is already written when a wait on this returns.</summary>
-    public RecordedMessageLog DeadLettered => _recorder.DeadLettered;
+    public RecordedMessageTracker DeadLettered => _recorder.DeadLettered;
 
     /// <summary>Messages currently in the pipeline. Messages parked at a shut pause gate are not counted — they never entered it.</summary>
     public int InFlight => Control?.InFlight ?? 0;
@@ -93,7 +95,7 @@ public sealed class MessagingTestHarness : IAsyncDisposable
     /// </summary>
     /// <param name="services">The running host's service provider.</param>
     /// <param name="options">Harness timings. Raise <see cref="MessagingHarnessOptions.QuietPeriod"/> for a broker.</param>
-    /// <returns>A harness over that host. Disposing it does <b>not</b> stop the host — the test still owns it.</returns>
+    /// <returns>A harness over that host. Disposing it does not stop the host — the test still owns it.</returns>
     /// <exception cref="InvalidOperationException">No <see cref="MessagingRecorder"/> is registered.</exception>
     public static MessagingTestHarness Attach(IServiceProvider services, MessagingHarnessOptions? options = null)
     {

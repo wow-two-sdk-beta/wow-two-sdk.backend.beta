@@ -10,10 +10,12 @@ using NATS.Client.JetStream.Models;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Nats;
 
-/// <summary>Options for the NATS JetStream event-bus adapter.</summary>
+/// <summary>Holds options for the NATS JetStream event-bus adapter.</summary>
 public sealed record NatsOptions
 {
     /// <summary>NATS server URL. Default <c>nats://localhost:4222</c>.</summary>
@@ -36,7 +38,7 @@ public sealed record NatsOptions
 
     /// <summary>
     /// Route each message to the subject <see cref="ITopologyService"/> resolves from it — the message type's stable
-    /// token for a publish, <see cref="EventEnvelope.Destination"/> for an explicit
+    /// token for a publish, <see cref="EventEnvelopeModel.Destination"/> for an explicit
     /// <see cref="IEventBus.SendAsync{TEvent}"/> — instead of publishing everything to <see cref="Subject"/>. Routed
     /// subjects are nested under <see cref="Subject"/> (<c>wt.events.order-placed</c>). Default false, which keeps an
     /// existing deployment on its single subject.

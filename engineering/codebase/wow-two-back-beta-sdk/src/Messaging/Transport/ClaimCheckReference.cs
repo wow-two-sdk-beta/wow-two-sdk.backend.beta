@@ -8,6 +8,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Storage.Core;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
@@ -19,7 +20,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 public sealed record ClaimCheckReference
 {
     /// <summary>
-    /// Stable wire token this type is registered under by <c>AddEventClaimCheck</c>, so a consumer resolves the wire
+    /// Holds stable wire token this type is registered under by <c>AddEventClaimCheck</c>, so a consumer resolves the wire
     /// body of an offloaded message without depending on the SDK's assembly-qualified name — whose version segment
     /// moves on every SDK push, and which would leave the message unresolvable across a version skew.
     /// </summary>

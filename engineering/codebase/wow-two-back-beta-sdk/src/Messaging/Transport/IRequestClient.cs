@@ -3,11 +3,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Sends a request and awaits the correlated response. The reply address and the conversation id are the client's
+/// Defines behavior that sends a request and awaits the correlated response. The reply address and the conversation id are the client's
 /// business, not the caller's: it stamps both, parks the call until a message carrying that conversation id comes back
 /// through the ordinary consume pipeline, and gives up after a timeout.
 /// </summary>
@@ -26,8 +28,9 @@ public interface IRequestClient<in TRequest, TResponse>
     /// <param name="request">The request payload.</param>
     /// <param name="options">Per-call overrides (timeout, explicit destination, correlation, headers); null uses the configured defaults.</param>
     /// <param name="cancellationToken">Cancellation token. Cancelling abandons the request; a late response is discarded.</param>
-    /// <returns>The response.</returns>
-    /// <exception cref="RequestTimeoutException">No response arrived within the timeout.</exception>
-    /// <exception cref="RequestFaultException">A response arrived that is not a <typeparamref name="TResponse"/>.</exception>
-    ValueTask<TResponse> GetResponseAsync(TRequest request, RequestOptions? options = null, CancellationToken cancellationToken = default);
+    /// <returns>The response, or an error when the timeout expires or the reply does not match <typeparamref name="TResponse"/>.</returns>
+    ValueTask<Result<TResponse>> GetResponseAsync(
+        TRequest request,
+        RequestOptions? options = null,
+        CancellationToken cancellationToken = default);
 }

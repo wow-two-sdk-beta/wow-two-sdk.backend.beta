@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 
-/// <summary>Terminal outcome of a webhook delivery.</summary>
+/// <summary>Refers to terminal outcome of a webhook delivery.</summary>
 public enum WebhookDeliveryOutcome
 {
     /// <summary>The endpoint returned a success (2xx) response.</summary>

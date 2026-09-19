@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
-/// <summary>Per-call overrides for one <see cref="IRequestClient{TRequest, TResponse}"/> request.</summary>
+/// <summary>Holds per-call overrides for one <see cref="IRequestClient{TRequest, TResponse}"/> request.</summary>
 public sealed record RequestOptions
 {
     /// <summary>Response timeout for this call; null uses <see cref="RequestClientOptions.Timeout"/>.</summary>

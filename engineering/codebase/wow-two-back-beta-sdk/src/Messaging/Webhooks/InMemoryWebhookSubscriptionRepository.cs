@@ -1,10 +1,9 @@
 using System.Collections.Concurrent;
-using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 
 /// <summary>
-/// In-memory <see cref="IWebhookSubscriptionRepository"/> — the zero-config default. Seeded from
+/// Accesses webhook subscriptions in process memory. Seeded from
 /// <see cref="WebhookOptions.Subscriptions"/> at construction, thread-safe, keyed by <see cref="WebhookSubscription.Id"/>.
 /// </summary>
 public sealed class InMemoryWebhookSubscriptionRepository : IWebhookSubscriptionRepository
@@ -13,10 +12,10 @@ public sealed class InMemoryWebhookSubscriptionRepository : IWebhookSubscription
 
     /// <summary>Create the store, seeding it from the configured <see cref="WebhookOptions.Subscriptions"/>.</summary>
     /// <param name="options">The webhook options carrying the seed subscriptions.</param>
-    public InMemoryWebhookSubscriptionRepository(IOptions<WebhookOptions> options)
+    public InMemoryWebhookSubscriptionRepository(WebhookOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        foreach (var subscription in options.Value.Subscriptions)
+        foreach (var subscription in options.Subscriptions)
             _subscriptions[subscription.Id] = subscription;
     }
 

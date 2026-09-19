@@ -5,7 +5,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
-/// <summary>How one saga instance's reaction to one message ended.</summary>
+/// <summary>Refers to how one saga instance's reaction to one message ended.</summary>
 public enum SagaTransitionOutcome
 {
     /// <summary>The transition ran and its state was written — an insert, an update, or the delete that removes a finalized instance.</summary>

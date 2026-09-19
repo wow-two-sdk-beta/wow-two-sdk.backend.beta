@@ -13,7 +13,7 @@ messaging `IRetryPolicy`.
 
 | File | What |
 |---|---|
-| `WebhookContracts.cs` | `IWebhookPublisher`, `WebhookSubscription`, `IWebhookSubscriptionRepository`, `IWebhookDeliveryLog` + `WebhookDeliveryRecord`/`WebhookDeliveryOutcome`, `WebhookHeaderConstants`, `WebhookDefaultConstants`, `WebhookSignatureHasher` |
+| `WebhookContracts.cs` | `IWebhookPublisher`, `WebhookSubscription`, `IWebhookSubscriptionRepository`, `IWebhookDeliveryLoggingService` + `WebhookDeliveryRecord`/`WebhookDeliveryOutcome`, `WebhookHeaderConstants`, `WebhookDefaultConstants`, `WebhookSignatureHasher` |
 | `WebhookOptions.cs` | Subscriptions seed + retry / timeout knobs (mutable, `Action<T>`-friendly) |
 | `InMemoryWebhookSubscriptionRepository.cs` | Default store — seeded from options, thread-safe, runtime `AddAsync` |
 | `WebhookPublisher.cs` | `WebhookPublisher` (resolve → fan-out) + `HttpWebhookDispatcher` (sign → POST → bounded retry) + no-op delivery log |
@@ -60,7 +60,7 @@ Receiver verifies: recompute `HMAC(secret, "{X-Webhook-Timestamp}.{rawBody}")`, 
 - **Transient** failure (HTTP 5xx / 408 / request timeout / connection error) → retried per `IRetryPolicy`
   (`MaxAttempts`, exponential-jitter backoff).
 - **Permanent** failure (any other 4xx) → not retried.
-- On success or terminal drop, a `WebhookDeliveryRecord` is handed to `IWebhookDeliveryLog` (no-op default).
+- On success or terminal drop, a `WebhookDeliveryRecord` is handed to `IWebhookDeliveryLoggingService` (no-op default).
 
 ## Security (SSRF guard)
 
@@ -71,10 +71,18 @@ Outbound webhooks POST to caller-supplied URLs — an SSRF vector — so deliver
   link-local / ULA / CGNAT / multicast (incl. cloud metadata `169.254.169.254`) are blocked at **connect time** on the
   actual resolved IP, so DNS-rebinding is defeated too. Enable only for trusted internal targets.
 - **Host allowlist** (`AllowedHosts`, optional) — when non-empty, only listed hosts may receive deliveries.
-- A blocked target is a permanent drop (no retry) — logged and recorded to `IWebhookDeliveryLog`.
+- A blocked target is a permanent drop (no retry) — logged and recorded to `IWebhookDeliveryLoggingService`.
 
 ## See also
 
 - [Webhooks.spec.md](./Webhooks.spec.md) · [Webhooks.standard.md](./Webhooks.standard.md)
 - Retry primitive: [`../Reliability/MessagingReliability.cs`](../Reliability/MessagingReliability.cs) (`IRetryPolicy` / `RetryConfig`)
 - Bus contracts: [`../MessagingContracts.cs`](../MessagingContracts.cs) · [`../Messaging.md`](../Messaging.md)
+
+## Payload contract
+
+`PublishAsync<TEvent>` serializes with `JsonSerializerOptions.Default` (PascalCase, nulls written, strict escaping) and
+sends `Type.Name` as the event token — not the messaging seam's `JsonOptionsConstants` body or its `FullName` token. Both
+are subscriber-visible: the signature covers the bytes verbatim, and a subscriber's `EventTypeFilter` globs and
+`X-Webhook-Event` routing match on the short name. Swapping either is a contract break that needs an opt-in switch or a
+v2 signature scheme; a caller wanting another format serializes itself and uses the raw-payload overload.

@@ -1,8 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Saga.Services;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
@@ -31,15 +32,18 @@ public static class SagaServiceCollectionExtensions
         var machine = new TStateMachine();
         machine.Validate();
 
-        services.AddOptions<SagaOptions>().Configure(options => configure?.Invoke(options));
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<SagaOptions>>().Value);
+        services.AddValidatedOptions<SagaOptions>(
+            configure,
+            builder => builder
+                .Validate(options => options.MaxConcurrencyRetries >= 0, "SagaOptions.MaxConcurrencyRetries must not be negative.")
+                .Validate(options => options.ConcurrencyRetryDelay >= TimeSpan.Zero, "SagaOptions.ConcurrencyRetryDelay must not be negative."));
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<ISagaTimeoutService, SagaTimeoutService>();
         services.TryAdd(ServiceDescriptor.Singleton(typeof(ISagaRepository<>), typeof(InMemorySagaRepository<>)));
         services.TryAddSingleton(machine);
         services.TryAddSingleton<SagaStateMachine<TState>>(machine);
-        services.TryAddSingleton<SagaCoordinator<TState>>();
+        services.TryAddSingleton<SagaService<TState>>();
 
         var dispatchers = GetOrAddDispatcherRegistry(services);
         var typeRegistry = GetOrAddMessageTypeRegistry(services);

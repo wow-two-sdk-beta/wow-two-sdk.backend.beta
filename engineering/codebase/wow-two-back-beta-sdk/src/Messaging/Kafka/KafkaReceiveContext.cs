@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Kafka;
 
@@ -18,12 +19,12 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Kafka;
 /// the original message to the DLQ topic via the (thread-safe) producer (emulated DLQ).
 /// </summary>
 internal sealed class KafkaReceiveContext(
-    EventEnvelope envelope,
+    EventEnvelopeModel envelope,
     IProducer<string, byte[]> deadLetterProducer,
     string deadLetterTopic,
     Message<string, byte[]> originalMessage) : ReceiveContext
 {
-    public override EventEnvelope Envelope => envelope;
+    public override EventEnvelopeModel Envelope => envelope;
 
     public override ValueTask AcknowledgeAsync(CancellationToken cancellationToken) => ValueTask.CompletedTask;
 

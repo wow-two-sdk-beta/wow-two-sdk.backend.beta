@@ -8,7 +8,7 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
 /// <summary>
-/// Loses the first <see cref="UpdateAsync"/> the way a real store does: another writer commits between this caller's
+/// Accesses saga state while simulating one optimistic-concurrency conflict: another writer commits between this caller's
 /// load and its write, so the version the caller holds is stale and the store rejects it.
 /// </summary>
 /// <remarks>

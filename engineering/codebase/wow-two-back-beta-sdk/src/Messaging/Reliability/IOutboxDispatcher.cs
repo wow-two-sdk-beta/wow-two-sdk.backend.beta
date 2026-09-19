@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
-/// <summary>Drains staged outbox messages to the transport. Driven by a hosted service or the backing engine.</summary>
+/// <summary>Defines behavior that drains staged outbox messages to the transport. Driven by a hosted service or the backing engine.</summary>
 public interface IOutboxDispatcher
 {
     /// <summary>Dispatch up to <paramref name="batchSize"/> pending outbox messages; returns the number dispatched.</summary>

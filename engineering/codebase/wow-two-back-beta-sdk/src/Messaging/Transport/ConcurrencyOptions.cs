@@ -1,11 +1,12 @@
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Consume-side concurrency for every transport. A receive loop hands each message to the pump instead of awaiting the
+/// Holds consume-side concurrency for every transport. A receive loop hands each message to the pump instead of awaiting the
 /// pipeline inline, so the loop keeps pulling while handlers run on worker tasks.
 /// </summary>
 /// <remarks>
@@ -28,7 +29,7 @@ public sealed record ConcurrencyOptions
     public int MaxQueuedMessagesPerWorker { get; set; } = 1;
 
     /// <summary>
-    /// Route messages sharing an <see cref="EventEnvelope.PartitionKey"/> to the same worker, so they stay ordered
+    /// Route messages sharing an <see cref="EventEnvelopeModel.PartitionKey"/> to the same worker, so they stay ordered
     /// relative to each other while unrelated keys run in parallel. Disable for maximum throughput when order is
     /// irrelevant. Messages with no partition key are distributed round-robin either way.
     /// </summary>

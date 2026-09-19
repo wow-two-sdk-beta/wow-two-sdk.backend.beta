@@ -10,7 +10,10 @@ using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq.Transports;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq;
 
@@ -39,9 +42,16 @@ public static class RabbitMqServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.AddOptions<RabbitMqOptions>().Configure(configure);
-
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<RabbitMqOptions>>().Value);
+        services.AddValidatedOptions<RabbitMqOptions>(
+            configure,
+            builder => builder
+                .Validate(options => Uri.TryCreate(options.ConnectionString, UriKind.Absolute, out _), "RabbitMqOptions.ConnectionString must be an absolute URI.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.Exchange), "RabbitMqOptions.Exchange must not be empty.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.Queue), "RabbitMqOptions.Queue must not be empty.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.DeadLetterExchange), "RabbitMqOptions.DeadLetterExchange must not be empty.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.DeadLetterQueue), "RabbitMqOptions.DeadLetterQueue must not be empty.")
+                .Validate(options => options.PrefetchCount > 0, "RabbitMqOptions.PrefetchCount must be positive.")
+                .Validate(options => options.NetworkRecoveryInterval > TimeSpan.Zero, "RabbitMqOptions.NetworkRecoveryInterval must be positive."));
 
         var assemblies = handlerAssemblies is { Length: > 0 } ? handlerAssemblies : [Assembly.GetCallingAssembly()];
         services.AddEventHandlersFromAssemblies(assemblies);
@@ -51,10 +61,10 @@ public static class RabbitMqServiceCollectionExtensions
         services.AddMessageTopology();
 
         // Null-coalesce, so an explicit AddMessageTopology(...) still wins.
-        services.AddOptions<TopologyOptions>().PostConfigure<IOptions<RabbitMqOptions>>((topology, rabbit) =>
+        services.AddOptions<TopologyOptions>().PostConfigure<RabbitMqOptions>((topology, rabbit) =>
         {
-            topology.SharedEndpointName ??= rabbit.Value.Queue;
-            topology.SharedDeadLetterQueueName ??= rabbit.Value.DeadLetterQueue;
+            topology.SharedEndpointName ??= rabbit.Queue;
+            topology.SharedDeadLetterQueueName ??= rabbit.DeadLetterQueue;
         });
 
         services.TryAddSingleton<RabbitMqConnection>();

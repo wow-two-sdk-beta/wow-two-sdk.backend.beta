@@ -2,10 +2,12 @@ using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging;
 
-/// <summary>Optional options for <see cref="IEventBus.PublishAsync{TEvent}"/>. Transport hints are abstract — each adapter maps them to its native mechanism or ignores them.</summary>
+/// <summary>Holds optional options for <see cref="IEventBus.PublishAsync{TEvent}"/>. Transport hints are abstract — each adapter maps them to its native mechanism or ignores them.</summary>
 public sealed record PublishOptions
 {
     /// <summary>Explicit message id (idempotency key). Generated when null.</summary>
@@ -17,7 +19,7 @@ public sealed record PublishOptions
     /// <summary>Conversation id for a request/response exchange.</summary>
     public string? ConversationId { get; set; }
 
-    /// <summary>Address a reply should be sent to (transport-abstract); null for a one-way message. See <see cref="EventEnvelope.ReplyTo"/>.</summary>
+    /// <summary>Address a reply should be sent to (transport-abstract); null for a one-way message. See <see cref="EventEnvelopeModel.ReplyTo"/>.</summary>
     public string? ReplyTo { get; set; }
 
     /// <summary>Id of the event that caused this one.</summary>

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using WoW.Two.Sdk.Backend.Beta.Messaging;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
@@ -26,7 +27,7 @@ public sealed record RecordedSagaTimeout
     public required DateTimeOffset? DueUtc { get; init; }
 
     /// <summary>The published envelope.</summary>
-    public required EventEnvelope Envelope { get; init; }
+    public required EventEnvelopeModel Envelope { get; init; }
 
     /// <summary>The transport message id — the same id the delivery is recorded under, because the scheduler parks and re-enqueues the one envelope.</summary>
     public string MessageId => Envelope.MessageId;

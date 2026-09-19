@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization.Serializers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
@@ -41,7 +42,7 @@ internal sealed partial class OutboxDispatcher<TContext>(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Stable token first, assembly-qualified-name fallback — the resolver owns both (and caches the fallback).
+            // Stored rows carry stable registered tokens; an unknown token marks the row failed below.
             var eventType = string.IsNullOrEmpty(row.Type) ? null : typeResolver.ResolveType(row.Type);
             if (eventType is null)
             {
@@ -101,11 +102,11 @@ internal sealed partial class OutboxDispatcher<TContext>(
     {
         var cutoff = timeProvider.GetUtcNow() - retention;
         return await context.Set<OutboxMessageEntity>()
-            .Where(row => row.ProcessedOnUtc != null && row.ProcessedOnUtc < cutoff)
+            .Where(row => row.ProcessedOnUtc != null && row.Error == null && row.ProcessedOnUtc < cutoff)
             .ExecuteDeleteAsync(cancellationToken);
     }
 
-    // Bump attempts; at the cap, stamp ProcessedOnUtc so the poison row stops re-selecting (Error retained).
+    // Bump attempts; at the cap, stamp ProcessedOnUtc so the poison row becomes a retained failed record.
     private void MarkFailed(OutboxMessageEntity row, string error, OutboxDispatcherOptions opt)
     {
         row.Attempts++;

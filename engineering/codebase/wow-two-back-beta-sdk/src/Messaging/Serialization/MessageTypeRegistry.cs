@@ -1,14 +1,10 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
-using WoW.Two.Sdk.Backend.Beta.Foundation.Serialization;
-using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
-using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 
 /// <summary>
-/// Registration-time map of event types ↔ their stable wire tokens (+ aliases for post-rename compatibility).
+/// Binds event types to stable wire tokens and aliases at registration time.
 /// Populated by the handler scan (<c>AddEventHandlersFromAssemblies</c>) and consulted by <see cref="MessageTypeMapper"/>.
 /// </summary>
 public sealed class MessageTypeRegistry
@@ -37,12 +33,21 @@ public sealed class MessageTypeRegistry
         _typeByToken[alias] = type;
     }
 
-    /// <summary>Try to get the registered token for a type.</summary>
+    /// <summary>Gets the registered token for a type.</summary>
     /// <param name="type">The type.</param>
-    /// <param name="token">The token, when found.</param>
-    public bool TryGetToken(Type type, [MaybeNullWhen(false)] out string token) => _tokenByType.TryGetValue(type, out token);
+    /// <returns>The stable wire token bound to the type.</returns>
+    /// <exception cref="InvalidOperationException">No wire token is bound to the type.</exception>
+    public string GetToken(Type type)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        return _tokenByType.TryGetValue(type, out var token)
+            ? token
+            : throw new InvalidOperationException(
+                $"No wire token is registered for event type '{type.FullName ?? type.Name}'. "
+                + "Register its assembly with AddEventHandlersFromAssemblies or map it explicitly with MapMessageType<TEvent>().");
+    }
 
-    /// <summary>Try to resolve a token to a registered type.</summary>
+    /// <summary>Tries to resolve an untrusted wire token to a registered type.</summary>
     /// <param name="token">The token.</param>
     /// <param name="type">The type, when found.</param>
     public bool TryGetType(string token, [MaybeNullWhen(false)] out Type type) => _typeByToken.TryGetValue(token, out type);

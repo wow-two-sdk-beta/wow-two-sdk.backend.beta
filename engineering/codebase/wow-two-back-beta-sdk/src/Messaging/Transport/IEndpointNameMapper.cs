@@ -7,7 +7,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Maps a message type to the endpoint (queue) that consumes it, and an endpoint to its dead-letter queue. Replace it
+/// Defines behavior that maps a message type to the endpoint (queue) that consumes it, and an endpoint to its dead-letter queue. Replace it
 /// via <see cref="MessageTopologyServiceCollectionExtensions.AddEndpointNameFormatter{TFormatter}"/> to impose a house
 /// naming scheme (per-team prefix, environment segment, an existing broker convention).
 /// </summary>

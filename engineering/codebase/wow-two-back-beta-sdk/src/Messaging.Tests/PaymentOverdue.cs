@@ -8,4 +8,8 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
 /// <summary>The saga's own scheduled timeout — correlates by the envelope's correlation id.</summary>
-public sealed record PaymentOverdue(string OrderId) : IEvent;
+public sealed record PaymentOverdue : IEvent
+{
+    /// <summary>Gets the overdue order's id.</summary>
+    public required string OrderId { get; init; }
+}

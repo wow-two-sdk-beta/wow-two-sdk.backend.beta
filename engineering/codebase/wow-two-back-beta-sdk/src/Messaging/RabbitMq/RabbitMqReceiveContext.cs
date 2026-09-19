@@ -11,13 +11,14 @@ using RabbitMQ.Client.Exceptions;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq;
 
 /// <summary>RabbitMQ <see cref="ReceiveContext"/> — acknowledge / dead-letter via the delivering channel (nack→DLX).</summary>
-internal sealed class RabbitMqReceiveContext(EventEnvelope envelope, IChannel channel, ulong deliveryTag) : ReceiveContext
+internal sealed class RabbitMqReceiveContext(EventEnvelopeModel envelope, IChannel channel, ulong deliveryTag) : ReceiveContext
 {
-    public override EventEnvelope Envelope => envelope;
+    public override EventEnvelopeModel Envelope => envelope;
 
     public override ValueTask AcknowledgeAsync(CancellationToken cancellationToken)
         => channel.BasicAckAsync(deliveryTag, multiple: false, cancellationToken);

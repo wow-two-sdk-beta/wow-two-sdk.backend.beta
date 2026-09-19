@@ -10,6 +10,7 @@ using StackExchange.Redis;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams;
 
@@ -17,7 +18,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams;
 internal static class RedisStreamsWireFormatMapper
 {
     /// <summary>The field/value pairs for one outgoing envelope.</summary>
-    public static NameValueEntry[] BuildEntry(EventEnvelope envelope, byte[] body, string typeToken, string contentType)
+    public static NameValueEntry[] BuildEntry(EventEnvelopeModel envelope, byte[] body, string typeToken, string contentType)
     {
         // Caller headers first, minus the fields re-derived below, then the adapter's own control fields.
         var fields = new List<NameValueEntry>(envelope.Headers.Count + 8);

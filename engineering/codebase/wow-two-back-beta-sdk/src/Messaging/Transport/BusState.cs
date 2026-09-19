@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Runtime state of the consume side of the bus — what <see cref="IBusControl.State"/> reports to an ops endpoint or a
+/// Refers to runtime state of the consume side of the bus — what <see cref="IBusControl.State"/> reports to an ops endpoint or a
 /// health check.
 /// </summary>
 public enum BusState

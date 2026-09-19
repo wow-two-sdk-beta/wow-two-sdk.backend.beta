@@ -7,8 +7,8 @@ using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
 /// <summary>
-/// EF-backed <see cref="IInboxProcessor"/> — runs the handler in the <b>same transaction</b> as the <c>inbox_messages</c>
-/// insert, so the dedupe mark and the handler's effect commit atomically (true exactly-once). A PK conflict on the inbox
+/// EF-backed <see cref="IInboxProcessor"/> — runs the handler in the same transaction as the <c>inbox_messages</c>
+/// insert, so the dedupe mark and the handler's effect commit atomically. A PK conflict on the inbox
 /// row means the message was already processed.
 /// </summary>
 /// <typeparam name="TContext">The application's DbContext (shared with the handler's repositories via the message scope).</typeparam>
@@ -25,7 +25,8 @@ internal sealed class EfInboxProcessor<TContext>(TContext context, TimeProvider 
             return false;
 
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-        context.Set<InboxMessageEntity>().Add(new InboxMessageEntity { MessageId = messageId, SeenAtUtc = timeProvider.GetUtcNow() });
+        var inboxRow = new InboxMessageEntity { MessageId = messageId, SeenAtUtc = timeProvider.GetUtcNow() };
+        context.Set<InboxMessageEntity>().Add(inboxRow);
         try
         {
             // Flush the inbox row first so a PK conflict here (a concurrent duplicate) is distinguishable from a handler error.
@@ -34,7 +35,12 @@ internal sealed class EfInboxProcessor<TContext>(TContext context, TimeProvider 
         catch (DbUpdateException)
         {
             await transaction.RollbackAsync(cancellationToken);
-            return false;
+            context.Entry(inboxRow).State = EntityState.Detached;
+            if (await context.Set<InboxMessageEntity>().AsNoTracking()
+                    .AnyAsync(entity => entity.MessageId == messageId, cancellationToken))
+                return false;
+
+            throw;
         }
 
         await handler(cancellationToken);                        // the handler's writes enlist in this transaction

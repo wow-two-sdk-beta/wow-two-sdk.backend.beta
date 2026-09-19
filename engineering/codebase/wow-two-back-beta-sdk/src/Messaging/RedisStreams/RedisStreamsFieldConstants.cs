@@ -10,6 +10,7 @@ using StackExchange.Redis;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams;
 
@@ -21,36 +22,36 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams;
 internal static class RedisStreamsFieldConstants
 {
     /// <summary>
-    /// The serialized body. Reserved, and stripped on send by <see cref="IsAdapterOwned"/>, so the headers SDK
+    /// Holds the serialized body. Reserved, and stripped on send by <see cref="IsAdapterOwned"/>, so the headers SDK
     /// features stamp still reach the wire.
     /// </summary>
     public const string Body = MessageHeaderConstants.ReservedPrefix + "body";
 
-    /// <summary>Carries the event's stable type token so the consumer can resolve the CLR type.</summary>
+    /// <summary>Holds carries the event's stable type token so the consumer can resolve the CLR type.</summary>
     public const string EventType = MessageHeaderConstants.EventType;
 
-    /// <summary>Carries the serializer content type, so the consumer selects the matching deserializer.</summary>
+    /// <summary>Holds carries the serializer content type, so the consumer selects the matching deserializer.</summary>
     public const string ContentType = MessageHeaderConstants.ContentType;
 
-    /// <summary>Carries <see cref="EventEnvelope.MessageId"/> — Redis assigns its own entry id, so the SDK's identity needs a field of its own.</summary>
+    /// <summary>Holds carries <see cref="EventEnvelopeModel.MessageId"/> — Redis assigns its own entry id, so the SDK's identity needs a field of its own.</summary>
     public const string MessageId = MessageHeaderConstants.MessageId;
 
-    /// <summary>Carries the envelope's ordering / partition key so the consumer can preserve per-key ordering.</summary>
+    /// <summary>Holds carries the envelope's ordering / partition key so the consumer can preserve per-key ordering.</summary>
     public const string PartitionKey = MessageHeaderConstants.PartitionKey;
 
-    /// <summary>Carries <see cref="EventEnvelope.CorrelationId"/>. Redis has no correlation property, so it rides a field.</summary>
+    /// <summary>Holds carries <see cref="EventEnvelopeModel.CorrelationId"/>. Redis has no correlation property, so it rides a field.</summary>
     public const string CorrelationId = MessageHeaderConstants.CorrelationId;
 
-    /// <summary>Why the entry was dead-lettered, stamped on the copy written to the dead-letter stream.</summary>
+    /// <summary>Holds why the entry was dead-lettered, stamped on the copy written to the dead-letter stream.</summary>
     public const string DeadLetterReason = MessageHeaderConstants.DeadLetterReason;
 
-    /// <summary>Type name of the terminal exception, stamped alongside <see cref="DeadLetterReason"/>.</summary>
+    /// <summary>Holds type name of the terminal exception, stamped alongside <see cref="DeadLetterReason"/>.</summary>
     public const string DeadLetterExceptionType = MessageHeaderConstants.DeadLetterExceptionType;
 
-    /// <summary>Stream the entry died on. The DLQ is one key for every routed stream, so without this a dead letter cannot be traced back to its source.</summary>
+    /// <summary>Holds stream the entry died on. The DLQ is one key for every routed stream, so without this a dead letter cannot be traced back to its source.</summary>
     public const string DeadLetterSourceStream = MessageHeaderConstants.ReservedPrefix + "dl-source-stream";
 
-    /// <summary>PEL delivery count at the moment of death — how many attempts the message actually consumed.</summary>
+    /// <summary>Holds pEL delivery count at the moment of death — how many attempts the message actually consumed.</summary>
     public const string DeadLetterDeliveryCount = MessageHeaderConstants.ReservedPrefix + "dl-delivery-count";
 
     /// <summary>

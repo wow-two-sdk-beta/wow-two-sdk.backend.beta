@@ -10,6 +10,7 @@ using StackExchange.Redis;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams;
 
@@ -20,13 +21,13 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams;
 /// then acks, so nothing claims the poison entry again.
 /// </summary>
 internal sealed class RedisStreamsReceiveContext(
-    EventEnvelope envelope,
+    EventEnvelopeModel envelope,
     IDatabase database,
     RedisStreamsOptions options,
     string sourceStream,
     StreamEntry entry) : ReceiveContext
 {
-    public override EventEnvelope Envelope => envelope;
+    public override EventEnvelopeModel Envelope => envelope;
 
     public override async ValueTask AcknowledgeAsync(CancellationToken cancellationToken)
     {

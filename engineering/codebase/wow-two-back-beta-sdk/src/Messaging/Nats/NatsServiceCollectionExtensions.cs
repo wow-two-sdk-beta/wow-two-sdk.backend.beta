@@ -9,7 +9,10 @@ using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Nats.Transports;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Nats;
 
@@ -36,9 +39,15 @@ public static class NatsServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.AddOptions<NatsOptions>().Configure(configure);
-
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<NatsOptions>>().Value);
+        services.AddValidatedOptions<NatsOptions>(
+            configure,
+            builder => builder
+                .Validate(options => Uri.TryCreate(options.Url, UriKind.Absolute, out _), "NatsOptions.Url must be an absolute URI.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.Stream), "NatsOptions.Stream must not be empty.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.Subject), "NatsOptions.Subject must not be empty.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.DurableConsumer), "NatsOptions.DurableConsumer must not be empty.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.DeadLetterSubject), "NatsOptions.DeadLetterSubject must not be empty.")
+                .Validate(options => options.MaxDeliver > 0, "NatsOptions.MaxDeliver must be positive."));
 
         var assemblies = handlerAssemblies is { Length: > 0 } ? handlerAssemblies : [Assembly.GetCallingAssembly()];
         services.AddEventHandlersFromAssemblies(assemblies);
@@ -48,10 +57,10 @@ public static class NatsServiceCollectionExtensions
         services.AddMessageTopology();
 
         // The shared endpoint's name defaults to this adapter's root subject, so a reply addressed here resolves to it.
-        services.AddOptions<TopologyOptions>().PostConfigure<IOptions<NatsOptions>>((topology, nats) =>
+        services.AddOptions<TopologyOptions>().PostConfigure<NatsOptions>((topology, nats) =>
         {
-            topology.SharedEndpointName ??= nats.Value.Subject;
-            topology.SharedDeadLetterQueueName ??= nats.Value.DeadLetterSubject;
+            topology.SharedEndpointName ??= nats.Subject;
+            topology.SharedDeadLetterQueueName ??= nats.DeadLetterSubject;
         });
 
         services.TryAddSingleton<ITransportCapabilities, NatsCapabilities>();

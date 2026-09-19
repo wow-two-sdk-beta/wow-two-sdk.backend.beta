@@ -11,6 +11,8 @@ using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
@@ -31,8 +33,14 @@ public static class EfOutboxDispatcherServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddOptions<OutboxDispatcherOptions>().Configure(options => configure?.Invoke(options));
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<OutboxDispatcherOptions>>().Value);
+        services.AddValidatedOptions<OutboxDispatcherOptions>(
+            configure,
+            builder => builder
+                .Validate(options => options.PollInterval > TimeSpan.Zero, "OutboxDispatcherOptions.PollInterval must be positive.")
+                .Validate(options => options.BatchSize > 0, "OutboxDispatcherOptions.BatchSize must be positive.")
+                .Validate(options => options.MaxDispatchAttempts > 0, "OutboxDispatcherOptions.MaxDispatchAttempts must be positive.")
+                .Validate(options => options.RetentionPeriod > TimeSpan.Zero, "OutboxDispatcherOptions.RetentionPeriod must be positive.")
+                .Validate(options => options.PruneInterval > TimeSpan.Zero, "OutboxDispatcherOptions.PruneInterval must be positive."));
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<OutboxEventPublisher>();

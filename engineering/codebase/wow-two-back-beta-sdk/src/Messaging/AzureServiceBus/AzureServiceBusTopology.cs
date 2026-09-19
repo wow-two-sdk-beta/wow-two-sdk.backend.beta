@@ -18,12 +18,12 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.AzureServiceBus;
 /// Idempotent topic / subscription / rule provisioning. Every call swallows "already exists", so concurrent instances
 /// racing at startup all succeed and an existing deployment's entity settings are never rewritten.
 /// </summary>
-internal sealed partial class AzureServiceBusTopology(IOptions<AzureServiceBusOptions> options, ILogger<AzureServiceBusTopology> logger)
+internal sealed partial class AzureServiceBusTopology(AzureServiceBusOptions options, ILogger<AzureServiceBusTopology> logger)
 {
     /// <summary>Provision the topic, and for each endpoint its subscription plus one correlation rule per routing key.</summary>
     public async ValueTask ProvisionAsync(IReadOnlyList<EndpointTopology> endpoints, CancellationToken cancellationToken)
     {
-        var opt = options.Value;
+        var opt = options;
         var admin = new ServiceBusAdministrationClient(opt.ConnectionString);
         var topic = AzureServiceBusEntityNameMapper.Sanitize(opt.Topic, AzureServiceBusEntityNameMapper.MaxTopicLength);
 

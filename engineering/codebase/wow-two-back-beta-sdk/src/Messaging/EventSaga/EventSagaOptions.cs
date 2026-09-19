@@ -4,7 +4,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga;
 
-/// <summary>Options for declarative (routing-slip) event sagas.</summary>
+/// <summary>Holds options for declarative (routing-slip) event sagas.</summary>
 public sealed record EventSagaOptions
 {
     /// <summary>

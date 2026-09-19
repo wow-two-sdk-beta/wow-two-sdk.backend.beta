@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging;
 
@@ -21,7 +23,7 @@ public sealed class EventContext<TEvent>
     /// Decides which of this message's headers flow onto messages published from this context.
     /// <see cref="MessageHeaderPropagationPolicy.Default"/> (W3C trace context only) when null.
     /// </param>
-    public EventContext(TEvent @event, EventEnvelope envelope, IEventBus bus, IMessageHeaderPropagationPolicy? headerPropagation = null)
+    public EventContext(TEvent @event, EventEnvelopeModel envelope, IEventBus bus, IMessageHeaderPropagationPolicy? headerPropagation = null)
     {
         ArgumentNullException.ThrowIfNull(@event);
         ArgumentNullException.ThrowIfNull(envelope);
@@ -36,7 +38,7 @@ public sealed class EventContext<TEvent>
     public TEvent Event { get; }
 
     /// <summary>The transport envelope.</summary>
-    public EventEnvelope Envelope { get; }
+    public EventEnvelopeModel Envelope { get; }
 
     /// <summary>The transport message id.</summary>
     public string MessageId => Envelope.MessageId;

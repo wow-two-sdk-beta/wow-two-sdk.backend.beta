@@ -3,10 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
-/// <summary>Topology shape — how endpoints are named and which routing keys each one binds.</summary>
+/// <summary>Holds topology shape — how endpoints are named and which routing keys each one binds.</summary>
 public sealed record TopologyOptions
 {
     /// <summary>Endpoint shape. Default <see cref="TopologyStyle.SharedEndpoint"/>, which keeps an existing deployment's queue names.</summary>

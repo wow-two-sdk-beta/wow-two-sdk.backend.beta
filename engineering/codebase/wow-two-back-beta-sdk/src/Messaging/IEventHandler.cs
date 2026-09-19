@@ -5,7 +5,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging;
 
-/// <summary>Handles an event of type <typeparamref name="TEvent"/>. Many handlers may handle the same event (fan-out).</summary>
+/// <summary>Defines behavior that handles an event of type <typeparamref name="TEvent"/>. Many handlers may handle the same event (fan-out).</summary>
 /// <typeparam name="TEvent">Event contract type.</typeparam>
 public interface IEventHandler<TEvent>
     where TEvent : class, IEvent

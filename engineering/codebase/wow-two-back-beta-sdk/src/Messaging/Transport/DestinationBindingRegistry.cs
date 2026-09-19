@@ -7,7 +7,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Registration-time set of logical destination aliases this process answers to. Read by
+/// Binds logical destination aliases to the process that answers them. Read by
 /// <see cref="TopologyService"/> when it builds bindings, and by the routing-slip saga transport to tell a
 /// destination it owns from one another service consumes. Written during registration only — not thread-safe.
 /// </summary>

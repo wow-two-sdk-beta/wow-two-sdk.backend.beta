@@ -1,6 +1,6 @@
 # Messaging — standard
 
-*Last updated: 2026-07-19*
+*Last updated: 2026-09-16*
 
 > Behavioral contract (RFC 2119: MUST / SHOULD / MAY). Applies to the abstraction and every transport adapter.
 
@@ -16,11 +16,11 @@
 
 ## Delivery & reliability
 
-- Delivery **MUST** be at-least-once; the abstraction **MUST NOT** claim exactly-once at the transport layer. Consumers **SHOULD** be idempotent; the SDK **MUST** offer `IInboxProcessor` for exactly-once effect by `MessageId`. A durable `IInboxProcessor` **MUST** commit the dedupe mark in the **same transaction** as the handler's effect (both commit or neither).
-- Every `IEventResiliencePipeline` **MUST** route a thrown exception through the registered `IEventFaultClassifier` **before spending an attempt**, and **MUST** honour the verdict: `Retry` → retry as configured; `DeadLetter` → propagate at once, spending no attempt, so the consume pipeline dead-letters on the first failure; `Ignore` → swallow and return normally, so the consume pipeline's success path acknowledges. With no rules registered every exception classifies as `Retry`, which **MUST** be behaviourally identical to the pre-classification pipeline.
+- Delivery **MUST** be at-least-once; the abstraction **MUST NOT** claim exactly-once at the transport layer. Consumers **SHOULD** be idempotent; the SDK **MUST** offer `IInboxProcessor` for deduplicating successful effects by `MessageId`. A durable `IInboxProcessor` **MUST** commit the dedupe mark in the **same transaction** as the handler's effect (both commit or neither).
+- Every `IEventResiliencePipeline` **MUST** route a thrown exception through the registered `IEventFaultPolicy` **before spending an attempt**, and **MUST** honour the verdict: `Retry` → retry as configured; `DeadLetter` → propagate at once, spending no attempt, so the consume pipeline dead-letters on the first failure; `Ignore` → swallow and return normally, so the consume pipeline's success path acknowledges. With no rules registered every exception classifies as `Retry`, which **MUST** be behaviourally identical to the pre-classification pipeline.
 - A failed handler invocation classified `Retry` **MUST** be retried per the resolved `RetryConfig` until `IRetryPolicy.NextDelay` returns `null`, then handed to `IDeadLetterRepository`.
 - `IRetryPolicy.NextDelay` **MUST** return `null` once `attempt >= MaxAttempts` and **MUST** never exceed `MaxDelay`.
-- Every terminal outcome **MUST** be counted exactly once on `IMessagingMetrics.RecordConsumed`, including an acknowledgement reached via an `Ignore` verdict (`ConsumeOutcome.Ignored`) — a settled message **MUST NOT** leave the pipeline uncounted.
+- Every terminal outcome **MUST** be counted exactly once on `IMessagingMetricsService.RecordConsumed`, including an acknowledgement reached via an `Ignore` verdict (`ConsumeOutcome.Ignored`) — a settled message **MUST NOT** leave the pipeline uncounted.
 - `OperationCanceledException` from host shutdown **MUST NOT** be treated as a handler failure (no retry, no dead-letter), and **MUST NOT** be classified.
 - Under `DelayedRetryOptions.Enabled` an `IEventResiliencePipeline` **MUST** stop after a single attempt and propagate, so the wait happens between deliveries rather than in the loop with the message unsettled. The coordinator **MUST** schedule the next delivery **before** acknowledging the current one (a crash in between is a redelivery, never a loss) and **MUST** bound re-enqueues so a permanently-failing message cannot redeliver forever.
 - A duplicate `MessageId` (seen by `IInboxProcessor`) **MUST** be acknowledged and skipped.
@@ -38,7 +38,7 @@
 ## Topology & headers
 
 - Bindings **MUST** be derived from the registered handler set — one routing key per consumed message type. A catch-all binding that delivers everything and filters in-process **MUST NOT** be used.
-- A routing key **MUST** be built from `IMessageTypeResolver`'s stable token, never the assembly-qualified name, and **MUST** be sanitized so broker wildcards (`#`, `*`) can never reach it.
+- A routing key **MUST** be built from `IMessageTypeMapper`'s registered stable token, never the assembly-qualified name, and **MUST** be sanitized so broker wildcards (`#`, `*`) can never reach it.
 - The default `TopologyStyle` **MUST** be `SharedEndpoint`, preserving an existing deployment's queue and dead-letter-queue names; changing endpoint shape **MUST** be opt-in.
 - The `wt-` prefix is reserved for SDK control headers. A reserved header **MUST NOT** propagate from a consumed message onto one published while handling it — a control header describes the message it arrived on, so carrying one forward would stamp the previous body's type token or id onto a new body.
 - **An adapter MUST strip only the headers it re-derives.** `IsAdapterOwned` is a strict subset of `IsReserved`, and the send path **MUST** filter caller headers on `IsAdapterOwned`, never on `IsReserved`. An adapter **MUST** re-stamp each adapter-owned key from the envelope (so a caller-supplied copy is overwritten and cannot forge the wire contract) and **MUST** carry every other reserved header through untouched. Reserved-but-not-owned keys are stamped by SDK *features* and re-derived by nothing: stripping them leaves the feature working in-memory and silently dead behind every broker. A header added to `IsAdapterOwned` without a matching re-stamp **MUST** be treated as the same defect.
@@ -50,14 +50,14 @@
 
 - `IOutbox.EnqueueAsync` **MUST** enrol the outgoing event in the ambient DB transaction so it commits atomically with the business write (no dual-write, no distributed transaction). The EF impl **MUST** add the row to the caller's context and **MUST NOT** call `SaveChanges` itself.
 - The SDK **MUST NOT** require aggregates to implement any domain-event marker; events are staged explicitly.
-- `IOutboxDispatcher` **MUST** publish each pending row exactly once on success (stamp `ProcessedOnUtc`) and **MUST** leave it pending (recording the error, bumping `Attempts`) on failure. The DDL for `outbox_messages`/`inbox_messages` is owned by the bespoke migrator; EF maps over it.
+- `IOutboxDispatcher` **MUST** stamp `ProcessedOnUtc` after a successful publish and **MUST** leave a failed row pending while retry budget remains. A crash after broker acceptance but before the stamp **MAY** publish the row again; consumers therefore retain the inbox/idempotency requirement. Exhausted rows **MUST** retain their error for operator inspection and **MUST NOT** be pruned with successful rows. The DDL for `outbox_messages`/`inbox_messages` is owned by the bespoke migrator; EF maps over it.
 
 ## Transport adapters
 
 - An adapter **MUST** preserve handler-facing semantics so a product graduates in-process → broker with no handler change.
 - An adapter **MUST** expose capability flags (native DLQ / delay / dedupe / ordering / transactions). Where a capability is not native (e.g. Kafka DLQ), the SDK **MUST** emulate it rather than silently drop it.
-- An adapter **SHOULD** propagate W3C trace-context (`traceparent`) via `EventEnvelope.Headers`.
-- An adapter **MUST** obtain the wire body from `EventEnvelope.ToWireBody(serializer)` rather than serializing `Body` directly, and **MUST** stamp `wt-event-type` from `WireBodyType`, not `BodyType`. Serializing directly silently discards every send-path transformation (claim check, compression, encryption); stamping the logical type would name a shape the bytes do not have.
+- An adapter **SHOULD** propagate W3C trace-context (`traceparent`) via `EventEnvelopeModel.Headers`.
+- An adapter **MUST** obtain the wire body from `EventEnvelopeModel.ToWireBody(serializer)` rather than serializing `Body` directly, and **MUST** stamp `wt-event-type` from `WireBodyType`, not `BodyType`. Serializing directly silently discards every send-path transformation (claim check, compression, encryption); stamping the logical type would name a shape the bytes do not have.
 - A send-path transformation **MUST NOT** alter `Body` or `BodyType` — routing, metrics, observers and the outbox read them, and changing either re-routes the message to a key nothing is bound for.
 - An adapter **MUST NOT** depend on a package only reachable transitively. A package the adapter compiles against **MUST** carry its own `PackageReference`, so an unrelated dependency's bump or removal cannot break it.
 - The core meta-package **MUST NOT** depend on a non-permissive messaging library (MassTransit v9 / NServiceBus → adapter packages only).
@@ -83,9 +83,9 @@
 ## Observability
 
 - The bus and consumer **SHOULD** emit OpenTelemetry messaging spans (`PRODUCER` on publish/send, `CONSUMER` on process) via the `WoW.Two.Messaging` `ActivitySource`. A dead-letter write **SHOULD** emit a metric + error log.
-- An `IMessagingMetrics` implementation **MUST NOT** throw — every member sits on the publish or consume path, which treats metrics as pure observation and does not guard the call sites. It **MUST NOT** tag with message id, correlation id, or partition key: each is unbounded cardinality. A recorded exception **MUST** contribute its **type** only, never its message.
-- The messaging layer **MUST NOT** force a metrics dependency: registration **MUST** be `TryAdd`-based so a consumer's own implementation (or `NoOpMessagingMetrics`) wins.
-- An observer (`IPublishObserver` / `IReceiveObserver` / `IConsumeObserver`) **MUST NOT** be able to change settlement, short-circuit the chain, or suppress a fault; an exception it throws **MUST** be caught and logged, never propagated. A registered observer **MUST NOT** change behaviour relative to none being registered. Observers are resolved as singletons and **MUST** be thread-safe.
+- An `IMessagingMetricsService` implementation **MUST NOT** throw — every member sits on the publish or consume path, which treats metrics as pure observation and does not guard the call sites. It **MUST NOT** tag with message id, correlation id, or partition key: each is unbounded cardinality. A recorded exception **MUST** contribute its **type** only, never its message.
+- The messaging layer **MUST NOT** force a metrics dependency: registration **MUST** be `TryAdd`-based so a consumer's own implementation (or `NoOpMessagingMetricsService`) wins.
+- An observing interceptor (`IPublishObservingInterceptor` / `IReceiveObservingInterceptor` / `IConsumeObservingInterceptor`) **MUST** be handed the `EventEnvelopeModel` rather than the settlement handle, so it cannot change settlement, short-circuit the chain, or suppress a fault; an exception it throws **MUST** be caught and logged, never propagated. A registered one **MUST NOT** change behaviour relative to none being registered. They are resolved as singletons and **MUST** be thread-safe.
 - `IReceiveObserver` **MUST** be notified once per message (its fault hook after settlement, so the message is at rest); `IConsumeObserver` **MUST** be notified once per delivery attempt.
 
 ## See also

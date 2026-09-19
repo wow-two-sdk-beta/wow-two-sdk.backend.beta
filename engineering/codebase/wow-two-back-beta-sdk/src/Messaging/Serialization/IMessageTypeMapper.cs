@@ -8,7 +8,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 
 /// <summary>
-/// Maps an event CLR type to/from a stable wire token, decoupled from the assembly-qualified name (which breaks
+/// Defines behavior that maps an event CLR type to/from a stable wire token, decoupled from the assembly-qualified name (which breaks
 /// across services and on any rename/assembly-move — the AQN then fails to resolve and the message is lost). Pluggable
 /// via <c>AddMessageTypeMapper</c>.
 /// </summary>

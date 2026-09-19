@@ -18,10 +18,23 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 /// Deliberately carries no <c>[MessagePackObject]</c>/<c>[Key]</c> annotation — the contractless resolver has to bind it
 /// as-is, which is the promise that lets a contract survive the swap away from System.Text.Json.
 /// </remarks>
-public sealed record SerializerPayload(
-    string Name,
-    int Count,
-    ShipmentGrade Grade,
-    DateTimeOffset OccurredAt,
-    IReadOnlyList<string> Tags,
-    int? Optional);
+public sealed record SerializerPayload
+{
+    /// <summary>Gets the payload name.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>Gets the payload count.</summary>
+    public required int Count { get; init; }
+
+    /// <summary>Gets the shipment grade.</summary>
+    public required ShipmentGrade Grade { get; init; }
+
+    /// <summary>Gets when the payload occurred.</summary>
+    public required DateTimeOffset OccurredAt { get; init; }
+
+    /// <summary>Gets the payload's tags.</summary>
+    public required IReadOnlyList<string> Tags { get; init; }
+
+    /// <summary>Gets the optional value, left null in the round-trip contract.</summary>
+    public int? Optional { get; init; }
+}

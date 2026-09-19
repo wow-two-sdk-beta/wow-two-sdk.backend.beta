@@ -11,6 +11,7 @@ using RabbitMQ.Client.Exceptions;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq;
 
@@ -19,7 +20,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq;
 /// direct-reply-to; no native delay/dedupe, no cross-queue ordering guarantee, no sessions or exactly-once transactions;
 /// settlement is by delivery tag off the consume thread, so the concurrency pump may dispatch in parallel.
 /// </summary>
-internal sealed class RabbitMqCapabilities(IOptions<RabbitMqOptions> options) : ITransportCapabilities
+internal sealed class RabbitMqCapabilities(RabbitMqOptions options) : ITransportCapabilities
 {
     public bool NativeDeadLetter => true;
 
@@ -36,7 +37,7 @@ internal sealed class RabbitMqCapabilities(IOptions<RabbitMqOptions> options) : 
     /// rides the wire and nothing ranks, and a pipeline reading this flag to choose native-versus-emulated would pick
     /// native on the strength of a property the broker discards.
     /// </summary>
-    public bool NativePriority => options.Value.MaxPriority is not null;
+    public bool NativePriority => options.MaxPriority is not null;
 
     /// <summary>Core AMQP: the per-message <c>expiration</c> property (milliseconds). Independent of any queue-level <c>x-message-ttl</c>; when both are set the lower wins.</summary>
     public bool NativeTimeToLive => true;
@@ -68,7 +69,7 @@ internal sealed class RabbitMqCapabilities(IOptions<RabbitMqOptions> options) : 
 
     /// <summary>
     /// Core AMQP: a native <c>reply-to</c> property on every message, which the adapter maps from
-    /// <see cref="EventEnvelope.ReplyTo"/> in both directions, plus the broker's own direct-reply-to over the
+    /// <see cref="EventEnvelopeModel.ReplyTo"/> in both directions, plus the broker's own direct-reply-to over the
     /// <c>amq.rabbitmq.reply-to</c> pseudo-queue.
     /// </summary>
     /// <remarks>Never consumes the <c>amq.rabbitmq.reply-to</c> pseudo-queue — <c>IRequestClient</c> replies to an ordinary bound endpoint.</remarks>

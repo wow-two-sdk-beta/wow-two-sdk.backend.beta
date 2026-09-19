@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Per-transport capability flags — the dispatch pipeline reads these to decide native-vs-emulated for each concern
+/// Defines per-transport capability flags — the dispatch pipeline reads these to decide native-vs-emulated for each concern
 /// (e.g. Kafka has no native DLQ → the SDK emulates it; RabbitMQ has native DLX → the adapter uses it).
 /// </summary>
 public interface ITransportCapabilities

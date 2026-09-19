@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Default <see cref="IReplyAddressService"/> — the configured address, else this process's own consume endpoint from
+/// Provides the reply address from explicit configuration, this process's consume endpoint, or a fallback. Uses
 /// <see cref="ITopologyService"/>, else a fixed fallback.
 /// </summary>
 /// <remarks>

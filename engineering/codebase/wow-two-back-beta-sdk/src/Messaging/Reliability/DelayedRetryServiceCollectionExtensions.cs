@@ -1,9 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Services;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
@@ -26,17 +27,22 @@ public static class DelayedRetryServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         // The call is the opt-in; a bound configuration section can still switch it back off.
-        services.AddOptions<DelayedRetryOptions>().Configure(options =>
-        {
-            options.Enabled = true;
-
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<DelayedRetryOptions>>().Value);
-            configure?.Invoke(options);
-        });
+        services.AddValidatedOptions<DelayedRetryOptions>(
+            options =>
+            {
+                options.Enabled = true;
+                configure?.Invoke(options);
+            },
+            builder => builder
+                .Validate(options => options.Retry is null || options.Retry.MaxAttempts > 0, "DelayedRetryOptions.Retry.MaxAttempts must be positive.")
+                .Validate(options => options.Retry is null || Enum.IsDefined(options.Retry.Backoff), "DelayedRetryOptions.Retry.Backoff must be a defined backoff kind.")
+                .Validate(options => options.Retry?.BaseDelay is null || options.Retry.BaseDelay >= TimeSpan.Zero, "DelayedRetryOptions.Retry.BaseDelay must not be negative.")
+                .Validate(options => options.Retry?.MaxDelay is null || options.Retry.MaxDelay >= TimeSpan.Zero, "DelayedRetryOptions.Retry.MaxDelay must not be negative.")
+                .Validate(options => options.Retry?.BaseDelay is null || options.Retry.MaxDelay is null || options.Retry.MaxDelay >= options.Retry.BaseDelay, "DelayedRetryOptions.Retry.MaxDelay must be at least BaseDelay."));
 
         services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<IRetryPolicy, DefaultRetryPolicy>();
-        services.TryAddSingleton<DelayedRetryCoordinator>();
+        services.TryAddSingleton<IRetryPolicy, RetryPolicy>();
+        services.TryAddSingleton<DelayedRetryService>();
         return services;
     }
 }

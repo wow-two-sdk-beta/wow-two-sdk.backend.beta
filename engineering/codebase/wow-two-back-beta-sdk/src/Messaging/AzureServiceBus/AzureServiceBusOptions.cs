@@ -11,10 +11,11 @@ using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.AzureServiceBus;
 
-/// <summary>Options for the Azure Service Bus event-bus adapter.</summary>
+/// <summary>Holds options for the Azure Service Bus event-bus adapter.</summary>
 public sealed record AzureServiceBusOptions
 {
     /// <summary>
@@ -79,7 +80,7 @@ public sealed record AzureServiceBusOptions
 
     /// <summary>
     /// Consume through sessions: subscriptions this adapter creates are session-enabled, the send path maps
-    /// <see cref="EventEnvelope.PartitionKey"/> to <c>SessionId</c>, and the receive path locks one session at a time so
+    /// <see cref="EventEnvelopeModel.PartitionKey"/> to <c>SessionId</c>, and the receive path locks one session at a time so
     /// a key's messages are processed in order by a single consumer. Default false.
     /// </summary>
     /// <remarks>
@@ -97,7 +98,7 @@ public sealed record AzureServiceBusOptions
 
     /// <summary>
     /// Create the topic with duplicate detection, so Service Bus drops a re-send carrying a
-    /// <see cref="EventEnvelope.MessageId"/> it has already seen within <see cref="DuplicateDetectionWindow"/>.
+    /// <see cref="EventEnvelopeModel.MessageId"/> it has already seen within <see cref="DuplicateDetectionWindow"/>.
     /// Default false; this is what <see cref="ITransportCapabilities.NativeDedupe"/> tracks.
     /// </summary>
     /// <remarks>

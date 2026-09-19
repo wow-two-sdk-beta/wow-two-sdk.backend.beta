@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
-/// <summary>Saga runtime behaviour — concurrency-conflict retries and what happens to an instance that finalizes.</summary>
+/// <summary>Holds saga runtime behaviour — concurrency-conflict retries and what happens to an instance that finalizes.</summary>
 public sealed record SagaOptions
 {
     /// <summary>

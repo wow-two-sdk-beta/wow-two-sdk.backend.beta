@@ -7,6 +7,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
@@ -27,7 +28,7 @@ public sealed class RabbitMqEventBusTests : IAsyncLifetime
         var bus = host.Services.GetRequiredService<IEventBus>();
 
         await Task.Delay(TimeSpan.FromSeconds(1)); // let topology + consumer settle
-        await bus.PublishAsync(new PingEvent("over-rabbit"));
+        await bus.PublishAsync(new PingEvent { Value = "over-rabbit" });
 
         (await collector.WaitForCountAsync(1, TimeSpan.FromSeconds(30))).Should().BeTrue();
         await host.StopAsync();
@@ -46,12 +47,12 @@ public sealed class RabbitMqEventBusTests : IAsyncLifetime
                 o.DeadLetterExchange = "dlx-" + suffix;
                 o.DeadLetterQueue = dlq;
             },
-            retry: r => r.Retry = new RetryConfig(MaxAttempts: 2, Backoff: BackoffKind.None));
+            retry: r => r.Retry = new RetryConfig { MaxAttempts = 2, Backoff = BackoffKind.None });
 
         var bus = host.Services.GetRequiredService<IEventBus>();
 
         await Task.Delay(TimeSpan.FromSeconds(1));
-        await bus.PublishAsync(new BoomEvent("bad"));
+        await bus.PublishAsync(new BoomEvent { Value = "bad" });
 
         (await WaitForDlqMessageAsync(dlq, TimeSpan.FromSeconds(30))).Should().BeTrue();
         await host.StopAsync();

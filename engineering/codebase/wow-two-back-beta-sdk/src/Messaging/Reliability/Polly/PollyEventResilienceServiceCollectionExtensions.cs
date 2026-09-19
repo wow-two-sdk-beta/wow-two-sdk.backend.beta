@@ -4,6 +4,9 @@ using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
 
+using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Policies;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Services;
+
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Polly;
 
 /// <summary>DI registration for the Polly-backed event resilience pipeline.</summary>
@@ -14,7 +17,7 @@ public static class PollyEventResilienceServiceCollectionExtensions
     /// <param name="configure">Optional pipeline configuration.</param>
     /// <remarks>
     ///   - exception classification is shared with the default pipeline via <c>AddEventFaultClassification</c>
-    ///   - with no classifier registered every exception classifies as <see cref="FaultDisposition.Retry"/>
+    ///   - with no faultPolicy registered every exception classifies as <see cref="FaultDisposition.Retry"/>
     ///   - call order against <c>AddEventFaultClassification</c> and <c>AddDelayedEventRetry</c> does not matter
     /// </remarks>
     public static IServiceCollection AddPollyEventResilience(this IServiceCollection services, Action<PollyEventResilienceOptions>? configure = null)
@@ -26,8 +29,8 @@ public static class PollyEventResilienceServiceCollectionExtensions
         services.Replace(ServiceDescriptor.Singleton<IEventResiliencePipeline>(provider =>
             new PollyEventResiliencePipeline(
                 options,
-                provider.GetService<IEventFaultClassifier>() ?? DefaultEventFaultClassifier.RetryAll,
-                provider.GetService<DelayedRetryCoordinator>() is { IsActive: true })));
+                provider.GetService<IEventFaultPolicy>() ?? EventFaultPolicy.RetryAll,
+                provider.GetService<DelayedRetryService>() is { IsActive: true })));
         return services;
     }
 }

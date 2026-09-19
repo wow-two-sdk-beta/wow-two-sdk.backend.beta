@@ -1,3 +1,5 @@
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
 /// <summary>
@@ -98,7 +100,7 @@ public abstract class SagaStateMachine<TState>
         return binding;
     }
 
-    internal void DeclareCorrelation(SagaEventBinding<TState> binding, Type eventType, Func<object, EventEnvelope, string?> correlate)
+    internal void DeclareCorrelation(SagaEventBinding<TState> binding, Type eventType, Func<object, EventEnvelopeModel, string?> correlate)
     {
         ArgumentNullException.ThrowIfNull(binding);
         if (binding.Correlate is not null)

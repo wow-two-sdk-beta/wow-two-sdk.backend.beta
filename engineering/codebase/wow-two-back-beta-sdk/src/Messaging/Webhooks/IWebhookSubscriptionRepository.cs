@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 
-/// <summary>Stores webhook subscriptions and resolves which ones match a given event type.</summary>
+/// <summary>Defines behavior that stores webhook subscriptions and resolves which ones match a given event type.</summary>
 public interface IWebhookSubscriptionRepository
 {
     /// <summary>Return every subscription whose filter matches <paramref name="eventType"/>.</summary>

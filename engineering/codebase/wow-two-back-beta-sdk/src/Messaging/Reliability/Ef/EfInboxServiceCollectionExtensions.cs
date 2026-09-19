@@ -6,11 +6,11 @@ using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
-/// <summary>DI registration for the EF-backed exactly-once inbox processor.</summary>
+/// <summary>DI registration for the EF-backed atomic inbox processor.</summary>
 public static class EfInboxServiceCollectionExtensions
 {
     /// <summary>
-    /// Replace the default <see cref="IInboxProcessor"/> with the EF-backed exactly-once one over <typeparamref name="TContext"/>.
+    /// Replace the default <see cref="IInboxProcessor"/> with the EF-backed atomic dedupe/effect processor over <typeparamref name="TContext"/>.
     /// The context must map <see cref="InboxMessageEntity"/> (call <c>modelBuilder.ApplyInboxModel()</c>) and the <c>inbox_messages</c>
     /// table must exist. Scoped so it shares the message's DbContext (and thus transaction) with the handler's repositories.
     /// </summary>

@@ -3,7 +3,7 @@ using System.Globalization;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
 /// <summary>
-/// The persisted state of one saga instance. Implement it on a POCO (or derive from <see cref="SagaState"/>, which
+/// Defines the persisted state of one saga instance. Implement it on a POCO (or derive from <see cref="SagaState"/>, which
 /// implements every member) — the same object is what a repository stores.
 /// </summary>
 public interface ISagaState

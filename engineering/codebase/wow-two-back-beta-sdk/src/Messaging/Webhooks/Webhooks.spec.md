@@ -66,7 +66,7 @@ await webhooks.PublishAsync("order.created", """{"id":42}"""u8.ToArray());
 |---|---|
 | `IWebhookSubscriptionRepository` | `GetMatchingAsync(eventType, ct) → IReadOnlyList<WebhookSubscription>` · `AddAsync(sub, ct)`. |
 | `InMemoryWebhookSubscriptionRepository` | Default — seeded from `WebhookOptions.Subscriptions`, thread-safe, supports runtime `AddAsync`. |
-| `IWebhookDeliveryLog` | `RecordAsync(WebhookDeliveryRecord, ct)` — terminal-outcome seam. Default = no-op. |
+| `IWebhookDeliveryLoggingService` | `RecordAsync(WebhookDeliveryRecord, ct)` — terminal-outcome seam. Default = no-op. |
 | `WebhookDeliveryRecord` | `record`: `SubscriptionId`, `EventType`, `Url`, `Outcome`, `Attempts`, `StatusCode?`, `OccurredAtUtc`. |
 | `WebhookDeliveryOutcome` | `Delivered` · `Dropped`. |
 
@@ -131,7 +131,7 @@ await store.AddAsync(new WebhookSubscription
 ### Example C — observe deliveries
 
 ```csharp
-public sealed class MetricsDeliveryLog(IMeterFactory meters) : IWebhookDeliveryLog
+public sealed class MetricsDeliveryLoggingService(IMeterFactory meters) : IWebhookDeliveryLoggingService
 {
     public ValueTask RecordAsync(WebhookDeliveryRecord record, CancellationToken ct)
     {
@@ -142,7 +142,7 @@ public sealed class MetricsDeliveryLog(IMeterFactory meters) : IWebhookDeliveryL
 
 // override the no-op default:
 builder.Services.AddWebhooks(/* … */);
-builder.Services.AddSingleton<IWebhookDeliveryLog, MetricsDeliveryLog>();
+builder.Services.AddSingleton<IWebhookDeliveryLoggingService, MetricsDeliveryLoggingService>();
 ```
 
 ## Future

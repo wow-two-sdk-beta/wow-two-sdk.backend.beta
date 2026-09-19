@@ -8,7 +8,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
-/// <summary>What happened to a single redrive request.</summary>
+/// <summary>Refers to what happened to a single redrive request.</summary>
 public enum RedriveOutcome
 {
     /// <summary>Re-published to its original destination with a fresh retry budget.</summary>

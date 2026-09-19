@@ -4,13 +4,14 @@ using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 
 /// <summary>In-memory scheduler — delays via the time provider then enqueues onto the channel.</summary>
 internal sealed partial class InMemoryDelayedDeliveryService(InMemoryEventChannel channel, TimeProvider timeProvider, ILogger<InMemoryDelayedDeliveryService> logger) : IDelayedDeliveryService
 {
-    public ValueTask ScheduleAsync(EventEnvelope envelope, DateTimeOffset notBeforeUtc, CancellationToken cancellationToken)
+    public ValueTask ScheduleAsync(EventEnvelopeModel envelope, DateTimeOffset notBeforeUtc, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(envelope);
         var delay = notBeforeUtc - timeProvider.GetUtcNow();
@@ -21,7 +22,7 @@ internal sealed partial class InMemoryDelayedDeliveryService(InMemoryEventChanne
         return ValueTask.CompletedTask;
     }
 
-    private async Task DelayThenEnqueueAsync(EventEnvelope envelope, TimeSpan delay, CancellationToken cancellationToken)
+    private async Task DelayThenEnqueueAsync(EventEnvelopeModel envelope, TimeSpan delay, CancellationToken cancellationToken)
     {
         try
         {

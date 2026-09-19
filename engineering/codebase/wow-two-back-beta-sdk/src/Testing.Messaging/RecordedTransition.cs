@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using WoW.Two.Sdk.Backend.Beta.Messaging;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
@@ -37,7 +38,7 @@ public sealed record RecordedTransition<TState>
     public required int Attempt { get; init; }
 
     /// <summary>The message being consumed when the saga reacted; <c>null</c> when the repository was called outside the consume pipeline.</summary>
-    public EventEnvelope? Envelope { get; init; }
+    public EventEnvelopeModel? Envelope { get; init; }
 
     /// <summary>The event payload that drove the reaction.</summary>
     public object? Event => Envelope?.Body;

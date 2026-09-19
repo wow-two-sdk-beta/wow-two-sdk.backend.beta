@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Saga.Services;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
@@ -11,10 +12,10 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 /// </summary>
 /// <typeparam name="TState">The saga state type.</typeparam>
 /// <typeparam name="TEvent">The event type.</typeparam>
-internal sealed class SagaEventHandler<TState, TEvent>(SagaCoordinator<TState> coordinator, IServiceProvider services) : IEventHandler<TEvent>
+internal sealed class SagaEventHandler<TState, TEvent>(SagaService<TState> service, IServiceProvider services) : IEventHandler<TEvent>
     where TState : class, ISagaState, new()
     where TEvent : class, IEvent
 {
     public ValueTask HandleAsync(EventContext<TEvent> context, CancellationToken cancellationToken)
-        => coordinator.HandleAsync(context, services, cancellationToken);
+        => service.HandleAsync(context, services, cancellationToken);
 }

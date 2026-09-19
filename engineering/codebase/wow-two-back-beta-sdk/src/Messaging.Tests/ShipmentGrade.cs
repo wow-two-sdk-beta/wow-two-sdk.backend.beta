@@ -10,7 +10,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
-/// <summary>Grade of a shipment — an enum member of <see cref="SerializerPayload"/>, so every serializer's enum policy is exercised by the round trip.</summary>
+/// <summary>Refers to grade of a shipment — an enum member of <see cref="SerializerPayload"/>, so every serializer's enum policy is exercised by the round trip.</summary>
 public enum ShipmentGrade
 {
     Standard = 0,

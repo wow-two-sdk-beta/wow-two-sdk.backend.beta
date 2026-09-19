@@ -7,7 +7,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Registration-time set of message types this process consumes. Populated from the registered
+/// Binds consumed message types to the process's registration-time topology. Populated from the registered
 /// <see cref="IEventHandler{TEvent}"/> descriptors by
 /// <see cref="MessageTopologyServiceCollectionExtensions.AddMessageTopology"/> and read once by
 /// <see cref="TopologyService"/> to build bindings. Written during registration only — not thread-safe.

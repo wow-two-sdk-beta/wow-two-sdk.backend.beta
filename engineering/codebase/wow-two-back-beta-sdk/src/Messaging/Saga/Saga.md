@@ -106,7 +106,7 @@ stalled partition and a database lock's lifetime into a handler's problem.
 Timeouts and `ctx.PublishAsync` are **published by type**, never sent to an ad-hoc destination — the one addressing
 shape guaranteed to hit a bound routing key now the RabbitMQ `#` catch-all is gone and publishes are
 `mandatory: false`. The routing-slip transport, which does take a destination, now checks it against the local
-topology and logs an unbound one once (`EventSagaRunner.cs`).
+topology and logs an unbound one once (`EventSagaPublisherService.cs`).
 
 ## Types
 
@@ -117,7 +117,7 @@ topology and logs an unbound one once (`EventSagaRunner.cs`).
 | `InMemorySagaRepository<TState>` | default; stores copies, `TryAdd` insert, compare-and-swap update |
 | `SagaStateMachine<TState>` | `Initially` · `During` · `DuringAny` · `When` → `Then`/`Publish`/`Schedule`/`TransitionTo`/`Finalize` |
 | `SagaTransitionContext<TState,TEvent>` | instance · message · DI scope · publish · branch · schedule/cancel timeout |
-| `SagaCoordinator<TState>` | correlate → load → transition → write, with concurrency replay |
+| `SagaService<TState>` | correlate → load → transition → write, with concurrency replay |
 | `SagaOptions` | concurrency retries · remove-on-finalize |
 | `AddSaga<TMachine,TState>()` | DI registration (singleton machine + repository + one handler per observed event) |
 

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
@@ -25,8 +26,11 @@ public static class RequestClientServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddOptions<RequestClientOptions>().Configure(options => configure?.Invoke(options));
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<RequestClientOptions>>().Value);
+        services.AddValidatedOptions<RequestClientOptions>(
+            configure,
+            builder => builder
+                .Validate(options => options.Timeout == Timeout.InfiniteTimeSpan || options.Timeout > TimeSpan.Zero, "RequestClientOptions.Timeout must be positive or infinite.")
+                .Validate(options => options.ReplyAddress is null || !string.IsNullOrWhiteSpace(options.ReplyAddress), "RequestClientOptions.ReplyAddress must not be empty when supplied."));
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<PendingRequestRegistry>();

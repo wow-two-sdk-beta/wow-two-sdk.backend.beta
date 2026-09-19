@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.AzureServiceBus;
 
@@ -21,14 +22,14 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.AzureServiceBus;
 /// re-published onto a second queue the way an emulated DLQ has to.
 /// </summary>
 internal sealed class AzureServiceBusReceiveContext(
-    EventEnvelope envelope,
+    EventEnvelopeModel envelope,
     ServiceBusReceiver receiver,
     ServiceBusReceivedMessage message) : ReceiveContext
 {
     /// <summary>Service Bus ceiling on the dead-letter reason and description properties.</summary>
     private const int MaxDeadLetterTextLength = 4096;
 
-    public override EventEnvelope Envelope => envelope;
+    public override EventEnvelopeModel Envelope => envelope;
 
     public override ValueTask AcknowledgeAsync(CancellationToken cancellationToken)
         => new(receiver.CompleteMessageAsync(message, cancellationToken));

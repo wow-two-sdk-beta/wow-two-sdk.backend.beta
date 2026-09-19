@@ -6,7 +6,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
-/// <summary>How consumed message types are mapped onto broker endpoints (queues).</summary>
+/// <summary>Refers to how consumed message types are mapped onto broker endpoints (queues).</summary>
 public enum TopologyStyle
 {
     /// <summary>

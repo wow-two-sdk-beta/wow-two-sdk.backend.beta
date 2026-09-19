@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Messaging;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
@@ -21,7 +22,7 @@ internal sealed class SagaPendingWrite<TState> : ISagaPendingWrite
 
     public required int LoadedVersion { get; init; }
 
-    public required EventEnvelope? Envelope { get; init; }
+    public required EventEnvelopeModel? Envelope { get; init; }
 
     public int Attempt { get; set; }
 

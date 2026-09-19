@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
 /// <summary>
-/// Multi-instance-safe outbox claim strategy for PostgreSQL. Claims the oldest pending rows with
+/// Accesses pending outbox rows through PostgreSQL's multi-instance claim strategy. Claims the oldest pending rows with
 /// <c>SELECT … FOR UPDATE SKIP LOCKED</c> inside a transaction it opens on the context, so concurrent dispatchers
 /// skip each other's locked rows — every pending row is claimed by exactly one instance (no double-dispatch, no lost row).
 /// </summary>

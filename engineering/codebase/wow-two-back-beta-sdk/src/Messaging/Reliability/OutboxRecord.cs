@@ -1,14 +1,20 @@
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
 /// <summary>A staged outgoing message in a transactional outbox.</summary>
-/// <param name="Id">Outbox row id.</param>
-/// <param name="Type">Logical message type/name.</param>
-/// <param name="Payload">Serialized message body.</param>
-/// <param name="OccurredOnUtc">When the message was produced.</param>
-/// <param name="Headers">Headers to attach on dispatch.</param>
-public sealed record OutboxRecord(
-    string Id,
-    string Type,
-    ReadOnlyMemory<byte> Payload,
-    DateTimeOffset OccurredOnUtc,
-    IReadOnlyDictionary<string, string> Headers);
+public sealed record OutboxRecord
+{
+    /// <summary>Outbox row id.</summary>
+    public required string Id { get; init; }
+
+    /// <summary>Logical message type/name.</summary>
+    public required string Type { get; init; }
+
+    /// <summary>Serialized message body.</summary>
+    public required ReadOnlyMemory<byte> Payload { get; init; }
+
+    /// <summary>When the message was produced.</summary>
+    public required DateTimeOffset OccurredOnUtc { get; init; }
+
+    /// <summary>Headers to attach on dispatch.</summary>
+    public required IReadOnlyDictionary<string, string> Headers { get; init; }
+}

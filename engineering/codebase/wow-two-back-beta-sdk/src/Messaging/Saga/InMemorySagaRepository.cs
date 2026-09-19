@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
 /// <summary>
-/// In-memory <see cref="ISagaRepository{TState}"/> — the zero-infrastructure default. Instances live for the process,
+/// Accesses saga state in process memory. Instances live for the process,
 /// so a restart loses every running saga; swap in a durable repository before a saga outlives a deployment.
 /// </summary>
 /// <typeparam name="TState">The saga state type.</typeparam>

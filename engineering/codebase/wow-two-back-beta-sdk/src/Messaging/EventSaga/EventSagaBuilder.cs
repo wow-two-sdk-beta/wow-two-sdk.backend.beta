@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga.Services;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga;
 
@@ -56,7 +57,7 @@ public sealed class EventSagaBuilder
     ///   - declaring a destination another service consumes exempts it from the unbound warning and from <see cref="UnroutableDestinationBehavior.Throw"/>
     /// </remarks>
     /// <typeparam name="TEvent">The event type the step sends to that destination.</typeparam>
-    /// <param name="destination">The destination name, exactly as the step passes it to <see cref="IEventSagaTransport.SendAsync{TEvent}"/>.</param>
+    /// <param name="destination">The destination name, exactly as the step passes it to <see cref="IEventSagaPublisherService.SendAsync{TEvent}"/>.</param>
     public EventSagaBuilder SendsTo<TEvent>(string destination)
         where TEvent : class, IEvent
         => SendsTo(destination, typeof(TEvent));

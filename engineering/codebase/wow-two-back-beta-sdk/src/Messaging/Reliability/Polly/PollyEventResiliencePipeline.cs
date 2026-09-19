@@ -4,11 +4,13 @@ using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
 
+using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Policies;
+
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Polly;
 
 /// <summary>
 /// Polly-backed <see cref="IEventResiliencePipeline"/> — exponential-with-jitter retry, optional circuit breaker +
-/// timeout, gated by the same <see cref="IEventFaultClassifier"/> the default pipeline uses: a non-retryable failure
+/// timeout, gated by the same <see cref="IEventFaultPolicy"/> the default pipeline uses: a non-retryable failure
 /// never enters Polly's retry loop, an ignored one is swallowed here.
 /// </summary>
 /// <remarks>
@@ -19,13 +21,13 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Polly;
 internal sealed class PollyEventResiliencePipeline : IEventResiliencePipeline
 {
     private readonly ResiliencePipeline _pipeline;
-    private readonly IEventFaultClassifier _classifier;
+    private readonly IEventFaultPolicy _faultPolicy;
 
-    public PollyEventResiliencePipeline(PollyEventResilienceOptions options, IEventFaultClassifier classifier, bool delayedRetryActive = false)
+    public PollyEventResiliencePipeline(PollyEventResilienceOptions options, IEventFaultPolicy faultPolicy, bool delayedRetryActive = false)
     {
         ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(classifier);
-        _classifier = classifier;
+        ArgumentNullException.ThrowIfNull(faultPolicy);
+        _faultPolicy = faultPolicy;
 
         var builder = new ResiliencePipelineBuilder();
 
@@ -70,12 +72,12 @@ internal sealed class PollyEventResiliencePipeline : IEventResiliencePipeline
         {
             throw;
         }
-        catch (Exception exception) when (_classifier.Classify(exception) == FaultDisposition.Ignore)
+        catch (Exception exception) when (_faultPolicy.Decide(exception) == FaultDisposition.Ignore)
         {
             // Swallow so the caller's success path acknowledges; a DeadLetter verdict propagates to the caller.
         }
     }
 
     private bool ShouldRetry(Exception? exception)
-        => exception is not null && _classifier.Classify(exception) == FaultDisposition.Retry;
+        => exception is not null && _faultPolicy.Decide(exception) == FaultDisposition.Retry;
 }

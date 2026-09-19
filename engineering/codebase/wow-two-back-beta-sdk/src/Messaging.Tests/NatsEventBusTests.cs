@@ -10,6 +10,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Nats;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
@@ -40,7 +41,7 @@ public sealed class NatsEventBusTests : IAsyncLifetime
         var bus = host.Services.GetRequiredService<IEventBus>();
 
         await Task.Delay(TimeSpan.FromSeconds(2)); // durable consumer provisioning + assignment
-        await bus.PublishAsync(new PingEvent("over-nats"));
+        await bus.PublishAsync(new PingEvent { Value = "over-nats" });
 
         (await collector.WaitForCountAsync(1, TimeSpan.FromSeconds(30))).Should().BeTrue();
         await host.StopAsync();
@@ -52,11 +53,11 @@ public sealed class NatsEventBusTests : IAsyncLifetime
         var suffix = Guid.NewGuid().ToString("N");
         using var host = await StartHostAsync(
             o => Configure(o, suffix),
-            retry: r => r.Retry = new RetryConfig(MaxAttempts: 2, Backoff: BackoffKind.None));
+            retry: r => r.Retry = new RetryConfig { MaxAttempts = 2, Backoff = BackoffKind.None });
         var bus = host.Services.GetRequiredService<IEventBus>();
 
         await Task.Delay(TimeSpan.FromSeconds(2));
-        await bus.PublishAsync(new BoomEvent("bad"));
+        await bus.PublishAsync(new BoomEvent { Value = "bad" });
 
         (await WaitForDlqMessageAsync($"s-{suffix}", $"dlq.{suffix}", TimeSpan.FromSeconds(30))).Should().BeTrue();
         await host.StopAsync();

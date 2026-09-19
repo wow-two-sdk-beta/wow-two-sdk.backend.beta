@@ -44,7 +44,7 @@ public sealed record DeadLetterQuery
     /// <summary>Include quarantined records alongside the rest. Ignored when <see cref="QuarantinedOnly"/> is set.</summary>
     public bool IncludeQuarantined { get; init; }
 
-    /// <summary>Match <b>only</b> quarantined records — the review queue.</summary>
+    /// <summary>Match only quarantined records — the review queue.</summary>
     public bool QuarantinedOnly { get; init; }
 
     /// <summary>Maximum records to return. Defaults to 100; zero or negative means unbounded.</summary>

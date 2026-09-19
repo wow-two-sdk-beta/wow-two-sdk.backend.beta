@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Runtime control over the consume side of the bus — pause, resume, and a bounded graceful stop, plus the state and
+/// Defines runtime control over the consume side of the bus — pause, resume, and a bounded graceful stop, plus the state and
 /// in-flight count behind them. Registered as a singleton by every transport registration path, so an ops endpoint, an
 /// admin command, or a health check can resolve it.
 /// </summary>
@@ -20,7 +20,7 @@ public interface IBusControl
 
     /// <summary>
     /// Messages currently being processed — queued to a consume worker or executing in a handler. Messages parked at
-    /// the pause gate are <b>not</b> counted: they never entered the pipeline.
+    /// the pause gate are not counted: they never entered the pipeline.
     /// </summary>
     int InFlight { get; }
 

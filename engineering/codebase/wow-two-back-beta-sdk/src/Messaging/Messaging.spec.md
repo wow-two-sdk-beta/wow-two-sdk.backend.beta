@@ -1,6 +1,6 @@
 # Messaging — spec
 
-*Last updated: 2026-07-19*
+*Last updated: 2026-09-16*
 
 > **Concrete API + usage.** Updated when the public surface changes.
 
@@ -20,9 +20,9 @@ WoW.Two.Sdk.Backend.Beta  (mono-lib; namespace WoW.Two.Sdk.Backend.Beta.Messagin
 | `IEventHandler<TEvent>` | `ValueTask HandleAsync(EventContext<TEvent>, CancellationToken)`; `where TEvent : class, IEvent`. Many per event type. |
 | `IEventBus` | `PublishAsync<T>(T, PublishOptions?, ct)` (fan-out) · `SendAsync<T>(string destination, T, SendOptions?, ct)` (point-to-point). Both `where T : class, IEvent`. |
 | `EventContext<TEvent>` | `Event` · `Envelope` · `MessageId` · `CorrelationId` · `ConversationId` · `ReplyTo` · `Headers` · `PublishAsync`/`SendAsync` (auto-propagate correlation, set `CausationId`, and apply the header-propagation policy). |
-| `EventEnvelope` | `record`: `MessageId`, `Body`, `BodyType`, `Destination`, `CorrelationId`, `ConversationId`, `CausationId`, `ReplyTo`, `DeliveryCount`, `NotBeforeUtc`, `PartitionKey`, `Durable`, `Priority`, `TimeToLive`, `Headers`. Wire-substitution seam: `RawBody` · `RawBodyType` · `WireBodyType` · `ToWireBody(serializer)` — see below. |
-| `EventEnvelope.RawBody` (+ `RawBodyType`) | Pre-serialized wire bytes, for a send-path transformation that must decide what travels **before** the adapter serializes. `null` (default) leaves every adapter serializing `Body` itself. `RawBodyType` names the shape those bytes decode as when the transformation substituted a *different* one; it governs the `wt-event-type` token only (`WireBodyType = RawBodyType ?? BodyType`) and **never routing**, which stays on `BodyType` so the message still reaches consumers bound to the real contract. A general seam, not one feature's field — claim check (pointer), compression (same body, deflated) and envelope encryption (ciphertext) are the same shape. It also removes a double serialization for any transformation that has to *measure* the body. |
-| `EventEnvelope.ToWireBody(IMessageSerializer)` | The bytes to put on the wire: `RawBody` where something pre-serialized them, else `Body` through the serializer. **Every adapter MUST call this** rather than serializing directly — it is the single expression deciding whether a transformation is honoured. |
+| `EventEnvelopeModel` | `record`: `MessageId`, `Body`, `BodyType`, `Destination`, `CorrelationId`, `ConversationId`, `CausationId`, `ReplyTo`, `DeliveryCount`, `NotBeforeUtc`, `PartitionKey`, `Durable`, `Priority`, `TimeToLive`, `Headers`. Wire-substitution seam: `RawBody` · `RawBodyType` · `WireBodyType` · `ToWireBody(serializer)` — see below. |
+| `EventEnvelopeModel.RawBody` (+ `RawBodyType`) | Pre-serialized wire bytes, for a send-path transformation that must decide what travels **before** the adapter serializes. `null` (default) leaves every adapter serializing `Body` itself. `RawBodyType` names the shape those bytes decode as when the transformation substituted a *different* one; it governs the `wt-event-type` token only (`WireBodyType = RawBodyType ?? BodyType`) and **never routing**, which stays on `BodyType` so the message still reaches consumers bound to the real contract. A general seam, not one feature's field — claim check (pointer), compression (same body, deflated) and envelope encryption (ciphertext) are the same shape. It also removes a double serialization for any transformation that has to *measure* the body. |
+| `EventEnvelopeModel.ToWireBody(IMessageSerializer)` | The bytes to put on the wire: `RawBody` where something pre-serialized them, else `Body` through the serializer. **Every adapter MUST call this** rather than serializing directly — it is the single expression deciding whether a transformation is honoured. |
 | `PublishOptions` / `SendOptions` | `MessageId`, `CorrelationId`, `ConversationId`, `CausationId`, `ReplyTo`, `Delay`, `PartitionKey`, `Durable`, `Priority`, `TimeToLive`, `Headers`. **Transport-abstract** — adapters map to native primitives or ignore. |
 
 ### Serialization (`…Messaging.Serialization`)
@@ -30,10 +30,10 @@ WoW.Two.Sdk.Backend.Beta  (mono-lib; namespace WoW.Two.Sdk.Backend.Beta.Messagin
 | Type | Notes |
 |---|---|
 | `IMessageSerializer` | Body ↔ bytes, with a `ContentType`. Default `SystemTextJsonMessageSerializer` (`JsonOptionsConstants`). Swap via `AddMessageSerializer<T>()`. |
-| `IMessageTypeResolver` | CLR type ↔ **stable wire token** (`FullName`, AQN fallback). The token — not the assembly-qualified name — is what rides `wt-event-type` and what a routing key is built from, so a version bump or type move does not break routing. |
+| `IMessageTypeMapper` | Registered CLR type ↔ **stable wire token** (`FullName` by default). Unregistered outgoing types fail as incomplete composition; unknown inbound tokens remain unresolved wire input. The stable token rides `wt-event-type` and builds routing keys. |
 | `MessageTypeRegistry` · `MapMessageType<TEvent>(token)` | Explicit token for a producer-only contract, a custom URN, or a rename alias. |
 | `MessagePackMessageSerializer` | Compact binary — typically 30–60% smaller than JSON and cheaper to encode, at the cost of a payload unreadable off the broker. `ContentType` = `application/x-msgpack`. Contractless resolver by default, so a contract that worked under JSON keeps working with no `[MessagePackObject]` annotation. Security: `MessagePackSecurity.UntrustedData`; the **typeless** resolvers are deliberately not used — they embed CLR type names and instantiate whatever the sender names (RCE vector). Type identity stays in `wt-event-type`, never in the body. Compression is off by default and changes the wire bytes, so it must be switched on producers and consumers together. |
-| `CloudEventsMessageSerializer` · `CloudEventsSerializerOptions` | CNCF CloudEvents 1.0 **JSON event format** — the interop format for non-.NET peers on the same streams. `ContentType` = `application/cloudevents+json`. **Structured mode only**: `IMessageSerializer` returns bytes and cannot write transport headers, so binary mode is not expressible at this seam (structured is also the self-describing one — it survives a broker that drops unknown headers). Attributes: `specversion` = `1.0` · `type` = `IMessageTypeResolver.ToTypeToken` (so `MapMessageType<T>("com.acme.orders.placed")` is how a contract gets a reverse-DNS type) · `source`/`subject`/`dataschema` from options · `time` RFC 3339 UTC. **Does not map**: `id` is generated here, not taken from `MessageId`, and inbound `id`/`source`/`time`/`subject` are parsed then dropped — the seam passes only the body. A consumer deduplicating on CloudEvents `source`+`id` and the SDK inbox deduplicating on `wt-message-id` are therefore keyed on different values; point `IdFactory` at a business key when that matters. Options take no argument on `AddMessageSerializer<T>()` — register `CloudEventsSerializerOptions` as a singleton first. |
+| `CloudEventsMessageSerializer` · `CloudEventsSerializerOptions` | CNCF CloudEvents 1.0 **JSON event format** — the interop format for non-.NET peers on the same streams. `ContentType` = `application/cloudevents+json`. **Structured mode only**: `IMessageSerializer` returns bytes and cannot write transport headers, so binary mode is not expressible at this seam (structured is also the self-describing one — it survives a broker that drops unknown headers). Attributes: `specversion` = `1.0` · `type` = `IMessageTypeMapper.ToTypeToken` (so `MapMessageType<T>("com.acme.orders.placed")` is how a contract gets a reverse-DNS type) · `source`/`subject`/`dataschema` from options · `time` RFC 3339 UTC. **Does not map**: `id` is generated here, not taken from `MessageId`, and inbound `id`/`source`/`time`/`subject` are parsed then dropped — the seam passes only the body. A consumer deduplicating on CloudEvents `source`+`id` and the SDK inbox deduplicating on `wt-message-id` are therefore keyed on different values; point `IdFactory` at a business key when that matters. Options take no argument on `AddMessageSerializer<T>()` — register `CloudEventsSerializerOptions` as a singleton first. |
 
 ### Wire headers & propagation (`…Messaging.Transport`)
 
@@ -52,7 +52,7 @@ Replaces the pre-B4 catch-all binding: bindings derive from the **registered han
 
 | Type | Notes |
 |---|---|
-| `ITopologyProvider` | `ConsumeEndpoints` · `RoutingKeyFor(Type)` · `ResolveRoutingKey(EventEnvelope)` (type key for a publish, destination address for an explicit send). |
+| `ITopologyProvider` | `ConsumeEndpoints` · `RoutingKeyFor(Type)` · `ResolveRoutingKey(EventEnvelopeModel)` (type key for a publish, destination address for an explicit send). |
 | `EndpointTopology` | `record`: `Queue` · `DeadLetterQueue` · `RoutingKeys` · `MessageTypes`. |
 | `IEndpointNameMapper` | `Endpoint(Type)` · `DeadLetter(endpointName)`. Default kebab-cases the **simple** type name under an optional dotted prefix: `OrderPlaced` + `wt.events` → `wt.events.order-placed` → `.dlq`. |
 | `TopologyStyle` | `SharedEndpoint` (**default** — one queue per service, one binding per type; existing deployments keep their queue + DLQ names and nothing strands) · `EndpointPerMessageType` (per-type queue, prefetch, DLQ — opt-in, needs new queues). |
@@ -102,9 +102,9 @@ Watch-only counterpart to `IConsumeFilter`. A filter sits *in* the chain and may
 
 | Type | Notes |
 |---|---|
-| `BackoffKind` · `RetryConfig(MaxAttempts=5, Backoff=ExponentialJitter, BaseDelay?, MaxDelay?)` · `IRetryPolicy` · `DefaultRetryPolicy` | Retry schedule. `NextDelay` returns `null` → dead-letter. |
+| `BackoffKind` · `RetryConfig(MaxAttempts=5, Backoff=ExponentialJitter, BaseDelay?, MaxDelay?)` · `IRetryPolicy` · `RetryPolicy` | Retry schedule. `NextDelay` returns `null` → dead-letter. |
 | `IDeadLetterRepository` | `DeadLetterAsync(DeadLetterRecord, ct)` · `ReadAsync(source, ct) → IAsyncEnumerable<DeadLetterRecord>` · `ReplayAsync(messageId, ct)` (redrive). Build the record with `DeadLetterRecord.From(env, ex, nowUtc)`. |
-| `IInboxProcessor.ProcessOnceAsync(messageId, handler)` | Exactly-once seam: dedupe + (EF) run handler in the **same transaction**. `false` ⇒ duplicate (skip). |
+| `IInboxProcessor.ProcessOnceAsync(messageId, handler)` | Dedupe seam for at-least-once delivery: the EF implementation commits the marker and handler effect in the **same transaction**. `false` ⇒ duplicate (skip). |
 | `IEventScheduler.ScheduleAsync(envelope, notBeforeUtc)` | Delayed delivery. |
 | `IOutbox` / `OutboxRecord` / `IOutboxDispatcher` | Transactional-outbox ports. Rows carry `content_type`, so the outbox rides the serializer seam. |
 
@@ -115,9 +115,9 @@ Ends every fault burning the whole `MaxAttempts` budget. Consulted by **every** 
 | Type | Notes |
 |---|---|
 | `FaultDisposition` | `Retry` (**default for every exception** — an unconfigured pipeline behaves exactly as before classification existed) · `DeadLetter` (propagate at once, spending no attempt) · `Ignore` (swallow, so the consume pipeline's success path acknowledges). |
-| `IEventFaultClassifier.Classify(Exception)` | Thread-safe, SHOULD NOT throw — runs on the consume path for every failed attempt. |
+| `IEventFaultPolicy.Decide(Exception)` | Thread-safe, SHOULD NOT throw — runs on the consume path for every failed attempt. |
 | `EventFaultClassificationOptions` | Ordered rules, **first match wins**: `DeadLetterOn<T>()` · `IgnoreOn<T>()` · `RetryOn<T>()` (match subclasses too) and `Classify(Func<Exception, FaultDisposition?>)` for state-dependent verdicts. A rule that throws is treated as no verdict. |
-| `DefaultEventFaultClassifier` | Walks the rules, first non-null verdict wins, falls back to `Retry`. `RetryAll` is the registered default. |
+| `EventFaultPolicy` | Walks the rules, first non-null verdict wins, falls back to `Retry`. `RetryAll` is the registered default. |
 
 Cancellation is never classified: an `OperationCanceledException` from a cancelled token always propagates as shutdown, never as a message fault.
 
@@ -127,7 +127,7 @@ Moves the backoff out of the consume slot: the failed delivery is re-published w
 
 | Type | Notes |
 |---|---|
-| `DelayedRetryOptions.Enabled` | Default `false` — opt in with `AddDelayedEventRetry(…)`. The two modes differ in observable semantics: a retry arrives as a **fresh delivery** (the whole filter chain re-runs, not just the core), the message is acknowledged between attempts (broker redelivery timers, prefetch accounting and in-flight metrics see it leave and come back), and the attempt number rides `EventEnvelope.DeliveryCount` instead of a local. |
+| `DelayedRetryOptions.Enabled` | Default `false` — opt in with `AddDelayedEventRetry(…)`. The two modes differ in observable semantics: a retry arrives as a **fresh delivery** (the whole filter chain re-runs, not just the core), the message is acknowledged between attempts (broker redelivery timers, prefetch accounting and in-flight metrics see it leave and come back), and the attempt number rides `EventEnvelopeModel.DeliveryCount` instead of a local. |
 | `DelayedRetryOptions.Retry` | `null` (default) shares the in-process pipeline's schedule, so relocating the wait does not silently change the policy. Set it to give the re-enqueue loop its own budget. |
 
 Requires a transport that can hold a message until a future instant (`NativeDelay` / `NativeScheduling`) plus a registered `IEventScheduler`; where either is missing the in-process delay is used and the downgrade is logged **once at startup**, not per message. Three independent stops prevent an infinite redelivery loop. A `DeadLetter` verdict or an exhausted budget falls through to the normal dead-letter path.
@@ -139,8 +139,8 @@ Requires a transport that can hold a message until a future instant (`NativeDela
 | `OutboxMessageEntity` · `OutboxModelBuilderExtensions.ApplyOutboxModel()` | Maps `outbox_messages` (incl. `content_type varchar(100) NOT NULL DEFAULT 'application/json'`). |
 | `EfOutbox<TContext>` · `AddEfOutbox<TContext>()` | `IOutbox` — direct-adds a row to `TContext` (atomic on `SaveChanges`). |
 | `OutboxDispatcherOptions` · `AddEfOutboxDispatcher<TContext>()` | Polls pending → deserialize by `type` + `content_type` → publish to `IEventBus` → stamp `ProcessedOnUtc`. |
-| `IOutboxClaimStrategy` · `PollingOutboxClaimStrategy` | Pending-row claim seam. Default polls (single-instance); a Postgres `FOR UPDATE SKIP LOCKED` impl plugs in for multi-instance scale-out. |
-| `InboxMessageEntity` · `ApplyInboxModel()` · `AddEfInbox<TContext>()` | `IInboxProcessor` — inbox row + handler in **one transaction** (true exactly-once). |
+| `IOutboxClaimRepository` · `UnlockedOutboxClaimRepository` | Pending-row claim seam. Default polls (single-instance); `PostgresSkipLockedOutboxClaimRepository` plugs in for multi-instance scale-out. |
+| `InboxMessageEntity` · `ApplyInboxModel()` · `AddEfInbox<TContext>()` | `IInboxProcessor` — inbox row + handler effect in one transaction; delivery remains at-least-once. |
 
 Migration SQL + wire-up: [`Reliability/Ef/Ef.md`](./Reliability/Ef/Ef.md).
 
@@ -148,7 +148,7 @@ Migration SQL + wire-up: [`Reliability/Ef/Ef.md`](./Reliability/Ef/Ef.md).
 
 | Type | Notes |
 |---|---|
-| `InMemoryEventBusOptions` | `ChannelCapacity` (default 1024; 0 = unbounded) · `Retry` (`RetryConfig`). |
+| `InMemoryEventBusOptions` | `ChannelCapacity` (default 1024; must be positive) · `Retry` (`RetryConfig`). |
 | *(internal)* `InMemoryEventBus`, `EventConsumerHostedService`, `InMemory{DeadLetterStore,InboxStore,EventScheduler}` | Registered by `AddInMemoryEventBus`. |
 
 ### Azure Service Bus transport (`…Messaging.AzureServiceBus`)
@@ -211,14 +211,14 @@ What each adapter's `ITransportCapabilities` reports, and why. Conditional suppo
 | `EventSagaContext` | `CorrelationId` · `Seed` · `Items` · `Set` · `Get<T>`. |
 | `EventSagaBuilder` | `Named(name)` → `.Step<T>()` / `.Step(Type)` → `.Build()`. |
 | `EventSagaDefinition` | `Name` · `StepTypes` · `ToMermaid()`. |
-| `IEventSagaRunner.RunAsync(definition, context, ct)` → `EventSagaResult` | Compensates completed steps in reverse on failure. |
-| `IEventSagaTransport.SendAsync<TEvent>(destination, event, context, ct)` | Step-emitted event seam (`where TEvent : class, IEvent`). |
+| `IEventSagaService.RunAsync(definition, context, ct)` → `EventSagaResult` | Compensates completed steps in reverse on failure. |
+| `IEventSagaPublisherService.SendAsync<TEvent>(destination, event, context, ct)` | Guarded step-event publishing (`where TEvent : class, IEvent`). |
 
 ### Resilience (`…Messaging.Reliability` · `.Polly`)
 
 | Type | Notes |
 |---|---|
-| `IEventResiliencePipeline.ExecuteAsync(action, ct)` | Owns the retry loop. Every implementation MUST route a thrown exception through the registered `IEventFaultClassifier` **before spending an attempt** and honour the verdict — `Retry` loops on the configured schedule and throws once exhausted (the consumer then dead-letters), `DeadLetter` rethrows immediately, `Ignore` returns normally so the caller acknowledges. MUST also stop after a **single attempt** while `DelayedRetryOptions.Enabled`, so the wait happens between deliveries rather than in this loop with the message unsettled. Default = `IRetryPolicy`-backed. |
+| `IEventResiliencePipeline.ExecuteAsync(action, ct)` | Owns the retry loop. Every implementation MUST route a thrown exception through the registered `IEventFaultPolicy` **before spending an attempt** and honour the verdict — `Retry` loops on the configured schedule and throws once exhausted (the consumer then dead-letters), `DeadLetter` rethrows immediately, `Ignore` returns normally so the caller acknowledges. MUST also stop after a **single attempt** while `DelayedRetryOptions.Enabled`, so the wait happens between deliveries rather than in this loop with the message unsettled. Default = `IRetryPolicy`-backed. |
 | `PollyEventResilienceOptions` · `AddPollyEventResilience(…)` | Swap in a Polly pipeline (exp+jitter retry + optional circuit breaker + per-attempt timeout). Classification applies here identically. |
 
 ### Consume pipeline (`…Messaging.Transport`)
@@ -241,7 +241,7 @@ Bodies over a size threshold go to blob storage and a small pointer travels inst
 | `AddEventClaimCheck(Action<ClaimCheckOptions>?)` | Offloader + rehydrate filter + retention sweeper + the `ClaimCheckReference` type-token registration. Sets `Enabled` **before** applying the caller's configuration, so a bound config section that omits the key cannot switch the wire format over by accident. **Call it last** — see ordering below. |
 | `ClaimCheckOptions` | `Enabled` · `ThresholdBytes` (128 KiB — under the tightest common broker cap with room for headers) · `PathPrefix` (`messaging/claim-check`) · `Retention` (7d) · `SweepEnabled` (`true`) · `SweepInterval` (1h) · `MaxPayloadBytes` (64 MiB). |
 | `ClaimCheckHeaderConstants` | `Reference` (`wt-claim-check` — its **presence** is what marks a message as offloaded) · `Size` (`wt-claim-check-size`) · `BodyType` (`wt-claim-check-type`) · `TryReadReference(envelope, out path)`. |
-| `ClaimCheckReference` | `Path` · `SizeBytes` · `ContentType` · `BodyType`. Registered under the stable token `wt.claim-check-reference`, **not** the AQN fallback whose version segment moves on every SDK push and would strand a message across a version skew. Deliberately not an `IEvent` — a wire artefact, never publishable. |
+| `ClaimCheckReference` | `Path` · `SizeBytes` · `ContentType` · `BodyType`. Registered under the stable token `wt.claim-check-reference`; no assembly-qualified fallback can strand it across a version skew. Deliberately not an `IEvent` — a wire artefact, never publishable. |
 | `ClaimCheckPayloadException` | The body could not be read back: blob gone, over `MaxPayloadBytes`, truncated, undeserializable, or a reference refused by the guards. Terminal — a redelivery reads the same reference and fails identically. |
 
 - **Routing is preserved.** The wire bytes and `wt-event-type` become the reference's (`RawBody` + `RawBodyType`), while `Body`/`BodyType` stay the real contract — so `ResolveRoutingKey` still routes by it, metrics and observers still describe what was published, and the message lands where its consumers are bound.
@@ -267,9 +267,9 @@ Meter `WoW.Two.Sdk.Messaging` — auto-collected by `AddOpenTelemetryMetrics` vi
 
 | Type | Notes |
 |---|---|
-| `ConsumeOutcome` | `Success` · `Faulted` (dead-lettered) · `Duplicate` (inbox skipped it) · `NoHandler` (settled without dispatch) · `Ignored` (an `IEventFaultClassifier` `Ignore` verdict swallowed the fault, so the message was acknowledged with no attempt completing). |
-| `IMessagingMetrics` | `RecordPublished` · `RecordConsumed` · `RecordConsumeDuration` · `RecordDeadLettered` · `RecordRetried` · `TrackInFlight(Func<int>) → IDisposable`. Implementations MUST NOT throw (the call sites are unguarded) and MUST NOT tag with message id, correlation id or partition key — each is unbounded cardinality. |
-| `NoOpMessagingMetrics.Instance` | Register before the transport to switch metrics off; the default registration is `TryAdd`-based and stands down. |
+| `ConsumeOutcome` | `Success` · `Faulted` (dead-lettered) · `Duplicate` (inbox skipped it) · `NoHandler` (settled without dispatch) · `Ignored` (an `IEventFaultPolicy` `Ignore` verdict swallowed the fault, so the message was acknowledged with no attempt completing). |
+| `IMessagingMetricsService` | `RecordPublished` · `RecordConsumed` · `RecordConsumeDuration` · `RecordDeadLettered` · `RecordRetried` · `TrackInFlight(Func<int>) → IDisposable`. Implementations MUST NOT throw (the call sites are unguarded) and MUST NOT tag with message id, correlation id or partition key — each is unbounded cardinality. |
+| `NoOpMessagingMetricsService.Instance` | Register before the transport to switch metrics off; the default registration is `TryAdd`-based and stands down. |
 
 Tags: `messaging.destination.name` · `messaging.message.type` · `messaging.consume.outcome` · `error.type`.
 
@@ -282,21 +282,21 @@ Tags: `messaging.destination.name` · `messaging.message.type` · `messaging.con
 | `AddInMemoryReliability()` | In-mem `IRetryPolicy`/`IEventResiliencePipeline`/`IInboxProcessor`/`IDeadLetterRepository`/`IEventScheduler`. |
 | `AddEventResilienceDefaults()` | Transport-neutral resilience floor, reused by every broker adapter. |
 | `AddEventHandlersFromAssemblies(params Assembly[])` | Scan + register handlers and `IEvent` contracts (incremental; callable repeatedly). |
-| `AddEventSaga(EventSagaDefinition)` | Runner + in-proc transport + definition + step types. |
+| `AddEventSaga(EventSagaDefinition)` | Runner + event publisher service + definition + step types. |
 | `AddMessagingConcurrency(Action<ConcurrencyOptions>)` | Consume-side concurrency. Without it the pump runs at `MaxConcurrentMessages = 1`, dispatching inline. |
 | `AddMessageTopology(Action<TopologyOptions>?)` | Endpoint/binding derivation. Also `AddEndpointNameFormatter<T>()` · `AddTopologyProvider<T>()`. |
-| `AddEventFaultClassification(Action<EventFaultClassificationOptions>)` | Which exceptions skip the retry budget. Call order relative to the transport registration does not matter. Also `AddEventFaultClassifier<T>()`. |
+| `AddEventFaultClassification(Action<EventFaultClassificationOptions>)` | Which exceptions skip the retry budget. Call order relative to the transport registration does not matter. Also `AddEventFaultPolicy<T>()`. |
 | `AddDelayedEventRetry(Action<DelayedRetryOptions>?)` | Turn on re-enqueue-with-delay (sets `Enabled` before applying the caller's configuration). |
 | `AddMessageObserver<TObserver>()` | One instance under every observer interface it implements. |
 | `AddConsumeFilter<TFilter>()` | Ordered consume-pipeline filter. |
 | `AddEventClaimCheck(Action<ClaimCheckOptions>?)` | Offload oversized bodies to `IBlobRepository`, send a pointer. Order vs the transport does not matter; order vs the other filter registrations does — **call it last**. |
 | `AddMessageHeaderPropagation(IMessageHeaderPropagationPolicy)` | e.g. `MessageHeaderPropagationPolicy.Default.Allow("tenant-id")`. |
-| `AddMessageSerializer<T>()` · `AddMessageTypeResolver<T>()` · `MapMessageType<TEvent>(token)` | Serialization seams. |
+| `AddMessageSerializer<T>()` · `AddMessageTypeMapper<T>()` · `MapMessageType<TEvent>(token)` | Serialization seams. |
 | `AddMessagingMetrics()` | `TryAdd`-based; every transport path already calls it. |
 
 ### Observability
 
-`WoW.Two.Messaging` `ActivitySource` — PRODUCER span on publish/send (injects `traceparent` into `EventEnvelope.Headers`), CONSUMER span on process (extracts it, parenting the consumer span to the producer). Auto-collected by `AddOpenTelemetryTracing` via the `WoW.Two.*` wildcard source. Metrics: see above.
+`WoW.Two.Messaging` `ActivitySource` — PRODUCER span on publish/send (injects `traceparent` into `EventEnvelopeModel.Headers`), CONSUMER span on process (extracts it, parenting the consumer span to the producer). Auto-collected by `AddOpenTelemetryTracing` via the `WoW.Two.*` wildcard source. Metrics: see above.
 
 ## Quick start — the user's chain (X → Y → back to X)
 

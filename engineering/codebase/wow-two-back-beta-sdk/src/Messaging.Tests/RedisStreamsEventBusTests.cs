@@ -7,6 +7,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
@@ -48,7 +49,7 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
         using var host = await StartHostAsync(options => Configure(options, stream, group));
         var harness = MessagingTestHarness.Attach(host.Services, BrokerTimings);
 
-        await harness.Bus.PublishAsync(new PingEvent("over-redis"));
+        await harness.Bus.PublishAsync(new PingEvent { Value = "over-redis" });
 
         var consumed = await harness.Consumed.WaitForAsync<PingEvent>(timeout: Budget);
         consumed[0].BodyAs<PingEvent>().Value.Should().Be("over-redis");
@@ -88,8 +89,8 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
         var harnessA = MessagingTestHarness.Attach(hostA.Services, BrokerTimings);
         var harnessB = MessagingTestHarness.Attach(hostB.Services, BrokerTimings);
 
-        await harnessA.Bus.PublishAsync(new HarnessEvent("one"));
-        await harnessA.Bus.PublishAsync(new HarnessEvent("two"));
+        await harnessA.Bus.PublishAsync(new HarnessEvent { Tag = "one" });
+        await harnessA.Bus.PublishAsync(new HarnessEvent { Tag = "two" });
 
         // Both entered a handler → the group handed each instance work, so consumption is genuinely shared.
         await gateA.Started.WaitAsync(Budget);
@@ -128,7 +129,7 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
         var database = multiplexer.GetDatabase();
         await EnsureGroupFromBeginningAsync(database, stream, group);
 
-        await PublishWithoutConsumingAsync(stream, group, new PingEvent("stranded"));
+        await PublishWithoutConsumingAsync(stream, group, new PingEvent { Value = "stranded" });
         await StrandAsGhostAsync(database, stream, group);
 
         using var host = await StartHostAsync(options => ConfigureFastClaim(options, stream, group, $"live-{suffix}"));
@@ -153,7 +154,7 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
         var database = multiplexer.GetDatabase();
         await EnsureGroupFromBeginningAsync(database, stream, group);
 
-        await PublishWithoutConsumingAsync(stream, group, new PingEvent("orphan"));
+        await PublishWithoutConsumingAsync(stream, group, new PingEvent { Value = "orphan" });
         await StrandAsGhostAsync(database, stream, group);
 
         // Stranded: the entry is in the ghost's pending list, and XREADGROUP ">" will never hand it to anyone again.
@@ -188,10 +189,10 @@ public sealed class RedisStreamsEventBusTests : IAsyncLifetime
 
         using var host = await StartHostAsync(
             options => Configure(options, stream, group),
-            retry: reliability => reliability.Retry = new RetryConfig(MaxAttempts: 2, Backoff: BackoffKind.None));
+            retry: reliability => reliability.Retry = new RetryConfig { MaxAttempts = 2, Backoff = BackoffKind.None });
         var harness = MessagingTestHarness.Attach(host.Services, BrokerTimings);
 
-        await harness.Bus.PublishAsync(new BoomEvent("bad"));
+        await harness.Bus.PublishAsync(new BoomEvent { Value = "bad" });
 
         // DeadLettered is recorded after settlement, so the XADD has already landed when this returns.
         await harness.DeadLettered.WaitForAsync<BoomEvent>(timeout: Budget);

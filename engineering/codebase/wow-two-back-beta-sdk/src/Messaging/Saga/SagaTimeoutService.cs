@@ -1,18 +1,20 @@
 using Microsoft.Extensions.Logging;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
 /// <summary>
-/// Default timeout scheduler. A timeout is an ordinary event: it is <b>published by type</b>, never sent to an ad-hoc
+/// Default timeout scheduler. A timeout is an ordinary event: it is published by type, never sent to an ad-hoc
 /// destination, so it lands on the routing key the saga's own handler already binds — the one addressing shape that is
 /// guaranteed routable under the B4 topology.
 /// </summary>
 /// <remarks>
 ///   - delivery prefers <see cref="ITransportCapabilities.NativeDelay"/> or <see cref="ITransportCapabilities.NativeScheduling"/>, then a registered <see cref="IDelayedDeliveryService"/>, then an in-process timer
 ///   - the in-process timer loses pending timeouts on restart
-///   - the correlation id doubles as <see cref="EventEnvelope.PartitionKey"/>, so a timeout cannot race the transition that scheduled it
+///   - the correlation id doubles as <see cref="EventEnvelopeModel.PartitionKey"/>, so a timeout cannot race the transition that scheduled it
 /// </remarks>
 internal sealed partial class SagaTimeoutService : ISagaTimeoutService
 {
@@ -80,7 +82,7 @@ internal sealed partial class SagaTimeoutService : ISagaTimeoutService
             [SagaHeaderConstants.TimeoutToken] = request.Token,
         };
 
-    private static EventEnvelope BuildEnvelope(SagaTimeoutRequest request, DateTimeOffset due, IReadOnlyDictionary<string, string> headers)
+    private static EventEnvelopeModel BuildEnvelope(SagaTimeoutRequest request, DateTimeOffset due, IReadOnlyDictionary<string, string> headers)
         => new()
         {
             MessageId = Guid.NewGuid().ToString("N"),

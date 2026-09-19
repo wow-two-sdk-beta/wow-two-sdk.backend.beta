@@ -8,7 +8,7 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
-/// <summary>Consumes a request and deliberately never replies.</summary>
+/// <summary>Handles requests without replying.</summary>
 public sealed class SilentRequestedHandler : IEventHandler<SilentRequested>
 {
     public ValueTask HandleAsync(EventContext<SilentRequested> context, CancellationToken cancellationToken) => ValueTask.CompletedTask;

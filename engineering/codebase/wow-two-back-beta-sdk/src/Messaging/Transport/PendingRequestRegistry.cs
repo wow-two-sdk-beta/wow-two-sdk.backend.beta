@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
@@ -34,7 +35,7 @@ internal sealed class PendingRequestRegistry
     /// </summary>
     /// <param name="envelope">The received envelope.</param>
     /// <returns>True when the message was consumed as a reply and must not reach a handler.</returns>
-    public bool TryComplete(EventEnvelope envelope)
+    public bool TryComplete(EventEnvelopeModel envelope)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 

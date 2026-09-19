@@ -7,7 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 /// <remarks>The scheme is chosen at registration, so a second one ships beside this rather than replacing it.</remarks>
 public sealed class WebhookSignatureHasher : IWebhookSignatureHasher
 {
-    /// <summary>The signature scheme prefix (<c>sha256</c>).</summary>
+    /// <summary>Holds the signature scheme prefix (<c>sha256</c>).</summary>
     public const string Sha256Scheme = "sha256";
 
     /// <inheritdoc />

@@ -19,8 +19,8 @@ public sealed class SagaTestHarnessTests
         await using var harness = await SagaTestHarness.StartAsync<OrderStateMachine, OrderSagaState>(
             configureServices: static services => services.AddScannedHandlerDependencies());
 
-        await harness.Bus.PublishAsync(new OrderPlaced("order-a", 100m));
-        await harness.Bus.PublishAsync(new OrderPlaced("order-b", 55m));
+        await harness.Bus.PublishAsync(new OrderPlaced { OrderId = "order-a", Total = 100m });
+        await harness.Bus.PublishAsync(new OrderPlaced { OrderId = "order-b", Total = 55m });
 
         // The direct condition, not a proxy for it: each key reached its own state, so each key has its own instance.
         await harness.WaitForStateAsync("order-a", OrderStateMachine.AwaitingPayment);
@@ -29,7 +29,7 @@ public sealed class SagaTestHarnessTests
 
         // Same key as the first OrderPlaced: it has to find that instance, and the total it publishes is the proof —
         // a mis-correlation would carry order-b's 55 instead.
-        await harness.Bus.PublishAsync(new PaymentReceived("order-a", 5m));
+        await harness.Bus.PublishAsync(new PaymentReceived { OrderId = "order-a", Amount = 5m });
         var finalized = await harness.WaitForFinalizedAsync("order-a");
 
         finalized.FromState.Should().Be(OrderStateMachine.AwaitingPayment); // awaiting-payment --PaymentReceived--> final
@@ -37,7 +37,7 @@ public sealed class SagaTestHarnessTests
         finalized.Removed.Should().BeTrue(); // RemoveOnFinalize is on by default
 
         harness.Published.Bodies<OrderConfirmed>().Should().ContainSingle()
-            .Which.Should().Be(new OrderConfirmed("order-a", 105m));
+            .Which.Should().Be(new OrderConfirmed { OrderId = "order-a", Total = 105m });
 
         harness.CountInstances().Should().Be(1); // order-a removed; order-b untouched
         (await harness.GetInstanceAsync("order-a")).Should().BeNull();
@@ -60,10 +60,10 @@ public sealed class SagaTestHarnessTests
             configureSaga: options => options.RemoveOnFinalize = false,
             repository: provider => new ConflictOnceSagaRepository(provider.GetRequiredService<TimeProvider>()));
 
-        await harness.Bus.PublishAsync(new OrderPlaced("order-c", 100m));
+        await harness.Bus.PublishAsync(new OrderPlaced { OrderId = "order-c", Total = 100m });
         await harness.WaitForStateAsync("order-c", OrderStateMachine.AwaitingPayment);
 
-        await harness.Bus.PublishAsync(new PaymentReceived("order-c", 5m));
+        await harness.Bus.PublishAsync(new PaymentReceived { OrderId = "order-c", Amount = 5m });
         var replayed = await harness.WaitForReplayAsync("order-c");
 
         harness.ConcurrencyConflicts("order-c").Should().Be(1); // the store rejected the stale write, as its contract requires
@@ -88,7 +88,7 @@ public sealed class SagaTestHarnessTests
         await using var harness = await SagaTestHarness.StartAsync<OrderStateMachine, OrderSagaState>(
             configureServices: static services => services.AddScannedHandlerDependencies());
 
-        await harness.Bus.PublishAsync(new OrderPlaced("order-d", 100m));
+        await harness.Bus.PublishAsync(new OrderPlaced { OrderId = "order-d", Total = 100m });
 
         var scheduled = await harness.WaitForTimeoutAsync();
         scheduled.Name.Should().Be(nameof(PaymentOverdue));
@@ -114,7 +114,7 @@ public sealed class SagaTestHarnessTests
 
         // No Initially clause for PaymentReceived, so nothing is created — and without the harness the only assertion
         // available is a negative one. The transition log turns the non-event into a positive fact.
-        await harness.Bus.PublishAsync(new PaymentReceived("order-ghost", 5m));
+        await harness.Bus.PublishAsync(new PaymentReceived { OrderId = "order-ghost", Amount = 5m });
 
         // On the transition, not on the delivery: a saga that writes nothing is only recorded once the message is done.
         await harness.Transitions.WaitForAsync(transition => transition.Is<PaymentReceived>(), what: "the ignored payment");
@@ -137,9 +137,9 @@ public sealed class SagaTestHarnessTests
     {
         await using var harness = await SagaTestHarness.StartAsync<StrictOrderStateMachine, StrictOrderSagaState>(
             configureServices: static services => services.AddScannedHandlerDependencies(),
-            configureBus: options => options.Retry = new RetryConfig(MaxAttempts: 2, Backoff: BackoffKind.None));
+            configureBus: options => options.Retry = new RetryConfig { MaxAttempts = 2, Backoff = BackoffKind.None });
 
-        await harness.Bus.PublishAsync(new PaymentReceived("order-ghost", 5m));
+        await harness.Bus.PublishAsync(new PaymentReceived { OrderId = "order-ghost", Amount = 5m });
         await harness.DeadLettered.WaitForAsync<PaymentReceived>();
 
         // Same event, same missing instance, opposite disposition to the Ignore case above.
@@ -159,10 +159,10 @@ public sealed class SagaTestHarnessTests
             configureServices: static services => services.AddScannedHandlerDependencies(),
             configureSaga: options => options.RemoveOnFinalize = false);
 
-        await harness.Bus.PublishAsync(new OrderPlaced("order-r", 40m));
+        await harness.Bus.PublishAsync(new OrderPlaced { OrderId = "order-r", Total = 40m });
         await harness.WaitForStateAsync("order-r", OrderStateMachine.AwaitingPayment);
 
-        await harness.Bus.PublishAsync(new PaymentReceived("order-r", 10m));
+        await harness.Bus.PublishAsync(new PaymentReceived { OrderId = "order-r", Amount = 10m });
         var finalized = await harness.WaitForFinalizedAsync("order-r");
 
         finalized.Removed.Should().BeFalse(); // retained for inspection, not deleted
@@ -186,11 +186,11 @@ public sealed class SagaTestHarnessTests
             configureServices: static services => services.AddScannedHandlerDependencies(),
             configureSaga: options => options.RemoveOnFinalize = false);
 
-        await harness.Bus.PublishAsync(new OrderPlaced("ship-1", 20m));
+        await harness.Bus.PublishAsync(new OrderPlaced { OrderId = "ship-1", Total = 20m });
         var scheduled = await harness.WaitForTimeoutAsync(correlationId: "ship-1");
 
         // Unschedule forgets the token; the message itself cannot be recalled from a transport that accepted it.
-        await harness.Bus.PublishAsync(new PaymentReceived("ship-1", 20m));
+        await harness.Bus.PublishAsync(new PaymentReceived { OrderId = "ship-1", Amount = 20m });
         var paid = await harness.WaitForStateAsync("ship-1", ShipmentStateMachine.Paid);
         paid.Instance!.TimeoutTokens.Should().NotContainKey(nameof(PaymentOverdue));
 

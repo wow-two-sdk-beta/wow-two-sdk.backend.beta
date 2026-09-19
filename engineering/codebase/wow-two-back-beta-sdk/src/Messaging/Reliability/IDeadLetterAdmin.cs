@@ -9,7 +9,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
 /// <summary>
-/// Operator surface over a dead-letter store: browse, peek, redrive (singly and in bulk), quarantine, release, purge.
+/// Defines operator surface over a dead-letter store: browse, peek, redrive (singly and in bulk), quarantine, release, purge.
 /// A DLQ is otherwise write-only — this is what turns it into something a human can triage.
 /// </summary>
 /// <remarks>

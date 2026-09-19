@@ -10,13 +10,14 @@ using NATS.Client.JetStream.Models;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Nats;
 
 /// <summary>Shared JetStream envelope wire-format helpers (serialize body + headers; reconstruct on receive).</summary>
 internal static class NatsWireFormatMapper
 {
-    public static NatsHeaders BuildHeaders(EventEnvelope envelope, string typeToken, string contentType)
+    public static NatsHeaders BuildHeaders(EventEnvelopeModel envelope, string typeToken, string contentType)
     {
         // Caller headers first, minus the adapter-owned wt-* namespace — a forwarded key would misroute the new body.
         var headers = new NatsHeaders();

@@ -1,7 +1,9 @@
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization.Serializers;
+
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 
 /// <summary>
-/// Content-type → <see cref="IMessageSerializer"/> map consulted on the receive path, so a message is decoded by the
+/// Binds content types to <see cref="IMessageSerializer"/> implementations on the receive path, so a message is decoded by the
 /// serializer that produced it rather than by whichever one this service happens to send with.
 /// </summary>
 /// <remarks>
@@ -45,14 +47,14 @@ public sealed class MessageSerializerRegistry
     public IMessageSerializer Default { get; }
 
     /// <summary>
-    /// The serializer for <paramref name="contentType"/>, or <see cref="Default"/> when it is absent or names a format
-    /// nothing registered.
+    /// Gets the serializer for <paramref name="contentType"/>, or <see cref="Default"/> when it is absent.
     /// </summary>
     /// <remarks>
-    ///   - an unknown content type usually means an older producer that stamped none
+    ///   - an absent content type means an older producer that stamped none
     ///   - a body <see cref="Default"/> cannot decode dead-letters through the adapter's unparseable path
     /// </remarks>
     /// <param name="contentType">The content type read off the wire; null or empty when the producer stamped none.</param>
+    /// <exception cref="InvalidOperationException">No serializer is bound to the declared content type.</exception>
     public IMessageSerializer Resolve(string? contentType)
     {
         if (string.IsNullOrWhiteSpace(contentType))
@@ -62,7 +64,13 @@ public sealed class MessageSerializerRegistry
         if (_byMediaType.TryGetValue(contentType, out var direct))
             return direct;
 
-        return MediaType(contentType) is { Length: > 0 } key && _byMediaType.TryGetValue(key, out var normalized) ? normalized : Default;
+        var key = MediaType(contentType);
+        if (key is { Length: > 0 } && _byMediaType.TryGetValue(key, out var normalized))
+            return normalized;
+
+        throw new InvalidOperationException(
+            $"No message serializer is registered for content type '{contentType}'. "
+            + "Register a matching serializer with AddReceiveOnlyMessageSerializer<TSerializer>().");
     }
 
     /// <summary>The bare media type — parameters (<c>; charset=utf-8</c>) and surrounding space removed; null when nothing is left.</summary>

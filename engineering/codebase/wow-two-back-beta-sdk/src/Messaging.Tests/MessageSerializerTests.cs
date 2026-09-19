@@ -7,28 +7,36 @@ using Microsoft.Extensions.DependencyInjection;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization.Serializers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
 /// <summary>
 /// The three shipped <see cref="IMessageSerializer"/> implementations: round trip, the exact content type each stamps,
 /// the CloudEvents attribute contract and its non-.NET interop path, MessagePack's contractless/no-typeless posture,
-/// and the empty-payload behaviour — all three return null, per the interface contract.
+/// and the empty-payload behaviour — all three return a serialization failure, per the interface contract.
 /// </summary>
 public sealed class MessageSerializerTests
 {
     private static readonly DateTimeOffset Occurred = new(2026, 7, 19, 14, 30, 0, TimeSpan.FromHours(5));
 
-    private static SerializerPayload Sample => new(
-        Name: "crate-7",
-        Count: 3,
-        Grade: ShipmentGrade.Express,
-        OccurredAt: Occurred,
-        Tags: ["fragile", "heavy"],
-        Optional: null);
+    private static SerializerPayload Sample => new()
+    {
+        Name = "crate-7",
+        Count = 3,
+        Grade = ShipmentGrade.Express,
+        OccurredAt = Occurred,
+        Tags = ["fragile", "heavy"],
+        Optional = null,
+    };
 
     private static CloudEventsMessageSerializer CloudEvents(CloudEventsSerializerOptions? options = null)
-        => new(new MessageTypeMapper(new MessageTypeRegistry()), options);
+    {
+        var registry = new MessageTypeRegistry();
+        registry.Register(typeof(SerializerPayload));
+        registry.Register(typeof(CheckoutCompleted));
+        return new CloudEventsMessageSerializer(new MessageTypeMapper(registry), options);
+    }
 
     [Theory]
     [InlineData("stj")]
@@ -70,10 +78,9 @@ public sealed class MessageSerializerTests
         var bytes = new SystemTextJsonMessageSerializer().Serialize(Sample, typeof(SerializerPayload));
 
         // Pinned literally, because "the new serializers are additive" is the claim the whole batch rests on: adding
-        // them must not have moved the default wire format by a single byte. camelCase names · numeric enum (the Web
-        // defaults add no string-enum converter) · offset preserved · null property omitted (WhenWritingNull).
+        // them must not move casing, offsets or null omission. The shared strict enum contract writes its camelCase name.
         Encoding.UTF8.GetString(bytes).Should().Be(
-            """{"name":"crate-7","count":3,"grade":1,"occurredAt":"2026-07-19T14:30:00+05:00","tags":["fragile","heavy"]}""");
+            """{"name":"crate-7","count":3,"grade":"express","occurredAt":"2026-07-19T14:30:00+05:00","tags":["fragile","heavy"]}""");
     }
 
     [Fact]
@@ -104,10 +111,8 @@ public sealed class MessageSerializerTests
         root.GetProperty("source").GetString().Should().Be("urn:acme:checkout");
         root.GetProperty("datacontenttype").GetString().Should().Be("application/json");
 
-        // An unregistered contract falls back to the assembly-qualified name, so `type` leaks assembly + version and
-        // is worthless as an interop token. Not a defect — it is the documented resolver fallback — but it is why the
-        // next test exists: MapMessageType is what makes this attribute fit for a non-.NET subscriber.
-        root.GetProperty("type").GetString().Should().Be(typeof(SerializerPayload).AssemblyQualifiedName);
+        // The default token is stable across assembly versions; MapMessageType below supplies an application-owned token.
+        root.GetProperty("type").GetString().Should().Be(typeof(SerializerPayload).FullName);
     }
 
     [Fact]
@@ -121,9 +126,30 @@ public sealed class MessageSerializerTests
             .GetRequiredService<MessageTypeRegistry>();
         var serializer = new CloudEventsMessageSerializer(new MessageTypeMapper(registry));
 
-        var bytes = serializer.Serialize(new CheckoutCompleted("ord-1", 12.5m), typeof(CheckoutCompleted));
+        var bytes = serializer.Serialize(new CheckoutCompleted { OrderId = "ord-1", Total = 12.5m }, typeof(CheckoutCompleted));
 
         JsonDocument.Parse(bytes).RootElement.GetProperty("type").GetString().Should().Be("com.acme.checkout.completed");
+    }
+
+    [Fact]
+    public void Serializer_registry_uses_default_only_when_content_type_is_absent()
+    {
+        var serializer = new SystemTextJsonMessageSerializer();
+        var registry = new MessageSerializerRegistry(serializer);
+
+        registry.Resolve(null).Should().BeSameAs(serializer);
+        registry.Resolve(" ").Should().BeSameAs(serializer);
+    }
+
+    [Fact]
+    public void Serializer_registry_rejects_an_explicit_unregistered_content_type()
+    {
+        var registry = new MessageSerializerRegistry(new SystemTextJsonMessageSerializer());
+
+        var act = () => registry.Resolve("application/unknown; charset=utf-8");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*AddReceiveOnlyMessageSerializer*");
     }
 
     [Fact]
@@ -136,7 +162,7 @@ public sealed class MessageSerializerTests
             IdFactory = (body, _) => "order-" + ((CheckoutCompleted)body).OrderId,
         });
 
-        var bytes = serializer.Serialize(new CheckoutCompleted("ord-42", 9m), typeof(CheckoutCompleted));
+        var bytes = serializer.Serialize(new CheckoutCompleted { OrderId = "ord-42", Total = 9m }, typeof(CheckoutCompleted));
 
         JsonDocument.Parse(bytes).RootElement.GetProperty("id").GetString().Should().Be("order-ord-42");
     }
@@ -159,7 +185,7 @@ public sealed class MessageSerializerTests
     /// </summary>
     private const string HandWrittenForeignEvent = """
         {
-          "data_base64": "eyJuYW1lIjoiZnJvbS1nbyIsImNvdW50Ijo5LCJncmFkZSI6Miwib2NjdXJyZWRBdCI6IjIwMjYtMDctMTlUMTQ6MzA6MDArMDU6MDAiLCJ0YWdzIjpbImltcG9ydGVkIl19",
+          "data_base64": "eyJuYW1lIjoiZnJvbS1nbyIsImNvdW50Ijo5LCJncmFkZSI6Im92ZXJuaWdodCIsIm9jY3VycmVkQXQiOiIyMDI2LTA3LTE5VDE0OjMwOjAwKzA1OjAwIiwidGFncyI6WyJpbXBvcnRlZCJdfQ==",
           "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
           "type": "com.acme.orders.placed",
           "specversion": "1.0",
@@ -221,6 +247,56 @@ public sealed class MessageSerializerTests
         // because TryReconstruct runs outside the adapters' try/catch.
         parsed.IsFailure(out var shape, out _).Should().BeTrue();
         shape!.Type.Should().Be(AppErrorType.SerializationFailed);
+    }
+
+    [Theory]
+    [InlineData("{")]
+    [InlineData("""{"data":{"name":"ok"}""")]
+    [InlineData("""{"data":{"name":"ok"},"extension":]}""")]
+    [InlineData("""{"data":{"name":"ok"}} {}""")]
+    [InlineData("""{"data_base64":"e30=","extension":]}""")]
+    [InlineData("""{"data_base64":"e30="} trailing""")]
+    public void CloudEvents_rejects_malformed_complete_documents_even_after_a_valid_payload(string json)
+    {
+        var parsed = CloudEvents().Deserialize(Encoding.UTF8.GetBytes(json), typeof(Dictionary<string, string>));
+
+        parsed.IsFailure(out var error, out _).Should().BeTrue();
+        error!.Type.Should().Be(AppErrorType.SerializationFailed);
+    }
+
+    [Theory]
+    [InlineData("""{"data_base64":"not-base64!"}""")]
+    [InlineData("""{"data_base64":42}""")]
+    [InlineData("""{"data_base64":true}""")]
+    [InlineData("""{"data_base64":[]}""")]
+    [InlineData("""{"data_base64":{}}""")]
+    [InlineData("""{"data_base64":"ew=="}""")]
+    [InlineData("""{"data":{"count":"not-a-number"}}""")]
+    public void CloudEvents_returns_serialization_failure_for_undecodable_data(string json)
+    {
+        var parsed = CloudEvents().Deserialize(Encoding.UTF8.GetBytes(json), typeof(SerializerPayload));
+
+        parsed.IsFailure(out var error, out _).Should().BeTrue();
+        error!.Type.Should().Be(AppErrorType.SerializationFailed);
+    }
+
+    [Fact]
+    public void CloudEvents_decodes_data_without_requiring_context_attributes()
+    {
+        var bytes = Encoding.UTF8.GetBytes("""{"extension":{"nested":[1,2]},"data":{"name":"payload-only"}}""");
+
+        var body = CloudEvents().Deserialize(bytes, typeof(Dictionary<string, string>))
+            .ValueOrThrow().Should().BeOfType<Dictionary<string, string>>().Subject;
+
+        body["name"].Should().Be("payload-only");
+    }
+
+    [Fact]
+    public void CloudEvents_keeps_null_body_type_as_a_programmer_error()
+    {
+        var deserialize = () => CloudEvents().Deserialize("{}"u8, null!);
+
+        deserialize.Should().Throw<ArgumentNullException>().WithParameterName("bodyType");
     }
 
     [Fact]

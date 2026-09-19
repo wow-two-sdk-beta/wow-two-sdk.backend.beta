@@ -8,6 +8,9 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Storage.Core;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization.Serializers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
@@ -17,8 +20,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 /// </summary>
 /// <remarks>
 ///   - runs on every publish from <see cref="TransportEventBus"/>, before the envelope reaches an adapter
-///   - substitutes <see cref="EventEnvelope.RawBody"/> and <see cref="EventEnvelope.RawBodyType"/> only
-///   - <see cref="EventEnvelope.BodyType"/> keeps <see cref="ITopologyService.ResolveRoutingKey"/> routing by the real contract
+///   - substitutes <see cref="EventEnvelopeModel.RawBody"/> and <see cref="EventEnvelopeModel.RawBodyType"/> only
+///   - <see cref="EventEnvelopeModel.BodyType"/> keeps <see cref="ITopologyService.ResolveRoutingKey"/> routing by the real contract
 /// </remarks>
 internal sealed partial class ClaimCheckOffloader(
     ClaimCheckPayloadRepository store,
@@ -39,7 +42,7 @@ internal sealed partial class ClaimCheckOffloader(
     /// </summary>
     /// <param name="envelope">The envelope about to be sent.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public async ValueTask<EventEnvelope> PrepareAsync(EventEnvelope envelope, CancellationToken cancellationToken)
+    public async ValueTask<EventEnvelopeModel> PrepareAsync(EventEnvelopeModel envelope, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 

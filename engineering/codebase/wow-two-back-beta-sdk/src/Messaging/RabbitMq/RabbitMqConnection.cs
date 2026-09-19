@@ -15,7 +15,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq;
 
 /// <summary>Lazily-opened shared RabbitMQ connection (singleton), with automatic connection + topology recovery.</summary>
-internal sealed class RabbitMqConnection(IOptions<RabbitMqOptions> options) : IAsyncDisposable
+internal sealed class RabbitMqConnection(RabbitMqOptions options) : IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private IConnection? _connection;
@@ -34,12 +34,12 @@ internal sealed class RabbitMqConnection(IOptions<RabbitMqOptions> options) : IA
 
             var factory = new ConnectionFactory
             {
-                Uri = new Uri(options.Value.ConnectionString),
+                Uri = new Uri(options.ConnectionString),
 
                 // Topology recovery re-declares the topology and re-subscribes the consumer after a reconnect.
                 AutomaticRecoveryEnabled = true,
                 TopologyRecoveryEnabled = true,
-                NetworkRecoveryInterval = options.Value.NetworkRecoveryInterval,
+                NetworkRecoveryInterval = options.NetworkRecoveryInterval,
             };
 
             _connection = await factory.CreateConnectionAsync(cancellationToken);

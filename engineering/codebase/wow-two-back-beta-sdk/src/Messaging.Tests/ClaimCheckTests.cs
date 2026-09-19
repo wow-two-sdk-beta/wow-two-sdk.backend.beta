@@ -9,6 +9,8 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Storage.Core;
 using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization.Serializers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
@@ -17,7 +19,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 /// pointer is fetched back before the handler runs, and a pointer that cannot be honoured fails safely.
 /// </summary>
 /// <remarks>
-///   - runs on the in-memory transport, so wire assertions read <see cref="EventEnvelope.RawBody"/> and <see cref="EventEnvelope.WireBodyType"/>
+///   - runs on the in-memory transport, so wire assertions read <see cref="EventEnvelopeModel.RawBody"/> and <see cref="EventEnvelopeModel.WireBodyType"/>
 ///   - the body arrives intact, so only a different-but-equal instance proves the rehydrate fetch ran
 ///   - <see cref="ClaimCheckOptions.SweepEnabled"/> stays off — the sweeper would race every assertion about the store
 /// </remarks>
@@ -33,7 +35,7 @@ public sealed class ClaimCheckTests
         var store = new RecordingBlobRepository();
         await using var harness = await StartAsync(store, claimCheck: true);
 
-        await harness.Bus.PublishAsync(new HarnessEvent("small"));
+        await harness.Bus.PublishAsync(new HarnessEvent { Tag = "small" });
         var consumed = await harness.Consumed.WaitForAsync<HarnessEvent>(match: e => e.Tag == "small");
 
         // The whole point of a threshold: under it the feature is inert on the wire.
@@ -47,7 +49,7 @@ public sealed class ClaimCheckTests
         // RawBody IS set under the threshold: the offloader carries the bytes it measured so the adapter re-uses them.
         var serializer = harness.Services.GetRequiredService<IMessageSerializer>();
         published.RawBody.Should().NotBeNull();
-        published.ToWireBody(serializer).Should().BeEquivalentTo(serializer.Serialize(new HarnessEvent("small"), typeof(HarnessEvent)));
+        published.ToWireBody(serializer).Should().BeEquivalentTo(serializer.Serialize(new HarnessEvent { Tag = "small" }, typeof(HarnessEvent)));
 
         store.Calls.Should().BeEmpty();
         consumed[0].BodyAs<HarnessEvent>().Tag.Should().Be("small");
@@ -59,7 +61,7 @@ public sealed class ClaimCheckTests
         var store = new RecordingBlobRepository();
         await using var harness = await StartAsync(store, claimCheck: true);
 
-        await harness.Bus.PublishAsync(new HarnessEvent(LargePayload));
+        await harness.Bus.PublishAsync(new HarnessEvent { Tag = LargePayload });
         await harness.Consumed.WaitForAsync<HarnessEvent>();
 
         var published = harness.Published.Of<HarnessEvent>()[0].Envelope;
@@ -98,7 +100,7 @@ public sealed class ClaimCheckTests
         var store = new RecordingBlobRepository();
         await using var harness = await StartAsync(store, claimCheck: false);
 
-        var sent = new HarnessEvent(LargePayload);
+        var sent = new HarnessEvent { Tag = LargePayload };
         await harness.Bus.PublishAsync(sent);
         var consumed = await harness.Consumed.WaitForAsync<HarnessEvent>();
 
@@ -119,7 +121,7 @@ public sealed class ClaimCheckTests
         var store = new RecordingBlobRepository();
         await using var harness = await StartAsync(store, claimCheck: true);
 
-        var sent = new HarnessEvent(LargePayload);
+        var sent = new HarnessEvent { Tag = LargePayload };
         await harness.Bus.PublishAsync(sent);
         var consumed = await harness.Consumed.WaitForAsync<HarnessEvent>();
 
@@ -139,9 +141,9 @@ public sealed class ClaimCheckTests
     public async Task Dead_letters_a_missing_blob_without_spending_the_retry_budget()
     {
         var store = new RecordingBlobRepository { DropWrites = true }; // the write reports success and keeps nothing
-        await using var harness = await StartAsync(store, claimCheck: true, retry: new RetryConfig(MaxAttempts: 5, Backoff: BackoffKind.None));
+        await using var harness = await StartAsync(store, claimCheck: true, retry: new RetryConfig { MaxAttempts = 5, Backoff = BackoffKind.None });
 
-        await harness.Bus.PublishAsync(new HarnessEvent(LargePayload));
+        await harness.Bus.PublishAsync(new HarnessEvent { Tag = LargePayload });
         var deadLettered = await harness.DeadLettered.WaitForAsync<HarnessEvent>();
 
         deadLettered[0].Exception.Should().BeOfType<ClaimCheckPayloadException>();
@@ -152,7 +154,7 @@ public sealed class ClaimCheckTests
         harness.Consumed.Count<HarnessEvent>().Should().Be(0);
 
         // The control: on the same host and schedule, a fault raised INSIDE the core does spend the budget.
-        await harness.Bus.PublishAsync(new BoomEvent("control"));
+        await harness.Bus.PublishAsync(new BoomEvent { Value = "control" });
         await harness.DeadLettered.WaitForAsync<BoomEvent>();
         harness.Faulted.Count<BoomEvent>().Should().Be(5);
     }
@@ -167,7 +169,7 @@ public sealed class ClaimCheckTests
 
         // A small body, so the reference is purely the attacker's: this transport does not strip caller headers.
         await harness.Bus.PublishAsync(
-            new HarnessEvent("forged"),
+            new HarnessEvent { Tag = "forged" },
             new PublishOptions { Headers = new Dictionary<string, string>(StringComparer.Ordinal) { [ClaimCheckHeaderConstants.Reference] = forgedPath } });
 
         var deadLettered = await harness.DeadLettered.WaitForAsync<HarnessEvent>();
@@ -183,9 +185,9 @@ public sealed class ClaimCheckTests
     public async Task Keeps_the_blob_after_a_dead_letter_so_a_redrive_can_rehydrate_it()
     {
         var store = new RecordingBlobRepository();
-        await using var harness = await StartAsync(store, claimCheck: true, retry: new RetryConfig(MaxAttempts: 5, Backoff: BackoffKind.None));
+        await using var harness = await StartAsync(store, claimCheck: true, retry: new RetryConfig { MaxAttempts = 5, Backoff = BackoffKind.None });
 
-        await harness.Bus.PublishAsync(new BoomEvent(LargePayload)); // offloaded, rehydrated, then the handler throws
+        await harness.Bus.PublishAsync(new BoomEvent { Value = LargePayload }); // offloaded, rehydrated, then the handler throws
         var deadLettered = await harness.DeadLettered.WaitForAsync<BoomEvent>();
 
         // Consuming never deletes: a fan-out sibling, the next retry and a later redrive read this same blob.

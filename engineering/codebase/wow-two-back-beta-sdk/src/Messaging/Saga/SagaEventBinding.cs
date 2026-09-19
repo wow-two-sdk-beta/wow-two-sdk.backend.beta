@@ -1,3 +1,5 @@
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
 /// <summary>Type-erased binding for one observed event type — how to correlate it, and what it does per state.</summary>
@@ -5,7 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 internal abstract class SagaEventBinding<TState>
     where TState : class, ISagaState
 {
-    public Func<object, EventEnvelope, string?>? Correlate { get; set; }
+    public Func<object, EventEnvelopeModel, string?>? Correlate { get; set; }
 
     public SagaMissingInstance MissingInstance { get; set; } = SagaMissingInstance.Ignore;
 

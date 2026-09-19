@@ -9,7 +9,10 @@ using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams.Transports;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams;
 
@@ -37,9 +40,21 @@ public static class RedisStreamsServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.AddOptions<RedisStreamsOptions>().Configure(configure);
-
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<RedisStreamsOptions>>().Value);
+        services.AddValidatedOptions<RedisStreamsOptions>(
+            configure,
+            builder => builder
+                .Validate(options => !string.IsNullOrWhiteSpace(options.Configuration), "RedisStreamsOptions.Configuration must not be empty.")
+                .Validate(options => options.Database >= -1, "RedisStreamsOptions.Database must be -1 or greater.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.Stream), "RedisStreamsOptions.Stream must not be empty.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.ConsumerGroup), "RedisStreamsOptions.ConsumerGroup must not be empty.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.DeadLetterStream), "RedisStreamsOptions.DeadLetterStream must not be empty.")
+                .Validate(options => options.MaxLength is null or > 0, "RedisStreamsOptions.MaxLength must be positive when supplied.")
+                .Validate(options => options.DeadLetterMaxLength is null or > 0, "RedisStreamsOptions.DeadLetterMaxLength must be positive when supplied.")
+                .Validate(options => options.BatchSize > 0, "RedisStreamsOptions.BatchSize must be positive.")
+                .Validate(options => options.PollInterval > TimeSpan.Zero, "RedisStreamsOptions.PollInterval must be positive.")
+                .Validate(options => options.ClaimInterval > TimeSpan.Zero, "RedisStreamsOptions.ClaimInterval must be positive.")
+                .Validate(options => options.MinIdleTimeBeforeClaim > TimeSpan.Zero, "RedisStreamsOptions.MinIdleTimeBeforeClaim must be positive.")
+                .Validate(options => options.MaxDeliveryAttempts > 0, "RedisStreamsOptions.MaxDeliveryAttempts must be positive."));
 
         var assemblies = handlerAssemblies is { Length: > 0 } ? handlerAssemblies : [Assembly.GetCallingAssembly()];
         services.AddEventHandlersFromAssemblies(assemblies);
@@ -49,10 +64,10 @@ public static class RedisStreamsServiceCollectionExtensions
         services.AddMessageTopology();
 
         // Back-fill the shared endpoint name from the adapter's stream; an explicit AddMessageTopology(...) still wins.
-        services.AddOptions<TopologyOptions>().PostConfigure<IOptions<RedisStreamsOptions>>((topology, redis) =>
+        services.AddOptions<TopologyOptions>().PostConfigure<RedisStreamsOptions>((topology, redis) =>
         {
-            topology.SharedEndpointName ??= redis.Value.Stream;
-            topology.SharedDeadLetterQueueName ??= redis.Value.DeadLetterStream;
+            topology.SharedEndpointName ??= redis.Stream;
+            topology.SharedDeadLetterQueueName ??= redis.DeadLetterStream;
         });
 
         services.TryAddSingleton<RedisStreamsConnection>();

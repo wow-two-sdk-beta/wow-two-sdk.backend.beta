@@ -6,7 +6,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
-/// <summary>Feeds every <see cref="SlowEvent"/> through the probe.</summary>
+/// <summary>Handles <see cref="SlowEvent"/> instances through the probe.</summary>
 public sealed class SlowHandler(ConcurrencyProbe probe) : IEventHandler<SlowEvent>
 {
     public async ValueTask HandleAsync(EventContext<SlowEvent> context, CancellationToken cancellationToken)

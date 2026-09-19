@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
@@ -20,7 +22,7 @@ public sealed class InMemoryEventBusTests
     {
         await using var harness = await StartAsync();
 
-        await harness.Bus.PublishAsync(new PingEvent("hello"));
+        await harness.Bus.PublishAsync(new PingEvent { Value = "hello" });
 
         await harness.Consumed.WaitForAsync<PingEvent>();
         harness.Consumed.Count<PingEvent>().Should().Be(1);
@@ -28,12 +30,40 @@ public sealed class InMemoryEventBusTests
     }
 
     [Fact]
+    public async Task Producer_and_consumer_spans_share_the_propagated_trace()
+    {
+        var messageId = Guid.NewGuid().ToString("N");
+        var stopped = new ConcurrentBag<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "WoW.Two.Messaging",
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = stopped.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+        await using var harness = await StartAsync();
+
+        using var request = new Activity("request").SetIdFormat(ActivityIdFormat.W3C).Start();
+        await harness.Bus.PublishAsync(
+            new PingEvent { Value = "trace" },
+            new PublishOptions { MessageId = messageId });
+        await harness.Consumed.WaitForAsync<PingEvent>();
+        await harness.WaitForIdleAsync();
+
+        var spans = stopped.Where(activity => activity.GetTagItem("messaging.message.id") as string == messageId).ToList();
+        var producer = spans.Single(activity => activity.Kind == ActivityKind.Producer);
+        var consumer = spans.Single(activity => activity.Kind == ActivityKind.Consumer);
+        consumer.TraceId.Should().Be(producer.TraceId);
+        consumer.ParentSpanId.Should().Be(producer.SpanId);
+    }
+
+    [Fact]
     public async Task Deduplicates_by_message_id()
     {
         await using var harness = await StartAsync();
 
-        await harness.Bus.PublishAsync(new PingEvent("a"), new PublishOptions { MessageId = "dup-1" });
-        await harness.Bus.PublishAsync(new PingEvent("b"), new PublishOptions { MessageId = "dup-1" });
+        await harness.Bus.PublishAsync(new PingEvent { Value = "a" }, new PublishOptions { MessageId = "dup-1" });
+        await harness.Bus.PublishAsync(new PingEvent { Value = "b" }, new PublishOptions { MessageId = "dup-1" });
 
         // Both deliveries have to be seen before the counts mean anything, and the second one produces no handler call
         // to await — so wait for the bus to fall silent instead of sleeping a guessed 300ms.
@@ -47,9 +77,9 @@ public sealed class InMemoryEventBusTests
     [Fact]
     public async Task Dead_letters_after_retries_exhausted()
     {
-        await using var harness = await StartAsync(o => o.Retry = new RetryConfig(MaxAttempts: 2, Backoff: BackoffKind.None));
+        await using var harness = await StartAsync(o => o.Retry = new RetryConfig { MaxAttempts = 2, Backoff = BackoffKind.None });
 
-        await harness.Bus.PublishAsync(new BoomEvent("x"), new PublishOptions { MessageId = "boom-1" });
+        await harness.Bus.PublishAsync(new BoomEvent { Value = "x" }, new PublishOptions { MessageId = "boom-1" });
 
         var deadLettered = await harness.DeadLettered.WaitForAsync<BoomEvent>();
         deadLettered[0].Exception.Should().BeOfType<InvalidOperationException>(); // terminal exception captured, not null

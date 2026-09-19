@@ -3,7 +3,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
-/// <summary>The type-resolver seam that replaces brittle assembly-qualified-name resolution: stable token round-trip, AQN fallback, null on unknown, and rename aliases.</summary>
+/// <summary>Tests stable token round trips, required registration, unknown inbound tokens and rename aliases.</summary>
 public sealed class MessageTypeResolverTests
 {
     [Fact]
@@ -20,14 +20,14 @@ public sealed class MessageTypeResolverTests
     }
 
     [Fact]
-    public void Falls_back_to_assembly_qualified_name_for_unregistered_type()
+    public void Unregistered_outgoing_type_fails_as_incomplete_wiring()
     {
         var resolver = new MessageTypeMapper(new MessageTypeRegistry());
 
-        var token = resolver.ToTypeToken(typeof(PingEvent));
+        var act = () => resolver.ToTypeToken(typeof(PingEvent));
 
-        token.Should().Be(typeof(PingEvent).AssemblyQualifiedName); // unregistered → AQN (back-compat, no regression)
-        resolver.ResolveType(token).Should().Be<PingEvent>();
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*MapMessageType*");
     }
 
     [Fact]

@@ -10,10 +10,12 @@ using StackExchange.Redis;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams;
 
-/// <summary>Options for the Redis Streams event-bus adapter.</summary>
+/// <summary>Holds options for the Redis Streams event-bus adapter.</summary>
 public sealed record RedisStreamsOptions
 {
     /// <summary>StackExchange.Redis configuration string. Default <c>localhost:6379</c>.</summary>
@@ -107,7 +109,7 @@ public sealed record RedisStreamsOptions
 
     /// <summary>
     /// Route each message to the stream <see cref="ITopologyService"/> resolves from it — the message type's stable
-    /// token for a publish, <see cref="EventEnvelope.Destination"/> for an explicit
+    /// token for a publish, <see cref="EventEnvelopeModel.Destination"/> for an explicit
     /// <see cref="IEventBus.SendAsync{TEvent}"/> — instead of adding everything to <see cref="Stream"/>. Routed streams
     /// are nested under <see cref="Stream"/> (<c>wt.events.order-placed</c>). Default false, which keeps an existing
     /// deployment on its single stream.

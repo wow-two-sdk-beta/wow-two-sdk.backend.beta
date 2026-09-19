@@ -8,12 +8,12 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
-/// <summary>Responds through the documented responder-side helper.</summary>
+/// <summary>Handles price requests through the responder-side helper.</summary>
 public sealed class PriceRequestedHandler : IEventHandler<PriceRequested>
 {
     public ValueTask HandleAsync(EventContext<PriceRequested> context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return context.RespondAsync(new PriceQuoted(context.Event.OrderId, 42m), cancellationToken);
+        return context.RespondAsync(new PriceQuoted { OrderId = context.Event.OrderId, Amount = 42m }, cancellationToken);
     }
 }

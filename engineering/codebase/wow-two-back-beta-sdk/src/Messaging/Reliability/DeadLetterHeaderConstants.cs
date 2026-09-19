@@ -5,11 +5,12 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
 /// <summary>
-/// Reserved wire headers that carry dead-letter administration state on the envelope itself, so it survives the round
+/// Holds reserved wire headers that carry dead-letter administration state on the envelope itself, so it survives the round
 /// trip through the broker and back into the store.
 /// </summary>
 /// <remarks>
@@ -18,15 +19,15 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 /// </remarks>
 public static class DeadLetterHeaderConstants
 {
-    /// <summary>Reserved. How many times this message has been redriven out of a dead-letter store.</summary>
+    /// <summary>Holds the reserved redrive-count header.</summary>
     public const string RedriveCount = MessageHeaderConstants.ReservedPrefix + "dl-redrive-count";
 
-    /// <summary>Reserved. Round-trip (<c>o</c>) timestamp of the most recent redrive.</summary>
+    /// <summary>Holds the reserved most-recent-redrive timestamp header.</summary>
     public const string RedrivenAt = MessageHeaderConstants.ReservedPrefix + "dl-redriven-at";
 
     /// <summary>Read the redrive marker off an envelope; 0 when absent or unparseable.</summary>
     /// <param name="envelope">The envelope to inspect.</param>
-    public static int ReadRedriveCount(EventEnvelope? envelope)
+    public static int ReadRedriveCount(EventEnvelopeModel? envelope)
     {
         if (envelope?.Headers is not { Count: > 0 } headers || !headers.TryGetValue(RedriveCount, out var raw))
             return 0;
@@ -39,7 +40,7 @@ public static class DeadLetterHeaderConstants
     /// <param name="envelope">The envelope being redriven.</param>
     /// <param name="redriveCount">The new redrive count.</param>
     /// <param name="redrivenAtUtc">When the redrive happened.</param>
-    public static EventEnvelope StampRedrive(EventEnvelope envelope, int redriveCount, DateTimeOffset redrivenAtUtc)
+    public static EventEnvelopeModel StampRedrive(EventEnvelopeModel envelope, int redriveCount, DateTimeOffset redrivenAtUtc)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 

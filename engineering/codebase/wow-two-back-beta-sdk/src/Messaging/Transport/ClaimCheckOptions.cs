@@ -12,7 +12,7 @@ using WoW.Two.Sdk.Backend.Beta.Storage.Core;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Move a body too large for the broker into blob storage and send a pointer instead, rehydrating it before the handler
+/// Holds settings that move a body too large for the broker into blob storage and send a pointer instead, rehydrating it before the handler
 /// sees it. Every broker caps message size (Azure Service Bus Standard and SQS at 256 KB, Kafka at 1 MB by default), and
 /// a body over the cap is rejected at publish with nothing the SDK can do about it.
 /// </summary>

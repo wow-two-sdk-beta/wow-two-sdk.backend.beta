@@ -22,10 +22,10 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.AzureServiceBus;
 /// </summary>
 internal static class AzureServiceBusEntityNameMapper
 {
-    /// <summary>Service Bus ceiling on a subscription or rule name.</summary>
+    /// <summary>Holds service Bus ceiling on a subscription or rule name.</summary>
     public const int MaxSubscriptionLength = 50;
 
-    /// <summary>Service Bus ceiling on a topic (or queue) name.</summary>
+    /// <summary>Holds service Bus ceiling on a topic (or queue) name.</summary>
     public const int MaxTopicLength = 260;
 
     /// <summary>Characters reserved for the hash suffix on a truncated name: a separator plus eight hex digits.</summary>

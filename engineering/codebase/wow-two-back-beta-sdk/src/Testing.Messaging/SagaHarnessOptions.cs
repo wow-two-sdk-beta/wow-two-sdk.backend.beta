@@ -9,7 +9,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
-/// <summary>Timing and clock defaults for a <see cref="SagaTestHarness{TState}"/>.</summary>
+/// <summary>Holds timing and clock defaults for a <see cref="SagaTestHarness{TState}"/>.</summary>
 public sealed record SagaHarnessOptions
 {
     /// <summary>Where the harness's <see cref="FakeTimeProvider"/> starts. Fixed by default, so <see cref="ISagaState.FinalizedAtUtc"/> and a timeout's due time are exact values a test can assert on.</summary>

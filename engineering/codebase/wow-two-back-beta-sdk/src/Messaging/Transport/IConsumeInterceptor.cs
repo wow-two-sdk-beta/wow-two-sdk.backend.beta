@@ -6,7 +6,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 public delegate ValueTask ConsumeDelegate(ReceiveContext context, CancellationToken cancellationToken);
 
 /// <summary>
-/// A pluggable middleware around message consumption. Filters run <b>once per message</b>, ordered by registration,
+/// Defines a pluggable middleware around message consumption. Filters run once per message, ordered by registration,
 /// wrapping the resilience → dedupe → dispatch core (so they see the whole outcome, outside the retry loop). Use for
 /// fault-publishing, wire-tap/audit, claim-check rehydrate, enrichment, rate-limiting, and similar cross-cutting concerns.
 /// Register with <c>AddConsumeInterceptor&lt;T&gt;()</c>.

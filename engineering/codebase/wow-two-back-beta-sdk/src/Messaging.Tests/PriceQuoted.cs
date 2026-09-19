@@ -9,4 +9,11 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
 /// <summary>The response contract for <see cref="PriceRequested"/>.</summary>
-public sealed record PriceQuoted(string OrderId, decimal Amount) : IEvent;
+public sealed record PriceQuoted : IEvent
+{
+    /// <summary>Gets the quoted order's id.</summary>
+    public required string OrderId { get; init; }
+
+    /// <summary>Gets the quoted amount.</summary>
+    public required decimal Amount { get; init; }
+}

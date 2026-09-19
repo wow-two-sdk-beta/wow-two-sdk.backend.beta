@@ -18,7 +18,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams;
 /// StackExchange.Redis is built for — it is thread-safe, pipelines concurrent callers, and reconnects on its own — and
 /// because nothing here blocks a connection the way a <c>BLOCK</c>-ing read would.
 /// </summary>
-internal sealed class RedisStreamsConnection(IOptions<RedisStreamsOptions> options) : IAsyncDisposable
+internal sealed class RedisStreamsConnection(RedisStreamsOptions options) : IAsyncDisposable
 {
     private readonly SemaphoreSlim _connectGate = new(1, 1);
     private ConnectionMultiplexer? _multiplexer; // concrete: CA1859 — this field is only ever assigned ConnectionMultiplexer.ConnectAsync
@@ -29,13 +29,13 @@ internal sealed class RedisStreamsConnection(IOptions<RedisStreamsOptions> optio
     {
         // Connect lazily, so DI graph construction does no I/O and an unreachable Redis fails the first send.
         if (_multiplexer is { } connected)
-            return connected.GetDatabase(options.Value.Database);
+            return connected.GetDatabase(options.Database);
 
         await _connectGate.WaitAsync(cancellationToken);
         try
         {
-            _multiplexer ??= await ConnectionMultiplexer.ConnectAsync(options.Value.Configuration);
-            return _multiplexer.GetDatabase(options.Value.Database);
+            _multiplexer ??= await ConnectionMultiplexer.ConnectAsync(options.Configuration);
+            return _multiplexer.GetDatabase(options.Database);
         }
         finally
         {

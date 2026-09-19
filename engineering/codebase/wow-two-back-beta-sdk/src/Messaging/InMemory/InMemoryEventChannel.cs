@@ -4,29 +4,27 @@ using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 
 /// <summary>Single in-process channel backing the in-memory transport.</summary>
 internal sealed class InMemoryEventChannel
 {
-    private readonly Channel<EventEnvelope> _channel;
+    private readonly Channel<EventEnvelopeModel> _channel;
 
     public InMemoryEventChannel(InMemoryEventBusOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        var capacity = options.ChannelCapacity;
-        _channel = capacity > 0
-            ? Channel.CreateBounded<EventEnvelope>(new BoundedChannelOptions(capacity)
-            {
-                FullMode = BoundedChannelFullMode.Wait,
-                SingleReader = false,
-                SingleWriter = false,
-            })
-            : Channel.CreateUnbounded<EventEnvelope>();
+        _channel = Channel.CreateBounded<EventEnvelopeModel>(new BoundedChannelOptions(options.ChannelCapacity)
+        {
+            FullMode = BoundedChannelFullMode.Wait,
+            SingleReader = false,
+            SingleWriter = false,
+        });
     }
 
-    public ChannelReader<EventEnvelope> Reader => _channel.Reader;
+    public ChannelReader<EventEnvelopeModel> Reader => _channel.Reader;
 
-    public ChannelWriter<EventEnvelope> Writer => _channel.Writer;
+    public ChannelWriter<EventEnvelopeModel> Writer => _channel.Writer;
 }

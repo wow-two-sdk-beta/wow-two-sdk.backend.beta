@@ -13,10 +13,10 @@ signed so the receiver can verify origin and integrity. Outbound only; a thin si
 
 - The package **MUST** expose `AddWebhooks(this IServiceCollection, Action<WebhookOptions>? configure = null)` returning `IServiceCollection`.
 - Registration **MUST** be idempotent — repeated `AddWebhooks` calls **MUST NOT** double-register services (`TryAdd*`).
-- Registration **MUST** register a default `IWebhookPublisher`, `IWebhookSubscriptionRepository`, `IWebhookDeliveryLog`, and an
+- Registration **MUST** register a default `IWebhookPublisher`, `IWebhookSubscriptionRepository`, `IWebhookDeliveryLoggingService`, and an
   `IRetryPolicy`, and **MUST** register a named `HttpClient` (`WebhookDefaultConstants.HttpClientName`) via `IHttpClientFactory`.
 - A consumer **MUST** be able to replace any of those services by registering its own before/after `AddWebhooks`
-  (the default `IWebhookDeliveryLog` is a no-op and **MUST** be overridable).
+  (the default `IWebhookDeliveryLoggingService` is a no-op and **MUST** be overridable).
 - `WebhookOptions` **MUST** use settable properties so `Action<WebhookOptions>` configuration composes.
 
 ## Subscriptions & matching
@@ -49,7 +49,7 @@ signed so the receiver can verify origin and integrity. Outbound only; a thin si
 - On retry-budget exhaustion the delivery **MUST** be logged (`ILogger`) and dropped; it **MUST NOT** throw out of `PublishAsync`.
 - `OperationCanceledException` from the caller's `CancellationToken` **MUST** propagate and **MUST NOT** be retried,
   logged as a failure, or recorded as a drop.
-- Each terminal outcome (delivered or dropped) **MUST** be reported to `IWebhookDeliveryLog` with the subscription id,
+- Each terminal outcome (delivered or dropped) **MUST** be reported to `IWebhookDeliveryLoggingService` with the subscription id,
   event type, attempt count, and last status code (when one was received).
 
 ## Failure modes

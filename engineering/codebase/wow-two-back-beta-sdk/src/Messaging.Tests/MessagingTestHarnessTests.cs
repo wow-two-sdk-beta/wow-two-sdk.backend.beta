@@ -17,7 +17,7 @@ public sealed class MessagingTestHarnessTests
             static services => services.AddScannedHandlerDependencies(),
             handlerAssemblies: [typeof(HarnessHandler).Assembly]);
 
-        await harness.Bus.PublishAsync(new HarnessEvent("round-trip"), new PublishOptions { MessageId = "rt-1" });
+        await harness.Bus.PublishAsync(new HarnessEvent { Tag = "round-trip" }, new PublishOptions { MessageId = "rt-1" });
 
         var consumed = await harness.Consumed.WaitForAsync<HarnessEvent>(match: e => e.Tag == "round-trip");
         consumed[0].MessageId.Should().Be("rt-1");
@@ -35,10 +35,10 @@ public sealed class MessagingTestHarnessTests
     {
         await using var harness = await MessagingTestHarness.StartAsync(
             static services => services.AddScannedHandlerDependencies(),
-            configureBus: o => o.Retry = new RetryConfig(MaxAttempts: 3, Backoff: BackoffKind.None),
+            configureBus: o => o.Retry = new RetryConfig { MaxAttempts = 3, Backoff = BackoffKind.None },
             handlerAssemblies: [typeof(HarnessHandler).Assembly]);
 
-        await harness.Bus.PublishAsync(new BoomEvent("x"), new PublishOptions { MessageId = "attempts-1" });
+        await harness.Bus.PublishAsync(new BoomEvent { Value = "x" }, new PublishOptions { MessageId = "attempts-1" });
 
         await harness.DeadLettered.WaitForAsync<BoomEvent>();
 
@@ -61,7 +61,7 @@ public sealed class MessagingTestHarnessTests
         await control.PauseAsync();
 
         for (var i = 0; i < 3; i++)
-            await harness.Bus.PublishAsync(new HarnessEvent($"paused-{i}"));
+            await harness.Bus.PublishAsync(new HarnessEvent { Tag = $"paused-{i}" });
 
         // Nothing will ever be consumed while the gate is shut, so there is no message to await — the assertion is
         // that the bus went quiet with the messages still parked.
@@ -82,7 +82,7 @@ public sealed class MessagingTestHarnessTests
             services => services.AddScannedHandlerDependencies().AddSingleton(gate),
             handlerAssemblies: [typeof(HarnessHandler).Assembly]);
 
-        await harness.Bus.PublishAsync(new HarnessEvent("held"));
+        await harness.Bus.PublishAsync(new HarnessEvent { Tag = "held" });
         await gate.Started.WaitAsync(TimeSpan.FromSeconds(5)); // parked inside the pipeline, not merely published
 
         harness.InFlight.Should().Be(1);
@@ -108,7 +108,7 @@ public sealed class MessagingTestHarnessTests
         await host.StartAsync();
 
         var harness = MessagingTestHarness.Attach(host.Services);
-        await harness.Bus.PublishAsync(new HarnessEvent("attached"));
+        await harness.Bus.PublishAsync(new HarnessEvent { Tag = "attached" });
         await harness.Consumed.WaitForAsync<HarnessEvent>(match: e => e.Tag == "attached");
 
         await harness.DisposeAsync();
@@ -124,7 +124,7 @@ public sealed class MessagingTestHarnessTests
             static services => services.AddScannedHandlerDependencies(),
             handlerAssemblies: [typeof(HarnessHandler).Assembly]);
 
-        await harness.Bus.PublishAsync(new HarnessEvent("only-one"));
+        await harness.Bus.PublishAsync(new HarnessEvent { Tag = "only-one" });
         await harness.Consumed.WaitForAsync<HarnessEvent>();
 
         Func<Task> waitForTwo = async () => await harness.Consumed.WaitForAsync<HarnessEvent>(count: 2, timeout: TimeSpan.FromMilliseconds(200));

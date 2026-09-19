@@ -9,7 +9,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
-/// <summary>Timing defaults for a <see cref="MessagingTestHarness"/>.</summary>
+/// <summary>Holds timing defaults for a <see cref="MessagingTestHarness"/>.</summary>
 public sealed record MessagingHarnessOptions
 {
     /// <summary>How long the bus must be silent before <see cref="MessagingTestHarness.WaitForIdleAsync"/> calls it idle. Default 100ms.</summary>

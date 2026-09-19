@@ -19,7 +19,7 @@ internal sealed class RedisStreamsTopologyBroker
     /// <summary>Redis' "the group already exists" error, which is the normal answer on every start after the first.</summary>
     private const string GroupExistsPrefix = "BUSYGROUP";
 
-    /// <summary>Redis' "no such key or consumer group" error, raised by a read after the key was dropped underneath the loop.</summary>
+    /// <summary>Holds redis' "no such key or consumer group" error, raised by a read after the key was dropped underneath the loop.</summary>
     public const string GroupMissingPrefix = "NOGROUP";
 
     /// <summary>Create the consumer group on every stream this process reads. Safe to repeat and safe to race.</summary>

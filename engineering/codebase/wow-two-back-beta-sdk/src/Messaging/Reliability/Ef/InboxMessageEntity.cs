@@ -6,7 +6,7 @@ using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
-/// <summary>A processed-message marker in the inbox dedupe table (<c>inbox_messages</c>) — turns at-least-once delivery into exactly-once effect.</summary>
+/// <summary>Represents a processed-message marker used for inbox deduplication.</summary>
 public sealed class InboxMessageEntity : IHasTableName
 {
     /// <summary>The inbox table name.</summary>

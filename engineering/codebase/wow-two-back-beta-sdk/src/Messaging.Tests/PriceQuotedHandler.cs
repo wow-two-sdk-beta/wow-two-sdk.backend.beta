@@ -9,9 +9,9 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
 /// <summary>
-/// Exists so a <see cref="PriceQuoted"/> that reaches the pipeline dispatches to something. Nothing asserts on this
+/// Handles <see cref="PriceQuoted"/> events so the test pipeline can report dispatch success. Nothing asserts on this
 /// handler's behaviour — what matters is the <see cref="ConsumeOutcome"/>, which is <c>Success</c> only when a reply was
-/// <i>not</i> intercepted by the request client's consume filter.
+/// not intercepted by the request client's consume filter.
 /// </summary>
 public sealed class PriceQuotedHandler : IEventHandler<PriceQuoted>
 {

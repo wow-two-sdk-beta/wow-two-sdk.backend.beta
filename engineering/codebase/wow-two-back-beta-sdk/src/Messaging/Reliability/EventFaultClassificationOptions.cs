@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
 /// <summary>
-/// Ordered classification rules, <b>first match wins</b>. Rules come as exception types
+/// Holds ordered classification rules, first match wins. Rules come as exception types
 /// (<see cref="DeadLetterOn{TException}"/> and friends, which match subclasses too) and/or arbitrary predicates
 /// (<see cref="Classify"/>). With no rules registered every exception retries — exactly the behaviour before
 /// classification existed.
@@ -27,7 +27,7 @@ public sealed record EventFaultClassificationOptions
         where TException : Exception
         => OnType<TException>(FaultDisposition.Ignore);
 
-    /// <summary>Retry <typeparamref name="TException"/> (and subclasses). Register it <b>before</b> a broader rule to carve one type back out of that rule.</summary>
+    /// <summary>Retry <typeparamref name="TException"/> (and subclasses). Register it before a broader rule to carve one type back out of that rule.</summary>
     /// <typeparam name="TException">The exception type to keep retrying.</typeparam>
     public EventFaultClassificationOptions RetryOn<TException>()
         where TException : Exception

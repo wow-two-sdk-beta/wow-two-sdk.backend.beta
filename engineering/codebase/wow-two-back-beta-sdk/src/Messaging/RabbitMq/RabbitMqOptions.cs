@@ -14,7 +14,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.RabbitMq;
 
-/// <summary>Options for the RabbitMQ event-bus adapter.</summary>
+/// <summary>Holds options for the RabbitMQ event-bus adapter.</summary>
 public sealed record RabbitMqOptions
 {
     /// <summary>AMQP connection URI. Default local guest.</summary>

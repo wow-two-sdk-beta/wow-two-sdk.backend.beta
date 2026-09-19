@@ -12,11 +12,12 @@ plug in behind the same ports — opt-in, never core deps. Design + provider ana
 
 | Folder | What |
 |---|---|
-| `MessagingContracts.cs` | `IEvent`, `IEventHandler<TEvent>`, `IEventBus`, `EventContext<TEvent>`, `EventEnvelope`, `Publish/SendOptions` (with transport-abstract hints) |
-| `Reliability/` | `IRetryPolicy`+`RetryConfig`, `IDeadLetterRepository` (+replay), `IInboxStore`, `IEventScheduler`, `IOutbox`/`IOutboxDispatcher`, `DefaultRetryPolicy` |
+| `MessagingContracts.cs` | `IEvent`, `IEventHandler<TEvent>`, `EventContext<TEvent>`, `EventEnvelopeModel`, `Publish/SendOptions` (with transport-abstract hints) |
+| `Buses/` | `IEventBus` and `TransportEventBus`; namespace `WoW.Two.Sdk.Backend.Beta.Messaging.Buses` |
+| `Reliability/` | `IRetryPolicy`+`RetryConfig`, `IDeadLetterRepository` (+replay), `IInboxStore`, `IEventScheduler`, `IOutbox`/`IOutboxDispatcher`, `RetryPolicy` |
 | `Reliability/Ef/` | EF transactional outbox — `OutboxMessageEntity`, `EfOutbox<TContext>`, `AddEfOutbox<TContext>()`, migration ([`Ef.md`](./Reliability/Ef/Ef.md)) |
 | `InMemory/` | Channel-backed bus + `EventConsumerHostedService` (DI-scope-per-event, retry→DLQ) + in-mem stores |
-| `EventSaga/` | `EventSagaBuilder`, `IEventSagaStep`/`EventSagaStep`, `EventSagaRunner`, `EventSagaContext`, `IEventSagaTransport` |
+| `EventSaga/` | `EventSagaBuilder`, `IEventSagaStep`/`EventSagaStep`, `EventSagaService`, `EventSagaContext`, `IEventSagaPublisherService` |
 
 ## Publish / subscribe
 
@@ -25,7 +26,7 @@ builder.Services.AddInMemoryEventBus(typeof(Program).Assembly);   // scans for I
 
 public sealed record OrderPlaced(Guid OrderId) : IEvent;
 
-public sealed class EmailReceiptHandler(IEmailSender email) : IEventHandler<OrderPlaced>
+public sealed class EmailReceiptHandler(IEmailBroker email) : IEventHandler<OrderPlaced>
 {
     public async ValueTask HandleAsync(EventContext<OrderPlaced> ctx, CancellationToken ct)
     {
@@ -62,7 +63,7 @@ var result = await runner.RunAsync(fulfilment, new EventSagaContext(seed: orderI
 ```
 
 `fulfilment.ToMermaid()` renders the itinerary as a `flowchart`. The itinerary is **data**, so the same definition runs
-in-process (default) or over a broker via an `IEventSagaTransport` adapter.
+through the registered event bus via `IEventSagaPublisherService`.
 
 ## Transactional outbox
 

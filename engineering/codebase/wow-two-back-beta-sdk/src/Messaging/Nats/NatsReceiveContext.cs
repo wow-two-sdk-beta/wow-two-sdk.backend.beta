@@ -10,6 +10,7 @@ using NATS.Client.JetStream.Models;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Nats;
 
@@ -19,12 +20,12 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Nats;
 /// then acks so the broker stops redelivering the poison message.
 /// </summary>
 internal sealed class NatsReceiveContext(
-    EventEnvelope envelope,
+    EventEnvelopeModel envelope,
     NatsJSContext js,
     string deadLetterSubject,
     NatsJSMsg<byte[]> message) : ReceiveContext
 {
-    public override EventEnvelope Envelope => envelope;
+    public override EventEnvelopeModel Envelope => envelope;
 
     public override ValueTask AcknowledgeAsync(CancellationToken cancellationToken)
         => message.AckAsync(cancellationToken: cancellationToken);

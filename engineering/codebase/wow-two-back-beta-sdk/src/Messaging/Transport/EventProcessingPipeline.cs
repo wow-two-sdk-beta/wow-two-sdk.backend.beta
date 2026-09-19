@@ -2,6 +2,9 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Services;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Services;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
@@ -23,13 +26,14 @@ internal sealed partial class EventProcessingPipeline(
     IEnumerable<IConsumeInterceptor> filters,
     IEnumerable<IReceiveObservingInterceptor> receiveObservers,
     IEnumerable<IConsumeObservingInterceptor> consumeObservers,
-    IMessagingMetrics metrics,
+    IMessagingMetricsService metrics,
     ILogger<EventProcessingPipeline> logger,
-    DelayedRetryCoordinator? delayedRetry = null)
+    DelayedRetryService? delayedRetry = null)
 {
     // Materialized once: the hot path only pays a length check when nothing is observing.
     private readonly IReceiveObservingInterceptor[] _receiveObservers = [.. receiveObservers];
     private readonly IConsumeObservingInterceptor[] _consumeObservers = [.. consumeObservers];
+    private readonly IConsumeInterceptor[] _filters = OrderFilters(filters);
 
     private ConsumeDelegate? _chain;
 
@@ -46,17 +50,16 @@ internal sealed partial class EventProcessingPipeline(
             activity.SetTag("messaging.message.id", envelope.MessageId);
         }
 
-        // The success / duplicate / no-handler / ignored outcomes are counted inside the core, which is the only place
-        // that knows which one happened; the faulted outcome is counted here, where the core threw instead.
+        // Count a fault here because successful terminal outcomes are counted inside the core.
         var startedAt = Stopwatch.GetTimestamp();
         var chainCompleted = false;
         try
         {
-            await _receiveObservers.NotifyPreReceiveAsync(context, logger, cancellationToken);
+            await _receiveObservers.NotifyPreReceiveAsync(context.Envelope, logger, cancellationToken);
             await (_chain ??= BuildChain())(context, cancellationToken);
             chainCompleted = true; // past this point a failure is settlement, not processing — the handler already ran
             await context.AcknowledgeAsync(cancellationToken);
-            await _receiveObservers.NotifyPostReceiveAsync(context, logger, cancellationToken);
+            await _receiveObservers.NotifyPostReceiveAsync(context.Envelope, logger, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -64,13 +67,7 @@ internal sealed partial class EventProcessingPipeline(
         }
         catch (Exception ex)
         {
-            // Re-enqueue-with-delay: the next attempt is on the wire with a future NotBeforeUtc, so acknowledging here
-            // hands the consumer slot back for the whole backoff instead of sleeping on it. Nothing terminal has
-            // happened — no faulted count, no dead-letter, and neither terminal receive-observer hook fires, because
-            // the message is coming back. The coordinator returns false (and this falls through to the dead-letter
-            // path below) for a DeadLetter verdict, an exhausted redelivery budget, or a failed re-enqueue.
-            // Gated on the chain having failed: a message whose handler ran and whose acknowledgement then failed has
-            // nothing left to retry, and re-delivering it would put a completed message back in front of a handler.
+            // Acknowledge a successfully rescheduled handler fault without recording a terminal outcome.
             if (!chainCompleted && delayedRetry is not null && await delayedRetry.TryReEnqueueAsync(context, ex, cancellationToken))
             {
                 await context.AcknowledgeAsync(cancellationToken);
@@ -81,7 +78,7 @@ internal sealed partial class EventProcessingPipeline(
             metrics.RecordConsumed(envelope.Destination, envelope.BodyType, ConsumeOutcome.Faulted);
             metrics.RecordDeadLettered(envelope.Destination, envelope.BodyType, ex);
             await context.DeadLetterAsync(ex.Message, ex, cancellationToken);
-            await _receiveObservers.NotifyReceiveFaultAsync(context, ex, logger, cancellationToken); // after settlement — the message is already at rest
+            await _receiveObservers.NotifyReceiveFaultAsync(context.Envelope, ex, logger, cancellationToken); // after settlement — the message is already at rest
         }
         finally
         {
@@ -93,13 +90,25 @@ internal sealed partial class EventProcessingPipeline(
     private ConsumeDelegate BuildChain()
     {
         ConsumeDelegate chain = CoreConsumeAsync;
-        foreach (var filter in filters.Reverse())
+        foreach (var filter in _filters.Reverse())
         {
             var next = chain;
             chain = (ctx, token) => filter.InvokeAsync(ctx, next, token);
         }
 
         return chain;
+    }
+
+    private static IConsumeInterceptor[] OrderFilters(IEnumerable<IConsumeInterceptor> filters)
+    {
+        var materialized = filters.ToList();
+        var claimChecks = materialized
+            .Where(static filter => filter is ClaimCheckRehydratingConsumeInterceptor)
+            .ToArray();
+        materialized.RemoveAll(static filter => filter is ClaimCheckRehydratingConsumeInterceptor);
+        materialized.AddRange(claimChecks);
+
+        return [.. materialized];
     }
 
     // The retry/dedupe/dispatch core: resilience wraps a per-attempt scope whose inbox dedupes and runs the dispatch.
@@ -109,17 +118,14 @@ internal sealed partial class EventProcessingPipeline(
         var attempt = 0; // attempts run sequentially inside ExecuteAsync, so a plain counter is enough
         var outcomeRecorded = false; // did any attempt reach the record point below — see the Ignored count after the loop
 
-        // Delayed retry runs one attempt per delivery, so the local counter alone would report every redelivery as a
-        // first attempt and the retry counter would flatline. The attempts already spent ride on the envelope — but
-        // only under delayed retry, which is what stamps them; elsewhere DeliveryCount is the transport's own
-        // redelivery count and says nothing about the SDK's retry budget.
+        // Add delayed-retry attempts carried on the envelope to this delivery's local attempt count.
         var priorAttempts = delayedRetry is { IsActive: true } ? Math.Max(envelope.DeliveryCount, 0) : 0;
         await resilience.ExecuteAsync(async attemptToken =>
         {
             if (++attempt + priorAttempts > 1)
                 metrics.RecordRetried(envelope.Destination, envelope.BodyType);
 
-            await _consumeObservers.NotifyPreConsumeAsync(context, logger, attemptToken);
+            await _consumeObservers.NotifyPreConsumeAsync(context.Envelope, logger, attemptToken);
             try
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
@@ -138,8 +144,7 @@ internal sealed partial class EventProcessingPipeline(
                     }
                 }, attemptToken);
 
-                // Only reached when the attempt did not throw, so each message counts exactly once: a failing attempt
-                // either retries (and records here on the attempt that finally lands) or escapes to the faulted count.
+                // Record one terminal outcome after the attempt completes without throwing.
                 ConsumeOutcome outcome;
                 if (!processed)
                 {
@@ -154,20 +159,17 @@ internal sealed partial class EventProcessingPipeline(
                 }
 
                 outcomeRecorded = true;
-                await _consumeObservers.NotifyPostConsumeAsync(context, outcome, logger, attemptToken);
+                await _consumeObservers.NotifyPostConsumeAsync(context.Envelope, outcome, logger, attemptToken);
             }
             // The filter keeps the no-observer path identical: with nothing registered the catch is never entered and the fault propagates untouched into the retry decision.
-            catch (Exception ex) when (_consumeObservers.Length != 0 && !MessageObserverNotifications.IsCancellation(ex, attemptToken))
+            catch (Exception ex) when (_consumeObservers.Length != 0 && !ObservingInterceptorExtensions.IsCancellation(ex, attemptToken))
             {
-                await _consumeObservers.NotifyConsumeFaultAsync(context, ex, logger, attemptToken);
+                await _consumeObservers.NotifyConsumeFaultAsync(context.Envelope, ex, logger, attemptToken);
                 throw;
             }
         }, cancellationToken);
 
-        // Returning without any attempt reaching the record point means the pipeline swallowed a fault on an
-        // IEventFaultClassifier Ignore verdict — the only disposition that ends ExecuteAsync normally after a throw
-        // (Retry loops until it lands or propagates, DeadLetter propagates at once). The caller's success path is about
-        // to acknowledge, so without this the ignored message settles with no consumed count and vanishes from metrics.
+        // Record an ignored fault when no attempt reached a terminal outcome.
         if (!outcomeRecorded)
             metrics.RecordConsumed(envelope.Destination, envelope.BodyType, ConsumeOutcome.Ignored);
     }

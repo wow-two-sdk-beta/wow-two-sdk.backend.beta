@@ -8,6 +8,8 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Storage.Core;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization.Serializers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
@@ -16,7 +18,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 /// dispatched the real event and never learns the body travelled separately.
 /// </summary>
 /// <remarks>
-///   - register last, so <see cref="ReceiveContext.DeadLetterAsync"/> re-publishes the reference envelope, not the rehydrated body
+///   - the processing pipeline places this last, so <see cref="ReceiveContext.DeadLetterAsync"/> re-publishes the reference envelope
 ///   - a body that cannot be read back throws <see cref="ClaimCheckPayloadException"/>, so the message dead-letters with that reason
 ///   - to spend no retry budget on it, add <c>AddEventFaultClassification(r =&gt; r.DeadLetterOn&lt;ClaimCheckPayloadException&gt;())</c>
 /// </remarks>
@@ -60,7 +62,7 @@ internal sealed partial class ClaimCheckRehydratingConsumeInterceptor(
     }
 
     // The header is a fallback — a token this process cannot resolve is ignored, the envelope already holds a type.
-    private Type ResolveBodyType(EventEnvelope envelope)
+    private Type ResolveBodyType(EventEnvelopeModel envelope)
     {
         if (envelope.Headers.TryGetValue(ClaimCheckHeaderConstants.BodyType, out var token)
             && !string.IsNullOrWhiteSpace(token)
@@ -76,9 +78,9 @@ internal sealed partial class ClaimCheckRehydratingConsumeInterceptor(
     private partial void LogRehydrated(string messageId, long sizeBytes, string path);
 
     /// <summary>The received message with its body put back — settlement delegates to the transport's own context.</summary>
-    private sealed class RehydratedReceiveContext(ReceiveContext inner, EventEnvelope rehydrated) : ReceiveContext
+    private sealed class RehydratedReceiveContext(ReceiveContext inner, EventEnvelopeModel rehydrated) : ReceiveContext
     {
-        public override EventEnvelope Envelope => rehydrated;
+        public override EventEnvelopeModel Envelope => rehydrated;
 
         public override ValueTask AcknowledgeAsync(CancellationToken cancellationToken)
             => inner.AcknowledgeAsync(cancellationToken);

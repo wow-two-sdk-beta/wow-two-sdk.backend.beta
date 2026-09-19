@@ -13,7 +13,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 /// </summary>
 public sealed class StrictOrderStateMachine : SagaStateMachine<StrictOrderSagaState>
 {
-    /// <summary>The one intermediate state.</summary>
+    /// <summary>Holds the one intermediate state.</summary>
     public const string AwaitingPayment = "awaiting-payment";
 
     /// <summary>Declare the behaviour.</summary>

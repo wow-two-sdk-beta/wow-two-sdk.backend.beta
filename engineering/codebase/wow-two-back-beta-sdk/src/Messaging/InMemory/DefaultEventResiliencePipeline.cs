@@ -1,10 +1,13 @@
 using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
+using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Policies;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Services;
+
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 
 /// <summary>
-/// Default <see cref="IEventResiliencePipeline"/> — classifies the failure via <see cref="IEventFaultClassifier"/>,
+/// Default <see cref="IEventResiliencePipeline"/> — classifies the failure via <see cref="IEventFaultPolicy"/>,
 /// then retries via the configured <see cref="IRetryPolicy"/> + <see cref="RetryConfig"/> and propagates once exhausted.
 /// A <see cref="FaultDisposition.DeadLetter"/> verdict propagates without spending an attempt; an
 /// <see cref="FaultDisposition.Ignore"/> verdict returns normally so the caller acknowledges.
@@ -14,12 +17,11 @@ internal sealed class DefaultEventResiliencePipeline(
     IRetryPolicy retryPolicy,
     InMemoryEventBusOptions options,
     TimeProvider timeProvider,
-    IEventFaultClassifier? classifier = null,
-    DelayedRetryCoordinator? delayedRetry = null) : IEventResiliencePipeline
+    IEventFaultPolicy? faultPolicy = null,
+    DelayedRetryService? delayedRetry = null) : IEventResiliencePipeline
 {
-    // Optional so a hand-rolled composition that never registered a classifier still resolves — and gets today's
-    // retry-everything behaviour rather than a container-time failure.
-    private readonly IEventFaultClassifier _classifier = classifier ?? DefaultEventFaultClassifier.RetryAll;
+    // Preserve retry-all behavior when a hand-rolled composition omits a policy.
+    private readonly IEventFaultPolicy _faultPolicy = faultPolicy ?? EventFaultPolicy.RetryAll;
 
     public async ValueTask ExecuteAsync(Func<CancellationToken, ValueTask> action, CancellationToken cancellationToken)
     {
@@ -40,16 +42,14 @@ internal sealed class DefaultEventResiliencePipeline(
             }
             catch (Exception exception)
             {
-                var disposition = _classifier.Classify(exception);
+                var disposition = _faultPolicy.Decide(exception);
                 if (disposition == FaultDisposition.Ignore)
                     return; // handled — the caller's success path acknowledges
 
                 if (disposition == FaultDisposition.DeadLetter)
                     throw; // no redelivery would change the outcome — dead-letter now, budget untouched
 
-                // Delayed retry spends the budget across deliveries instead of inside this loop: one attempt, then out,
-                // so the caller settles the message and re-publishes it with a delay rather than sleeping on the
-                // consumer slot. The propagated fault is what the caller classifies to make that decision.
+                // Return the first delayed-retry fault so the caller can reschedule it off-slot.
                 if (delayedRetry is { IsActive: true })
                     throw;
 

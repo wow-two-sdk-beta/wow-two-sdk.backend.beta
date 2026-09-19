@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
@@ -10,13 +9,13 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 /// <summary>
 /// Delivers a signed webhook request over <c>IHttpClientFactory</c> with a bounded retry budget: transient failures
 /// (5xx / 408 / timeout / connection error) are retried per <see cref="IRetryPolicy"/>; permanent failures (other 4xx)
-/// are not. On success or terminal drop it reports to <see cref="IWebhookDeliveryLog"/>; on exhaustion it logs and drops.
+/// are not. On success or terminal drop it reports to <see cref="IWebhookDeliveryLoggingService"/>; on exhaustion it logs and drops.
 /// </summary>
 internal sealed partial class HttpWebhookDispatcher(
     IHttpClientFactory httpClientFactory,
-    IOptions<WebhookOptions> options,
+    WebhookOptions options,
     IRetryPolicy retryPolicy,
-    IWebhookDeliveryLog deliveryLog,
+    IWebhookDeliveryLoggingService deliveryLogging,
     IWebhookSignatureHasher signatureHasher,
     TimeProvider timeProvider,
     ILogger<HttpWebhookDispatcher> logger)
@@ -30,10 +29,9 @@ internal sealed partial class HttpWebhookDispatcher(
     /// <param name="cancellationToken">Cancellation token — cancellation propagates without retry or drop.</param>
     public async ValueTask DeliverAsync(WebhookSubscription subscription, string eventType, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
-        var opt = options.Value;
+        var opt = options;
 
-        // SSRF pre-flight (scheme + host allowlist). Address-level blocking (private/loopback/link-local, incl.
-        // DNS-rebinding) is enforced at connect time by the guarded HttpClient handler; see WebhookAddressMapper.
+        // Validate scheme and host here; the guarded handler blocks unsafe resolved addresses at connect time.
         if (!WebhookAddressMapper.IsSchemeAllowed(subscription.Url, opt.RequireHttps)
             || !WebhookAddressMapper.IsHostAllowed(subscription.Url, opt.AllowedHosts))
         {
@@ -42,7 +40,7 @@ internal sealed partial class HttpWebhookDispatcher(
             return;
         }
 
-        var retryConfig = new RetryConfig(opt.MaxAttempts, BackoffKind.ExponentialJitter, opt.BaseRetryDelay, opt.MaxRetryDelay);
+        var retryConfig = new RetryConfig { MaxAttempts = opt.MaxAttempts, Backoff = BackoffKind.ExponentialJitter, BaseDelay = opt.BaseRetryDelay, MaxDelay = opt.MaxRetryDelay };
         var client = httpClientFactory.CreateClient(WebhookDefaultConstants.HttpClientName);
 
         var attempts = 0;
@@ -134,14 +132,20 @@ internal sealed partial class HttpWebhookDispatcher(
     }
 
     private ValueTask RecordAsync(WebhookSubscription subscription, string eventType, WebhookDeliveryOutcome outcome, int attempts, int? statusCode, CancellationToken cancellationToken)
-        => deliveryLog.RecordAsync(
-            new WebhookDeliveryRecord(subscription.Id, eventType, subscription.Url, outcome, attempts, statusCode, timeProvider.GetUtcNow()),
+        => deliveryLogging.RecordAsync(
+            new WebhookDeliveryRecord
+            {
+                SubscriptionId = subscription.Id,
+                EventType = eventType,
+                Url = subscription.Url,
+                Outcome = outcome,
+                Attempts = attempts,
+                StatusCode = statusCode,
+                OccurredAtUtc = timeProvider.GetUtcNow(),
+            },
             cancellationToken);
 
-    // EventIds 6901–6999 are the webhooks block. Messaging owns 6xxx and the broker adapters march up it one hundred at
-    // a time (6301 RabbitMQ · 6401 Kafka · 6501 NATS · 6601+ free for the next adapter), so webhooks — not an adapter —
-    // sits at the top of the range, clear of that march and below Foundation.Security at 7001. The block was 6401–6403,
-    // which collided with KafkaTransport.
+    // Reserve 6901–6999 for webhooks above broker adapters and below Foundation.Security.
     [LoggerMessage(EventId = 6901, Level = LogLevel.Debug, Message = "Webhook delivery to {Url} for {EventType} failed (attempt {Attempt}, status {StatusCode}); retrying")]
     private partial void LogRetrying(Uri url, string eventType, int attempt, int? statusCode);
 

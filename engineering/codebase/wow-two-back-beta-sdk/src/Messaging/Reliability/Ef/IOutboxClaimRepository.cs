@@ -15,7 +15,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
 /// <summary>
-/// Strategy for claiming the next batch of pending outbox rows — the seam that lets multi-instance dispatch swap in
+/// Defines strategy for claiming the next batch of pending outbox rows — the seam that lets multi-instance dispatch swap in
 /// a locking claim (Postgres <c>FOR UPDATE SKIP LOCKED</c>) without changing the dispatcher. The default polls without
 /// locking (single-instance safe).
 /// </summary>

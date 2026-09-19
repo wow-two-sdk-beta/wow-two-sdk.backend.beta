@@ -1,11 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Watches dispatch — notified <b>once per delivery attempt</b>, inside the resilience loop, around dedupe and handler
+/// Defines behavior that watches dispatch — notified once per delivery attempt, inside the resilience loop, around dedupe and handler
 /// dispatch. A retried message notifies these hooks again per attempt. Register with <c>AddMessageObservingInterceptor&lt;T&gt;()</c>.
 /// </summary>
 /// <remarks>
@@ -16,19 +17,19 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 public interface IConsumeObservingInterceptor
 {
     /// <summary>A delivery attempt is starting, before the inbox dedupe check and handler dispatch.</summary>
-    /// <param name="context">The receive context.</param>
+    /// <param name="envelope">The message that arrived.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask PreConsumeAsync(ReceiveContext context, CancellationToken cancellationToken);
+    ValueTask PreConsumeAsync(EventEnvelopeModel envelope, CancellationToken cancellationToken);
 
     /// <summary>The attempt completed without throwing, with the outcome that was recorded to metrics.</summary>
-    /// <param name="context">The receive context.</param>
+    /// <param name="envelope">The message that arrived.</param>
     /// <param name="outcome">How the attempt ended — dispatched, skipped as a duplicate, or unhandled.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask PostConsumeAsync(ReceiveContext context, ConsumeOutcome outcome, CancellationToken cancellationToken);
+    ValueTask PostConsumeAsync(EventEnvelopeModel envelope, ConsumeOutcome outcome, CancellationToken cancellationToken);
 
     /// <summary>The attempt threw. The fault still propagates into the retry/dead-letter decision. Not raised when the attempt is cancelled through its own token.</summary>
-    /// <param name="context">The receive context.</param>
+    /// <param name="envelope">The message that arrived.</param>
     /// <param name="exception">The fault thrown by the attempt.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask ConsumeFaultAsync(ReceiveContext context, Exception exception, CancellationToken cancellationToken);
+    ValueTask ConsumeFaultAsync(EventEnvelopeModel envelope, Exception exception, CancellationToken cancellationToken);
 }

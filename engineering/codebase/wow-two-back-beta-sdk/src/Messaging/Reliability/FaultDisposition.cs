@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
-/// <summary>What an <see cref="IEventResiliencePipeline"/> does with an exception thrown by a consume attempt.</summary>
+/// <summary>Refers to what an <see cref="IEventResiliencePipeline"/> does with an exception thrown by a consume attempt.</summary>
 public enum FaultDisposition
 {
     /// <summary>Retry under the configured schedule, then propagate once attempts are exhausted. The default for every exception.</summary>

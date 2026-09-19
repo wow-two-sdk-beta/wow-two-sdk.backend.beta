@@ -7,6 +7,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Kafka;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
@@ -27,7 +28,7 @@ public sealed class KafkaEventBusTests : IAsyncLifetime
         var bus = host.Services.GetRequiredService<IEventBus>();
 
         await Task.Delay(TimeSpan.FromSeconds(2)); // consumer group join + assignment
-        await bus.PublishAsync(new PingEvent("over-kafka"));
+        await bus.PublishAsync(new PingEvent { Value = "over-kafka" });
 
         (await collector.WaitForCountAsync(1, TimeSpan.FromSeconds(30))).Should().BeTrue();
         await host.StopAsync();
@@ -44,11 +45,11 @@ public sealed class KafkaEventBusTests : IAsyncLifetime
         var dlqTopic = "dlq-" + suffix;
         using var host = await StartHostAsync(
             o => { o.Topic = "t-" + suffix; o.GroupId = "g-" + suffix; o.DeadLetterTopic = dlqTopic; },
-            retry: r => r.Retry = new RetryConfig(MaxAttempts: 2, Backoff: BackoffKind.None));
+            retry: r => r.Retry = new RetryConfig { MaxAttempts = 2, Backoff = BackoffKind.None });
         var bus = host.Services.GetRequiredService<IEventBus>();
 
         await Task.Delay(TimeSpan.FromSeconds(2));
-        await bus.PublishAsync(new BoomEvent("bad"));
+        await bus.PublishAsync(new BoomEvent { Value = "bad" });
 
         (await WaitForDlqMessageAsync(dlqTopic, TimeSpan.FromSeconds(30))).Should().BeTrue();
         await host.StopAsync();

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 
@@ -19,20 +19,20 @@ public static class WebhooksServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var optionsBuilder = services.AddOptions<WebhookOptions>();
-        if (configure is not null)
-            optionsBuilder.Configure(configure);
-        optionsBuilder
-            .Validate(static o => o.MaxAttempts >= 1, "Webhooks: MaxAttempts must be >= 1.")
-            .Validate(static o => o.Subscriptions.All(s => !string.IsNullOrEmpty(s.Secret)), "Webhooks: every subscription must have a secret.")
-            .ValidateOnStart();
+        services.AddValidatedOptions(
+            configure,
+            static builder => builder
+                .Validate(static o => o.MaxAttempts >= 1, "Webhooks: MaxAttempts must be >= 1.")
+                .Validate(static o => o.BaseRetryDelay >= TimeSpan.Zero, "Webhooks: BaseRetryDelay must not be negative.")
+                .Validate(static o => o.MaxRetryDelay >= o.BaseRetryDelay, "Webhooks: MaxRetryDelay must be at least BaseRetryDelay.")
+                .Validate(static o => o.RequestTimeout > TimeSpan.Zero, "Webhooks: RequestTimeout must be positive.")
+                .Validate(static o => o.Subscriptions.All(s => !string.IsNullOrEmpty(s.Secret)), "Webhooks: every subscription must have a secret."));
 
-        // Delivery client: block targets that resolve to private/loopback/link-local addresses at connect time
-        // (defeats DNS-rebinding), unless the app opts into private targets.
+        // Block unsafe resolved target addresses at connect time unless explicitly allowed.
         services.AddHttpClient(WebhookDefaultConstants.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(static sp =>
             {
-                var webhookOptions = sp.GetRequiredService<IOptions<WebhookOptions>>().Value;
+                var webhookOptions = sp.GetRequiredService<WebhookOptions>();
                 var handler = new SocketsHttpHandler();
                 if (!webhookOptions.AllowPrivateNetworkTargets)
                     handler.ConnectCallback = new WebhookSsrfGuard().GuardedConnectAsync;
@@ -40,8 +40,8 @@ public static class WebhooksServiceCollectionExtensions
             });
 
         services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<IRetryPolicy, DefaultRetryPolicy>();
-        services.TryAddSingleton<IWebhookDeliveryLog, NoopWebhookDeliveryLog>();
+        services.TryAddSingleton<IRetryPolicy, RetryPolicy>();
+        services.TryAddSingleton<IWebhookDeliveryLoggingService, NoopWebhookDeliveryLoggingService>();
         services.TryAddSingleton<IWebhookSubscriptionRepository, InMemoryWebhookSubscriptionRepository>();
         // The signature scheme is a registration choice; a subscriber requiring another one swaps this line.
         services.TryAddSingleton<IWebhookSignatureHasher, WebhookSignatureHasher>();

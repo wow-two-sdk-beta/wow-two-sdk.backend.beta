@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Services;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
@@ -18,7 +19,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 ///   - registration order is filter order
 ///   - register after the application's own filters to keep it innermost
 /// </remarks>
-internal sealed class RetryingConsumeInterceptor(SecondLevelRetryCoordinator coordinator) : IConsumeInterceptor
+internal sealed class RetryingConsumeInterceptor(SecondLevelRetryService service) : IConsumeInterceptor
 {
     public async ValueTask InvokeAsync(ReceiveContext context, ConsumeDelegate next, CancellationToken cancellationToken)
     {
@@ -26,7 +27,7 @@ internal sealed class RetryingConsumeInterceptor(SecondLevelRetryCoordinator coo
         ArgumentNullException.ThrowIfNull(next);
 
         // Inactive installs no try/catch, so the fault propagates straight to the pipeline's dead-letter path.
-        if (!coordinator.IsActive)
+        if (!service.IsActive)
         {
             await next(context, cancellationToken);
             return;
@@ -42,7 +43,7 @@ internal sealed class RetryingConsumeInterceptor(SecondLevelRetryCoordinator coo
         }
         catch (Exception exception)
         {
-            if (!await coordinator.TryPromoteAsync(context, exception, cancellationToken))
+            if (!await service.TryPromoteAsync(context, exception, cancellationToken))
                 throw;
 
             // Swallowed on purpose: the message is back on the wire with a future delivery time, so the pipeline acknowledges.

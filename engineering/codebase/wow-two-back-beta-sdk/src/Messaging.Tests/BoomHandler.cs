@@ -5,7 +5,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
-/// <summary>Always throws — exercises retry then dead-lettering.</summary>
+/// <summary>Handles test events by always throwing.</summary>
 public sealed class BoomHandler : IEventHandler<BoomEvent>
 {
     public ValueTask HandleAsync(EventContext<BoomEvent> context, CancellationToken cancellationToken)

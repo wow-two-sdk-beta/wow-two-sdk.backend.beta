@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Messaging;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
@@ -11,7 +12,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 /// with a write. Ambient for the duration of the consume, so the repository — which the coordinator resolves from the
 /// message scope — can see which event it is serving.
 /// </summary>
-internal sealed class SagaConsumeBracket(EventEnvelope envelope)
+internal sealed class SagaConsumeBracket(EventEnvelopeModel envelope)
 {
     private static readonly AsyncLocal<SagaConsumeBracket?> Slot = new();
 
@@ -27,7 +28,7 @@ internal sealed class SagaConsumeBracket(EventEnvelope envelope)
     }
 
     /// <summary>The message being consumed.</summary>
-    public EventEnvelope Envelope => envelope;
+    public EventEnvelopeModel Envelope => envelope;
 
     /// <summary>Register a load, stamping it with this instance's next attempt number.</summary>
     public void Pend((Type StateType, string CorrelationId) key, ISagaPendingWrite pending)

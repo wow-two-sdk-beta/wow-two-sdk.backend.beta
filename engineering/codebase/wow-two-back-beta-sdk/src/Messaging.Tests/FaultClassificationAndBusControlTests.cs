@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
@@ -15,7 +16,7 @@ public sealed class FaultClassificationAndBusControlTests
         builder.Services.AddScannedHandlerDependencies();
         builder.Services.AddSingleton(new ConcurrencyProbe { Hold = TimeSpan.FromMilliseconds(20) });
         builder.Services.AddInMemoryEventBus(
-            o => o.Retry = new RetryConfig(MaxAttempts: 5, Backoff: BackoffKind.None),
+            o => o.Retry = new RetryConfig { MaxAttempts = 5, Backoff = BackoffKind.None },
             typeof(PingHandler).Assembly);
 
         configure?.Invoke(builder.Services);
@@ -45,7 +46,7 @@ public sealed class FaultClassificationAndBusControlTests
 
         var bus = host.Services.GetRequiredService<IEventBus>();
         var deadLetters = host.Services.GetRequiredService<IDeadLetterRepository>();
-        await bus.PublishAsync(new BoomEvent("x"), new PublishOptions { MessageId = "nonretryable-1" });
+        await bus.PublishAsync(new BoomEvent { Value = "x" }, new PublishOptions { MessageId = "nonretryable-1" });
 
         // MaxAttempts is 5 with no backoff; a classified-fatal fault must land in the DLQ on the first failure.
         var record = await WaitForDeadLetterAsync(deadLetters, nameof(BoomEvent), "nonretryable-1", TimeSpan.FromSeconds(5));
@@ -62,7 +63,7 @@ public sealed class FaultClassificationAndBusControlTests
 
         var bus = host.Services.GetRequiredService<IEventBus>();
         var deadLetters = host.Services.GetRequiredService<IDeadLetterRepository>();
-        await bus.PublishAsync(new BoomEvent("x"), new PublishOptions { MessageId = "ignored-1" });
+        await bus.PublishAsync(new BoomEvent { Value = "x" }, new PublishOptions { MessageId = "ignored-1" });
 
         // Ignore = treat as handled: the resilience pipeline swallows, the pipeline's success path acknowledges.
         var record = await WaitForDeadLetterAsync(deadLetters, nameof(BoomEvent), "ignored-1", TimeSpan.FromSeconds(2));
@@ -78,7 +79,7 @@ public sealed class FaultClassificationAndBusControlTests
 
         var bus = host.Services.GetRequiredService<IEventBus>();
         var deadLetters = host.Services.GetRequiredService<IDeadLetterRepository>();
-        await bus.PublishAsync(new BoomEvent("x"), new PublishOptions { MessageId = "retried-1" });
+        await bus.PublishAsync(new BoomEvent { Value = "x" }, new PublishOptions { MessageId = "retried-1" });
 
         var record = await WaitForDeadLetterAsync(deadLetters, nameof(BoomEvent), "retried-1", TimeSpan.FromSeconds(5));
         record.Should().NotBeNull(); // still dead-lettered, but only after the retry budget is spent
@@ -118,7 +119,7 @@ public sealed class FaultClassificationAndBusControlTests
         control.State.Should().Be(BusState.Paused);
 
         for (var i = 0; i < 3; i++)
-            await bus.PublishAsync(new PingEvent($"p{i}"));
+            await bus.PublishAsync(new PingEvent { Value = $"p{i}" });
 
         // Paused gates entry into the pipeline; nothing should be handled while the gate is shut. WaitForCountAsync
         // returns as soon as the count is reached, so this asserts the gate held for the whole window rather than
@@ -145,7 +146,7 @@ public sealed class FaultClassificationAndBusControlTests
         var bus = host.Services.GetRequiredService<IEventBus>();
         var collector = host.Services.GetRequiredService<EventCollector>();
 
-        await bus.PublishAsync(new PingEvent("x"));
+        await bus.PublishAsync(new PingEvent { Value = "x" });
         (await collector.WaitForCountAsync(1, TimeSpan.FromSeconds(5))).Should().BeTrue();
 
         await control.StopAsync();

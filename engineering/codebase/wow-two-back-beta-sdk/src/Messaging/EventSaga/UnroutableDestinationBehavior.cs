@@ -1,10 +1,11 @@
 using System.Globalization;
 using System.Text;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga.Services;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga;
 
-/// <summary>What the default <see cref="IEventSagaTransport"/> does when a step addresses a destination this process does not bind.</summary>
+/// <summary>Refers to what the default <see cref="IEventSagaPublisherService"/> does when a step addresses a destination this process does not bind.</summary>
 public enum UnroutableDestinationBehavior
 {
     /// <summary>

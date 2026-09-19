@@ -19,7 +19,7 @@ public sealed class WebhookSsrfTests
         }
     }
 
-    private sealed class CapturingDeliveryLog : IWebhookDeliveryLog
+    private sealed class CapturingDeliveryLoggingService : IWebhookDeliveryLoggingService
     {
         public List<WebhookDeliveryRecord> Records { get; } = [];
 
@@ -88,10 +88,10 @@ public sealed class WebhookSsrfTests
     [Fact]
     public async Task Blocks_delivery_to_private_ip_target()
     {
-        var log = new CapturingDeliveryLog();
+        var log = new CapturingDeliveryLoggingService();
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddSingleton<IWebhookDeliveryLog>(log); // registered before AddWebhooks so its TryAdd defers to ours
+        services.AddSingleton<IWebhookDeliveryLoggingService>(log); // registered before AddWebhooks so its TryAdd defers to ours
         services.AddWebhooks(o =>
         {
             o.MaxAttempts = 3;

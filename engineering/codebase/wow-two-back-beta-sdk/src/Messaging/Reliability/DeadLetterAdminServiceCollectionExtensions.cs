@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
@@ -26,8 +25,9 @@ public static class DeadLetterAdminServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddOptions<DeadLetterAdminOptions>().Configure(options => configure?.Invoke(options));
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<DeadLetterAdminOptions>>().Value);
+        var options = new DeadLetterAdminOptions();
+        configure?.Invoke(options);
+        services.TryAddSingleton(options);
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IDeadLetterAdmin, DeadLetterAdmin>();

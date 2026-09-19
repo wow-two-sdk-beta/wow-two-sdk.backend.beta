@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using WoW.Two.Sdk.Backend.Beta.Messaging;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
@@ -11,7 +12,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 public sealed record RecordedMessage
 {
     /// <summary>The envelope the observer was handed. On the consume side this is the reconstructed envelope, so <see cref="Body"/> is the deserialized event.</summary>
-    public required EventEnvelope Envelope { get; init; }
+    public required EventEnvelopeModel Envelope { get; init; }
 
     /// <summary>How the delivery attempt ended. Set only on <see cref="MessagingTestHarness.Consumed"/>; <c>null</c> everywhere else.</summary>
     public ConsumeOutcome? Outcome { get; init; }

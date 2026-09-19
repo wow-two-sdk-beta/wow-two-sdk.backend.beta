@@ -1,13 +1,13 @@
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Default <see cref="ITopologyService"/> — endpoints come from the consumed-type set, routing keys from
+/// Provides endpoint topology from consumed message types and stable routing tokens from
 /// <see cref="IMessageTypeMapper"/>'s stable token. The token, not the assembly-qualified name: assembly identity
 /// changes on a version bump or a type move, and a routing key built from it would silently stop matching the binding
 /// the consumer declared.
@@ -33,7 +33,7 @@ public sealed class TopologyService : ITopologyService
         ConsumedMessageTypeRegistry consumedTypes,
         IMessageTypeMapper typeResolver,
         IEndpointNameMapper nameFormatter,
-        IOptions<TopologyOptions> options,
+        TopologyOptions options,
         DestinationBindingRegistry? destinationBindings = null)
     {
         ArgumentNullException.ThrowIfNull(consumedTypes);
@@ -44,7 +44,7 @@ public sealed class TopologyService : ITopologyService
         _typeResolver = typeResolver;
 
         // Built on first use, when the consumed and alias sets are complete — a saga registered later still gets bindings.
-        _endpoints = new Lazy<IReadOnlyList<EndpointTopology>>(() => Build(consumedTypes, nameFormatter, options.Value, destinationBindings));
+        _endpoints = new Lazy<IReadOnlyList<EndpointTopology>>(() => Build(consumedTypes, nameFormatter, options, destinationBindings));
     }
 
     /// <inheritdoc />
@@ -58,7 +58,7 @@ public sealed class TopologyService : ITopologyService
     }
 
     /// <inheritdoc />
-    public string ResolveRoutingKey(EventEnvelope envelope)
+    public string ResolveRoutingKey(EventEnvelopeModel envelope)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 

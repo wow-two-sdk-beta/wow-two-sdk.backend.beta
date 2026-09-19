@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Messaging;
+using WoW.Two.Sdk.Backend.Beta.Testing.Messaging.Trackers;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
@@ -24,7 +25,7 @@ public sealed class SagaRecorder<TState>
     ///   - wait here, not on <see cref="MessagingTestHarness.Consumed"/>
     ///   - a write-free outcome (<see cref="SagaTransitionOutcome.Ignored"/>, <see cref="SagaTransitionOutcome.Faulted"/>) is recorded after the consume observers run
     /// </remarks>
-    public RecordedTransitionLog<TState> Transitions { get; } = new();
+    public RecordedTransitionTracker<TState> Transitions { get; } = new();
 
     /// <summary>
     /// How many writes were rejected by the repository's version check. Each one costs a replay, never a lost update —

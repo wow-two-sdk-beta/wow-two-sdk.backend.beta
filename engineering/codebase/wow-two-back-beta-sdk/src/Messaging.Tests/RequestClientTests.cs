@@ -3,6 +3,8 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
@@ -17,9 +19,11 @@ public sealed class RequestClientTests
         await using var harness = await StartAsync();
         var client = harness.Services.GetRequiredService<IRequestClient<PriceRequested, PriceQuoted>>();
 
-        var response = await client.GetResponseAsync(new PriceRequested("order-1"));
+        var result = await client.GetResponseAsync(new PriceRequested { OrderId = "order-1" });
 
-        response.OrderId.Should().Be("order-1");
+        result.IsFailure(out _, out var response).Should().BeFalse();
+
+        response!.OrderId.Should().Be("order-1");
         response.Amount.Should().Be(42m);
 
         var request = harness.Published.Of<PriceRequested>().Should().ContainSingle().Which.Envelope;
@@ -44,16 +48,17 @@ public sealed class RequestClientTests
         var client = harness.Services.GetRequiredService<IRequestClient<SilentRequested, PriceQuoted>>();
 
         var request = client
-            .GetResponseAsync(new SilentRequested("order-2"), new RequestOptions { Timeout = TimeSpan.FromSeconds(30) })
+            .GetResponseAsync(new SilentRequested { OrderId = "order-2" }, new RequestOptions { Timeout = TimeSpan.FromSeconds(30) })
             .AsTask();
 
         await harness.Consumed.WaitForAsync<SilentRequested>(); // delivered, and deliberately left unanswered
         await AdvanceUntilCompletedAsync(time, request);
 
-        Func<Task> awaitRequest = () => request;
-        var thrown = await awaitRequest.Should().ThrowAsync<RequestTimeoutException>();
-        thrown.WithMessage("*PriceQuoted*SilentRequested*00:00:30*");
-        thrown.Which.InnerException.Should().BeOfType<TimeoutException>();
+        var result = await request;
+
+        result.IsFailure(out var error, out _).Should().BeTrue();
+        error!.Type.Should().Be(AppErrorType.OperationTimeout);
+        error.Message.Should().ContainAll("PriceQuoted", "SilentRequested", "00:00:30");
 
         harness.Consumed.Count<SilentRequested>().Should().Be(1); // the request was delivered; only the reply never came
     }
@@ -65,12 +70,13 @@ public sealed class RequestClientTests
         await using var harness = await StartAsync(time);
         var client = harness.Services.GetRequiredService<IRequestClient<SilentRequested, PriceQuoted>>();
 
-        var request = client.GetResponseAsync(new SilentRequested("order-3")).AsTask();
+        var request = client.GetResponseAsync(new SilentRequested { OrderId = "order-3" }).AsTask();
         await harness.Consumed.WaitForAsync<SilentRequested>();
         await AdvanceUntilCompletedAsync(time, request);
 
-        Func<Task> awaitRequest = () => request;
-        await awaitRequest.Should().ThrowAsync<RequestTimeoutException>();
+        var result = await request;
+        result.IsFailure(out var error, out _).Should().BeTrue();
+        error!.Type.Should().Be(AppErrorType.OperationTimeout);
 
         var conversationId = harness.Published.Of<SilentRequested>().Should().ContainSingle().Which.Envelope.ConversationId;
         conversationId.Should().NotBeNullOrEmpty();
@@ -80,7 +86,7 @@ public sealed class RequestClientTests
         // reaching a handler is the proof the finally released the entry — the contrast is the round-trip test above,
         // where the same type is intercepted and never consumed.
         await harness.Bus.PublishAsync(
-            new PriceQuoted("order-3", 7m),
+            new PriceQuoted { OrderId = "order-3", Amount = 7m },
             new PublishOptions { MessageId = "late-reply-1", ConversationId = conversationId });
 
         var consumed = await harness.Consumed.WaitForAsync<PriceQuoted>();

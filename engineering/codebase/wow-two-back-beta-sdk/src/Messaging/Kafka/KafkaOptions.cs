@@ -9,10 +9,12 @@ using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Kafka;
 
-/// <summary>Options for the Kafka event-bus adapter.</summary>
+/// <summary>Holds options for the Kafka event-bus adapter.</summary>
 public sealed record KafkaOptions
 {
     /// <summary>Bootstrap servers (host:port[,host:port]). Default local.</summary>
@@ -29,7 +31,7 @@ public sealed record KafkaOptions
 
     /// <summary>
     /// Route each message to the topic <see cref="ITopologyService"/> resolves from it — the message type's stable
-    /// token for a publish, <see cref="EventEnvelope.Destination"/> for an explicit
+    /// token for a publish, <see cref="EventEnvelopeModel.Destination"/> for an explicit
     /// <see cref="IEventBus.SendAsync{TEvent}"/> — instead of producing everything to <see cref="Topic"/>. Default
     /// false, which keeps an existing deployment on its single topic.
     /// </summary>

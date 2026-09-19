@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging;
 
-/// <summary>How a received message left the consume pipeline — the <c>messaging.consume.outcome</c> tag on the consumed counter.</summary>
+/// <summary>Refers to how a received message left the consume pipeline — the <c>messaging.consume.outcome</c> tag on the consumed counter.</summary>
 public enum ConsumeOutcome
 {
     /// <summary>The message reached its handler and processing completed.</summary>
@@ -21,7 +21,7 @@ public enum ConsumeOutcome
     NoHandler,
 
     /// <summary>
-    /// The attempt threw, the registered <c>IEventFaultClassifier</c> returned <c>FaultDisposition.Ignore</c>, and the
+    /// The attempt threw, the registered <c>IEventFaultPolicy</c> returned <c>FaultDisposition.Ignore</c>, and the
     /// resilience pipeline swallowed the fault — so the message was acknowledged without any attempt completing.
     /// Distinct from <see cref="Success"/> (the handler never finished) and from <see cref="Faulted"/> (nothing was
     /// dead-lettered); an ignored message would otherwise leave the pipeline with no consumed count at all.

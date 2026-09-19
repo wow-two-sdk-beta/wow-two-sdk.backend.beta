@@ -19,7 +19,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.AzureServiceBus;
 /// dead-letter queue, absolute-time scheduling, per-message TTL, and sessions. Ordering, sessions and dedupe are
 /// properties of how the entity was created, not of the namespace, so those three track the options that create it.
 /// </summary>
-internal sealed class AzureServiceBusCapabilities(IOptions<AzureServiceBusOptions> options) : ITransportCapabilities
+internal sealed class AzureServiceBusCapabilities(AzureServiceBusOptions options) : ITransportCapabilities
 {
     /// <summary>
     /// Every queue and subscription has a <c>$DeadLetterQueue</c> sub-queue, and <c>DeadLetterMessageAsync</c> moves the
@@ -41,14 +41,14 @@ internal sealed class AzureServiceBusCapabilities(IOptions<AzureServiceBusOption
     /// <see cref="AzureServiceBusOptions.EnableDuplicateDetection"/> rather than reporting a flat true, so a pipeline
     /// choosing native-versus-emulated does not pick native on the strength of a feature this namespace never enabled.
     /// </summary>
-    public bool NativeDedupe => options.Value.EnableDuplicateDetection;
+    public bool NativeDedupe => options.EnableDuplicateDetection;
 
     /// <summary>
     /// FIFO is a session guarantee, not a queue one. Without sessions, competing consumers plus lock expiry and
     /// redelivery reorder a subscription freely — Service Bus documents sessions as the way to get ordering — so this
     /// tracks <see cref="AzureServiceBusOptions.RequiresSession"/>.
     /// </summary>
-    public bool NativeOrdering => options.Value.RequiresSession;
+    public bool NativeOrdering => options.RequiresSession;
 
     /// <summary>
     /// No per-message priority. Service Bus has no priority property and does not rank a queue by one; the documented
@@ -76,7 +76,7 @@ internal sealed class AzureServiceBusCapabilities(IOptions<AzureServiceBusOption
     /// the entity is created: a session receiver against a non-session subscription fails outright, so this tracks
     /// <see cref="AzureServiceBusOptions.RequiresSession"/>.
     /// </summary>
-    public bool NativeSessions => options.Value.RequiresSession;
+    public bool NativeSessions => options.RequiresSession;
 
     /// <summary>
     /// AMQP settled transfer: <c>SendMessageAsync</c> completes only once the broker has accepted and durably stored the
@@ -115,7 +115,7 @@ internal sealed class AzureServiceBusCapabilities(IOptions<AzureServiceBusOption
     ///   - a session's receiver is disposed once the session drains, so a later settle fails and the message redelivers
     ///   - a non-session receiver lives until <c>StopAsync</c>, which runs only after the drain
     /// </remarks>
-    public bool SettlesInContext => !options.Value.RequiresSession;
+    public bool SettlesInContext => !options.RequiresSession;
 
     /// <summary>The receive loop is an ordinary async batch pull with no thread affinity, so the pump may dispatch in parallel.</summary>
     public bool ThreadAffineConsume => false;

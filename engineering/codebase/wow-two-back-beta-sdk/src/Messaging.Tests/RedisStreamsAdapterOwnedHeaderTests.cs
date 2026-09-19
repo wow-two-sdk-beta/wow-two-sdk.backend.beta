@@ -47,7 +47,7 @@ public sealed class RedisStreamsAdapterOwnedHeaderTests : IAsyncLifetime
         var harness = MessagingTestHarness.Attach(host.Services, BrokerTimings);
 
         await harness.Bus.PublishAsync(
-            new HarnessEvent(tag),
+            new HarnessEvent { Tag = tag },
             new PublishOptions { Headers = Contract.CallerHeaders });
 
         var consumed = await harness.Consumed.WaitForAsync<HarnessEvent>(

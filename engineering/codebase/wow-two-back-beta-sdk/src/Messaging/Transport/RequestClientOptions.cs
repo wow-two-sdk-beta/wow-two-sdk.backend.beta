@@ -6,10 +6,10 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
-/// <summary>Process-wide defaults for <see cref="IRequestClient{TRequest, TResponse}"/>.</summary>
+/// <summary>Holds process-wide defaults for <see cref="IRequestClient{TRequest, TResponse}"/>.</summary>
 public sealed record RequestClientOptions
 {
-    /// <summary>How long a request waits for its response before <see cref="RequestTimeoutException"/>. Default 30s. <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> waits forever (bounded only by the caller's token).</summary>
+    /// <summary>How long a request waits before returning an operation-timeout failure. Default 30s. <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> waits forever (bounded only by the caller's token).</summary>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>

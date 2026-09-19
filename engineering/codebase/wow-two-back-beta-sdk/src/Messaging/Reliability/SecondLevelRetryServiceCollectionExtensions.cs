@@ -2,9 +2,9 @@ using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Services;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
@@ -26,22 +26,16 @@ public static class SecondLevelRetryServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddOptions<SecondLevelRetryOptions>().Configure(options =>
-        {
-            options.Enabled = true;
-
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<SecondLevelRetryOptions>>().Value);
-            configure?.Invoke(options);
-        });
+        var options = new SecondLevelRetryOptions { Enabled = true };
+        configure?.Invoke(options);
+        services.TryAddSingleton(options);
 
         // Both are read to locate the end of the first-level budget; neither is necessarily registered by the caller.
-        services.AddOptions<InMemoryEventBusOptions>();
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<InMemoryEventBusOptions>>().Value);
-        services.AddOptions<DelayedRetryOptions>();
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<DelayedRetryOptions>>().Value);
+        services.TryAddSingleton(new InMemoryEventBusOptions());
+        services.TryAddSingleton(new DelayedRetryOptions());
 
         services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<SecondLevelRetryCoordinator>();
+        services.TryAddSingleton<SecondLevelRetryService>();
         services.AddSingleton<IConsumeInterceptor, RetryingConsumeInterceptor>();
         return services;
     }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization.Serializers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
@@ -28,8 +29,7 @@ internal sealed class EfOutbox<TContext>(TContext context, IMessageSerializer se
             Id = isGuidId ? id : Guid.NewGuid(),
             Type = record.Type,
             Payload = record.Payload.ToArray(),
-            // The record arrives already serialized, so stamp the format the registered serializer produces — the same
-            // content type the transport carries on the wire envelope. Dispatch checks it before deserializing.
+            // Stamp the serializer's wire content type on the staged payload.
             ContentType = serializer.ContentType,
             OccurredOnUtc = record.OccurredOnUtc,
             HeadersJson = SerializeHeaders(record, isGuidId),
@@ -39,15 +39,12 @@ internal sealed class EfOutbox<TContext>(TContext context, IMessageSerializer se
         return ValueTask.CompletedTask;
     }
 
-    // Deliberately System.Text.Json, not IMessageSerializer: headers_json is a text metadata column, not the event body
-    // — a binary serializer (MessagePack, Protobuf) has no lossless representation in it.
+    // headers_json is a text column, which a binary message serializer cannot fill losslessly.
     private static string SerializeHeaders(OutboxRecord record, bool isGuidId)
     {
         var headers = record.Headers;
 
-        // A caller id that is not a Guid cannot be the row's Guid primary key, and dispatch falls back to the row id as
-        // the transport message id — so carry the original through the reserved message-id header instead of losing it
-        // to the generated Guid. Dispatch lifts it back onto PublishOptions.MessageId.
+        // Preserve a non-Guid caller message id in the reserved header.
         if (!isGuidId && !string.IsNullOrEmpty(record.Id))
         {
             var withMessageId = headers is null
@@ -57,8 +54,7 @@ internal sealed class EfOutbox<TContext>(TContext context, IMessageSerializer se
             headers = withMessageId;
         }
 
-        // Persist the column's own empty-object default rather than a JSON null, so an empty header set reads back the
-        // same whether the row was staged with none or with an unset dictionary.
+        // Persist empty headers as the column's empty JSON object.
         return headers is { Count: > 0 } ? JsonSerializer.Serialize(headers) : "{}";
     }
 }

@@ -3,7 +3,7 @@ using System.Globalization;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
 /// <summary>
-/// Stores saga instances by correlation id. The default is in-memory; a durable implementation (EF, Mongo, Redis) maps
+/// Defines behavior that stores saga instances by correlation id. The default is in-memory; a durable implementation (EF, Mongo, Redis) maps
 /// the same four operations onto its own store and is registered in its place.
 /// </summary>
 /// <typeparam name="TState">The saga state type.</typeparam>

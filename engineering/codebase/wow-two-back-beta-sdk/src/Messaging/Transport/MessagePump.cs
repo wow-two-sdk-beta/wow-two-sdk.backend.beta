@@ -1,6 +1,7 @@
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Services;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
@@ -27,7 +28,7 @@ internal sealed partial class MessagePump : IAsyncDisposable
         EventProcessingPipeline pipeline,
         ConcurrencyOptions options,
         IEnumerable<ITransportCapabilities> capabilities,
-        IMessagingMetrics metrics,
+        IMessagingMetricsService metrics,
         ILogger<MessagePump> logger)
     {
         ArgumentNullException.ThrowIfNull(options);

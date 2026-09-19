@@ -3,6 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
@@ -18,7 +22,10 @@ internal sealed class RequestClient<TRequest, TResponse>(
     where TRequest : class, IEvent
     where TResponse : class, IEvent
 {
-    public async ValueTask<TResponse> GetResponseAsync(TRequest request, RequestOptions? options = null, CancellationToken cancellationToken = default)
+    public async ValueTask<Result<TResponse>> GetResponseAsync(
+        TRequest request,
+        RequestOptions? options = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -32,23 +39,24 @@ internal sealed class RequestClient<TRequest, TResponse>(
         {
             await SendRequestAsync(request, conversationId, replyTo, options, cancellationToken);
 
-            EventEnvelope reply;
+            EventEnvelopeModel reply;
             try
             {
                 reply = await pendingRequest.Completion.WaitAsync(timeout, timeProvider, cancellationToken);
             }
-            catch (TimeoutException ex)
+            catch (TimeoutException)
             {
-                throw new RequestTimeoutException(
-                    $"No response of type '{typeof(TResponse).Name}' arrived for request '{typeof(TRequest).Name}' (conversation {conversationId}) within {timeout}.",
-                    ex);
+                return Result<TResponse>.Fail(AppErrorFactory.OperationTimeout(
+                    $"No response of type '{typeof(TResponse).Name}' arrived for request '{typeof(TRequest).Name}' " +
+                    $"(conversation {conversationId}) within {timeout}."));
             }
 
             if (reply.Body is TResponse response)
-                return response;
+                return Result<TResponse>.Ok(response);
 
-            throw new RequestFaultException(
-                $"Request '{typeof(TRequest).Name}' (conversation {conversationId}) was answered with '{reply.BodyType.Name}', which is not a '{typeof(TResponse).Name}'.");
+            return Result<TResponse>.Fail(AppErrorFactory.SerializationFailed(
+                $"Request '{typeof(TRequest).Name}' (conversation {conversationId}) was answered with " +
+                $"'{reply.BodyType.Name}', which is not a '{typeof(TResponse).Name}'."));
         }
         finally
         {

@@ -8,7 +8,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Kafka.Transports;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Kafka;
 
@@ -35,9 +38,13 @@ public static class KafkaServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.AddOptions<KafkaOptions>().Configure(configure);
-
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<KafkaOptions>>().Value);
+        services.AddValidatedOptions<KafkaOptions>(
+            configure,
+            builder => builder
+                .Validate(options => !string.IsNullOrWhiteSpace(options.BootstrapServers), "KafkaOptions.BootstrapServers must not be empty.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.Topic), "KafkaOptions.Topic must not be empty.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.GroupId), "KafkaOptions.GroupId must not be empty.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.DeadLetterTopic), "KafkaOptions.DeadLetterTopic must not be empty."));
 
         var assemblies = handlerAssemblies is { Length: > 0 } ? handlerAssemblies : [Assembly.GetCallingAssembly()];
         services.AddEventHandlersFromAssemblies(assemblies);
@@ -47,10 +54,10 @@ public static class KafkaServiceCollectionExtensions
         services.AddMessageTopology();
 
         // The shared endpoint's name defaults to this adapter's topic, so a reply addressed here resolves to it.
-        services.AddOptions<TopologyOptions>().PostConfigure<IOptions<KafkaOptions>>((topology, kafka) =>
+        services.AddOptions<TopologyOptions>().PostConfigure<KafkaOptions>((topology, kafka) =>
         {
-            topology.SharedEndpointName ??= kafka.Value.Topic;
-            topology.SharedDeadLetterQueueName ??= kafka.Value.DeadLetterTopic;
+            topology.SharedEndpointName ??= kafka.Topic;
+            topology.SharedDeadLetterQueueName ??= kafka.DeadLetterTopic;
         });
 
         services.TryAddSingleton<ITransportCapabilities, KafkaCapabilities>();

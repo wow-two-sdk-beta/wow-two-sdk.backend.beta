@@ -1,6 +1,8 @@
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
-/// <summary>Schedules an envelope for delayed (future) delivery.</summary>
+/// <summary>Defines behavior that schedules an envelope for delayed (future) delivery.</summary>
 /// <remarks>
 ///   - carries delayed retry too (<see cref="DelayedRetryOptions"/>) — a dropped envelope drops the retry
 ///   - only a durable implementation keeps re-enqueued retries across a restart
@@ -12,5 +14,5 @@ public interface IDelayedDeliveryService
     /// <param name="envelope">The envelope to schedule.</param>
     /// <param name="notBeforeUtc">Earliest delivery time (UTC).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask ScheduleAsync(EventEnvelope envelope, DateTimeOffset notBeforeUtc, CancellationToken cancellationToken);
+    ValueTask ScheduleAsync(EventEnvelopeModel envelope, DateTimeOffset notBeforeUtc, CancellationToken cancellationToken);
 }

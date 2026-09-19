@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
-/// <summary>Where a dead-lettered message sits in the administration lifecycle.</summary>
+/// <summary>Refers to where a dead-lettered message sits in the administration lifecycle.</summary>
 public enum DeadLetterState
 {
     /// <summary>Awaiting triage — visible to <see cref="IDeadLetterAdmin.BrowseAsync"/> and eligible for redrive. Every record starts here.</summary>

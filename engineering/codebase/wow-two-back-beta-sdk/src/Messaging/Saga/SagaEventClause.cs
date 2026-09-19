@@ -1,3 +1,5 @@
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
 
 /// <summary>One event's behaviour in one state. Built by <c>When</c> and attached by <c>Initially</c> / <c>During</c> / <c>DuringAny</c>.</summary>
@@ -24,12 +26,12 @@ public sealed class SagaEventClause<TState, TEvent> : SagaEventClause<TState>
 {
     private readonly List<Func<SagaTransitionContext<TState, TEvent>, CancellationToken, ValueTask>> _activities = [];
     private readonly List<(Type TimeoutType, string Name)> _declaredTimeouts = [];
-    private Func<object, EventEnvelope, string?>? _correlate;
+    private Func<object, EventEnvelopeModel, string?>? _correlate;
     private string? _targetState;
     private bool _finalizes;
     private SagaMissingInstance _missingInstance = SagaMissingInstance.Ignore;
 
-    internal SagaEventClause(Func<object, EventEnvelope, string?>? correlate) => _correlate = correlate;
+    internal SagaEventClause(Func<object, EventEnvelopeModel, string?>? correlate) => _correlate = correlate;
 
     /// <inheritdoc />
     public override Type EventType => typeof(TEvent);

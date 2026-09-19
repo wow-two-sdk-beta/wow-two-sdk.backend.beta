@@ -44,7 +44,7 @@ public sealed class ConsumeFilterTests
             },
             handlerAssemblies: [typeof(PingHandler).Assembly]);
 
-        await harness.Bus.PublishAsync(new PingEvent("x"));
+        await harness.Bus.PublishAsync(new PingEvent { Value = "x" });
 
         // Each filter records its "after" leg as the chain unwinds, which is past the consume hook — so wait for the
         // whole message to land rather than only for the handler to have run.

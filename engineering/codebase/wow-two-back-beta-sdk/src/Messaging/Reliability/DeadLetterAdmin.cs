@@ -185,11 +185,11 @@ internal sealed partial class DeadLetterAdmin : IDeadLetterAdmin
             if (outcome == RedriveOutcome.Redriven)
                 redriven++;
             else
-                failures.Add(new DeadLetterRedriveFailure(record.MessageId, outcome));
+                failures.Add(new DeadLetterRedriveFailure { MessageId = record.MessageId, Outcome = outcome });
         }
 
         LogBulkRedrive(redriven, matched.Count);
-        return new DeadLetterRedriveResult(matched.Count, redriven, failures);
+        return new DeadLetterRedriveResult { Matched = matched.Count, Redriven = redriven, Failures = failures };
     }
 
     public ValueTask<int> QuarantineAsync(DeadLetterQuery query, CancellationToken cancellationToken)

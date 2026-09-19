@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// The receive half of a transport — subscribes and drives each received message into the processing pipeline.
+/// Defines the receive half of a transport — subscribes and drives each received message into the processing pipeline.
 /// Started/stopped by a hosted service; the callback is the transport-agnostic <c>EventProcessingPipeline</c>.
 /// </summary>
 public interface IReceiveTransport

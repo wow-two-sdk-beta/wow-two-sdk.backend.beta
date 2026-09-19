@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization.Serializers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
-/// <summary>A staged outgoing event persisted in the transactional outbox table (<c>outbox_messages</c>).</summary>
+/// <summary>Represents an outgoing event staged in the transactional outbox.</summary>
 public sealed class OutboxMessageEntity : IKeyedEntity<Guid>, IHasTableName
 {
     /// <summary>The outbox table name.</summary>

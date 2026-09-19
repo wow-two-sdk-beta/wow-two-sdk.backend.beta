@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
@@ -23,12 +25,13 @@ public static class MessageTopologyServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var optionsBuilder = services.AddOptions<TopologyOptions>();
-        if (configure is not null)
-            optionsBuilder.Configure(configure);
-
-        // Consumers take the record; the builder above stays for validation and post-configuration.
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<TopologyOptions>>().Value);
+        services.AddValidatedOptions<TopologyOptions>(
+            configure,
+            builder => builder
+                .Validate(options => Enum.IsDefined(options.Style), "TopologyOptions.Style must be a defined topology style.")
+                .Validate(options => options.SharedEndpointName is null || !string.IsNullOrWhiteSpace(options.SharedEndpointName), "TopologyOptions.SharedEndpointName must not be empty when supplied.")
+                .Validate(options => options.SharedDeadLetterQueueName is null || !string.IsNullOrWhiteSpace(options.SharedDeadLetterQueueName), "TopologyOptions.SharedDeadLetterQueueName must not be empty when supplied.")
+                .Validate(options => options.EndpointPrefix is null || !string.IsNullOrWhiteSpace(options.EndpointPrefix), "TopologyOptions.EndpointPrefix must not be empty when supplied."));
 
         // Registered unconditionally so both entry points share one registry instance, whichever runs first.
         GetOrAddDestinationBindings(services);
@@ -44,7 +47,7 @@ public static class MessageTopologyServiceCollectionExtensions
         }
 
         services.TryAddSingleton<IEndpointNameMapper>(static provider =>
-            new DefaultEndpointNameMapper(provider.GetRequiredService<IOptions<TopologyOptions>>().Value.EndpointPrefix));
+            new EndpointNameMapper(provider.GetRequiredService<TopologyOptions>().EndpointPrefix));
         services.TryAddSingleton<ITopologyService, TopologyService>();
         return services;
     }

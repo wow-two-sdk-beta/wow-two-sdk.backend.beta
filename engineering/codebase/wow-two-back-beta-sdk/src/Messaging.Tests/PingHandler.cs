@@ -5,7 +5,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
-/// <summary>Succeeds and records the event.</summary>
+/// <summary>Handles ping events by recording them.</summary>
 public sealed class PingHandler(EventCollector collector) : IEventHandler<PingEvent>
 {
     public ValueTask HandleAsync(EventContext<PingEvent> context, CancellationToken cancellationToken)

@@ -3,9 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
 using WoW.Two.Sdk.Backend.Beta.Messaging;
+using WoW.Two.Sdk.Backend.Beta.Testing.Messaging.Trackers;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Saga;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 
@@ -118,7 +120,7 @@ public sealed class SagaTestHarness<TState> : IAsyncDisposable
     public ISagaRepository<TState> Repository { get; }
 
     /// <summary>Every reaction the saga had, in order.</summary>
-    public RecordedTransitionLog<TState> Transitions => Recorder.Transitions;
+    public RecordedTransitionTracker<TState> Transitions => Recorder.Transitions;
 
     /// <summary>The host's service provider.</summary>
     public IServiceProvider Services => Messaging.Services;
@@ -127,16 +129,16 @@ public sealed class SagaTestHarness<TState> : IAsyncDisposable
     public IEventBus Bus => Messaging.Bus;
 
     /// <summary>Envelopes the transport accepted — including every scheduled timeout.</summary>
-    public RecordedMessageLog Published => Messaging.Published;
+    public RecordedMessageTracker Published => Messaging.Published;
 
     /// <summary>Delivery attempts that completed.</summary>
-    public RecordedMessageLog Consumed => Messaging.Consumed;
+    public RecordedMessageTracker Consumed => Messaging.Consumed;
 
     /// <summary>Delivery attempts that threw — where a <see cref="SagaMissingInstance.Fault"/> or an exhausted concurrency budget lands.</summary>
-    public RecordedMessageLog Faulted => Messaging.Faulted;
+    public RecordedMessageTracker Faulted => Messaging.Faulted;
 
     /// <summary>Messages that exhausted processing and were dead-lettered.</summary>
-    public RecordedMessageLog DeadLettered => Messaging.DeadLettered;
+    public RecordedMessageTracker DeadLettered => Messaging.DeadLettered;
 
     /// <summary>Every saga timeout currently on the wire, in publish order.</summary>
     public IReadOnlyList<RecordedSagaTimeout> ScheduledTimeouts
@@ -183,7 +185,7 @@ public sealed class SagaTestHarness<TState> : IAsyncDisposable
     /// <summary>Wait until an instance is written in <paramref name="state"/>.</summary>
     /// <param name="correlationId">The instance's correlation id.</param>
     /// <param name="state">The state to wait for.</param>
-    /// <param name="timeout">Overall budget. Defaults to <see cref="RecordedTransitionLog{TState}.DefaultTimeout"/>.</param>
+    /// <param name="timeout">Overall budget. Defaults to <see cref="RecordedTransitionTracker{TState}.DefaultTimeout"/>.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The transition that got it there.</returns>
     /// <exception cref="TimeoutException">The instance never reached that state — the message names the edges it did take.</exception>
@@ -241,7 +243,7 @@ public sealed class SagaTestHarness<TState> : IAsyncDisposable
     }
 
     /// <summary>
-    /// Wait until a transition has landed <i>after</i> losing an optimistic-concurrency race — the behaviour that fails
+    /// Wait until a transition has landed after losing an optimistic-concurrency race — the behaviour that fails
     /// silently, because a repository that skips its version check produces the same published events and the same final
     /// state while quietly dropping the concurrent writer's update.
     /// </summary>
@@ -344,14 +346,14 @@ public sealed class SagaTestHarness<TState> : IAsyncDisposable
     /// <param name="quietPeriod">How long the bus must be silent to count as idle.</param>
     /// <param name="timeout">Overall budget.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <remarks>The blunt instrument, for asserting a timeout did <i>not</i> fire. To fire one, prefer <see cref="FireTimeoutAsync"/> — it waits on the message rather than on silence.</remarks>
+    /// <remarks>The blunt instrument, for asserting a timeout did not fire. To fire one, prefer <see cref="FireTimeoutAsync"/> — it waits on the message rather than on silence.</remarks>
     public async Task AdvanceAsync(TimeSpan delta, TimeSpan? quietPeriod = null, TimeSpan? timeout = null, CancellationToken cancellationToken = default)
     {
         Time.Advance(delta);
         await Messaging.WaitForIdleAsync(quietPeriod, timeout, cancellationToken);
     }
 
-    /// <summary>Wait until the bus has gone quiet and nothing is in flight — the primitive for asserting the saga did <i>not</i> react.</summary>
+    /// <summary>Wait until the bus has gone quiet and nothing is in flight — the primitive for asserting the saga did not react.</summary>
     /// <param name="quietPeriod">How long the silence must last.</param>
     /// <param name="timeout">Overall budget.</param>
     /// <param name="cancellationToken">Cancellation token.</param>

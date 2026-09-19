@@ -15,7 +15,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.AzureServiceBus;
 
 /// <summary>Lazily-opened shared <see cref="ServiceBusClient"/> (singleton) — the send and receive halves share one AMQP connection, as the client is designed for.</summary>
-internal sealed class AzureServiceBusConnection(IOptions<AzureServiceBusOptions> options) : IAsyncDisposable
+internal sealed class AzureServiceBusConnection(AzureServiceBusOptions options) : IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private ServiceBusClient? _client;
@@ -32,7 +32,7 @@ internal sealed class AzureServiceBusConnection(IOptions<AzureServiceBusOptions>
             if (_client is not null)
                 return _client;
 
-            var opt = options.Value;
+            var opt = options;
             ArgumentException.ThrowIfNullOrWhiteSpace(opt.ConnectionString, nameof(AzureServiceBusOptions.ConnectionString));
 
             _client = new ServiceBusClient(opt.ConnectionString, new ServiceBusClientOptions

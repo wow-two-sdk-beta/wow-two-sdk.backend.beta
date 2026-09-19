@@ -8,4 +8,11 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Messaging;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
 /// <summary>Advancing event — correlates by the same order id.</summary>
-public sealed record PaymentReceived(string OrderId, decimal Amount) : IEvent;
+public sealed record PaymentReceived : IEvent
+{
+    /// <summary>Gets the paid order's id.</summary>
+    public required string OrderId { get; init; }
+
+    /// <summary>Gets the payment amount received.</summary>
+    public required decimal Amount { get; init; }
+}

@@ -9,7 +9,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
 /// <summary>
-/// The retry → delay → dead-letter tier model. Exhausting the in-process retry budget no longer dead-letters a message
+/// Holds the retry → delay → dead-letter tier model. Exhausting the in-process retry budget no longer dead-letters a message
 /// outright: it is re-published on a long delay, given a fresh budget when it comes back, and only dead-lettered once
 /// the whole ladder is spent.
 /// </summary>

@@ -5,10 +5,11 @@ using System.Text.Json;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization.Serializers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 
-/// <summary>Tuning for <see cref="CloudEventsMessageSerializer"/> — the producer identity and the optional context attributes it stamps.</summary>
+/// <summary>Holds tuning for <see cref="CloudEventsMessageSerializer"/> — the producer identity and the optional context attributes it stamps.</summary>
 /// <remarks>
 ///   - Register as a singleton before swapping the serializer in
 ///   - <c>AddMessageSerializer&lt;T&gt;()</c> takes no options argument

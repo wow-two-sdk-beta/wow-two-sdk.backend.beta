@@ -21,21 +21,20 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 builder.Services.AddEfOutbox<AppDbContext>();               // IOutbox (staging)
 builder.Services.AddEfOutboxDispatcher<AppDbContext>(o => o.PollInterval = TimeSpan.FromSeconds(5));
 builder.Services.ReplaceWithPostgresSkipLockedOutboxClaim<AppDbContext>();  // scale-out (Postgres) — see Multi-instance dispatch below
-builder.Services.AddEfInbox<AppDbContext>();                // IInboxStore (dedupe)
+builder.Services.AddEfInbox<AppDbContext>();                // atomic inbox dedupe + effect
 
 // 3. stage inside a command (commits atomically with the entity write)
 await _outbox.EnqueueAsync(
     new OutboxRecord(Guid.NewGuid().ToString(), typeof(OrderPlaced).FullName!, payloadBytes, now, headers), ct);
 await _db.SaveChangesAsync(ct);               // order row + outbox row commit together
-// → OutboxDispatcher polls, resolves `type` via IMessageTypeResolver, deserializes `payload` via IMessageSerializer,
+// → OutboxDispatcher polls, resolves `type` via IMessageTypeMapper, deserializes `payload` via IMessageSerializer,
 //   publishes to IEventBus, stamps processed_on_utc.
 ```
 
 Staging records the registered serializer's content type on the row (`content_type`), the same way a transport stamps it
 on the wire envelope; dispatch fails a row loudly if that format no longer matches the registered `IMessageSerializer`
 rather than deserializing it to garbage. `type` is whatever token the caller passes — `typeof(T).FullName!` above.
-Resolution goes through `IMessageTypeResolver`, so a registered stable token, a plain full name, and an
-assembly-qualified name written by an older build all still resolve; an unresolvable one fails the row (error retained,
+Resolution goes through `IMessageTypeMapper`, so a registered stable token or alias resolves; an unresolvable one fails the row (error retained,
 `Attempts` bumped) instead of being dropped.
 
 ## Headers on dispatch (`headers_json`)
@@ -83,7 +82,7 @@ CREATE TABLE outbox_messages (
 );
 CREATE INDEX ix_outbox_messages_pending ON outbox_messages (occurred_on_utc) WHERE processed_on_utc IS NULL;
 
-CREATE TABLE inbox_messages (                      -- IInboxStore dedupe (exactly-once effect)
+CREATE TABLE inbox_messages (                      -- IInboxProcessor atomic dedupe + effect
     message_id  varchar(200) NOT NULL,
     seen_at_utc timestamptz  NOT NULL DEFAULT now(),
     CONSTRAINT pk_inbox_messages PRIMARY KEY (message_id)
@@ -115,20 +114,22 @@ empty rather than backfilling is also valid — dispatch then skips the format c
 |---|---|
 | `OutboxMessageEntity` · `ApplyOutboxModel()` | maps `outbox_messages` |
 | `EfOutbox<TContext>` · `AddEfOutbox<TContext>()` | `IOutbox` — adds the row to `TContext` (atomic staging) |
-| `OutboxDispatcher<TContext>` · `AddEfOutboxDispatcher<TContext>(…)` | claims a batch (`IOutboxClaimStrategy`) → resolves `type` (`IMessageTypeResolver`) → deserializes `payload` (`IMessageSerializer`) → rebuilds `PublishOptions` from `headers_json` (`OutboxDispatchHeaders`) → typed-publish to `IEventBus` → stamps `processed_on_utc`; polling hosted service |
-| `IOutboxClaimStrategy` · `PollingOutboxClaimStrategy` · `PostgresSkipLockedOutboxClaimStrategy` | pending-row claim seam — default polls (single-instance); `ReplaceWithPostgresSkipLockedOutboxClaim<TContext>()` swaps in the Postgres `FOR UPDATE SKIP LOCKED` claim for multi-instance |
-| `InboxMessageEntity` · `ApplyInboxModel()` · `EfInboxProcessor<TContext>` · `AddEfInbox<TContext>()` | `IInboxProcessor` — inbox row + handler in **one transaction** (true exactly-once) |
+| `OutboxDispatcher<TContext>` · `AddEfOutboxDispatcher<TContext>(…)` | claims a batch (`IOutboxClaimRepository`) → resolves `type` (`IMessageTypeMapper`) → deserializes `payload` (`IMessageSerializer`) → rebuilds `PublishOptions` from `headers_json` (`OutboxDispatchHeaders`) → typed-publish to `IEventBus` → stamps `processed_on_utc`; polling hosted service |
+| `IOutboxClaimRepository` · `UnlockedOutboxClaimRepository` · `PostgresSkipLockedOutboxClaimRepository` | pending-row claim seam — default polls (single-instance); `ReplaceWithPostgresSkipLockedOutboxClaim<TContext>()` swaps in the Postgres `FOR UPDATE SKIP LOCKED` claim for multi-instance |
+| `InboxMessageEntity` · `ApplyInboxModel()` · `EfInboxProcessor<TContext>` · `AddEfInbox<TContext>()` | `IInboxProcessor` — inbox row + handler effect in one transaction; transport delivery remains at-least-once |
 
 ## Multi-instance dispatch (scale-out)
 
-The default `PollingOutboxClaimStrategy` claims oldest-first **without locking** — safe for a single dispatcher, but two instances polling the same outbox would both claim the same rows (double-dispatch). For scale-out, swap in the Postgres locking claim:
+The default `UnlockedOutboxClaimRepository` claims oldest-first **without locking** — safe for a single dispatcher, but two instances polling the same outbox would both claim the same rows (double-dispatch). For scale-out, swap in the Postgres locking claim:
 
 ```csharp
 builder.Services.AddEfOutboxDispatcher<AppDbContext>();
-builder.Services.ReplaceWithPostgresSkipLockedOutboxClaim<AppDbContext>();  // Replace() the IOutboxClaimStrategy singleton
+builder.Services.ReplaceWithPostgresSkipLockedOutboxClaim<AppDbContext>();  // Replace() the IOutboxClaimRepository singleton
 ```
 
-`PostgresSkipLockedOutboxClaimStrategy` claims with `SELECT … WHERE processed_on_utc IS NULL ORDER BY occurred_on_utc FOR UPDATE SKIP LOCKED LIMIT @batch` (raw SQL, via `FromSqlRaw` over `OutboxMessageEntity` — EF Core abstractions only, no direct Npgsql dependency). Concurrent dispatchers **skip each other's locked rows**, so every pending row is claimed by exactly one instance. It opens the transaction at claim time and holds the row locks until the dispatcher stamps `processed_on_utc` and its `SaveChanges` commits — bridged onto the context's `SavedChanges` event so the dispatcher stays unchanged (the two strategies are drop-in interchangeable). Requires a real Postgres transaction, so pair it with the Npgsql provider. Covered by `Messaging.Tests/OutboxSkipLockedTests.cs` (two loops drain one outbox concurrently → every row claimed once).
+`PostgresSkipLockedOutboxClaimRepository` claims with `SELECT … WHERE processed_on_utc IS NULL ORDER BY occurred_on_utc FOR UPDATE SKIP LOCKED LIMIT @batch` (raw SQL, via `FromSqlRaw` over `OutboxMessageEntity` — EF Core abstractions only, no direct Npgsql dependency). Concurrent dispatchers **skip each other's locked rows**, so every pending row is claimed by exactly one instance. It opens the transaction at claim time and holds the row locks until the dispatcher stamps `processed_on_utc` and its `SaveChanges` commits — bridged onto the context's `SavedChanges` event so the dispatcher stays unchanged (the two repositories are drop-in interchangeable). Requires a real Postgres transaction, so pair it with the Npgsql provider. Covered by `Messaging.Tests/OutboxSkipLockedTests.cs` (two loops drain one outbox concurrently → every row claimed once).
+
+Successfully processed rows are pruned after the retention window. Rows stopped at `MaxDispatchAttempts` retain their error and are not pruned, preserving operator evidence.
 
 ## See also
 

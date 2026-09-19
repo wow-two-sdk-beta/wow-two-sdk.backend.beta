@@ -17,7 +17,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 /// </remarks>
 internal sealed class AdapterOwnedHeaderContract
 {
-    /// <summary>A type token nothing can resolve — what a caller forges onto an adapter-owned key.</summary>
+    /// <summary>Holds a type token nothing can resolve — what a caller forges onto an adapter-owned key.</summary>
     public const string ForgedEventType = "forged.contract.DoesNotExist";
 
     /// <summary>How long a broker gets to bring its subscription up before <see cref="PublishUntilConsumedAsync"/> gives up.</summary>
@@ -77,7 +77,7 @@ internal sealed class AdapterOwnedHeaderContract
 
         while (true)
         {
-            await harness.Bus.PublishAsync(new HarnessEvent(tag), new PublishOptions { Headers = CallerHeaders });
+            await harness.Bus.PublishAsync(new HarnessEvent { Tag = tag }, new PublishOptions { Headers = CallerHeaders });
 
             try
             {

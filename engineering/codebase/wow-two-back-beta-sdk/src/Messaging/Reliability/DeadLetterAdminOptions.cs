@@ -8,7 +8,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
-/// <summary>Options for <see cref="IDeadLetterAdmin"/>.</summary>
+/// <summary>Holds options for <see cref="IDeadLetterAdmin"/>.</summary>
 public sealed record DeadLetterAdminOptions
 {
     /// <summary>

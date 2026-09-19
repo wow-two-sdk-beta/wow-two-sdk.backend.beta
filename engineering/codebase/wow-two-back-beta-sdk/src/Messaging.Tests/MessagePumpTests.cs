@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 
@@ -30,7 +31,7 @@ public sealed class MessagePumpTests
 
         var bus = host.Services.GetRequiredService<IEventBus>();
         for (var i = 0; i < 6; i++)
-            await bus.PublishAsync(new SlowEvent($"m{i}"));
+            await bus.PublishAsync(new SlowEvent { Tag = $"m{i}" });
 
         await WaitForCompletionAsync(probe, 6, TimeSpan.FromSeconds(10));
         await host.StopAsync();
@@ -48,7 +49,7 @@ public sealed class MessagePumpTests
 
         var bus = host.Services.GetRequiredService<IEventBus>();
         for (var i = 0; i < 8; i++)
-            await bus.PublishAsync(new SlowEvent($"m{i}")); // no partition key — round-robin across all 4 workers
+            await bus.PublishAsync(new SlowEvent { Tag = $"m{i}" }); // no partition key — round-robin across all 4 workers
 
         await WaitForCompletionAsync(probe, 8, TimeSpan.FromSeconds(15));
         await host.StopAsync();
@@ -74,7 +75,7 @@ public sealed class MessagePumpTests
 
         var bus = host.Services.GetRequiredService<IEventBus>();
         for (var i = 0; i < 6; i++)
-            await bus.PublishAsync(new SlowEvent($"a{i}"), new PublishOptions { PartitionKey = "alpha" });
+            await bus.PublishAsync(new SlowEvent { Tag = $"a{i}" }, new PublishOptions { PartitionKey = "alpha" });
 
         await WaitForCompletionAsync(probe, 6, TimeSpan.FromSeconds(15));
         await host.StopAsync();
@@ -93,7 +94,7 @@ public sealed class MessagePumpTests
 
         var bus = host.Services.GetRequiredService<IEventBus>();
         for (var i = 0; i < 4; i++)
-            await bus.PublishAsync(new SlowEvent($"m{i}"));
+            await bus.PublishAsync(new SlowEvent { Tag = $"m{i}" });
 
         // Stop while every handler is still holding its slot: the drain, not the wait, is what lets them finish.
         await WaitForStartAsync(probe, 4, TimeSpan.FromSeconds(10));
@@ -102,6 +103,26 @@ public sealed class MessagePumpTests
         await host.StopAsync();
 
         probe.Completed.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public async Task Concurrent_duplicate_deliveries_run_the_handler_once()
+    {
+        var probe = new ConcurrencyProbe { Hold = TimeSpan.FromMilliseconds(150) };
+        using var host = BuildHost(o => o.MaxConcurrentMessages = 2, probe);
+        await host.StartAsync();
+
+        var bus = host.Services.GetRequiredService<IEventBus>();
+        var options = new PublishOptions { MessageId = "concurrent-duplicate" };
+        await Task.WhenAll(
+            bus.PublishAsync(new SlowEvent { Tag = "first" }, options).AsTask(),
+            bus.PublishAsync(new SlowEvent { Tag = "second" }, options).AsTask());
+
+        await WaitForCompletionAsync(probe, 1, TimeSpan.FromSeconds(5));
+        await host.StopAsync();
+
+        probe.Started.Should().ContainSingle();
+        probe.Completed.Should().ContainSingle();
     }
 
     private static async Task WaitForStartAsync(ConcurrencyProbe probe, int count, TimeSpan timeout)

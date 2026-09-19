@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization.Serializers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
@@ -22,8 +23,7 @@ public static class EfOutboxServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        // Default serializer, in case the outbox is registered for staging only (no transport/bus registration, which
-        // is what normally supplies it via AddEventResilienceDefaults). TryAdd → a registered serializer still wins.
+        // Supply a default serializer for outbox-only composition without replacing an existing one.
         services.TryAddSingleton<IMessageSerializer, SystemTextJsonMessageSerializer>();
         services.TryAddScoped<IOutbox, EfOutbox<TContext>>();
         return services;

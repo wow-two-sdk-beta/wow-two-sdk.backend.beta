@@ -16,18 +16,18 @@ public sealed class SagaStateMachineTests
         await using var harness = await StartAsync();
         var repository = InstanceStore(harness);
 
-        await harness.Bus.PublishAsync(new OrderPlaced("order-a", 100m));
-        await harness.Bus.PublishAsync(new OrderPlaced("order-b", 55m));
+        await harness.Bus.PublishAsync(new OrderPlaced { OrderId = "order-a", Total = 100m });
+        await harness.Bus.PublishAsync(new OrderPlaced { OrderId = "order-b", Total = 55m });
         await harness.Consumed.WaitForAsync<OrderPlaced>(count: 2);
 
         repository.Count.Should().Be(2); // two keys, two instances
 
         // Same key as the first OrderPlaced: it has to find that instance, and the total it publishes is the proof —
         // a mis-correlation would carry order-b's 55 instead.
-        await harness.Bus.PublishAsync(new PaymentReceived("order-a", 5m));
+        await harness.Bus.PublishAsync(new PaymentReceived { OrderId = "order-a", Amount = 5m });
 
         var confirmed = await harness.Published.WaitForAsync<OrderConfirmed>();
-        confirmed[0].BodyAs<OrderConfirmed>().Should().Be(new OrderConfirmed("order-a", 105m));
+        confirmed[0].BodyAs<OrderConfirmed>().Should().Be(new OrderConfirmed { OrderId = "order-a", Total = 105m });
 
         await harness.Consumed.WaitForAsync<PaymentReceived>();
         repository.Count.Should().Be(1); // order-a finalized and removed; order-b untouched
@@ -46,7 +46,7 @@ public sealed class SagaStateMachineTests
 
         // No Initially clause for PaymentReceived, so there is nothing to create and nothing to await — the assertion
         // is that the bus went quiet having stored nothing.
-        await harness.Bus.PublishAsync(new PaymentReceived("order-ghost", 5m));
+        await harness.Bus.PublishAsync(new PaymentReceived { OrderId = "order-ghost", Amount = 5m });
         await harness.WaitForIdleAsync();
 
         InstanceStore(harness).Count.Should().Be(0);
@@ -68,10 +68,10 @@ public sealed class SagaStateMachineTests
             // leaves the converged state readable afterwards.
             configureSaga: o => o.RemoveOnFinalize = false);
 
-        await harness.Bus.PublishAsync(new OrderPlaced("order-c", 100m));
+        await harness.Bus.PublishAsync(new OrderPlaced { OrderId = "order-c", Total = 100m });
         await harness.Consumed.WaitForAsync<OrderPlaced>();
 
-        await harness.Bus.PublishAsync(new PaymentReceived("order-c", 5m));
+        await harness.Bus.PublishAsync(new PaymentReceived { OrderId = "order-c", Amount = 5m });
         await harness.Consumed.WaitForAsync<PaymentReceived>();
 
         probe.PaymentActivityRuns.Should().Be(2); // lost the race once, re-ran against the reloaded state
@@ -93,7 +93,7 @@ public sealed class SagaStateMachineTests
         var time = new FakeTimeProvider();
         await using var harness = await StartAsync(services => services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time)));
 
-        await harness.Bus.PublishAsync(new OrderPlaced("order-d", 100m));
+        await harness.Bus.PublishAsync(new OrderPlaced { OrderId = "order-d", Total = 100m });
 
         // The timeout is published with a delay, so the transport has parked it on the scheduler by the time this
         // returns — which is what makes the Advance below deterministic rather than a race against the schedule.

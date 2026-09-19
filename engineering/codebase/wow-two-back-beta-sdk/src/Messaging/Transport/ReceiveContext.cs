@@ -1,3 +1,5 @@
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
@@ -8,7 +10,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 public abstract class ReceiveContext
 {
     /// <summary>The reconstructed envelope (the transport resolved the type + deserialized the body).</summary>
-    public abstract EventEnvelope Envelope { get; }
+    public abstract EventEnvelopeModel Envelope { get; }
 
     /// <summary>Acknowledge successful processing (settle the message).</summary>
     /// <param name="cancellationToken">Cancellation token.</param>

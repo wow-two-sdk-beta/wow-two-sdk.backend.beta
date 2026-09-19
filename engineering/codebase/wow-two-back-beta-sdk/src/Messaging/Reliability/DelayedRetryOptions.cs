@@ -4,12 +4,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
 /// <summary>
-/// Moves the retry backoff out of the consume slot: instead of sleeping in-process with the message unsettled, the
-/// failed delivery is re-published with a future <see cref="EventEnvelope.NotBeforeUtc"/> and then acknowledged, so the
+/// Holds settings that move the retry backoff out of the consume slot: instead of sleeping in-process with the message unsettled, the
+/// failed delivery is re-published with a future <see cref="EventEnvelopeModel.NotBeforeUtc"/> and then acknowledged, so the
 /// consumer is free again for the whole of the wait.
 /// </summary>
 /// <remarks>

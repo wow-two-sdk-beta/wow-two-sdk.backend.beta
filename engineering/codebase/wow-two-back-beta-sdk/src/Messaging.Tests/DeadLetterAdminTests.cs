@@ -13,7 +13,7 @@ public sealed class DeadLetterAdminTests
     {
         await using var harness = await StartAsync(services => services.AddSingleton(new FlakyToggle()));
 
-        await harness.Bus.PublishAsync(new FlakyEvent("triage"), new PublishOptions { MessageId = "dl-browse-1" });
+        await harness.Bus.PublishAsync(new FlakyEvent { Value = "triage" }, new PublishOptions { MessageId = "dl-browse-1" });
         await harness.DeadLettered.WaitForAsync<FlakyEvent>();
 
         var admin = Admin(harness);
@@ -50,7 +50,7 @@ public sealed class DeadLetterAdminTests
         var toggle = new FlakyToggle();
         await using var harness = await StartAsync(services => services.AddSingleton(toggle));
 
-        await harness.Bus.PublishAsync(new FlakyEvent("redrive-me"), new PublishOptions { MessageId = "dl-redrive-1" });
+        await harness.Bus.PublishAsync(new FlakyEvent { Value = "redrive-me" }, new PublishOptions { MessageId = "dl-redrive-1" });
         await harness.DeadLettered.WaitForAsync<FlakyEvent>();
         harness.Consumed.Any(m => m.Is<FlakyEvent>() && m.Outcome == ConsumeOutcome.Success).Should().BeFalse();
 
@@ -72,7 +72,7 @@ public sealed class DeadLetterAdminTests
         await using var harness = await StartAsync(configureAdmin: o => o.MaxRedrives = maxRedrives);
         var admin = Admin(harness);
 
-        await harness.Bus.PublishAsync(new RedrivePoison("stuck"), new PublishOptions { MessageId = "dl-cap-1" });
+        await harness.Bus.PublishAsync(new RedrivePoison { Value = "stuck" }, new PublishOptions { MessageId = "dl-cap-1" });
         await harness.DeadLettered.WaitForAsync<RedrivePoison>();
 
         for (var lap = 1; lap <= maxRedrives; lap++)
@@ -118,7 +118,7 @@ public sealed class DeadLetterAdminTests
             services => services.AddSingleton(new FlakyToggle()),
             configureAdmin: o => o.MaxRedrives = 0); // zero disables redrive — the read-only mode the options describe
 
-        await harness.Bus.PublishAsync(new FlakyEvent("bulk"), new PublishOptions { MessageId = "dl-bulk-1" });
+        await harness.Bus.PublishAsync(new FlakyEvent { Value = "bulk" }, new PublishOptions { MessageId = "dl-bulk-1" });
         await harness.DeadLettered.WaitForAsync<FlakyEvent>();
 
         var result = await Admin(harness).RedriveAsync(DeadLetterQuery.ForSource(nameof(FlakyEvent)), CancellationToken.None);
@@ -153,6 +153,6 @@ public sealed class DeadLetterAdminTests
                 configureServices?.Invoke(services);
             },
             // One attempt per delivery keeps a redrive lap to a single fault, so the lap count is unambiguous.
-            configureBus: o => o.Retry = new RetryConfig(MaxAttempts: 1, Backoff: BackoffKind.None),
+            configureBus: o => o.Retry = new RetryConfig { MaxAttempts = 1, Backoff = BackoffKind.None },
             handlerAssemblies: [typeof(RedrivePoisonHandler).Assembly]);
 }

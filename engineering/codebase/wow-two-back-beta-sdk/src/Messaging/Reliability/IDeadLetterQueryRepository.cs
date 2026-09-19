@@ -9,7 +9,7 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
 /// <summary>
-/// A dead-letter store that can also be searched, corrected and emptied — everything an operator console needs beyond
+/// Defines a dead-letter store that can also be searched, corrected and emptied — everything an operator console needs beyond
 /// "park it" and "put it back".
 /// </summary>
 /// <remarks>

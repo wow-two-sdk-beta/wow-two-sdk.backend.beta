@@ -8,6 +8,14 @@ using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
+using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Policies;
+using WoW.Two.Sdk.Backend.Beta.Messaging.EventSaga.Services;
+using WoW.Two.Sdk.Backend.Beta.Messaging.InMemory.Transports;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Models;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Buses;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Serialization.Serializers;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
+
 namespace WoW.Two.Sdk.Backend.Beta.Messaging;
 
 /// <summary>
@@ -48,8 +56,7 @@ public static class MessagingServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddOptions<InMemoryEventBusOptions>().Configure(options => configure?.Invoke(options));
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<InMemoryEventBusOptions>>().Value);
+        services.AddValidatedOptions<InMemoryEventBusOptions>(configure, ValidateInMemoryEventBusOptions);
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<InMemoryEventChannel>();
@@ -72,13 +79,12 @@ public static class MessagingServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddOptions<InMemoryEventBusOptions>();
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<InMemoryEventBusOptions>>().Value);
+        services.AddValidatedOptions<InMemoryEventBusOptions>(null, ValidateInMemoryEventBusOptions);
         services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<IRetryPolicy, DefaultRetryPolicy>();
+        services.TryAddSingleton<IRetryPolicy, RetryPolicy>();
         services.TryAddSingleton<IEventResiliencePipeline, DefaultEventResiliencePipeline>();
         services.TryAddSingleton<IInboxProcessor, InMemoryInboxProcessor>();
-        services.TryAddSingleton<IEventFaultClassifier>(DefaultEventFaultClassifier.RetryAll); // every exception retries until rules are registered
+        services.TryAddSingleton<IEventFaultPolicy>(EventFaultPolicy.RetryAll); // every exception retries until rules are registered
         services.TryAddSingleton<IMessageSerializer, SystemTextJsonMessageSerializer>();
         services.TryAddSingleton<MessageSerializerRegistry>(); // selects the deserializer by the received wt-content-type; one registered serializer = today's behaviour
         GetOrAddMessageTypeRegistry(services); // ensure the type registry singleton exists (populated by the handler/contract scan)
@@ -89,7 +95,7 @@ public static class MessagingServiceCollectionExtensions
 
     /// <summary>
     /// Configure consume-side concurrency — how many messages the pump processes in parallel, whether messages sharing a
-    /// <see cref="EventEnvelope.PartitionKey"/> stay ordered, and the shutdown drain budget. Without this the pump runs
+    /// <see cref="EventEnvelopeModel.PartitionKey"/> stay ordered, and the shutdown drain budget. Without this the pump runs
     /// with <see cref="ConcurrencyOptions.MaxConcurrentMessages"/> = 1, dispatching inline exactly as before it existed.
     /// </summary>
     /// <param name="services">The service collection.</param>
@@ -99,8 +105,7 @@ public static class MessagingServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.AddOptions<ConcurrencyOptions>().Configure(options => configure?.Invoke(options));
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<ConcurrencyOptions>>().Value);
+        services.AddValidatedOptions<ConcurrencyOptions>(configure, ValidateConcurrencyOptions);
         services.AddMessagePump();
         return services;
     }
@@ -108,10 +113,9 @@ public static class MessagingServiceCollectionExtensions
     // Every transport routes its receive loop through the pump; TryAdd keeps the 4 registration paths idempotent.
     private static IServiceCollection AddMessagePump(this IServiceCollection services)
     {
-        services.AddOptions<ConcurrencyOptions>();
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<ConcurrencyOptions>>().Value);
+        services.AddValidatedOptions<ConcurrencyOptions>(null, ValidateConcurrencyOptions);
         services.TryAddSingleton<MessagePump>();
-        services.AddMessagingMetrics(); // pipeline, bus and pump all take IMessagingMetrics — every transport path lands here
+        services.AddMessagingMetrics(); // pipeline, bus and pump all take IMessagingMetricsService — every transport path lands here
         services.TryAddSingleton<IMessageHeaderPropagationPolicy>(MessageHeaderPropagationPolicy.Default);
         services.TryAddSingleton<BusControl>();
         services.TryAddSingleton<IBusControl>(static sp => sp.GetRequiredService<BusControl>()); // hosted service needs the concrete type for lifecycle stamps; same instance behind the port
@@ -151,7 +155,7 @@ public static class MessagingServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Register a declarative event saga: the <see cref="IEventSagaRunner"/>, the in-process <see cref="IEventSagaTransport"/>,
+    /// Register a declarative event saga: the <see cref="IEventSagaService"/>, the <see cref="IEventSagaPublisherService"/>,
     /// the definition itself, and each of its step types (transient).
     /// </summary>
     /// <param name="services">The service collection.</param>
@@ -162,15 +166,17 @@ public static class MessagingServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(definition);
 
-        services.TryAddSingleton<IEventSagaRunner, EventSagaRunner>();
-        services.TryAddSingleton<IEventSagaTransport, InProcessEventSagaTransport>();
+        services.TryAddSingleton<IEventSagaService, EventSagaService>();
+        services.TryAddSingleton<IEventSagaPublisherService, EventSagaPublisherService>();
         services.AddSingleton(definition);
 
-        services.AddOptions<EventSagaOptions>().Configure(options => configure?.Invoke(options));
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<EventSagaOptions>>().Value);
+        services.AddValidatedOptions<EventSagaOptions>(
+            configure,
+            builder => builder.Validate(
+                options => Enum.IsDefined(options.UnroutableDestination),
+                "EventSagaOptions.UnroutableDestination must be a defined behavior."));
 
-        // Bind every address the steps send to, so an explicit send is delivered rather than dropped unrouted — the
-        // per-type topology that replaced RabbitMQ's `#` catch-all binds no arbitrary logical destination.
+        // Bind every saga destination because per-type topology has no catch-all route.
         foreach (var destination in definition.Destinations)
             services.AddDestinationBinding(destination.Destination, destination.MessageType);
 
@@ -180,8 +186,21 @@ public static class MessagingServiceCollectionExtensions
         return services;
     }
 
+    private static void ValidateInMemoryEventBusOptions(OptionsBuilder<InMemoryEventBusOptions> builder) => builder
+        .Validate(options => options.ChannelCapacity > 0, "InMemoryEventBusOptions.ChannelCapacity must be positive.")
+        .Validate(options => options.Retry.MaxAttempts > 0, "InMemoryEventBusOptions.Retry.MaxAttempts must be positive.")
+        .Validate(options => Enum.IsDefined(options.Retry.Backoff), "InMemoryEventBusOptions.Retry.Backoff must be a defined backoff kind.")
+        .Validate(options => options.Retry.BaseDelay is null || options.Retry.BaseDelay >= TimeSpan.Zero, "InMemoryEventBusOptions.Retry.BaseDelay must not be negative.")
+        .Validate(options => options.Retry.MaxDelay is null || options.Retry.MaxDelay >= TimeSpan.Zero, "InMemoryEventBusOptions.Retry.MaxDelay must not be negative.")
+        .Validate(options => options.Retry.BaseDelay is null || options.Retry.MaxDelay is null || options.Retry.MaxDelay >= options.Retry.BaseDelay, "InMemoryEventBusOptions.Retry.MaxDelay must be at least BaseDelay.");
+
+    private static void ValidateConcurrencyOptions(OptionsBuilder<ConcurrencyOptions> builder) => builder
+        .Validate(options => options.MaxConcurrentMessages > 0, "ConcurrencyOptions.MaxConcurrentMessages must be positive.")
+        .Validate(options => options.MaxQueuedMessagesPerWorker > 0, "ConcurrencyOptions.MaxQueuedMessagesPerWorker must be positive.")
+        .Validate(options => options.DrainTimeout > TimeSpan.Zero, "ConcurrencyOptions.DrainTimeout must be positive.");
+
     /// <summary>
-    /// Make <typeparamref name="TSerializer"/> <b>the default</b> — the serializer every message is sent with, replacing
+    /// Make <typeparamref name="TSerializer"/> the default — the serializer every message is sent with, replacing
     /// System.Text.Json. Pair with <see cref="AddReceiveOnlyMessageSerializer{TSerializer}"/> to keep decoding a format
     /// this service no longer sends.
     /// </summary>
@@ -205,7 +224,7 @@ public static class MessagingServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Make <typeparamref name="TSerializer"/>'s format <b>understood on receive</b> without making it the default — the
+    /// Make <typeparamref name="TSerializer"/>'s format understood on receive without making it the default — the
     /// send path keeps whatever <see cref="AddMessageSerializer{TSerializer}"/> (or the shipped default) put there.
     /// </summary>
     /// <remarks>
@@ -229,9 +248,7 @@ public static class MessagingServiceCollectionExtensions
         return services;
     }
 
-    // The default is positional: MS DI hands the singular IMessageSerializer to the LAST registered descriptor, and the
-    // registry takes that same instance as its fallback. Both registration paths pivot on this index, never on the first
-    // match, so a receive-only serializer can never be mistaken for the one that sends.
+    // Use the last serializer registration as both the DI default and registry fallback.
     private static int LastIndexOfMessageSerializer(IServiceCollection services)
     {
         for (var index = services.Count - 1; index >= 0; index--)

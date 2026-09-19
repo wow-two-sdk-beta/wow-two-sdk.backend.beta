@@ -14,7 +14,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Reliability.Ef;
 
-/// <summary>Options for the outbox dispatcher hosted service.</summary>
+/// <summary>Holds options for the outbox dispatcher hosted service.</summary>
 public sealed record OutboxDispatcherOptions
 {
     /// <summary>How often the dispatcher polls for pending rows. Default 5s.</summary>
@@ -23,10 +23,10 @@ public sealed record OutboxDispatcherOptions
     /// <summary>Maximum rows dispatched per pass. Default 100.</summary>
     public int BatchSize { get; set; } = 100;
 
-    /// <summary>Attempts before a poison row is given up on (stamped processed, error retained) so it stops re-selecting forever. Default 10.</summary>
+    /// <summary>Attempts before a poison row is stopped and retained with its error for operator inspection. Default 10.</summary>
     public int MaxDispatchAttempts { get; set; } = 10;
 
-    /// <summary>How long processed rows are retained before pruning. Default 7 days.</summary>
+    /// <summary>How long successfully processed rows are retained before pruning. Failed rows are retained. Default 7 days.</summary>
     public TimeSpan RetentionPeriod { get; set; } = TimeSpan.FromDays(7);
 
     /// <summary>How often the dispatcher prunes old processed rows. Default 15 minutes.</summary>

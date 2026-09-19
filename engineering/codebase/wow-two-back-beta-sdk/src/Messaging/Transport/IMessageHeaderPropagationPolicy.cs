@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Transport;
 
 /// <summary>
-/// Decides which headers flow from a consumed message onto a message published while handling it. The seam exists
+/// Defines behavior that decides which headers flow from a consumed message onto a message published while handling it. The seam exists
 /// because "carry the tenant id forward, drop the caller's debug flag" is an application decision, not a transport one.
 /// </summary>
 /// <remarks>
