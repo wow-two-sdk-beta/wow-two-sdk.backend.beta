@@ -82,8 +82,10 @@ public sealed class HttpReplaySafetyTests
     [Fact]
     public async Task Retry_ShouldPreserveCallerCancellationWithoutAnotherAttempt()
     {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var handler = new RecordingHandler(async (_, _, cancellationToken) =>
         {
+            entered.TrySetResult();
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
             return new HttpResponseMessage(HttpStatusCode.OK);
         });
@@ -92,9 +94,20 @@ public sealed class HttpReplaySafetyTests
             options.MaxRetryAttempts = 3;
             options.RetryDelay = TimeSpan.Zero;
         });
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+        using var cancellation = new CancellationTokenSource();
+        using var client = CreateClient(provider);
+        var pending = client.GetAsync("resource", cancellation.Token);
 
-        var action = () => CreateClient(provider).GetAsync("resource", cancellation.Token);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally
+        {
+            cancellation.Cancel();
+        }
+
+        var action = () => pending;
 
         await action.Should().ThrowAsync<OperationCanceledException>();
         handler.Attempts.Should().Be(1);
