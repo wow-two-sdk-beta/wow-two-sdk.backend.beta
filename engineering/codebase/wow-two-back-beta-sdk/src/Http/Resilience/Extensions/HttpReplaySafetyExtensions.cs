@@ -1,9 +1,9 @@
 using System.Net.Http;
 
-namespace WoW.Two.Sdk.Backend.Beta.Http.Resilience;
+namespace WoW.Two.Sdk.Backend.Beta.Http.Resilience.Extensions;
 
-/// <summary>Classifies outbound requests that may be replayed by retry or hedging.</summary>
-public static class HttpReplaySafety
+/// <summary>Extends HTTP replay safety with request eligibility checks for retry and hedging.</summary>
+public static class HttpReplaySafetyExtensions
 {
     /// <summary>Returns whether <paramref name="request"/> may be replayed under the SDK contract.</summary>
     /// <remarks>
@@ -12,7 +12,7 @@ public static class HttpReplaySafety
     /// underlying stream may be forward-only or already consumed.
     /// </remarks>
     public static bool IsReplaySafe(
-        HttpRequestMessage request,
+        this HttpRequestMessage request,
         Func<HttpRequestMessage, bool>? unsafeRequestReplaySelector = null)
     {
         ArgumentNullException.ThrowIfNull(request);

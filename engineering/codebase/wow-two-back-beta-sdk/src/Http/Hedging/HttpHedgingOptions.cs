@@ -1,4 +1,5 @@
 using WoW.Two.Sdk.Backend.Beta.Http.Resilience;
+using WoW.Two.Sdk.Backend.Beta.Http.Resilience.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Hedging;
 
@@ -36,7 +37,7 @@ public sealed record HttpHedgingOptions
             throw new ArgumentOutOfRangeException(nameof(MaxHedgedAttempts), "Hedged attempts cannot be negative.");
         if (HedgingDelay < TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(HedgingDelay), "Hedging delay cannot be negative.");
-        HttpResilienceOptionsValidation.ValidateTimeouts(
+        HttpTimeoutValidationExtensions.ValidateTimeouts(
             AttemptTimeout,
             TotalRequestTimeout,
             CircuitBreakerSamplingDuration,

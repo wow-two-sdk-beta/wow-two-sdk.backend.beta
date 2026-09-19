@@ -11,7 +11,9 @@ dotnet add package WoW.Two.Sdk.Backend.Beta.Observability.Logging
 ## Usage
 
 ```csharp
-await StartupFailureReporter.RunAsync(async cancellationToken =>
+using WoW.Two.Sdk.Backend.Beta.Observability.Logging.Services;
+
+await new StartupFailureReportingService().RunAsync(async cancellationToken =>
 {
     var builder = WebApplication.CreateBuilder(args);
     builder.Host.UseSerilogConventional();
@@ -21,7 +23,7 @@ await StartupFailureReporter.RunAsync(async cancellationToken =>
 });
 ```
 
-`StartupFailureReporter` creates `logs/startup-failures.log` before the builder. An exception from builder creation, configuration binding, options validation, build or start is written there, logging is flushed and the original exception escapes so the process exits nonzero. `UseSerilogConventional` remains the separate final application logger.
+`StartupFailureReportingService` creates `logs/startup-failures.log` before the builder. An exception from builder creation, configuration binding, options validation, build or start is written there, logging is flushed and the original exception escapes so the process exits nonzero. `UseSerilogConventional` remains the separate final application logger.
 
 Both default sinks render the ambient trace id ahead of the message, so a log line joins its trace:
 

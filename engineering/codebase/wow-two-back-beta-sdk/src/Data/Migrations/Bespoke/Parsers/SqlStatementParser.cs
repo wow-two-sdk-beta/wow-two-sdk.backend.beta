@@ -1,12 +1,12 @@
 using System.Text;
 
-namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke.Parsers;
 
-/// <summary>Splits a SQL script into sequential commands without splitting quoted or commented semicolons.</summary>
-internal static class SqlStatementSplitter
+/// <summary>Parses a SQL script into sequential statement texts while preserving quoted and commented semicolons.</summary>
+public sealed class SqlStatementParser : ISqlStatementParser
 {
-    /// <summary>Splits <paramref name="script"/> at top-level statement terminators.</summary>
-    public static IReadOnlyList<string> Split(string script)
+    /// <inheritdoc />
+    public IReadOnlyList<string> Parse(string script)
     {
         ArgumentNullException.ThrowIfNull(script);
 

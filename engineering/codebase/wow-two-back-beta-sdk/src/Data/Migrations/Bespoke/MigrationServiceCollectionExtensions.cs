@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
+using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke.Parsers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
@@ -48,6 +49,7 @@ public static class MigrationServiceCollectionExtensions
             CreateDialect(serviceProvider.GetRequiredService<MigrationOptions>().Provider));
         services.AddSingleton<IMigrationHistoryRepository, MigrationHistoryRepository>();
         services.TryAddSingleton<IMigrationChecksumHasher, MigrationChecksumHasher>();
+        services.TryAddSingleton<ISqlStatementParser, SqlStatementParser>();
         services.AddSingleton<IMigrationRunnerService, MigrationRunnerService>();
 
         return services;

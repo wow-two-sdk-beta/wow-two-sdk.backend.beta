@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
+using WoW.Two.Sdk.Backend.Beta.Http.Resilience.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Resilience;
 
@@ -38,7 +39,7 @@ public static class HttpResilienceBuilderExtensions
                 var request = arguments.Context.GetRequestMessage()
                               ?? arguments.Outcome.Result?.RequestMessage;
                 if (request is null
-                    || !HttpReplaySafety.IsReplaySafe(request, options.UnsafeRequestReplaySelector))
+                    || !request.IsReplaySafe(options.UnsafeRequestReplaySelector))
                     return false;
 
                 return await shouldHandleTransient(arguments).ConfigureAwait(false);

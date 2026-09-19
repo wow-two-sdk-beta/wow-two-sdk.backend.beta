@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
 using WoW.Two.Sdk.Backend.Beta.Http.Resilience;
+using WoW.Two.Sdk.Backend.Beta.Http.Resilience.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Hedging;
 
@@ -34,7 +35,7 @@ public static class HttpHedgingBuilderExtensions
                 var request = arguments.Context.GetRequestMessage();
                 return ValueTask.FromResult(
                     request is not null
-                    && HttpReplaySafety.IsReplaySafe(request, options.UnsafeRequestReplaySelector)
+                    && request.IsReplaySafe(options.UnsafeRequestReplaySelector)
                         ? options.HedgingDelay
                         : Timeout.InfiniteTimeSpan);
             };
@@ -52,7 +53,7 @@ public static class HttpHedgingBuilderExtensions
                 var request = arguments.Context.GetRequestMessage()
                               ?? arguments.Outcome.Result?.RequestMessage;
                 if (request is null
-                    || !HttpReplaySafety.IsReplaySafe(request, options.UnsafeRequestReplaySelector))
+                    || !request.IsReplaySafe(options.UnsafeRequestReplaySelector))
                     return false;
 
                 return await shouldHandleTransient(arguments).ConfigureAwait(false);

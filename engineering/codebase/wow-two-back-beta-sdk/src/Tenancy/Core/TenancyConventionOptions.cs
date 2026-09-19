@@ -2,7 +2,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Tenancy.Core;
 
 /// <summary>
 /// Holds request tenant-resolution configuration. Providers are tried in the order
-    /// claim → route → header → subdomain; enable the ones your app trusts. Populate
+/// claim → route → header → subdomain; enable the ones your app trusts. Populate
 /// <see cref="KnownTenants"/> to back the default in-memory <see cref="ITenantRepository"/>.
 /// </summary>
 public sealed record TenancyConventionOptions

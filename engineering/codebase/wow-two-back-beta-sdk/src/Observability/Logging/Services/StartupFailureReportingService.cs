@@ -1,10 +1,10 @@
 using System.Globalization;
 using Serilog;
 
-namespace WoW.Two.Sdk.Backend.Beta.Observability.Logging;
+namespace WoW.Two.Sdk.Backend.Beta.Observability.Logging.Services;
 
 /// <summary>Provides an outer host boundary with a durable failure sink that exists before application DI and final logging.</summary>
-public static class StartupFailureReporter
+public sealed class StartupFailureReportingService
 {
     private const string DefaultPath = "logs/startup-failures.log";
     private const string OutputTemplate =
@@ -14,7 +14,7 @@ public static class StartupFailureReporter
     /// <param name="runHost">Creates, configures, builds and runs the host inside this outer boundary.</param>
     /// <param name="startupFailurePath">Independently readable startup-failure file. Default <c>logs/startup-failures.log</c>.</param>
     /// <param name="cancellationToken">Token passed to the host delegate.</param>
-    public static async Task RunAsync(
+    public async Task RunAsync(
         Func<CancellationToken, Task> runHost,
         string startupFailurePath = DefaultPath,
         CancellationToken cancellationToken = default)

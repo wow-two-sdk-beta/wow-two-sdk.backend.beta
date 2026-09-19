@@ -7,12 +7,13 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using WoW.Two.Sdk.Backend.Beta.Observability.Logging;
+using WoW.Two.Sdk.Backend.Beta.Observability.Logging.Services;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.Tests.Logging;
 
 /// <summary>Verifies durable pre-host failure capture, exception preservation and final-logger handoff.</summary>
 [Collection(StartupFailureReporterCollection.Name)]
-public sealed class StartupFailureReporterTests
+public sealed class StartupFailureReportingServiceTests
 {
     [Theory]
     [InlineData("creation", "creation probe failed")]
@@ -33,7 +34,7 @@ public sealed class StartupFailureReporterTests
         var startupLog = Path.Combine(Path.GetTempPath(), "wow2-startup-tests", Guid.NewGuid().ToString("N"), "startup.log");
         var sink = new CollectingSink();
 
-        await StartupFailureReporter.RunAsync(_ =>
+        await new StartupFailureReportingService().RunAsync(_ =>
         {
             Log.Logger = new LoggerConfiguration().WriteTo.Sink(sink).CreateLogger();
             Log.Information("application probe");
@@ -53,7 +54,7 @@ public sealed class StartupFailureReporterTests
             return;
 
         var path = Environment.GetEnvironmentVariable("WOW2_STARTUP_FAILURE_LOG")!;
-        await StartupFailureReporter.RunAsync(async cancellationToken =>
+        await new StartupFailureReportingService().RunAsync(async cancellationToken =>
         {
             if (mode == "creation")
                 throw new InvalidOperationException("creation probe failed");
@@ -82,11 +83,14 @@ public sealed class StartupFailureReporterTests
         startInfo.ArgumentList.Add("test");
         startInfo.ArgumentList.Add(project);
         startInfo.ArgumentList.Add("--no-build");
+        startInfo.ArgumentList.Add("--no-restore");
+        startInfo.ArgumentList.Add("--configuration");
+        startInfo.ArgumentList.Add(output.Parent!.Name);
         startInfo.ArgumentList.Add("-m:1");
         startInfo.ArgumentList.Add("--nologo");
         startInfo.ArgumentList.Add("--filter");
         startInfo.ArgumentList.Add(
-            "FullyQualifiedName~StartupFailureReporterTests.StartupFailureChildProcessProbe");
+            "FullyQualifiedName~StartupFailureReportingServiceTests.StartupFailureChildProcessProbe");
         startInfo.Environment["WOW2_STARTUP_FAILURE_PROBE"] = mode;
         startInfo.Environment["WOW2_STARTUP_FAILURE_LOG"] = logPath;
 

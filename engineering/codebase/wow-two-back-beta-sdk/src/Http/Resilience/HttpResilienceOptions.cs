@@ -1,3 +1,5 @@
+using WoW.Two.Sdk.Backend.Beta.Http.Resilience.Extensions;
+
 namespace WoW.Two.Sdk.Backend.Beta.Http.Resilience;
 
 /// <summary>Holds configuration for the SDK's standard outbound-HTTP resilience pipeline (retry, circuit breaker, attempt timeout, and total-request timeout) on Polly v8 via <c>Microsoft.Extensions.Http.Resilience</c>.</summary>
@@ -34,29 +36,10 @@ public sealed record HttpResilienceOptions
             throw new ArgumentOutOfRangeException(nameof(MaxRetryAttempts), "Retry attempts cannot be negative.");
         if (RetryDelay < TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(RetryDelay), "Retry delay cannot be negative.");
-        HttpResilienceOptionsValidation.ValidateTimeouts(
+        HttpTimeoutValidationExtensions.ValidateTimeouts(
             AttemptTimeout,
             TotalRequestTimeout,
             CircuitBreakerSamplingDuration,
             CircuitBreakerFailureRatio);
-    }
-}
-
-internal static class HttpResilienceOptionsValidation
-{
-    internal static void ValidateTimeouts(
-        TimeSpan attemptTimeout,
-        TimeSpan totalRequestTimeout,
-        TimeSpan circuitBreakerSamplingDuration,
-        double circuitBreakerFailureRatio)
-    {
-        if (attemptTimeout <= TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(attemptTimeout), "Attempt timeout must be positive.");
-        if (totalRequestTimeout <= attemptTimeout)
-            throw new ArgumentOutOfRangeException(nameof(totalRequestTimeout), "Total timeout must exceed the attempt timeout.");
-        if (circuitBreakerSamplingDuration < attemptTimeout + attemptTimeout)
-            throw new ArgumentOutOfRangeException(nameof(circuitBreakerSamplingDuration), "Circuit-breaker sampling must be at least twice the attempt timeout.");
-        if (circuitBreakerFailureRatio is <= 0 or > 1)
-            throw new ArgumentOutOfRangeException(nameof(circuitBreakerFailureRatio), "Circuit-breaker failure ratio must be greater than 0 and at most 1.");
     }
 }

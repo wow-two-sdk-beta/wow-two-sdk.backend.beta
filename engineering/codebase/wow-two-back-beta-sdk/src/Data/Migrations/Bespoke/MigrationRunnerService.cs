@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke.Parsers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
@@ -21,7 +22,8 @@ public sealed partial class MigrationRunnerService(
     IDbConnectionFactory connections,
     MigrationOptions options,
     ILogger<MigrationRunnerService> logger,
-    IMigrationChecksumHasher checksumHasher) : IMigrationRunnerService
+    IMigrationChecksumHasher checksumHasher,
+    ISqlStatementParser statementParser) : IMigrationRunnerService
 {
     /// <inheritdoc />
     /// <remarks>
@@ -90,9 +92,8 @@ public sealed partial class MigrationRunnerService(
         // No-transaction migrations run bare (e.g. CREATE INDEX CONCURRENTLY), then record in a separate statement.
         if (migration.NoTransaction)
         {
-            // Npgsql cannot pipeline CREATE INDEX CONCURRENTLY with adjacent statements. Execute each parsed
-            // statement separately so an idempotent drop + create recovery script stays outside a transaction.
-            foreach (var statement in SqlStatementSplitter.Split(migration.ApplySql))
+            // Execute each statement separately so concurrent-index recovery remains outside a transaction.
+            foreach (var statement in statementParser.Parse(migration.ApplySql))
                 await conn.ExecuteAsync(new CommandDefinition(statement, cancellationToken: ct));
             stopwatch.Stop();
             await history.RecordAsync(conn, null, BuildEntry(migration, appliedBy, stopwatch.ElapsedMilliseconds), ct);
