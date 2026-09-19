@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Mfa.Totp;
 
@@ -14,8 +14,13 @@ public static class TotpServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddOptions<TotpOptions>().Configure(options => configure?.Invoke(options));
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<TotpOptions>>().Value);
+        services.AddValidatedOptions<TotpOptions>(
+            configure,
+            builder => builder
+                .Validate(options => options.StepSeconds > 0, "TotpOptions.StepSeconds must be positive.")
+                .Validate(options => options.Digits is 6 or 8, "TotpOptions.Digits must be 6 or 8.")
+                .Validate(options => options.VerificationSteps >= 0, "TotpOptions.VerificationSteps must not be negative.")
+                .Validate(options => options.SecretBytes > 0, "TotpOptions.SecretBytes must be positive."));
         services.TryAddSingleton<ITotpService, TotpService>();
 
         return services;

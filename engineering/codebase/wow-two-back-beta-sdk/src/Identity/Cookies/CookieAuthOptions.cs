@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Cookies;
 
-/// <summary>Cookie authentication options.</summary>
+/// <summary>Holds cookie authentication options.</summary>
 public sealed record CookieAuthOptions
 {
     /// <summary>Cookie name.</summary>

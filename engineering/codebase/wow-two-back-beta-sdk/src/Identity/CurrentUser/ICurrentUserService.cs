@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.CurrentUser;
 
-/// <summary>Read-only view of the current request's principal; never writes a cookie, and <see cref="Id"/> is <c>null</c> when anonymous.</summary>
-public interface ICurrentUser
+/// <summary>Defines read-only view of the current request's principal; never writes a cookie, and <see cref="Id"/> is <c>null</c> when anonymous.</summary>
+public interface ICurrentUserService
 {
     /// <summary>The account id (authenticated) or guest id (guest cookie), or <c>null</c> when anonymous or unparseable.</summary>
     Guid? Id { get; }

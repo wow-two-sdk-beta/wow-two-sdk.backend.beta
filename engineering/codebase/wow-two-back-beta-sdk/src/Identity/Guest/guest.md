@@ -5,7 +5,7 @@ Idempotent anonymous-session cookie — gives an unregistered visitor a stable `
 
 | Seam | Default |
 |---|---|
-| `IGuestSession` | `CookieGuestSession` — `EnsureGuest()` returns the existing cookie's Guid or mints + appends one (at most once per request); `Clear()` deletes it after sign-in |
+| `IGuestSessionService` | `CookieGuestSessionService` — `EnsureGuest()` returns the existing cookie's Guid or mints + appends one (at most once per request); `Clear()` deletes it after sign-in |
 
 ```csharp
 builder.Services.AddGuestSession(o =>

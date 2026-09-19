@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 
-/// <summary>Tunable inputs for OTP creation and verification.</summary>
+/// <summary>Holds tunable inputs for OTP creation and verification.</summary>
 public sealed record OtpOptions
 {
     /// <summary>Digits in a generated code (4–10). Default 6.</summary>

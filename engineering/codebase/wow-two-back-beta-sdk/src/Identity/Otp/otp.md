@@ -21,7 +21,7 @@ builder.Services.AddOtpService(o =>
 
 // request-otp endpoint: consumer looks up its user, then
 var creation = await _otp.CreateAsync(body.Phone, body.Service, ct);          // returns the code
-var delivery = await _delivery.SendAsync(new OtpDeliveryEnvelope(user.TelegramChatId, creation.Code!, body.Service), ct);
+var delivery = await _delivery.SendAsync(new OtpDeliveryEnvelopeModel(user.TelegramChatId, creation.Code!, body.Service), ct);
 
 // verify-otp endpoint
 var verification = await _otp.VerifyAsync(body.Phone, body.Code, body.Service, ct);

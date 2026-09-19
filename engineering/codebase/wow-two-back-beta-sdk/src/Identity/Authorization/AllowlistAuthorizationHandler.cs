@@ -1,19 +1,18 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Authorization;
 
-/// <summary>Evaluates <see cref="AllowlistRequirement"/>; succeeds when the allowed set is empty (OPEN) or the principal carries an allowlisted <see cref="AllowlistOptions.ClaimType"/> claim.</summary>
+/// <summary>Handles <see cref="AllowlistRequirement"/> authorization for a principal.</summary>
 public sealed class AllowlistAuthorizationHandler : AuthorizationHandler<AllowlistRequirement>
 {
     private readonly AllowlistOptions _options;
 
     /// <summary>Creates the handler from configured options.</summary>
     /// <param name="options">Allowlist options — claim type, allowed values, case sensitivity.</param>
-    public AllowlistAuthorizationHandler(IOptions<AllowlistOptions> options)
+    public AllowlistAuthorizationHandler(AllowlistOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        _options = options.Value;
+        _options = options;
     }
 
     /// <inheritdoc />

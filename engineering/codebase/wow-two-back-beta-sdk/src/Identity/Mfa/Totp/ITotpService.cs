@@ -2,7 +2,7 @@ using OtpNet;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Mfa.Totp;
 
-/// <summary>Defines the contract for issuing and verifying time-based one-time codes (RFC 6238).</summary>
+/// <summary>Defines issuing and verifying time-based one-time codes (RFC 6238).</summary>
 public interface ITotpService
 {
     /// <summary>Generates a random shared secret of the configured length.</summary>

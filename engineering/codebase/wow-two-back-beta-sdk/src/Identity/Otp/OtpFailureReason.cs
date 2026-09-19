@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 
-/// <summary>Why an OTP operation failed.</summary>
+/// <summary>Refers to why an OTP operation failed.</summary>
 public enum OtpFailureReason
 {
     /// <summary>A code was already created for this <c>(subject, scope)</c> within the rate-limit window.</summary>

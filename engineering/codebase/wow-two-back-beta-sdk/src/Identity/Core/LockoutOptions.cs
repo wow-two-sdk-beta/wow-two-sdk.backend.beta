@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Core;
 
-/// <summary>Lockout rules (consumed by the lockout slice).</summary>
+/// <summary>Holds lockout rules (consumed by the lockout slice).</summary>
 public sealed record LockoutOptions
 {
     /// <summary>Failed attempts before lockout. Default 5.</summary>

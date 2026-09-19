@@ -5,7 +5,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Oidc;
 
-/// <summary>OIDC registration options.</summary>
+/// <summary>Holds oIDC registration options.</summary>
 public sealed record OidcOptions
 {
     /// <summary>OIDC authority (issuer URL — discovery is loaded from `{authority}/.well-known/openid-configuration`).</summary>

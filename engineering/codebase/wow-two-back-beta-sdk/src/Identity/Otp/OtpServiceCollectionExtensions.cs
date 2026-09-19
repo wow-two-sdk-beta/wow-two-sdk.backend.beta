@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
@@ -16,15 +15,9 @@ public static class OtpServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        if (configure is not null)
-        {
-            services.Configure(configure);
-        }
-        else
-        {
-            services.AddOptions<OtpOptions>();
-            services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<OtpOptions>>().Value);
-        }
+        var options = new OtpOptions();
+        configure?.Invoke(options);
+        services.TryAddSingleton(options);
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IOtpCodeGenerator, NumericOtpCodeGenerator>();

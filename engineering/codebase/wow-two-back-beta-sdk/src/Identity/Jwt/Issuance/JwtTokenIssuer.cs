@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using System.Text;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
@@ -18,11 +17,11 @@ public sealed class JwtTokenIssuer : ITokenIssuer
     /// <summary>Creates the issuer from configured options.</summary>
     /// <param name="options">Issuer / audience / lifetime / signing key settings.</param>
     /// <param name="timeProvider">Time source for <c>iat</c> / <c>nbf</c> / <c>exp</c>.</param>
-    public JwtTokenIssuer(IOptions<JwtTokenIssuerOptions> options, TimeProvider timeProvider)
+    public JwtTokenIssuer(JwtTokenIssuerOptions options, TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(timeProvider);
-        _options = options.Value;
+        _options = options;
         _timeProvider = timeProvider;
 
         if (string.IsNullOrWhiteSpace(_options.SigningKey))

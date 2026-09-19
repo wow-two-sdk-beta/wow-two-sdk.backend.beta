@@ -1,6 +1,6 @@
 # Identity.Otp.Telegram
 
-Telegram delivery channel for `Identity/Otp`. `OtpDeliveryEnvelope.DeliveryAddress` must be the
+Telegram delivery channel for `Identity/Otp`. `OtpDeliveryEnvelopeModel.DeliveryAddress` must be the
 **numeric chat id** — your bot-link flow (`/start` + Share Contact) captures and stores it; that
 flow stays consumer-owned (it's bot UX, not SDK territory).
 

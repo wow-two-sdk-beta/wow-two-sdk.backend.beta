@@ -1,7 +1,7 @@
-namespace WoW.Two.Sdk.Backend.Beta.Identity.Guest;
+namespace WoW.Two.Sdk.Backend.Beta.Identity.Guest.Services;
 
-/// <summary>Idempotent guest-provisioning service — returns the existing guest cookie's Guid, or mints a new one and appends the cookie.</summary>
-public interface IGuestSession
+/// <summary>Defines creation, reuse and clearing of the guest-id cookie within a request.</summary>
+public interface IGuestSessionService
 {
     /// <summary>Ensures a guest identity exists for the current request, returning the stable Guid (cookie appended at most once).</summary>
     Guid EnsureGuest();

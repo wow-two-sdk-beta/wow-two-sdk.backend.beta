@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Core;
 
-/// <summary>EF Core implementation of <see cref="IUserRepository{TUser,TKey}"/> — persists via the app's <typeparamref name="TContext"/> and writes eagerly (each call saves).</summary>
+/// <summary>Accesses user entities through the application's EF Core context.</summary>
 /// <typeparam name="TUser">The user entity.</typeparam>
 /// <typeparam name="TKey">The primary-key type.</typeparam>
 /// <typeparam name="TContext">The application DbContext hosting the identity schema.</typeparam>
@@ -36,7 +36,26 @@ public sealed class EfUserRepository<TUser, TKey, TContext> : IUserRepository<TU
     {
         ArgumentNullException.ThrowIfNull(user);
         user.ConcurrencyStamp = Guid.NewGuid().ToString();
-        Users.Update(user);
+
+        var entry = _context.Entry(user);
+        if (entry.State == EntityState.Detached)
+        {
+            var tracked = _context.ChangeTracker
+                .Entries<TUser>()
+                .FirstOrDefault(candidate =>
+                    candidate.State != EntityState.Detached
+                    && EqualityComparer<TKey>.Default.Equals(candidate.Entity.Id, user.Id));
+
+            if (tracked is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot update a detached '{typeof(TUser).Name}' while another instance with key '{user.Id}' is tracked. "
+                    + "Apply accepted changes to the tracked instance.");
+            }
+
+            Users.Update(user);
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
     }
 

@@ -6,7 +6,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.OAuth.Extensions;
 /// <summary>Uniform OAuth baseline: persist tokens, merge scopes, stamp the originating scheme as the <c>wt:provider</c> claim.</summary>
 internal static class OAuthExtensions
 {
-    /// <summary>Claim type carrying the originating scheme name; read by <c>Identity/Claims</c> via <c>NormalizedClaimTypeConstants.Provider</c>.</summary>
+    /// <summary>Holds claim type carrying the originating scheme name; read by <c>Identity/Claims</c> via <c>NormalizedClaimTypeConstants.Provider</c>.</summary>
     public const string ProviderClaimType = "wt:provider";
 
     /// <summary>Pre-<c>configure</c> half: enable <c>SaveTokens</c> and merge scopes. Call before the host's <c>configure</c>.</summary>

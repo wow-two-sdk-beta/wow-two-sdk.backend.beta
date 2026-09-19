@@ -20,8 +20,7 @@ public static class JwtServiceCollectionExtensions
 
         if (string.IsNullOrWhiteSpace(opts.Issuer)) throw new InvalidOperationException("JwtOptions.Issuer is required.");
         if (string.IsNullOrWhiteSpace(opts.Audience)) throw new InvalidOperationException("JwtOptions.Audience is required.");
-        if (string.IsNullOrWhiteSpace(opts.SymmetricKey) && opts.JwksUri is null)
-            throw new InvalidOperationException("Either JwtOptions.SymmetricKey or JwtOptions.JwksUri must be supplied.");
+        ValidateTrustConfiguration(opts);
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, b =>
@@ -38,17 +37,73 @@ public static class JwtServiceCollectionExtensions
                     ValidateIssuerSigningKey = true,
                     ValidateLifetime = opts.ValidateLifetime,
                     ClockSkew = opts.ClockSkew,
+                    ValidAlgorithms = [opts.Algorithm],
                     IssuerSigningKey = opts.SymmetricKey is { Length: > 0 }
                         ? new SymmetricSecurityKey(Encoding.UTF8.GetBytes(opts.SymmetricKey))
                         : null,
                 };
-                if (opts.JwksUri is not null)
+                if (opts.MetadataAddress is not null)
                 {
-                    b.MetadataAddress = opts.JwksUri.ToString();
-                    b.RequireHttpsMetadata = opts.JwksUri.Scheme == Uri.UriSchemeHttps;
+                    b.MetadataAddress = opts.MetadataAddress.ToString();
+                    b.RequireHttpsMetadata = !opts.AllowInsecureMetadataForDevelopment;
                 }
             });
 
         return services;
     }
+
+    private static void ValidateTrustConfiguration(JwtOptions options)
+    {
+        var hasSymmetricKey = !string.IsNullOrWhiteSpace(options.SymmetricKey);
+        var hasMetadata = options.MetadataAddress is not null;
+        if (hasSymmetricKey == hasMetadata)
+        {
+            throw new InvalidOperationException(
+                "Configure exactly one JWT verification-key source: JwtOptions.SymmetricKey or JwtOptions.MetadataAddress.");
+        }
+
+        if (hasSymmetricKey)
+        {
+            var requiredBytes = options.Algorithm switch
+            {
+                SecurityAlgorithms.HmacSha256 => 32,
+                SecurityAlgorithms.HmacSha384 => 48,
+                SecurityAlgorithms.HmacSha512 => 64,
+                _ => throw new InvalidOperationException(
+                    "Symmetric JWT validation supports HS256, HS384 or HS512."),
+            };
+
+            if (Encoding.UTF8.GetByteCount(options.SymmetricKey!) < requiredBytes)
+            {
+                throw new InvalidOperationException(
+                    $"JwtOptions.SymmetricKey must contain at least {requiredBytes} UTF-8 bytes for {options.Algorithm}.");
+            }
+
+            return;
+        }
+
+        if (!options.MetadataAddress!.IsAbsoluteUri)
+            throw new InvalidOperationException("JwtOptions.MetadataAddress must be an absolute URI.");
+        if (options.MetadataAddress.Scheme != Uri.UriSchemeHttps && !options.AllowInsecureMetadataForDevelopment)
+        {
+            throw new InvalidOperationException(
+                "JwtOptions.MetadataAddress must use HTTPS unless AllowInsecureMetadataForDevelopment is explicitly enabled.");
+        }
+        if (!IsAsymmetricAlgorithm(options.Algorithm))
+        {
+            throw new InvalidOperationException(
+                "Metadata-based JWT validation requires RS256/384/512, PS256/384/512 or ES256/384/512.");
+        }
+    }
+
+    private static bool IsAsymmetricAlgorithm(string algorithm) => algorithm is
+        SecurityAlgorithms.RsaSha256 or
+        SecurityAlgorithms.RsaSha384 or
+        SecurityAlgorithms.RsaSha512 or
+        SecurityAlgorithms.RsaSsaPssSha256 or
+        SecurityAlgorithms.RsaSsaPssSha384 or
+        SecurityAlgorithms.RsaSsaPssSha512 or
+        SecurityAlgorithms.EcdsaSha256 or
+        SecurityAlgorithms.EcdsaSha384 or
+        SecurityAlgorithms.EcdsaSha512;
 }

@@ -2,7 +2,7 @@ using OtpNet;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Mfa.Totp;
 
-/// <summary>Issues and verifies time-based one-time codes against the parameters in <see cref="TotpOptions"/>.</summary>
+/// <summary>Provides issuance and verification of time-based one-time codes.</summary>
 public sealed class TotpService : ITotpService
 {
     private readonly TotpOptions _options;
@@ -16,7 +16,10 @@ public sealed class TotpService : ITotpService
     }
 
     /// <inheritdoc />
-    public byte[] GenerateSecret() => KeyGeneration.GenerateRandomKey(_options.SecretBytes);
+    public byte[] GenerateSecret()
+    {
+        return KeyGeneration.GenerateRandomKey(_options.SecretBytes);
+    }
 
     /// <inheritdoc />
     public string ToBase32(byte[] secret)

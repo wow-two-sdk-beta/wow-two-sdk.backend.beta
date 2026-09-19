@@ -6,7 +6,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.Authorization;
 /// <summary>Default-deny authorization registration.</summary>
 public static class DefaultDenyServiceCollectionExtensions
 {
-    /// <summary>Name of the registered default-deny policy, also wired as the fallback policy so endpoints without <c>[Authorize]</c>/<c>[AllowAnonymous]</c> are denied; anonymous endpoints (e.g. <c>/health</c>) MUST opt out with <c>[AllowAnonymous]</c>.</summary>
+    /// <summary>Holds name of the registered default-deny policy, also wired as the fallback policy so endpoints without <c>[Authorize]</c>/<c>[AllowAnonymous]</c> are denied; anonymous endpoints (e.g. <c>/health</c>) MUST opt out with <c>[AllowAnonymous]</c>.</summary>
     public const string PolicyName = "DefaultDeny";
 
     /// <summary>Registers a default-deny policy requiring an authenticated principal on <paramref name="scheme"/> (optionally allowlisted) under <see cref="PolicyName"/> and as the fallback; a single named scheme yields a clean 401 instead of an external-IdP 302.</summary>

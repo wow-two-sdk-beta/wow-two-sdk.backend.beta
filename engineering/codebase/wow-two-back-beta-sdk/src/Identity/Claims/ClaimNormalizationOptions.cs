@@ -1,22 +1,22 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Claims;
 
-/// <summary>Options for <see cref="ClaimMapper"/>: avatar-synthesis toggle plus per-provider profiles, seeded from <see cref="ClaimProviderProfileFactory.CreateDefault"/>.</summary>
+/// <summary>Holds options for <see cref="ClaimMapper"/>: avatar-synthesis toggle plus per-provider specs, seeded from <see cref="ClaimProviderSpecFactory.CreateDefault"/>.</summary>
 public sealed record ClaimNormalizationOptions
 {
-    /// <summary>Honor a profile's avatar synthesizer when no ready avatar claim is present. Default <c>true</c>.</summary>
+    /// <summary>Honor a spec's avatar synthesizer when no ready avatar claim is present. Default <c>true</c>.</summary>
     public bool SynthesizeAvatars { get; set; } = true;
 
-    /// <summary>Scheme → profile map (case-insensitive), pre-populated with every built-in provider.</summary>
-    public IDictionary<string, ClaimProviderProfile> Profiles { get; } = ClaimProviderProfileFactory.CreateDefault();
+    /// <summary>Scheme → spec map (case-insensitive), pre-populated with every built-in provider.</summary>
+    public IDictionary<string, ClaimProviderSpec> Specs { get; } = ClaimProviderSpecFactory.CreateDefault();
 
-    /// <summary>Adds or replaces the profile for <paramref name="scheme"/>.</summary>
+    /// <summary>Adds or replaces the spec for <paramref name="scheme"/>.</summary>
     /// <param name="scheme">Auth scheme name (matched case-insensitively).</param>
-    /// <param name="profile">Provider profile for that scheme.</param>
-    public ClaimNormalizationOptions AddProvider(string scheme, ClaimProviderProfile profile)
+    /// <param name="spec">Provider spec for that scheme.</param>
+    public ClaimNormalizationOptions AddProvider(string scheme, ClaimProviderSpec spec)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(scheme);
-        ArgumentNullException.ThrowIfNull(profile);
-        Profiles[scheme] = profile;
+        ArgumentNullException.ThrowIfNull(spec);
+        Specs[scheme] = spec;
         return this;
     }
 }

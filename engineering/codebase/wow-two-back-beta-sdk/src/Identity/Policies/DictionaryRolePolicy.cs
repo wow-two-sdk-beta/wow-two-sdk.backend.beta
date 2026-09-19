@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Options;
-
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Policies;
 
 /// <summary>Default <see cref="IRolePolicy"/> backed by the <see cref="RolePolicyOptions.Map"/> dictionary; unknown scopes deny everyone.</summary>
@@ -9,10 +7,10 @@ public sealed class DictionaryRolePolicy : IRolePolicy
 
     /// <summary>Creates the policy from configured options.</summary>
     /// <param name="options">The scope → allowed-roles map.</param>
-    public DictionaryRolePolicy(IOptions<RolePolicyOptions> options)
+    public DictionaryRolePolicy(RolePolicyOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        _map = options.Value.Map;
+        _map = options.Map;
     }
 
     /// <inheritdoc />

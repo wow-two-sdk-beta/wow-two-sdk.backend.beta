@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Policies;
 
-/// <summary>Decides whether a role may enter a scope; both sides are consumer-defined strings.</summary>
+/// <summary>Defines behavior that decides whether a role may enter a scope; both sides are consumer-defined strings.</summary>
 public interface IRolePolicy
 {
     /// <summary>Returns <c>true</c> when <paramref name="role"/> is allowed into <paramref name="scope"/>.</summary>

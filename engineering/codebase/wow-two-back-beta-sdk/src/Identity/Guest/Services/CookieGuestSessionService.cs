@@ -1,20 +1,20 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
-namespace WoW.Two.Sdk.Backend.Beta.Identity.Guest;
+namespace WoW.Two.Sdk.Backend.Beta.Identity.Guest.Services;
 
-/// <summary>Idempotent <see cref="IGuestSession"/> — appends the guest-id cookie when absent, returns the existing id when present.</summary>
+/// <summary>Provides creation, reuse and clearing of the guest-id cookie within a request.</summary>
 /// <remarks>Provisions at most once per request; the cookie is HttpOnly, Secure, and essential (an ownership capability, exempt from consent gating — not tracking).</remarks>
-public sealed class CookieGuestSession : IGuestSession
+public sealed class CookieGuestSessionService : IGuestSessionService
 {
     private readonly IHttpContextAccessor _accessor;
     private readonly GuestSessionOptions _options;
     private Guid? _provisioned;
 
-    /// <summary>Creates the provisioner over the request accessor and cookie options.</summary>
+    /// <summary>Creates the service over the request accessor and cookie options.</summary>
     /// <param name="accessor">Accessor for the ambient <see cref="HttpContext"/>.</param>
     /// <param name="options">Cookie name, lifetime, and SameSite policy.</param>
-    public CookieGuestSession(IHttpContextAccessor accessor, GuestSessionOptions options)
+    public CookieGuestSessionService(IHttpContextAccessor accessor, GuestSessionOptions options)
     {
         ArgumentNullException.ThrowIfNull(accessor);
         ArgumentNullException.ThrowIfNull(options);
@@ -28,7 +28,7 @@ public sealed class CookieGuestSession : IGuestSession
         if (_provisioned.HasValue) return _provisioned.Value;
 
         var http = _accessor.HttpContext
-            ?? throw new InvalidOperationException("No HttpContext — IGuestSession is only valid within a request scope.");
+            ?? throw new InvalidOperationException("No HttpContext — IGuestSessionService is only valid within a request scope.");
 
         if (http.Request.Cookies.TryGetValue(_options.CookieName, out var raw) && Guid.TryParse(raw, out var existing))
         {
@@ -55,7 +55,7 @@ public sealed class CookieGuestSession : IGuestSession
     public void Clear()
     {
         var http = _accessor.HttpContext
-            ?? throw new InvalidOperationException("No HttpContext — IGuestSession is only valid within a request scope.");
+            ?? throw new InvalidOperationException("No HttpContext — IGuestSessionService is only valid within a request scope.");
 
         // Expire with the same attributes it was written with, or strict browsers ignore the deletion of a Secure cookie.
         http.Response.Cookies.Delete(_options.CookieName, new CookieOptions

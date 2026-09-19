@@ -2,7 +2,7 @@ using System.Security.Claims;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.CurrentUser;
 
-/// <summary>Tunable inputs for cookie/claims-based current-user resolution; keep <see cref="GuestCookieName"/> in sync with <see cref="Guest.GuestSessionOptions.CookieName"/>.</summary>
+/// <summary>Holds tunable inputs for cookie/claims-based current-user resolution; keep <see cref="GuestCookieName"/> in sync with <see cref="Guest.GuestSessionOptions.CookieName"/>.</summary>
 public sealed record CurrentUserOptions
 {
     /// <summary>Name of the guest-id cookie read when no authenticated principal is present. Default <c>user-id</c>.</summary>

@@ -1,6 +1,6 @@
 # WoW.Two.Sdk.Backend.Beta.Identity.Jwt
 
-> JWT bearer authentication with sane defaults — issuer/audience/signing key validation, JWKS support.
+> JWT bearer authentication with issuer, audience, lifetime, algorithm and one verification-key source enforced.
 
 ## Install
 
@@ -10,7 +10,7 @@ dotnet add package WoW.Two.Sdk.Backend.Beta.Identity.Jwt
 
 ## Usage
 
-### Symmetric key (dev / quick-start)
+### Symmetric key
 
 ```csharp
 builder.Services.AddJwtBearerAuthentication(o =>
@@ -18,6 +18,7 @@ builder.Services.AddJwtBearerAuthentication(o =>
     o.Issuer = "https://my-issuer";
     o.Audience = "my-api";
     o.SymmetricKey = builder.Configuration["Jwt:Key"]!;
+    o.Algorithm = SecurityAlgorithms.HmacSha256;
 });
 
 var app = builder.Build();
@@ -25,13 +26,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 ```
 
-### JWKS (production — Auth0, Entra ID, Cognito, etc.)
+### OpenID Connect metadata
 
 ```csharp
 builder.Services.AddJwtBearerAuthentication(o =>
 {
     o.Issuer = "https://login.microsoftonline.com/{tenant}/v2.0";
     o.Audience = "api://my-api";
-    o.JwksUri = new Uri("https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration");
+    o.MetadataAddress = new Uri("https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration");
+    o.Algorithm = SecurityAlgorithms.RsaSha256;
 });
 ```
+
+Configure exactly one of `SymmetricKey` and `MetadataAddress`. Remote metadata requires HTTPS. A local HTTP identity provider requires the explicit `AllowInsecureMetadataForDevelopment` escape.

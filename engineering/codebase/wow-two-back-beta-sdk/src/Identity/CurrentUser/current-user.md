@@ -1,11 +1,11 @@
 # Identity.CurrentUser
 
 Read-only, tri-state view of the request's principal — **authenticated** / **guest** / **anonymous** —
-in one injectable. Resolves once per request, never writes a cookie.
+in one injectable. Resolves the ambient request on each access and never writes a cookie.
 
 | Seam | Default |
 |---|---|
-| `ICurrentUser` | `CookieCurrentUser` — authenticated (subject claim) → guest (guest cookie) → anonymous |
+| `ICurrentUserService` | `CookieCurrentUserService` — authenticated (subject claim) → guest (guest cookie) → anonymous |
 | `UserKind` | `User` · `Guest` · `Anonymous` |
 
 ```csharp
@@ -27,4 +27,6 @@ switch (_currentUser.Kind)
 - Resolution order: an authenticated principal wins; else a parseable guest cookie; else anonymous.
 - `Id` is the account id when authenticated, the guest id when guest, `null` when anonymous.
 - Pair with [`../Guest`](../Guest/guest.md) (issues the guest cookie) on the **same** cookie name.
-- Request-scoped: throws outside an HTTP request.
+- Singleton and request-safe: it retains no principal between requests.
+- Outside an HTTP request it reports anonymous with a null id, so background saves remain unstamped.
+- Audit and soft-delete interceptors read this same service on every save.

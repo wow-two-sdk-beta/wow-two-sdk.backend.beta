@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Guest;
 
-/// <summary>Tunable inputs for the guest-id cookie; keep <see cref="CookieName"/> in sync with <c>CurrentUserOptions.GuestCookieName</c>.</summary>
+/// <summary>Holds tunable inputs for the guest-id cookie; keep <see cref="CookieName"/> in sync with <c>CurrentUserOptions.GuestCookieName</c>.</summary>
 public sealed record GuestSessionOptions
 {
     /// <summary>Name of the HttpOnly guest-id cookie. Default <c>user-id</c>.</summary>

@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Cookies;
 
-/// <summary>How the cookie handler challenges an unauthenticated/unauthorized request.</summary>
+/// <summary>Refers to how the cookie handler challenges an unauthenticated/unauthorized request.</summary>
 public enum AuthChallengeMode
 {
     /// <summary>Server-rendered MVC: 302 redirect to <see cref="CookieAuthOptions.LoginPath"/> / access-denied page.</summary>

@@ -1,23 +1,22 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Claims;
 
-/// <summary>Per-request <see cref="IClaimsTransformation"/> that adds the canonical <c>wt:*</c> claims from the provider's <see cref="ClaimProviderProfile"/> and the principal's raw claims; idempotent and non-fabricating.</summary>
+/// <summary>Maps provider claims to the SDK's canonical claims.</summary>
 public sealed class ClaimMapper : IClaimsTransformation
 {
     private readonly ClaimNormalizationOptions _options;
 
     /// <summary>Creates the normalizer from configured options.</summary>
-    /// <param name="options">Normalization options (profiles and avatar toggle).</param>
-    public ClaimMapper(IOptions<ClaimNormalizationOptions> options)
+    /// <param name="options">Normalization options (specs and avatar toggle).</param>
+    public ClaimMapper(ClaimNormalizationOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        _options = options.Value;
+        _options = options;
     }
 
-    /// <summary>Adds the <c>wt:*</c> claims for the principal's provider; returns it unchanged when already normalized, no provider claim exists, or no profile matches.</summary>
+    /// <summary>Adds the <c>wt:*</c> claims for the principal's provider; returns it unchanged when already normalized, no provider claim exists, or no spec matches.</summary>
     /// <param name="principal">Authenticated principal to normalize.</param>
     public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
     {
@@ -30,7 +29,7 @@ public sealed class ClaimMapper : IClaimsTransformation
         }
 
         var provider = principal.FindFirst(NormalizedClaimTypeConstants.Provider)?.Value;
-        if (string.IsNullOrEmpty(provider) || !_options.Profiles.TryGetValue(provider, out var profile))
+        if (string.IsNullOrEmpty(provider) || !_options.Specs.TryGetValue(provider, out var spec))
         {
             return Task.FromResult(principal);
         }
@@ -41,14 +40,14 @@ public sealed class ClaimMapper : IClaimsTransformation
             return Task.FromResult(principal);
         }
 
-        var userId = FirstValue(principal, profile.UserIdClaims);
-        var username = FirstValue(principal, profile.UsernameClaims);
+        var userId = FirstValue(principal, spec.UserIdClaims);
+        var username = FirstValue(principal, spec.UsernameClaims);
 
         Add(identity, NormalizedClaimTypeConstants.UserId, userId);
-        Add(identity, NormalizedClaimTypeConstants.Email, FirstValue(principal, profile.EmailClaims));
-        Add(identity, NormalizedClaimTypeConstants.DisplayName, FirstValue(principal, profile.DisplayNameClaims));
+        Add(identity, NormalizedClaimTypeConstants.Email, FirstValue(principal, spec.EmailClaims));
+        Add(identity, NormalizedClaimTypeConstants.DisplayName, FirstValue(principal, spec.DisplayNameClaims));
         Add(identity, NormalizedClaimTypeConstants.Username, username);
-        Add(identity, NormalizedClaimTypeConstants.Avatar, ResolveAvatar(principal, profile, userId, username));
+        Add(identity, NormalizedClaimTypeConstants.Avatar, ResolveAvatar(principal, spec, userId, username));
 
         return Task.FromResult(principal);
     }
@@ -68,18 +67,18 @@ public sealed class ClaimMapper : IClaimsTransformation
         return null;
     }
 
-    /// <summary>Resolves the avatar URL: a direct claim wins, else the profile's synthesizer when enabled.</summary>
-    private string? ResolveAvatar(ClaimsPrincipal principal, ClaimProviderProfile profile, string? userId, string? username)
+    /// <summary>Resolves the avatar URL: a direct claim wins, else the spec's synthesizer when enabled.</summary>
+    private string? ResolveAvatar(ClaimsPrincipal principal, ClaimProviderSpec spec, string? userId, string? username)
     {
-        var direct = FirstValue(principal, profile.AvatarClaims);
+        var direct = FirstValue(principal, spec.AvatarClaims);
         if (!string.IsNullOrEmpty(direct))
         {
             return direct;
         }
 
-        if (_options.SynthesizeAvatars && profile.AvatarSynthesizer is not null)
+        if (_options.SynthesizeAvatars && spec.AvatarSynthesizer is not null)
         {
-            return profile.AvatarSynthesizer(new AvatarSynthesisContext(principal, userId, username));
+            return spec.AvatarSynthesizer(new AvatarSynthesisContext { Principal = principal, UserId = userId, Username = username });
         }
 
         return null;

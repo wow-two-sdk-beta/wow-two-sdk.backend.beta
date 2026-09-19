@@ -1,14 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Core;
 
 /// <summary>DI entry point for identity core — the mandatory slice every app starts from.</summary>
 public static class IdentityCoreServiceCollectionExtensions
 {
-    /// <summary>Register identity core for a <see cref="Guid"/>-keyed user: normalizer, options, and the <see cref="UserAccountManager{TUser,TKey}"/> facade. Chain <c>.AddEntityFrameworkStores&lt;TContext&gt;()</c> and further slices.</summary>
+    /// <summary>Register identity core for a <see cref="Guid"/>-keyed user: normalizer, options, and the <see cref="UserAccountService{TUser,TKey}"/> facade. Chain <c>.AddEntityFrameworkStores&lt;TContext&gt;()</c> and further slices.</summary>
     /// <typeparam name="TUser">The user entity (derives <see cref="IdentityUser"/>).</typeparam>
     /// <param name="services">The service collection.</param>
     /// <param name="configure">Optional identity options.</param>
@@ -27,9 +27,13 @@ public static class IdentityCoreServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddOptions<IdentityCoreOptions>().Configure(options => configure?.Invoke(options));
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<IdentityCoreOptions>>().Value);
-        services.TryAddScoped<UserAccountManager<TUser, TKey>>();
+        services.AddValidatedOptions<IdentityCoreOptions>(
+            configure,
+            builder => builder
+                .Validate(options => options.Password.MinLength > 0, "IdentityCoreOptions.Password.MinLength must be positive.")
+                .Validate(options => options.Lockout.MaxFailedAttempts > 0, "IdentityCoreOptions.Lockout.MaxFailedAttempts must be positive.")
+                .Validate(options => options.Lockout.DefaultLockout > TimeSpan.Zero, "IdentityCoreOptions.Lockout.DefaultLockout must be positive."));
+        services.TryAddScoped<UserAccountService<TUser, TKey>>();
 
         return new IdentityBuilder<TUser, TKey>(services);
     }

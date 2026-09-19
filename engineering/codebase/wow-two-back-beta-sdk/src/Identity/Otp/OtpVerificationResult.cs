@@ -1,14 +1,18 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 
-/// <summary>Outcome of <see cref="IOtpService.VerifyAsync"/>.</summary>
-/// <param name="Success">Whether the code matched and was consumed.</param>
-/// <param name="FailureReason">Why verification failed (present on failure).</param>
-public sealed record OtpVerificationResult(bool Success, OtpFailureReason? FailureReason)
+/// <summary>Represents outcome of <see cref="IOtpService.VerifyAsync"/>.</summary>
+public sealed record OtpVerificationResult
 {
+    /// <summary>Whether the code matched and was consumed.</summary>
+    public required bool Success { get; init; }
+
+    /// <summary>Why verification failed (present on failure).</summary>
+    public required OtpFailureReason? FailureReason { get; init; }
+
     /// <summary>Successful verification.</summary>
-    public static OtpVerificationResult Succeeded() => new(true, null);
+    public static OtpVerificationResult Succeeded() => new() { Success = true, FailureReason = null };
 
     /// <summary>Failed verification with a <paramref name="reason"/>.</summary>
     /// <param name="reason">The failure reason.</param>
-    public static OtpVerificationResult Failed(OtpFailureReason reason) => new(false, reason);
+    public static OtpVerificationResult Failed(OtpFailureReason reason) => new() { Success = false, FailureReason = reason };
 }

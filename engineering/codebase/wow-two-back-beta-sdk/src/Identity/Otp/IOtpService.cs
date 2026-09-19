@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 
-/// <summary>Orchestrates one-time-password creation and verification keyed by <c>(subject, scope)</c>; the subject is any consumer-defined key and the caller owns delivery (see <see cref="IOtpDeliveryHandler"/>).</summary>
+/// <summary>Defines behavior that orchestrates one-time-password creation and verification keyed by <c>(subject, scope)</c>; the subject is any consumer-defined key and the caller owns delivery (see <see cref="IOtpDeliveryHandler"/>).</summary>
 public interface IOtpService
 {
     /// <summary>Generates and stores a new code for <c>(subject, scope)</c>, returning it for delivery; fails with <see cref="OtpFailureReason.RateLimited"/> when one was created within the configured window.</summary>

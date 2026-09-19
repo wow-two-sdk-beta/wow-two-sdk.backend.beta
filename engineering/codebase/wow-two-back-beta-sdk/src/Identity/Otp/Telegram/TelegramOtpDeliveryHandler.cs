@@ -2,10 +2,11 @@ using System.Globalization;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
+using WoW.Two.Sdk.Backend.Beta.Identity.Otp.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp.Telegram;
 
-/// <summary>Delivers OTP codes as Telegram messages; <see cref="OtpDeliveryEnvelope.DeliveryAddress"/> must be the numeric chat id and the consumer must register <see cref="ITelegramBotClient"/> (the SDK takes no bot token).</summary>
+/// <summary>Handles one-time-code delivery through Telegram.</summary>
 public sealed class TelegramOtpDeliveryHandler : IOtpDeliveryHandler
 {
     private readonly ITelegramBotClient _botClient;
@@ -30,13 +31,13 @@ public sealed class TelegramOtpDeliveryHandler : IOtpDeliveryHandler
     }
 
     /// <inheritdoc />
-    public async Task<OtpDeliveryResult> SendAsync(OtpDeliveryEnvelope envelope, CancellationToken cancellationToken = default)
+    public async Task<OtpDeliveryResult> SendAsync(OtpDeliveryEnvelopeModel envelope, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
         if (!long.TryParse(envelope.DeliveryAddress, NumberStyles.Integer, CultureInfo.InvariantCulture, out var chatId))
         {
-            return new OtpDeliveryResult(false, "invalid_chat_id");
+            return new OtpDeliveryResult { Success = false, FailureReason = "invalid_chat_id" };
         }
 
         var scopeName = _telegramOptions.ScopeDisplayNames.TryGetValue(envelope.Scope, out var display)
@@ -48,11 +49,11 @@ public sealed class TelegramOtpDeliveryHandler : IOtpDeliveryHandler
         try
         {
             await _botClient.SendMessage(chatId, text, cancellationToken: cancellationToken).ConfigureAwait(false);
-            return new OtpDeliveryResult(true);
+            return new OtpDeliveryResult { Success = true };
         }
         catch (RequestException exception)
         {
-            return new OtpDeliveryResult(false, exception.Message);
+            return new OtpDeliveryResult { Success = false, FailureReason = exception.Message };
         }
     }
 }

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 
-/// <summary>Default <see cref="IOtpService"/> — rate-limits creation, stores via <see cref="IOtpRepository"/>, verifies with a fixed-time comparison, and consumes codes on success.</summary>
+/// <summary>Provides one-time-code creation and verification.</summary>
 public sealed class OtpService : IOtpService
 {
     private readonly IOtpRepository _store;
@@ -49,15 +49,17 @@ public sealed class OtpService : IOtpService
 
         var code = _codeGenerator.Generate();
         var now = _timeProvider.GetUtcNow();
-        var record = new OtpRecord(
-            Id: Guid.NewGuid(),
-            Subject: subject,
-            Code: code,
-            Scope: scope,
-            CreatedAt: now,
-            ExpiresAt: now + _options.CodeLifetime,
-            Attempts: 0,
-            Consumed: false);
+        var record = new OtpRecord
+        {
+            Id = Guid.NewGuid(),
+            Subject = subject,
+            Code = code,
+            Scope = scope,
+            CreatedAt = now,
+            ExpiresAt = now + _options.CodeLifetime,
+            Attempts = 0,
+            Consumed = false,
+        };
 
         await _store.SaveAsync(record, cancellationToken).ConfigureAwait(false);
         return OtpCreationResult.Succeeded(code);

@@ -2,7 +2,7 @@ using System.Security.Claims;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Jwt.Issuance;
 
-/// <summary>Issues signed tokens from caller-supplied claims; the SDK never constructs claims.</summary>
+/// <summary>Defines behavior that issues signed tokens from caller-supplied claims; the SDK never constructs claims.</summary>
 public interface ITokenIssuer
 {
     /// <summary>Issues a signed token carrying <paramref name="claims"/>.</summary>

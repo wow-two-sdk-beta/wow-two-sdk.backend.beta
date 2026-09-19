@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Authorization;
 
@@ -16,7 +17,12 @@ public static class PrincipalAllowlistServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.Configure(configure);
+        services.AddValidatedOptions<AllowlistOptions>(
+            configure,
+            builder => builder
+                .Validate(options => !string.IsNullOrWhiteSpace(options.ClaimType), "AllowlistOptions.ClaimType must not be empty.")
+                .Validate(options => options.Allowed is not null, "AllowlistOptions.Allowed must not be null.")
+                .Validate(options => options.Allowed is null || options.Allowed.All(value => !string.IsNullOrWhiteSpace(value)), "AllowlistOptions.Allowed must not contain empty values."));
         services.AddSingleton<IAuthorizationHandler, AllowlistAuthorizationHandler>();
         return services;
     }

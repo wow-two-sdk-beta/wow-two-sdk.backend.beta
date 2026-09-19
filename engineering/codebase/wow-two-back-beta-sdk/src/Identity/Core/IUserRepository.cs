@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Core;
 
 /// <summary>
-/// The mandatory core store slice: user persistence + lookup by id / normalized name / normalized email. Optional
+/// Defines the mandatory core store slice: user persistence + lookup by id / normalized name / normalized email. Optional
 /// capabilities (password, email confirmation, lockout, …) are separate store slices layered on the same entity.
 /// </summary>
 /// <typeparam name="TUser">The user entity.</typeparam>
@@ -16,8 +16,9 @@ public interface IUserRepository<TUser, in TKey>
     Task CreateAsync(TUser user, CancellationToken cancellationToken = default);
 
     /// <summary>Persist changes to an existing user.</summary>
-    /// <param name="user">The user to update.</param>
+    /// <param name="user">The tracked user whose accepted properties changed, or a detached user when no instance with the same key is tracked.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    /// <remarks>A replacement instance is rejected while the original user is tracked.</remarks>
     Task UpdateAsync(TUser user, CancellationToken cancellationToken = default);
 
     /// <summary>Delete a user.</summary>

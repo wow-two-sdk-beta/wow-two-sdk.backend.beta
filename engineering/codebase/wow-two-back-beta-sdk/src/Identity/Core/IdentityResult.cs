@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Core;
 
-/// <summary>The outcome of an identity operation — success, or a list of failures.</summary>
+/// <summary>Represents the outcome of an identity operation — success, or a list of failures.</summary>
 public sealed class IdentityResult
 {
     private static readonly IdentityResult SuccessResult = new(true, []);

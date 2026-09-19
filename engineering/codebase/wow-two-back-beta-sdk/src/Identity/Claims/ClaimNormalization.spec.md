@@ -42,11 +42,11 @@ public IActionResult Me() => Ok(new
 
 | Member | Type | Default | Notes |
 |---|---|---|---|
-| `SynthesizeAvatars` | `bool` | `true` | Honor a profile's avatar synthesizer when no avatar claim is present. |
-| `Profiles` | `IDictionary<string, ClaimProviderProfile>` | built-ins | Case-insensitive scheme → profile map, pre-seeded. |
-| `AddProvider(string scheme, ClaimProviderProfile profile)` | `ClaimNormalizationOptions` | — | Add/override a profile; chainable. |
+| `SynthesizeAvatars` | `bool` | `true` | Honor a spec's avatar synthesizer when no avatar claim is present. |
+| `Specs` | `IDictionary<string, ClaimProviderSpec>` | built-ins | Case-insensitive scheme → spec map, pre-seeded. |
+| `AddProvider(string scheme, ClaimProviderSpec spec)` | `ClaimNormalizationOptions` | — | Add/override a spec; chainable. |
 
-### `ClaimProviderProfile` (record)
+### `ClaimProviderSpec` (record)
 
 Positional: `Scheme`, `UserIdClaims`, `EmailClaims`, `DisplayNameClaims`, `UsernameClaims`, `AvatarClaims` (all `IReadOnlyList<string>`, priority-ordered), `AvatarSynthesizer` (`Func<AvatarSynthesisContext, string?>?`).
 
@@ -54,21 +54,21 @@ Positional: `Scheme`, `UserIdClaims`, `EmailClaims`, `DisplayNameClaims`, `Usern
 
 Positional: `Principal` (`ClaimsPrincipal`), `UserId` (`string?`), `Username` (`string?`).
 
-### `ClaimProviderProfileFactory` (static)
+### `ClaimProviderSpecFactory` (static)
 
 | Method | Returns | Notes |
 |---|---|---|
-| `CreateDefault()` | `Dictionary<string, ClaimProviderProfile>` | Fresh, mutable, case-insensitive map of all built-ins. |
-| `BuiltIn()` | `IEnumerable<ClaimProviderProfile>` | One per supported scheme. |
+| `CreateDefault()` | `Dictionary<string, ClaimProviderSpec>` | Fresh, mutable, case-insensitive map of all built-ins. |
+| `BuiltIn()` | `IEnumerable<ClaimProviderSpec>` | One per supported scheme. |
 
 ### `ClaimMapper` (sealed, `IClaimsTransformation`)
 
-`Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal)` — adds `wt:*` claims; early-returns when already normalized, no `wt:provider`, or no matching profile.
+`Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal)` — adds `wt:*` claims; early-returns when already normalized, no `wt:provider`, or no matching spec.
 
 ## Custom provider (synthesized avatar)
 
 ```csharp
-services.AddClaimNormalization(o => o.AddProvider("Acme", new ClaimProviderProfile(
+services.AddClaimNormalization(o => o.AddProvider("Acme", new ClaimProviderSpec(
     "Acme",
     UserIdClaims: [ClaimTypes.NameIdentifier],
     EmailClaims: [ClaimTypes.Email],

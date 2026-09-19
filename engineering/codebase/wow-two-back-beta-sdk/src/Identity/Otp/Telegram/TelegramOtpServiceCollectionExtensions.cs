@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp.Telegram;
 
@@ -16,15 +16,11 @@ public static class TelegramOtpServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        if (configure is not null)
-        {
-            services.Configure(configure);
-        }
-        else
-        {
-            services.AddOptions<TelegramOtpOptions>();
-            services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<TelegramOtpOptions>>().Value);
-        }
+        services.AddValidatedOptions<TelegramOtpOptions>(
+            configure,
+            builder => builder.Validate(
+                options => !string.IsNullOrWhiteSpace(options.MessageTemplate),
+                "TelegramOtpOptions.MessageTemplate must not be empty."));
 
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IOtpDeliveryHandler, TelegramOtpDeliveryHandler>());
         return services;
