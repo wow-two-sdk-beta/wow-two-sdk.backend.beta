@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Web.Hosting;
 
-/// <summary>Configuration for <c>MapSpaFallback</c> / <c>UseSpaHosting</c> when serving a single-page app from the same host as the API.</summary>
+/// <summary>Holds configuration for <c>MapSpaFallback</c> / <c>UseSpaHosting</c> when serving a single-page app from the same host as the API.</summary>
 public sealed record SpaHostingOptions
 {
     /// <summary>

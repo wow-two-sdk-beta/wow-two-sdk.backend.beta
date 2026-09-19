@@ -1,17 +1,14 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
-using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 using WoW.Two.Sdk.Backend.Beta.Observability.Errors;
-using WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
+using WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling.Factories;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
 
-/// <summary>Maps a thrown <see cref="AppException"/> to an RFC 9457 ProblemDetails response via the shared factory.</summary>
+/// <summary>Handles an <see cref="AppException"/> as an RFC 9457 ProblemDetails response.</summary>
 public sealed class AppExceptionHandler(
-    IErrorHttpStatusCodeMapper statusMapper,
-    IErrorMessageMapper messageResolver,
-    IFieldErrorMessageMapper fieldMessageResolver,
+    IAppErrorProblemDetailsFactory problemDetailsFactory,
     IProblemDetailsService problemDetailsService,
     ErrorRecordingService observer) : IExceptionHandler
 {
@@ -29,7 +26,7 @@ public sealed class AppExceptionHandler(
 
         observer.Record(error, appException);
 
-        var problem = AppErrorProblemDetailsFactory.Create(error, httpContext, statusMapper, messageResolver, fieldMessageResolver);
+        var problem = problemDetailsFactory.Create(error, httpContext);
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {

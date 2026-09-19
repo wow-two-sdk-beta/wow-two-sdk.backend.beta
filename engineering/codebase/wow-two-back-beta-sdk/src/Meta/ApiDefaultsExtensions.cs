@@ -88,9 +88,12 @@ public static class ApiDefaultsExtensions
         return builder;
     }
 
-    /// <summary>Adds the matching middleware pipeline (forwarded headers, secure headers, CORS, rate limiter, output cache, compression) and maps the OpenAPI and health endpoints; add auth and your endpoints after this call.</summary>
+    /// <summary>Adds the matching middleware pipeline and maps the OpenAPI and health endpoints.</summary>
     /// <param name="app">The built application.</param>
-    public static WebApplication UseApiDefaults(this WebApplication app)
+    /// <param name="useIdentity">Optional authentication and authorization middleware, placed after routing and CORS and before rate limiting and output caching.</param>
+    public static WebApplication UseApiDefaults(
+        this WebApplication app,
+        Action<IApplicationBuilder>? useIdentity = null)
     {
         ArgumentNullException.ThrowIfNull(app);
 
@@ -110,10 +113,19 @@ public static class ApiDefaultsExtensions
             headers.EnableCrossOriginEmbedderPolicy = options.EnableCrossOriginEmbedderPolicy;
         });
 
+        if (options.EnableResponseCompression)
+        {
+            app.UseResponseCompression();
+        }
+
+        app.UseRouting();
+
         if (options.CorsOrigins.Count > 0)
         {
             app.UseCors();
         }
+
+        useIdentity?.Invoke(app);
 
         if (options.EnableRateLimiting)
         {
@@ -123,11 +135,6 @@ public static class ApiDefaultsExtensions
         if (options.EnableOutputCache)
         {
             app.UseOutputCache();
-        }
-
-        if (options.EnableResponseCompression)
-        {
-            app.UseResponseCompression();
         }
 
         // Default-safe: expose the OpenAPI schema only in Development unless explicitly forced — avoids leaking API shape in Production (API9).

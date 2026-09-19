@@ -1,16 +1,13 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
-using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
-using WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
+using WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling.Factories;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
 
-/// <summary>Translates a thrown <see cref="ValidationException"/> into a 400 validation ProblemDetails carrying <c>code</c> and <c>errors[]</c>.</summary>
+/// <summary>Handles a <see cref="ValidationException"/> as validation ProblemDetails.</summary>
 public sealed class ValidationExceptionHandler(
-    IErrorHttpStatusCodeMapper statusMapper,
-    IErrorMessageMapper messageResolver,
-    IFieldErrorMessageMapper fieldMessageResolver,
+    IAppErrorProblemDetailsFactory problemDetailsFactory,
     IProblemDetailsService problemDetailsService) : IExceptionHandler
 {
     /// <inheritdoc />
@@ -23,8 +20,7 @@ public sealed class ValidationExceptionHandler(
             return false;
         }
 
-        var problem = AppErrorProblemDetailsFactory.Create(
-            validationException.ValidationError, httpContext, statusMapper, messageResolver, fieldMessageResolver);
+        var problem = problemDetailsFactory.Create(validationException.ValidationError, httpContext);
         problem.Title = "One or more validation errors occurred.";
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext

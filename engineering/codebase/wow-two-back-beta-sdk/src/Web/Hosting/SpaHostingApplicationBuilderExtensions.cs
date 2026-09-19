@@ -51,8 +51,7 @@ public static class SpaHostingApplicationBuilderExtensions
         var options = BuildOptions(configure);
         var apiPattern = $"{options.ApiPathPrefix.TrimEnd('/')}/{{**slug}}";
 
-        // An unmatched API route must 404 as JSON, never fall through to the SPA shell: an HTML body cached against an
-        // API path breaks clients. This terminal route is ordered before the catch-all file fallback so it wins.
+        // Terminate unmatched API routes before the SPA catch-all can return HTML.
         app.MapFallback(apiPattern, () => Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Not Found"))
             .AllowAnonymous();
 

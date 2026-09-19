@@ -1,23 +1,30 @@
 using AwesomeAssertions;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 using WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
 using WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
+using WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling.Factories;
 using Xunit;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.Tests.ExceptionHandling;
 
 public sealed class AppErrorProblemDetailsFactoryTests
 {
-    private static readonly IErrorHttpStatusCodeMapper Mapper = new DefaultErrorHttpStatusCodeMapper();
-    private static readonly IErrorMessageMapper Resolver = new DefaultErrorMessageMapper();
+    private static readonly IErrorHttpStatusCodeMapper Mapper = new ErrorHttpStatusCodeMapper();
+    private static readonly IErrorMessageMapper Resolver = new ErrorMessageMapper();
+    private static readonly IFieldErrorMessageMapper FieldResolver = new FieldErrorMessageMapper();
 
     private static Microsoft.AspNetCore.Mvc.ProblemDetails Create(AppError error, out HttpContext context)
     {
         context = new DefaultHttpContext();
-        return AppErrorProblemDetailsFactory.Create(error, context, Mapper, Resolver);
+        return CreateFactory().Create(error, context);
     }
+
+    private static AppErrorProblemDetailsFactory CreateFactory(
+        IFieldErrorMessageMapper? fieldMessageMapper = null) =>
+        new(Mapper, Resolver, fieldMessageMapper ?? FieldResolver);
 
     [Fact]
     public void Create_ShouldSetStatusTypeCodeAndDetail()
@@ -123,8 +130,7 @@ public sealed class AppErrorProblemDetailsFactoryTests
         ]);
         var context = new DefaultHttpContext();
 
-        var problem = AppErrorProblemDetailsFactory.Create(
-            error, context, Mapper, Resolver, new UpperCaseFieldMessageResolver());
+        var problem = CreateFactory(new UpperCaseFieldMessageResolver()).Create(error, context);
 
         problem.Extensions["errors"].Should().BeAssignableTo<IReadOnlyList<FieldError>>()
             .Which.Single().Message.Should().Be("EMAIL IS REQUIRED.");
@@ -139,16 +145,34 @@ public sealed class AppErrorProblemDetailsFactoryTests
         ]);
         var context = new DefaultHttpContext();
 
-        var problem = AppErrorProblemDetailsFactory.Create(
-            error, context, Mapper, Resolver, new DefaultFieldErrorMessageMapper());
+        var problem = CreateFactory().Create(error, context);
 
         problem.Extensions["errors"].Should().BeAssignableTo<IReadOnlyList<FieldError>>()
             .Which.Single().Message.Should().Be("Email is required.");
+    }
+
+    [Fact]
+    public void Registration_ShouldPreserveFactoryRegisteredFirst()
+    {
+        var services = new ServiceCollection();
+        var replacement = new ReplacementProblemDetailsFactory();
+        services.AddSingleton<IAppErrorProblemDetailsFactory>(replacement);
+
+        services.AddAppExceptionHandling();
+
+        services.BuildServiceProvider().GetRequiredService<IAppErrorProblemDetailsFactory>()
+            .Should().BeSameAs(replacement);
     }
 
     /// <summary>Stands in for a localizing resolver — proves the seam reaches every failure's message.</summary>
     private sealed class UpperCaseFieldMessageResolver : IFieldErrorMessageMapper
     {
         public string Map(FieldError error, HttpContext context) => error.Message.ToUpperInvariant();
+    }
+
+    /// <summary>Creates a fixed ProblemDetails for registration replacement coverage.</summary>
+    private sealed class ReplacementProblemDetailsFactory : IAppErrorProblemDetailsFactory
+    {
+        public Microsoft.AspNetCore.Mvc.ProblemDetails Create(AppError error, HttpContext httpContext) => new();
     }
 }

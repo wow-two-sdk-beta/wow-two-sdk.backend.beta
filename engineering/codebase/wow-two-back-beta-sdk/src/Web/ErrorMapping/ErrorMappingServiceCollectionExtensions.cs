@@ -14,9 +14,9 @@ public static class ErrorMappingServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddSingleton<IErrorHttpStatusCodeMapper, DefaultErrorHttpStatusCodeMapper>();
-        services.TryAddSingleton<IErrorMessageMapper, DefaultErrorMessageMapper>();
-        services.TryAddSingleton<IFieldErrorMessageMapper, DefaultFieldErrorMessageMapper>();
+        services.TryAddSingleton<IErrorHttpStatusCodeMapper, ErrorHttpStatusCodeMapper>();
+        services.TryAddSingleton<IErrorMessageMapper, ErrorMessageMapper>();
+        services.TryAddSingleton<IFieldErrorMessageMapper, FieldErrorMessageMapper>();
 
         return services;
     }

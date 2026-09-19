@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Observability.Errors;
 using WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
+using WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling.Factories;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
 
@@ -15,6 +17,7 @@ public static class ExceptionHandlingServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddErrorHttpStatusMapping();
+        services.TryAddSingleton<IAppErrorProblemDetailsFactory, AppErrorProblemDetailsFactory>();
         services.AddExceptionHandler<ValidationExceptionHandler>();
 
         return services;
@@ -27,6 +30,7 @@ public static class ExceptionHandlingServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddErrorHttpStatusMapping();
+        services.TryAddSingleton<IAppErrorProblemDetailsFactory, AppErrorProblemDetailsFactory>();
         services.AddErrorRecordingService();
         services.AddExceptionMapping();
 

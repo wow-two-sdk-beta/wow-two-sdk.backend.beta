@@ -10,10 +10,10 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing;
 /// </remarks>
 public static class PollingExtensions
 {
-    /// <summary>Default overall budget before <see cref="UntilAsync{T}"/> gives up and returns the last value.</summary>
+    /// <summary>Holds default overall budget before <see cref="UntilAsync{T}"/> gives up and returns the last value.</summary>
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
 
-    /// <summary>Default delay between probe attempts.</summary>
+    /// <summary>Holds default delay between probe attempts.</summary>
     public static readonly TimeSpan DefaultInterval = TimeSpan.FromMilliseconds(100);
 
     /// <summary>

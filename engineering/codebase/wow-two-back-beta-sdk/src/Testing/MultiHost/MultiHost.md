@@ -11,7 +11,7 @@ Part of the `WoW.Two.Sdk.Backend.Beta.Testing` package — no extra install.
 One shared lifecycle for the whole test collection:
 
 1. **Start** shared fixtures (containers) via the composed `IAsyncFixtureCollection`.
-2. **Inject** env/config so every host targets them — `ConfigureEnvironment()`.
+2. **Configure** every host through its own `ConfigureConfigurationHook`.
 3. **Build** every host; the first build runs the startup migrations, the rest see the migrated schema.
 4. **Initialize state** after migrations — `InitializeStateAsync()` (e.g. snapshot for reset).
 5. **Reset** per test → delegates to the shared collection's `ResetAsync()` (the `IAsyncTestFixture` contract only — never a container's internals).
@@ -57,16 +57,24 @@ public sealed class AppFixture : MultiHostFixture
     public AppFixture()
     {
         _pg          = AddSharedFixture(new PostgresFixture());
-        ApiHost      = AddHost(new WebApiTestHost<ApiProgram>());
-        RedirectHost = AddHost(new WebApiTestHost<RedirectProgram>());
+        ApiHost = AddHost(new WebApiTestHost<ApiProgram>
+        {
+            ConfigureConfigurationHook = AddDatabaseConfiguration
+        });
+        RedirectHost = AddHost(new WebApiTestHost<RedirectProgram>
+        {
+            ConfigureConfigurationHook = AddDatabaseConfiguration
+        });
     }
 
     public WebApiTestHost<ApiProgram> ApiHost { get; }
     public WebApiTestHost<RedirectProgram> RedirectHost { get; }
 
-    // (2) point every host at the shared DB before they build — env overlay is the authoritative seam
-    protected override void ConfigureEnvironment() =>
-        Environment.SetEnvironmentVariable("APP_DB_CONNECTION", _pg.ConnectionString);
+    private void AddDatabaseConfiguration(IConfigurationBuilder configuration) =>
+        configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["DatabaseSettings:ConnectionString"] = _pg.ConnectionString
+        });
 
     // (4) runs AFTER the hosts migrated — snapshot the real schema for the per-test reset
     protected override async ValueTask InitializeStateAsync(CancellationToken ct = default) =>

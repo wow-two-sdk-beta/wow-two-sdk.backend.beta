@@ -13,7 +13,11 @@ builder.AddApiDefaults(o =>
 });
 
 var app = builder.Build();
-app.UseApiDefaults();
+app.UseApiDefaults(pipeline =>
+{
+    pipeline.UseAuthentication();
+    pipeline.UseAuthorization();
+});
 app.MapGet("/", () => "ok");
 app.Run();
 ```
@@ -23,14 +27,15 @@ app.Run();
 | Side | Concerns |
 |---|---|
 | `AddApiDefaults` | Serilog (`UseSerilogConventional`) · TimeProvider · OTel tracing + metrics + OTLP · health checks · proxy-aware hosting · OpenAPI · trace-aware ProblemDetails · validation exception handler · per-IP rate limit · output cache · Brotli/Gzip compression · CORS (when origins given) · FluentValidation scan (when assemblies given) |
-| `UseApiDefaults` | forwarded headers · OWASP secure headers · CORS · rate limiter · output cache · compression · OpenAPI endpoint · `/health` |
+| `UseApiDefaults` | forwarded headers · OWASP secure headers · compression · routing · CORS · optional identity seam · rate limiter · output cache · OpenAPI endpoint · `/health` |
 
 Every concern has an off-flag on `ApiDefaultsOptions`; defaults are all-on.
 
 ## Deliberately NOT included
 
 Auth (`AddJwtBearerAuthentication`, OAuth providers, OTP), mediator, and data — they need per-app
-decisions (keys, assemblies, connection strings). Add them between the two calls as usual.
+decisions (keys, assemblies, connection strings). Register auth before `Build()`, then place its
+middleware through the `UseApiDefaults` callback so identity-aware policies see the principal.
 
 ## See also
 

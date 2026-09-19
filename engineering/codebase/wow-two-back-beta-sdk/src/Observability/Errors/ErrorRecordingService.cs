@@ -4,11 +4,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors.Mappers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Observability.Errors;
 
-/// <summary>Records an <see cref="AppError"/> to logs, metrics, and the active trace span — the single error-observability seam.</summary>
-public sealed partial class ErrorRecordingService(ILogger<ErrorRecordingService> logger, IErrorNatureClassifier natures)
+/// <summary>Provides error recording to logs, metrics and the active trace span.</summary>
+public sealed partial class ErrorRecordingService(ILogger<ErrorRecordingService> logger, IErrorNatureMapper natures)
 {
     private static readonly Meter Meter = new("WoW.Two.Sdk.Errors");
     private static readonly Counter<long> ErrorsTotal = Meter.CreateCounter<long>("errors_total");
@@ -25,13 +26,13 @@ public sealed partial class ErrorRecordingService(ILogger<ErrorRecordingService>
         ErrorsTotal.Add(1, new KeyValuePair<string, object?>("type", type));
 
         var activity = Activity.Current;
-        activity?.SetStatus(ActivityStatusCode.Error, error.Message);
+        activity?.SetStatus(ActivityStatusCode.Error);
         if (exception is not null)
         {
             activity?.AddException(exception);
         }
 
-        switch (natures.Classify(error.Type))
+        switch (natures.Map(error.Type))
         {
             case ErrorNature.Defect:
                 LogDefect(type, error.Message, exception);

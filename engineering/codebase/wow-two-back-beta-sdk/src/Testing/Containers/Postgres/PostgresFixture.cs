@@ -36,7 +36,7 @@ public sealed class PostgresFixture : ContainerFixtureBase<PostgreSqlContainer>
         _connection ?? throw new InvalidOperationException("PostgresFixture not started — Connection is null.");
 
     /// <summary>
-    /// Builds the Respawner from the open connection — <b>must run after the host has applied migrations</b>,
+    /// Builds the Respawner from the open connection — must run after the host has applied migrations,
     /// so the snapshot reflects the real schema. Safe to call again to re-snapshot after a schema change.
     /// </summary>
     public async ValueTask InitializeRespawnerAsync(CancellationToken cancellationToken = default)

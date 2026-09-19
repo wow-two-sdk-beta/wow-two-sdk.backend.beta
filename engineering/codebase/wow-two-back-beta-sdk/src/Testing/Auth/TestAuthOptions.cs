@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Auth;
 
 /// <summary>
-/// Options for <see cref="TestAuthHandler"/> — the fixed identity every request authenticates as when the
+/// Holds options for <see cref="TestAuthHandler"/> — the fixed identity every request authenticates as when the
 /// test-auth scheme is the active handler. Tweak per test via <c>AddTestAuth</c>'s configure callback.
 /// </summary>
 /// <remarks>

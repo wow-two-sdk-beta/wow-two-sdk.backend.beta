@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Testing;
 
 /// <summary>
-/// Aggregates multiple <see cref="IAsyncTestFixture"/>s and orchestrates start/stop/reset across them.
+/// Defines behavior that aggregates multiple <see cref="IAsyncTestFixture"/>s and orchestrates start/stop/reset across them.
 /// </summary>
 public interface IAsyncFixtureCollection : IAsyncTestFixture
 {

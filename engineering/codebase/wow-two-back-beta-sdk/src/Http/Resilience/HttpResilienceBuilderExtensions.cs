@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Resilience;
 
@@ -16,14 +18,31 @@ public static class HttpResilienceBuilderExtensions
 
         var options = new HttpResilienceOptions();
         configure?.Invoke(options);
+        options.Validate();
 
         builder.AddStandardResilienceHandler(handler =>
         {
             handler.Retry.MaxRetryAttempts = options.MaxRetryAttempts;
+            handler.Retry.Delay = options.RetryDelay;
             handler.AttemptTimeout.Timeout = options.AttemptTimeout;
             handler.TotalRequestTimeout.Timeout = options.TotalRequestTimeout;
             handler.CircuitBreaker.SamplingDuration = options.CircuitBreakerSamplingDuration;
             handler.CircuitBreaker.FailureRatio = options.CircuitBreakerFailureRatio;
+
+            var shouldHandleTransient = handler.Retry.ShouldHandle;
+            handler.Retry.ShouldHandle = async arguments =>
+            {
+                if (arguments.Context.CancellationToken.IsCancellationRequested)
+                    return false;
+
+                var request = arguments.Context.GetRequestMessage()
+                              ?? arguments.Outcome.Result?.RequestMessage;
+                if (request is null
+                    || !HttpReplaySafety.IsReplaySafe(request, options.UnsafeRequestReplaySelector))
+                    return false;
+
+                return await shouldHandleTransient(arguments).ConfigureAwait(false);
+            };
         });
 
         return builder;

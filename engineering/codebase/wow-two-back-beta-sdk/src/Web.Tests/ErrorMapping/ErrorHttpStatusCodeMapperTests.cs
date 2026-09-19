@@ -5,9 +5,9 @@ using Xunit;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.Tests.ErrorMapping;
 
-public sealed class DefaultErrorHttpStatusCodeMapperTests
+public sealed class ErrorHttpStatusCodeMapperTests
 {
-    private readonly DefaultErrorHttpStatusCodeMapper _mapper = new();
+    private readonly ErrorHttpStatusCodeMapper _mapper = new();
 
     [Theory]
     [InlineData(AppErrorType.Validation, 400)]

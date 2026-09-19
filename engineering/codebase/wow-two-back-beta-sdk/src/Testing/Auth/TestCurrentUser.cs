@@ -6,7 +6,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Auth;
 /// want to stand up a full web host (for that, use <see cref="TestAuthHandler"/>).
 /// </summary>
 /// <remarks>
-///   - <see cref="GetCurrentUserId"/> is name- and signature-compatible with <c>IAuditCurrentUserAccessor.GetCurrentUserId()</c> (<c>Guid? GetCurrentUserId()</c>)
+///   - <see cref="GetCurrentUserId"/> is name- and signature-compatible with <c>IAuditCurrentUserService.GetCurrentUserId()</c> (<c>Guid? GetCurrentUserId()</c>)
 ///   - the package references neither that interface nor the core lib, so a test project adapts this instance to it at its own registration
 /// </remarks>
 public sealed class TestCurrentUser
@@ -33,7 +33,7 @@ public sealed class TestCurrentUser
 
     /// <summary>
     /// Returns the current user id, or <c>null</c> when <see cref="Kind"/> is <see cref="TestUserKind.Anonymous"/>.
-    /// Signature-compatible with the SDK's <c>IAuditCurrentUserAccessor.GetCurrentUserId()</c>.
+    /// Signature-compatible with the SDK's <c>IAuditCurrentUserService.GetCurrentUserId()</c>.
     /// </summary>
     public Guid? GetCurrentUserId() => Kind == TestUserKind.Anonymous ? null : Id;
 }

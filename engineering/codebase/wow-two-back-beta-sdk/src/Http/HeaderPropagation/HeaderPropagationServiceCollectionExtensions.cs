@@ -6,10 +6,10 @@ namespace WoW.Two.Sdk.Backend.Beta.Http.HeaderPropagation;
 /// <remarks>Wire up three sides: register here, attach per client via <see cref="AddPropagatedHeaders"/>, and add capture middleware with <c>app.UseHeaderPropagation()</c>.</remarks>
 public static class HeaderPropagationServiceCollectionExtensions
 {
-    /// <summary>Correlation-ID header propagated by default.</summary>
+    /// <summary>Holds correlation-ID header propagated by default.</summary>
     public const string CorrelationIdHeader = "X-Correlation-Id";
 
-    /// <summary>Request-ID header propagated by default.</summary>
+    /// <summary>Holds request-ID header propagated by default.</summary>
     public const string RequestIdHeader = "X-Request-Id";
 
     /// <summary>Registers propagation for the conventional headers (<see cref="CorrelationIdHeader"/>, <see cref="RequestIdHeader"/>) plus any <paramref name="additionalHeaders"/>. Pair with <c>app.UseHeaderPropagation()</c>.</summary>

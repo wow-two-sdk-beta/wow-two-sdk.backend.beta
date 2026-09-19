@@ -5,7 +5,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 namespace WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
 
 /// <summary>Maps an <see cref="AppError"/> to its own <see cref="AppError.Message"/> — the default passthrough.</summary>
-public sealed class DefaultErrorMessageMapper : IErrorMessageMapper
+public sealed class ErrorMessageMapper : IErrorMessageMapper
 {
     /// <inheritdoc/>
     public string Map(AppError error, HttpContext context)

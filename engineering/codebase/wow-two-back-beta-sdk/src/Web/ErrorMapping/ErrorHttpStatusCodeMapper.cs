@@ -3,8 +3,8 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
 
-/// <summary>Provides the default <see cref="AppErrorType"/>-to-HTTP-status mapping; apps register their own to override.</summary>
-public sealed class DefaultErrorHttpStatusCodeMapper : IErrorHttpStatusCodeMapper
+/// <summary>Maps an <see cref="AppErrorType"/> to its default HTTP status code.</summary>
+public sealed class ErrorHttpStatusCodeMapper : IErrorHttpStatusCodeMapper
 {
     /// <inheritdoc/>
     public int ToStatusCode(AppError error)

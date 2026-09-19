@@ -4,7 +4,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
 
-/// <summary>Maps an <see cref="AppError"/> to the display message shown for the current request.</summary>
+/// <summary>Defines behavior that maps an <see cref="AppError"/> to the display message shown for the current request.</summary>
 public interface IErrorMessageMapper
 {
     /// <summary>Maps the message for <paramref name="error"/>, defaulting to <see cref="AppError.Message"/>.</summary>

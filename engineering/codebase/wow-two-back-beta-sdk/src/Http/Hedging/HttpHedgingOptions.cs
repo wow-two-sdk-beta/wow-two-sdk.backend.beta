@@ -1,6 +1,8 @@
+using WoW.Two.Sdk.Backend.Beta.Http.Resilience;
+
 namespace WoW.Two.Sdk.Backend.Beta.Http.Hedging;
 
-/// <summary>Configuration for the SDK's standard outbound-HTTP hedging pipeline (Polly v8 via <c>Microsoft.Extensions.Http.Resilience</c>), which races a parallel attempt when the first is slow.</summary>
+/// <summary>Holds configuration for the SDK's standard outbound-HTTP hedging pipeline (Polly v8 via <c>Microsoft.Extensions.Http.Resilience</c>), which races a parallel attempt when the first is slow.</summary>
 /// <remarks>Use for idempotent (GET-style) calls only — hedged attempts run concurrently.</remarks>
 public sealed record HttpHedgingOptions
 {
@@ -21,4 +23,23 @@ public sealed record HttpHedgingOptions
 
     /// <summary>Failure ratio (0–1) within the sampling window that trips the circuit. Default 0.1 (10%).</summary>
     public double CircuitBreakerFailureRatio { get; set; } = 0.1;
+
+    /// <summary>
+    /// Opts an otherwise unsafe request into concurrent replay when its operation and content
+    /// have an idempotency contract. The default is <see langword="null"/>.
+    /// </summary>
+    public Func<HttpRequestMessage, bool>? UnsafeRequestReplaySelector { get; set; }
+
+    internal void Validate()
+    {
+        if (MaxHedgedAttempts < 0)
+            throw new ArgumentOutOfRangeException(nameof(MaxHedgedAttempts), "Hedged attempts cannot be negative.");
+        if (HedgingDelay < TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(HedgingDelay), "Hedging delay cannot be negative.");
+        HttpResilienceOptionsValidation.ValidateTimeouts(
+            AttemptTimeout,
+            TotalRequestTimeout,
+            CircuitBreakerSamplingDuration,
+            CircuitBreakerFailureRatio);
+    }
 }

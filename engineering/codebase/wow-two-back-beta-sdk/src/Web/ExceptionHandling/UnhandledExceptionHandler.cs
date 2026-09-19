@@ -1,18 +1,15 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
-using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 using WoW.Two.Sdk.Backend.Beta.Observability.Errors;
-using WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
+using WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling.Factories;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
 
-/// <summary>The terminal exception handler — maps any otherwise-unhandled exception to a ProblemDetails via <see cref="IExceptionMapper"/> (a recognized DB/app exception gets its real status; an unknown one falls back to a safe 500). Never leaks the underlying exception message.</summary>
+/// <summary>Handles otherwise-unhandled exceptions as safe ProblemDetails responses.</summary>
 public sealed class UnhandledExceptionHandler(
     IExceptionMapper exceptionMapper,
-    IErrorHttpStatusCodeMapper statusMapper,
-    IErrorMessageMapper messageResolver,
-    IFieldErrorMessageMapper fieldMessageResolver,
+    IAppErrorProblemDetailsFactory problemDetailsFactory,
     IProblemDetailsService problemDetailsService,
     ErrorRecordingService observer) : IExceptionHandler
 {
@@ -26,7 +23,7 @@ public sealed class UnhandledExceptionHandler(
 
         observer.Record(error, exception);
 
-        var problem = AppErrorProblemDetailsFactory.Create(error, httpContext, statusMapper, messageResolver, fieldMessageResolver);
+        var problem = problemDetailsFactory.Create(error, httpContext);
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {

@@ -5,10 +5,10 @@ namespace WoW.Two.Sdk.Backend.Beta.Web.Cors;
 /// <summary>Provides CORS policy presets.</summary>
 public static class CorsServiceCollectionExtensions
 {
-    /// <summary>Default policy name.</summary>
+    /// <summary>Holds default policy name.</summary>
     public const string DefaultPolicyName = "default";
 
-    /// <summary>Credentialed policy name.</summary>
+    /// <summary>Holds credentialed policy name.</summary>
     public const string CredentialedPolicyName = "credentialed";
 
     /// <summary>Adds a default CORS policy for the given origins (empty list allows any origin); no credentials.</summary>

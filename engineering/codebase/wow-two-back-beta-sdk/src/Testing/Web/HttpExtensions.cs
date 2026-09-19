@@ -50,7 +50,7 @@ public static class HttpExtensions
     }
 
     /// <summary>
-    /// Reads the response as an <see cref="ApiEnvelope{T}"/> and returns its <c>data</c> payload.
+    /// Reads the response as an <see cref="TestApiResponse{T}"/> and returns its <c>data</c> payload.
     /// On a non-success status or a missing/empty <c>data</c>, throws with the status code and raw body to ease diagnosis.
     /// </summary>
     /// <param name="response">The HTTP response to unwrap.</param>
@@ -68,10 +68,10 @@ public static class HttpExtensions
                 $"Expected a success envelope of type {typeof(T).Name} but the response was {(int)response.StatusCode} {response.StatusCode}. Body: {Truncate(error)}");
         }
 
-        ApiEnvelope<T>? envelope;
+        TestApiResponse<T>? envelope;
         try
         {
-            envelope = await response.Content.ReadFromJsonAsync<ApiEnvelope<T>>(TestJsonConstants.Options).ConfigureAwait(false);
+            envelope = await response.Content.ReadFromJsonAsync<TestApiResponse<T>>(TestJsonConstants.Options).ConfigureAwait(false);
         }
         catch (JsonException ex)
         {

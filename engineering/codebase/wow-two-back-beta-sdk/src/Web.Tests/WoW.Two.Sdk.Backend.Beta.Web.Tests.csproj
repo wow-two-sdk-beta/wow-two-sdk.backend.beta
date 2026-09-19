@@ -26,6 +26,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="AwesomeAssertions" />
@@ -33,6 +34,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../WoW.Two.Sdk.Backend.Beta.csproj" />
+    <ProjectReference Include="../Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Testing;
 
 /// <summary>
-/// Marker interface for fixtures with async lifecycle.
+/// Defines the marker for fixtures with async lifecycle.
 /// Container fixtures (Postgres, Redis, RabbitMQ, ...) implement this so they can be composed
 /// into <see cref="WebApiTestHost{TEntryPoint}"/> via <see cref="IAsyncFixtureCollection"/>.
 /// </summary>

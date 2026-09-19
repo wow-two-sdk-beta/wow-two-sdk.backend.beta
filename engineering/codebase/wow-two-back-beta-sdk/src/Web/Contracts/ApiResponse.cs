@@ -5,7 +5,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Web.Contracts;
 /// <summary>Represents the base API response envelope — shared constants only.</summary>
 public record ApiResponse
 {
-    /// <summary>Title for the fall-through problem response of an unmatched result.</summary>
+    /// <summary>Holds title for the fall-through problem response of an unmatched result.</summary>
     public const string UnexpectedErrorMessage = "Unexpected error";
 }
 

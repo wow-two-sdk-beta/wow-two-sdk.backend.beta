@@ -8,7 +8,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Observability.Otlp;
 /// <summary>Provides OTLP exporter registration. Pair with <c>AddOpenTelemetryTracing</c> and <c>AddOpenTelemetryMetrics</c>.</summary>
 public static class OtlpServiceCollectionExtensions
 {
-    /// <summary>Adds the OTLP exporter on traces, metrics, and logs (endpoint falls back to <c>OTEL_EXPORTER_OTLP_ENDPOINT</c>).</summary>
+    /// <summary>Adds OTLP exporters for traces and metrics (endpoint falls back to <c>OTEL_EXPORTER_OTLP_ENDPOINT</c>); configure log export separately.</summary>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="endpoint">OTLP collector endpoint; when omitted, the environment variable is used.</param>
     /// <param name="protocol">OTLP wire protocol for the exporter.</param>

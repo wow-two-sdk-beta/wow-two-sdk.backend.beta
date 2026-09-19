@@ -5,7 +5,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 namespace WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
 
 /// <summary>Maps a field failure to its default message — a passthrough to <see cref="FieldError.Message"/>.</summary>
-public sealed class DefaultFieldErrorMessageMapper : IFieldErrorMessageMapper
+public sealed class FieldErrorMessageMapper : IFieldErrorMessageMapper
 {
     /// <inheritdoc/>
     public string Map(FieldError error, HttpContext context)

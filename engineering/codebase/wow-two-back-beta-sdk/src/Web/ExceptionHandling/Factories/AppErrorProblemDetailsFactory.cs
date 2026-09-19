@@ -1,34 +1,24 @@
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 using WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
 
-namespace WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
+namespace WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling.Factories;
 
-/// <summary>Creates RFC 9457 ProblemDetails from an <see cref="AppError"/> — the single factory shared by controller failure-arms and the global exception handlers.</summary>
-public static class AppErrorProblemDetailsFactory
+/// <summary>Creates ProblemDetails that vary by application error and request context.</summary>
+public sealed class AppErrorProblemDetailsFactory(
+    IErrorHttpStatusCodeMapper statusMapper,
+    IErrorMessageMapper messageMapper,
+    IFieldErrorMessageMapper fieldMessageMapper) : IAppErrorProblemDetailsFactory
 {
     private const string RetryAfterMetadataKey = "retryAfter";
     private const string WwwAuthenticateMetadataKey = "wwwAuthenticate";
 
-    /// <summary>Builds a ProblemDetails for <paramref name="error"/>, sets the response status, and promotes reserved metadata to response headers; never emits <see cref="AppError.Origin"/>.</summary>
-    /// <param name="error">The error to render.</param>
-    /// <param name="httpContext">The current request context.</param>
-    /// <param name="statusMapper">The error-to-status mapper.</param>
-    /// <param name="messageMapper">The mapper for the top-level display message.</param>
-    /// <param name="fieldMessageMapper">The mapper for each field message.</param>
-    public static Microsoft.AspNetCore.Mvc.ProblemDetails Create(
-        AppError error,
-        HttpContext httpContext,
-        IErrorHttpStatusCodeMapper statusMapper,
-        IErrorMessageMapper messageMapper,
-        IFieldErrorMessageMapper? fieldMessageMapper = null)
+    /// <inheritdoc />
+    public Microsoft.AspNetCore.Mvc.ProblemDetails Create(AppError error, HttpContext httpContext)
     {
         ArgumentNullException.ThrowIfNull(error);
         ArgumentNullException.ThrowIfNull(httpContext);
-        ArgumentNullException.ThrowIfNull(statusMapper);
-        ArgumentNullException.ThrowIfNull(messageMapper);
 
         var status = statusMapper.ToStatusCode(error);
         httpContext.Response.StatusCode = status;
@@ -45,7 +35,7 @@ public static class AppErrorProblemDetailsFactory
         var failures = ExtractFailures(error);
         if (failures is not null)
         {
-            problem.Extensions["errors"] = ResolveMessages(failures, httpContext, fieldMessageMapper);
+            problem.Extensions["errors"] = ResolveMessages(failures, httpContext);
         }
 
         PromoteReservedHeaders(error, httpContext);
@@ -53,20 +43,10 @@ public static class AppErrorProblemDetailsFactory
         return problem;
     }
 
-    /// <summary>Rewrites each failure's message through <paramref name="fieldMessageMapper"/>, returning the list unchanged when there is none.</summary>
-    /// <param name="failures">The field failures to render.</param>
-    /// <param name="httpContext">The current request context.</param>
-    /// <param name="fieldMessageMapper">The mapper for each field message.</param>
-    private static IReadOnlyList<FieldError> ResolveMessages(
+    private FieldError[] ResolveMessages(
         IReadOnlyList<FieldError> failures,
-        HttpContext httpContext,
-        IFieldErrorMessageMapper? fieldMessageMapper)
+        HttpContext httpContext)
     {
-        if (fieldMessageMapper is null)
-        {
-            return failures;
-        }
-
         var resolved = new FieldError[failures.Count];
         for (var index = 0; index < failures.Count; index++)
         {

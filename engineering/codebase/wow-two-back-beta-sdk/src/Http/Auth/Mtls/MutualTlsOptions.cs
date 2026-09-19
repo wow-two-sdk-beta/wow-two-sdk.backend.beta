@@ -2,7 +2,7 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace WoW.Two.Sdk.Backend.Beta.Http.Auth.Mtls;
 
-/// <summary>Configuration for mutual-TLS HTTP clients; provide either <see cref="ClientCertificate"/> or a <see cref="CertificatePath"/> (PKCS#12 / .pfx).</summary>
+/// <summary>Holds configuration for mutual-TLS HTTP clients; provide either <see cref="ClientCertificate"/> or a <see cref="CertificatePath"/> (PKCS#12 / .pfx).</summary>
 public sealed record MutualTlsOptions
 {
     /// <summary>Pre-loaded client certificate (takes precedence over <see cref="CertificatePath"/>).</summary>

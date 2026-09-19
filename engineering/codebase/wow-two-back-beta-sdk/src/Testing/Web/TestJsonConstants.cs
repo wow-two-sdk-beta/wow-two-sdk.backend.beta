@@ -6,7 +6,7 @@ using NodaTime.Serialization.SystemTextJson;
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Web;
 
 /// <summary>
-/// Shared <see cref="JsonSerializerOptions"/> for E2E HTTP tests, aligned to the SDK's API serializer
+/// Holds shared <see cref="JsonSerializerOptions"/> for E2E HTTP tests, aligned to the SDK's API serializer
 /// (<c>WoW.Two.Sdk.Backend.Beta.Foundation.Serialization.JsonOptionsConstants.Default</c>).
 /// </summary>
 /// <remarks>
@@ -16,7 +16,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Web;
 public static class TestJsonConstants
 {
     /// <summary>
-    /// Options matching the SDK API wire contract: <see cref="JsonSerializerDefaults.Web"/> base, camelCase property
+    /// Holds options matching the SDK API wire contract: <see cref="JsonSerializerDefaults.Web"/> base, camelCase property
     /// and dictionary keys, null-ignoring writes, lenient number/comment/trailing-comma reads, relaxed JS escaping,
     /// string enums, and NodaTime types.
     /// </summary>

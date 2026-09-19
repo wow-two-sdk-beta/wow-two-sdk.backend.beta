@@ -1,5 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
+using WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
+using WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling.Factories;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
 
@@ -11,6 +14,8 @@ public static class ExceptionHandlingMvcBuilderExtensions
     public static IMvcBuilder AddValidationExceptionFilter(this IMvcBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.AddErrorHttpStatusMapping();
+        builder.Services.TryAddSingleton<IAppErrorProblemDetailsFactory, AppErrorProblemDetailsFactory>();
         builder.AddMvcOptions(options => options.Filters.Add<ValidationExceptionFilter>());
         return builder;
     }

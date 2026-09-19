@@ -5,19 +5,20 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Serialization;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.Json;
 
-/// <summary>Controller JSON presets — string enums and the SDK <see cref="JsonOptionsConstants.Default"/> options; <c>AddApiDefaults</c> registers no controllers, so a controller host opts in.</summary>
+/// <summary>Provides controller JSON presets from the SDK <see cref="JsonOptionsConstants.Default"/> wire options; <c>AddApiDefaults</c> registers no controllers, so a controller host opts in.</summary>
 public static class JsonControllerBuilderExtensions
 {
-    /// <summary>Serializes enums as their <b>camelCase</b> string labels by adding a <see cref="JsonStringEnumConverter"/> (with <see cref="JsonNamingPolicy.CamelCase"/>) to the controller JSON options, leaving every other option untouched. This is the wire enum contract — camelCase strings, never PascalCase names or integer ordinals.</summary>
+    /// <summary>Serializes enums as their camelCase string labels by adding a <see cref="JsonStringEnumConverter"/> (with <see cref="JsonNamingPolicy.CamelCase"/>) to the controller JSON options, leaving every other option untouched. This is the wire enum contract — camelCase strings, never PascalCase names or integer ordinals.</summary>
     /// <param name="builder">The MVC builder to configure.</param>
     public static IMvcBuilder AddJsonStringEnums(this IMvcBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        builder.AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
+        builder.AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)));
         return builder;
     }
 
-    /// <summary>Registers controllers whose JSON options mirror the SDK <see cref="JsonOptionsConstants.Default"/> preset (camelCase, null-ignoring, NodaTime, relaxed escaping) plus string-enum serialization.</summary>
+    /// <summary>Registers controllers whose JSON options mirror the SDK <see cref="JsonOptionsConstants.Default"/> wire preset.</summary>
     /// <param name="services">The service collection to configure.</param>
     public static IMvcBuilder AddControllersWithSdkJson(this IServiceCollection services)
     {
@@ -27,7 +28,7 @@ public static class JsonControllerBuilderExtensions
             .AddJsonOptions(options => ApplySdkJson(options.JsonSerializerOptions));
     }
 
-    /// <summary>Copies the SDK <see cref="JsonOptionsConstants.Default"/> settings onto the target options and adds the string-enum converter.</summary>
+    /// <summary>Copies the SDK <see cref="JsonOptionsConstants.Default"/> settings onto the target options.</summary>
     /// <param name="target">The live controller <see cref="JsonSerializerOptions"/> to mutate.</param>
     private static void ApplySdkJson(JsonSerializerOptions target)
     {
@@ -44,6 +45,5 @@ public static class JsonControllerBuilderExtensions
         foreach (var converter in preset.Converters)
             target.Converters.Add(converter);
 
-        target.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
     }
 }

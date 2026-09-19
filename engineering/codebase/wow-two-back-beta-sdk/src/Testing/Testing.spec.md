@@ -15,6 +15,7 @@ WoW.Two.Sdk.Backend.Beta.Testing
 | Member | Type | Notes |
 |---|---|---|
 | `Clock` | `FakeTimeProvider` | Mutable virtual clock. |
+| `ConfigureConfigurationHook` | `Action<IConfigurationBuilder>?` | Init-only; adds host-local configuration. |
 | `ConfigureServicesHook` | `Action<IServiceCollection>?` | Init-only; runs in `ConfigureWebHost.ConfigureServices`. |
 | `ConfigureHostHook` | `Action<IHostBuilder>?` | Init-only; runs in `CreateHost`. |
 
@@ -80,6 +81,10 @@ public class OrderTests : WebApiTestBase<Program>
 
     protected override WebApiTestHost<Program> BuildHost() => new()
     {
+        ConfigureConfigurationHook = c => c.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["DatabaseSettings:ConnectionString"] = _pg.ConnectionString
+        }),
         ConfigureServicesHook = s => s.AddDbContext<OrdersDb>(o => o.UseNpgsql(_pg.ConnectionString))
     };
 

@@ -81,13 +81,13 @@ For handler/service tests that depend on the current user but don't need a web h
 
 ```csharp
 var current = new TestCurrentUser(Guid.NewGuid(), TestUserKind.Member);
-current.GetCurrentUserId(); // Guid? — signature-compatible with IAuditCurrentUserAccessor
+current.GetCurrentUserId(); // Guid? — signature-compatible with IAuditCurrentUserService
 ```
 
-`TestCurrentUser.GetCurrentUserId()` matches the SDK's `Data.EntityFrameworkCore.Audit.IAuditCurrentUserAccessor` contract. This package is self-contained (no core-lib reference), so it does not implement that interface directly — an app's test project binds it at the seam:
+`TestCurrentUser.GetCurrentUserId()` matches the SDK's `Data.EntityFrameworkCore.Audit.IAuditCurrentUserService` contract. This package is self-contained (no core-lib reference), so it does not implement that interface directly — an app's test project binds it at the seam:
 
 ```csharp
-services.AddSingleton<IAuditCurrentUserAccessor>(new TestCurrentUser());
+services.AddSingleton<IAuditCurrentUserService>(new TestCurrentUser());
 ```
 
 ## See also

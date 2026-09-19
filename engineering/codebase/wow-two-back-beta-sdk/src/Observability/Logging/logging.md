@@ -11,10 +11,17 @@ dotnet add package WoW.Two.Sdk.Backend.Beta.Observability.Logging
 ## Usage
 
 ```csharp
-var builder = WebApplication.CreateBuilder(args);
-builder.Host.UseSerilogConventional();
-// rest as normal — inject ILogger<T>
+await StartupFailureReporter.RunAsync(async cancellationToken =>
+{
+    var builder = WebApplication.CreateBuilder(args);
+    builder.Host.UseSerilogConventional();
+
+    var app = builder.Build();
+    await app.RunAsync(cancellationToken);
+});
 ```
+
+`StartupFailureReporter` creates `logs/startup-failures.log` before the builder. An exception from builder creation, configuration binding, options validation, build or start is written there, logging is flushed and the original exception escapes so the process exits nonzero. `UseSerilogConventional` remains the separate final application logger.
 
 Both default sinks render the ambient trace id ahead of the message, so a log line joins its trace:
 

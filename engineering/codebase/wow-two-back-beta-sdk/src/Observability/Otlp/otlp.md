@@ -17,6 +17,7 @@ builder.Services.AddOtlpExporters(new Uri("http://collector:4317"));
 ```
 
 Honors `OTEL_EXPORTER_OTLP_ENDPOINT` env var when no endpoint is passed.
+This helper exports traces and metrics. Configure OpenTelemetry log export separately.
 
 ## See also
 

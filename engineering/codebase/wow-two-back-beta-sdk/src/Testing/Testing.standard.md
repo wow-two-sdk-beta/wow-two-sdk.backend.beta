@@ -15,6 +15,8 @@ Provide a low-friction integration-test scaffold for ASP.NET Core APIs that cons
 - The class **MUST** extend `WebApplicationFactory<TEntryPoint>`.
 - The class **MUST** expose a `FakeTimeProvider Clock` field controllable from tests.
 - The class **MUST** register `Clock` as the singleton `TimeProvider` in the host's service collection, *replacing* any pre-existing registration.
+- The class **MUST** adapt NodaTime `IClock` to that same `Clock`.
+- The class **MUST** allow host-local configuration through `ConfigureConfigurationHook`.
 - The class **MUST** allow consumers to mutate `IServiceCollection` via `ConfigureServicesHook`.
 - The class **MUST** allow consumers to mutate `IHostBuilder` via `ConfigureHostHook`.
 - The class **MUST NOT** force a specific environment (consumers control via `ConfigureHostHook`); default is `Production`.
@@ -43,6 +45,7 @@ Provide a low-friction integration-test scaffold for ASP.NET Core APIs that cons
 
 - If `WebApiTestHost.CreateClient()` is called before any `ConfigureServicesHook` registration runs, the hook **MUST** still execute as part of the host build — i.e. lazy access **MUST** trigger configuration application.
 - If a fixture in a collection fails during `StartAsync`, already-started fixtures **MUST** still be disposed.
+- Multi-host fixtures **MUST NOT** mutate process environment variables for host configuration.
 
 ## Non-goals
 

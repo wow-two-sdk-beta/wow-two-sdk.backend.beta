@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Auth;
 
 /// <summary>
-/// Authentication handler that authenticates a request as the fixed identity in <see cref="TestAuthOptions"/> —
+/// Handles test authentication as the fixed identity in <see cref="TestAuthOptions"/> —
 /// no real OAuth / cookie round-trip. Register it via <c>AddTestAuth</c> from a test host so end-to-end tests can
 /// exercise authenticated endpoints deterministically.
 /// </summary>
@@ -18,7 +18,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Auth;
 /// </remarks>
 public sealed class TestAuthHandler : AuthenticationHandler<TestAuthOptions>
 {
-    /// <summary>The scheme name this handler is registered under by <c>AddTestAuth</c>.</summary>
+    /// <summary>Holds the scheme name this handler is registered under by <c>AddTestAuth</c>.</summary>
     public const string SchemeName = "Test";
 
     /// <summary>Creates the handler. Resolved by the auth framework — not called directly.</summary>

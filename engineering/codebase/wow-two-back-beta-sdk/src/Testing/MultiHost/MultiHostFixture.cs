@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 namespace WoW.Two.Sdk.Backend.Beta.Testing.MultiHost;
 
 /// <summary>
-/// Base for an integration-test fixture that boots <b>several in-process web hosts over one set of
-/// shared backing services</b> — e.g. a management API and a redirect API sharing a single Postgres
+/// Base for an integration-test fixture that boots several in-process web hosts over one set of
+/// shared backing services — e.g. a management API and a redirect API sharing a single Postgres
 /// container, or any "two services, one database" topology.
 /// </summary>
 /// <remarks>
@@ -66,7 +66,7 @@ public abstract class MultiHostFixture : IAsyncDisposable
     }
 
     /// <summary>
-    /// Boots the whole topology: start shared fixtures → inject env/config → build every host
+    /// Boots the whole topology: start shared fixtures → build every configured host
     /// (the first build migrates the shared store) → initialize shared post-migration state.
     /// Idempotent — a second call is a no-op.
     /// </summary>
@@ -79,14 +79,11 @@ public abstract class MultiHostFixture : IAsyncDisposable
         // 1. Shared backing services up first — connection strings / endpoints exist after this.
         await _shared.StartAsync(cancellationToken).ConfigureAwait(false);
 
-        // 2. Point the (not-yet-built) hosts at those shared services, via the env overlay.
-        ConfigureEnvironment();
-
-        // 3. Build each host — the first build runs the startup migrations against the shared store.
+        // 2. Build each host — each host's configuration hook can now read the started fixtures.
         foreach (var build in _builders)
             build();
 
-        // 4. App-supplied init that must observe the migrated schema.
+        // 3. App-supplied init that must observe the migrated schema.
         await InitializeStateAsync(cancellationToken).ConfigureAwait(false);
 
         _started = true;
@@ -102,14 +99,7 @@ public abstract class MultiHostFixture : IAsyncDisposable
         => _shared.ResetAsync(cancellationToken);
 
     /// <summary>
-    /// Override to inject environment variables / configuration so every host targets the shared
-    /// fixtures (e.g. <c>Environment.SetEnvironmentVariable("APP_DB_CONNECTION", pg.ConnectionString)</c>).
-    /// Runs after the shared fixtures start but before any host builds, so connection strings are available.
-    /// </summary>
-    protected virtual void ConfigureEnvironment() { }
-
-    /// <summary>
-    /// Override for provider-specific initialization that must run <b>after</b> the hosts have applied
+    /// Override for provider-specific initialization that must run after the hosts have applied
     /// migrations — most commonly snapshotting the post-migration schema for a between-test reset
     /// (e.g. <c>await pg.InitializeRespawnerAsync()</c>). The concrete fixture type is in scope here,
     /// keeping the base decoupled from it. Default: no-op.
