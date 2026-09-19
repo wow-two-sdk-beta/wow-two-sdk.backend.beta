@@ -21,14 +21,14 @@
 | Component | File(s) under `src/` |
 |---|---|
 | `AppErrorType` (18 kinds — incl. `BusinessRule`/422, `PaymentRequired`/402, `Gone`/410, `Canceled`/499, `DataIntegrity`) · `ErrorOrigin` · `AppError` (`Of`/`FromException`/`ToException`/`Throw`/`Is`) · `AppException` · `ExceptionChain` · `AppErrors` (catalog) · `ErrorMessages` · `AppAggregateError` | `Foundation/Errors/` |
-| `ErrorNature` + `IErrorNatureClassifier` + `DefaultErrorNatureClassifier` · `IErrorMessageResolver` (+default) | `Foundation/Errors/` |
+| `ErrorNature` + `IErrorNatureMapper` + `ErrorNatureMapper` · `IErrorMessageResolver` (+default) | `Foundation/Errors/` |
 | `FieldError` · `ValidationError : AppError` · `ValidationException` · `IValidator` · `FluentValidationAdapter` | `Foundation/Validation/` |
 | `Result` / `Result<T>` · `ResultExtensions` (`ValueOrThrow`/`ThrowIfFailure`) · `AttemptExtensions` (`Attempt`/`AttemptAsync`) | `Foundation/Results/` |
 | `AppResult<TSuccess>` (+`Ok`/`Fail`/`Match`) · `AppResultFactory` · `IAppSuccessContext`/`IAppFailureContext` | `Mediator/Result/` |
 | `ExceptionToResultBehavior` (+`AddMediatorExceptionToResultBehavior`) | `Mediator/ExceptionHandling/` |
 | `AuthorizationBehavior` (throws `AppException` 401/403) | `Mediator/Authorization/` |
-| `IErrorHttpStatusCodeMapper` + `DefaultErrorHttpStatusCodeMapper` (incl. `Canceled`=499, `DataIntegrity`=500) | `Web/ErrorMapping/` |
-| `AppErrorProblemDetailsFactory` · `AppExceptionHandler` · `UnhandledExceptionHandler` (maps via `IExceptionMapper`) · `ValidationExceptionHandler`/`Filter` | `Web/ExceptionHandling/` |
+| `IErrorHttpStatusCodeMapper` + `ErrorHttpStatusCodeMapper` (incl. `Canceled`=499, `DataIntegrity`=500) | `Web/ErrorMapping/` |
+| `IAppErrorProblemDetailsFactory` / `AppErrorProblemDetailsFactory` · exception handlers/filter | `Web/ExceptionHandling/` |
 | `IExceptionMapper` (facade, total) + `IExceptionMappingRule` (contributor, nullable, LIFO) + `ExceptionMapper` (+`AddExceptionMapping`/`AddExceptionMappingRule`) | `Foundation/Errors/ExceptionMapping.cs` |
 | `DbExceptionMappingRule` (SDK rule; Npgsql/EF → `AppError`; +`AddDbExceptionMapping`, auto-wired by `AddPostgresPersistence`) · `DbErrors.From` (static convenience, shares the switch) | `Data/Errors/` |
 | `AppErrorObserver` (+`AddAppErrorObserver`) | `Observability/Errors/` |
@@ -76,10 +76,14 @@ FluentValidation behind `IValidator<T>`; `Validate→ValidationError?`, `Validat
 `int ToStatusCode(AppError)` keyed on `Type` (incl. `Canceled`=499); SDK default + DI override; in `Web` (Foundation stays transport-free). Returns `int` (cast-free with ASP.NET; admits non-standard codes).
 
 ### 3.7 ProblemDetails + handlers
-Shared `AppErrorProblemDetailsFactory` (controller `.Match` **and** handlers): status + `code` + `type` URN + `detail` + `errors[]` (for `ValidationError`/`AppAggregateError`) + reserved-`Metadata`→headers (`retryAfter`→`Retry-After`); **never emits `Origin`**. Handlers: `AppExceptionHandler` · `UnhandledExceptionHandler` (500, no leak) · `ValidationExceptionHandler/Filter` (outside-mediator fallback). Framework errors (404/405/binding-400) get `code` backfilled from status via `CustomizeProblemDetails`.
+Shared `IAppErrorProblemDetailsFactory` (controller `.Match` and handlers): status + `code` + `type` URN + `detail` +
+`errors[]` (for `ValidationError`/`AppAggregateError`) + reserved `Metadata` headers (`retryAfter` → `Retry-After`);
+never emits `Origin`. `AppErrorProblemDetailsFactory` is the replaceable default. Handlers: `AppExceptionHandler` ·
+`UnhandledExceptionHandler` (500, no leak) · `ValidationExceptionHandler` / `ValidationExceptionFilter` (outside-mediator
+fallback). Framework errors (404/405/binding-400) get `code` backfilled from status via `CustomizeProblemDetails`.
 
 ### 3.8 Infra classification — `ErrorNature` + exception mapping
-Descriptive **`ErrorNature {Transient, Permanent, Defect}`** via `IErrorNatureClassifier` (DI) — consumers derive retry/fallback/log. **Exception→`AppError` is an extensible DI seam** (revised 2026-06-23, see §0): `IExceptionMapper` (total facade) walks ordered `IExceptionMappingRule` contributors (last-registered wins) after unwrapping `AppException`, else `Unexpected`. SDK ships `DbExceptionMappingRule` (Npgsql/EF, auto-wired by `AddPostgresPersistence`); apps add rules for their own exceptions via `AddExceptionMappingRule`. HTTP gets a typed `HttpClientError` (2-layer) / rule **later** (http-layer). `DbErrors.From(ex)` remains as the static, DI-free catch-site convenience over the same switch. (Replaces the original "no generic exception→type" decision.)
+Descriptive **`ErrorNature {Transient, Permanent, Defect}`** via `IErrorNatureMapper` (DI) — consumers derive retry/fallback/log. **Exception→`AppError` is an extensible DI seam** (revised 2026-06-23, see §0): `IExceptionMapper` (total facade) walks ordered `IExceptionMappingRule` contributors (last-registered wins) after unwrapping `AppException`, else `Unexpected`. SDK ships `DbExceptionMappingRule` (Npgsql/EF, auto-wired by `AddPostgresPersistence`); apps add rules for their own exceptions via `AddExceptionMappingRule`. HTTP gets a typed `HttpClientError` (2-layer) / rule **later** (http-layer). `DbErrors.From(ex)` remains as the static, DI-free catch-site convenience over the same switch. (Replaces the original "no generic exception→type" decision.)
 
 ### 3.9 Mediator integration — never throw
 Terminal `ExceptionToResultBehavior` converts throws → `Failure` (OCE→`Canceled`/`OperationTimeout` handled directly; every other throw → `IExceptionMapper.Map` so `AppException`/DB/app-rule exceptions get their real type, else `Unexpected`; non-`AppResult` response → rethrow to the global handler). Records via `AppErrorObserver`.
@@ -121,7 +125,7 @@ Cancellation ✅ · infra-classification ✅ · logging/observability ✅ · hea
 | `AppError.Description` | `AppError.Message` |
 | `ISuccessResult`/`IFailureResult` | *removed* |
 | `IApplicationSuccessContext`/`…Failure` | `IAppSuccessContext` / `IAppFailureContext` |
-| `ErrorDisposition` + `ErrorPolicy` | `ErrorNature` + `IErrorNatureClassifier` |
+| `ErrorDisposition` + `ErrorPolicy` | `ErrorNature` + `IErrorNatureMapper` |
 | `IExceptionClassifier` | `IExceptionMapper` (facade) + `IExceptionMappingRule` (DI contributors; SDK `DbExceptionMappingRule`, app-extensible); catch-all `Unexpected` |
 | multi-error / cancel kind | `AppAggregateError` · `AppErrorType.Canceled` (499) · `DataIntegrity` |
 

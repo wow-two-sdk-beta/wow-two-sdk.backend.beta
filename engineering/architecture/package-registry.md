@@ -1,12 +1,31 @@
 # Package registry
 
-*Last updated: 2026-07-19*
+*Last updated: 2026-09-16*
 
-> **Mono-lib note:** since the mono-lib migration these "packages" are subpath areas of the single
-> `WoW2.Sdk.Backend.Beta` NuGet (plus the separate `.Testing` and `.Testing.Data` libs). Rows still track per-area status.
+> The seven published NuGets and the capability areas compiled into them.
 
-> Lookup table of every NuGet package this repo produces.
+## Published package family
+
+| Package | Role |
+|---|---|
+| `WoW2.Sdk.Backend.Beta` | production mono library |
+| `WoW2.Sdk.Backend.Beta.Data.Abstractions` | web-free data contracts |
+| `WoW2.Sdk.Backend.Beta.Data.Migrations.Cli` | `wow-migrate` .NET tool |
+| `WoW2.Sdk.Backend.Beta.Testing` | base test helpers |
+| `WoW2.Sdk.Backend.Beta.Testing.Data` | data test helpers |
+| `WoW2.Sdk.Backend.Beta.Testing.Integrations` | integration-client test doubles |
+| `WoW2.Sdk.Backend.Beta.Testing.Messaging` | messaging test harness |
+
+All seven share one evaluated version and publish in lockstep. The rows below track capability areas,
+not additional package outputs.
+
+---
+
+## Capability status
+
 > Status: **stub** = csproj exists, no impl · **scaffold** = registration + minimal API · **shipped** = real wrapper, tested · **planned** = not yet started.
+
+---
 
 ## Meta — composition root
 
@@ -54,7 +73,7 @@
 | Package | Niche | Status |
 |---|---|---|
 | `WoW.Two.Sdk.Backend.Beta.Observability` | Meta — wires logging + tracing + metrics + health | planned |
-| `WoW.Two.Sdk.Backend.Beta.Observability.Logging` | `UseSerilogConventional` — Serilog → `ILogger<T>` w/ Console + rolling File + enrichers | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Observability.Logging` | `StartupFailureReportingService` + `UseSerilogConventional` — durable pre-host failures, then Serilog → `ILogger<T>` | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Observability.Tracing` | `AddOpenTelemetryTracing` — OTel tracer + AspNetCore/HttpClient/Grpc/SqlClient/EFCore/Redis instrumentation | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Observability.Metrics` | `AddOpenTelemetryMetrics` — OTel meter + AspNetCore/HttpClient/Runtime/Process | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Observability.HealthChecks` | `AddHealthChecksBuilder` — `IHealthChecksBuilder` + Xabaril provider deps (SqlServer/Postgres/MySql/Redis/RabbitMQ/Mongo/Kafka/Elastic/Network/Uris/AzureSB/AzureStorage/AwsS3/AwsSqs) | shipped |
@@ -70,7 +89,7 @@
 | `WoW.Two.Sdk.Backend.Beta.Web` | Meta — wires hosting + openapi + problem details + secure-headers + cors + ratelimit + outputcache | planned |
 | `WoW.Two.Sdk.Backend.Beta.Web.Hosting` | `AddProxyAwareHosting` / `UseProxyAwareHosting` — forwarded headers + host filtering (`AllowedHosts`) + bounded request limits + request decompression | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Web.RequestLimits` | `AddRequestLimits` — Kestrel body/header/request-line/headers-timeout caps (bounds the decompression input) | shipped |
-| `WoW.Two.Sdk.Backend.Beta.Web.OpenApi` | `AddOpenApiDefaults` / `MapOpenApiEndpoint` — `Microsoft.AspNetCore.OpenApi` (.NET 9) | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Web.OpenApi` | `AddOpenApiDefaults` / `MapOpenApiEndpoint` — `Microsoft.AspNetCore.OpenApi` (.NET 10) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Web.OpenApi.Swashbuckle` | Swashbuckle fallback adapter | planned |
 | `WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails` | `AddTraceAwareProblemDetails` — RFC 7807 + traceId/requestId enrichment | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Web.RateLimit` | `AddPerIpSlidingWindowRateLimit` — sliding window per-IP, 100 req/min default | shipped |
@@ -90,7 +109,7 @@
 | `WoW.Two.Sdk.Backend.Beta.Mediator.Authorization` | `AddMediatorAuthorizationBehavior()` + `IRequireAuthorization` marker | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Mediator.Idempotency` | `AddMediatorIdempotencyBehavior()` + `IIdempotent` + pluggable `IIdempotencyStore` | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity` | Meta — JWT + cookies + Identity API endpoints | planned |
-| `WoW.Two.Sdk.Backend.Beta.Identity.Core` | `AddUserAccounts<TUser>()` — own sliced-lego user model: 7 entities + `ApplyIdentitySchema` + `IUserStore`/`EfUserStore` + `UserAccountManager` facade (step 1 of the identity rebuild) | shipped (mono-lib) |
+| `WoW.Two.Sdk.Backend.Beta.Identity.Core` | `AddUserAccounts<TUser>()` — own sliced-lego user model: 7 entities + `ApplyIdentitySchema` + `IUserStore`/`EfUserStore` + `UserAccountService` facade (step 1 of the identity rebuild) | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Jwt` | `AddJwtBearerAuthentication()` — JWT bearer (symmetric or JWKS) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Cookies` | `AddCookieAuthentication()` — secure cookie defaults | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Oidc` | `AddOpenIdConnectAuthentication()` — Authorization Code + PKCE | shipped |
@@ -133,7 +152,7 @@
 | `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.MySql` | `UseMySqlConventional` — Pomelo + AutoDetect server version | scaffold |
 | `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Sqlite` | `UseSqliteConventional` — 30s command timeout | scaffold |
 | `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Cosmos` | `UseCosmosConventional` — connection-string + endpoint+key overloads | scaffold |
-| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit` | `AuditInterceptor` (SaveChangesInterceptor) + `IAuditCurrentUserAccessor` for `CreatedBy`/`UpdatedBy` | scaffold |
+| `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit` | `AuditInterceptor` (SaveChangesInterceptor) + `IAuditCurrentUserService` for `CreatedBy`/`UpdatedBy` | scaffold |
 | `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SoftDelete` | `SoftDeleteInterceptor` (DELETE→UPDATE) + `ApplySoftDeleteFilter` ModelBuilder ext | scaffold |
 | `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.NamingConventions` | `UseSnakeCase/LowerCase/CamelCase/UpperSnakeCaseNamingConvention` | scaffold |
 | `WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Json` | `JsonValueConverter<T>` + `JsonValueComparer<T>` + `HasJsonConversion()` PropertyBuilder ext | scaffold |
@@ -200,12 +219,12 @@
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Coravel` | Coravel alt | planned |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.NCronJob` | NCronJob alt | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms` | Meta — email + SMS + push abstractions | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Email` | `IEmailSender` + `EmailMessage`/`EmailSendResult` (result-typed) + `AddEmailDefaults()` (From/Reply-To defaults) | shipped |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Email.MailKit` | `AddMailKitEmailSender()` — SMTP via MailKit (any relay; mailpit/mailhog dev) | shipped |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Email.SendGrid` | `AddSendGridEmailSender()` — SendGrid v3 API | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Email` | `IEmailBroker` + `EmailMessage`/`EmailSendResult` (result-typed) + `AddEmailDefaults()` (From/Reply-To defaults) | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Email.MailKit` | `AddMailKitEmailBroker()` — SMTP via MailKit (any relay; mailpit/mailhog dev) | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Email.SendGrid` | `AddSendGridEmailBroker()` — SendGrid v3 API | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.Mailgun` | Mailgun impl | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.Postmark` | Postmark impl | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Email.Ses` | `AddSesEmailSender()` — SES v2 simple send (no attachments; raw-MIME future) | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Email.Ses` | `AddSesEmailBroker()` — SES v2 simple send (no attachments; raw-MIME future) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.Acs` | Azure Communication Services email impl | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.FluentEmail` | FluentEmail templating | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Sms` | `ISmsSender` abstraction | planned |

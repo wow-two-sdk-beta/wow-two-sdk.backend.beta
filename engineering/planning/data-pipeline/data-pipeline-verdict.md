@@ -6,6 +6,21 @@
 
 **Don't build the pipeline. Fix the data layer first — the research found live defects underneath it — then build three small components, not a chain.**
 
+### Current-source recheck — 2026-09-16
+
+| Defect | Current state |
+|---|---|
+| D1 | Open — Dapper still opens an autonomous connection outside the EF transaction. |
+| D2 | Partial — generated Dapper CRUD now enforces ambient tenant predicates; soft-delete and hand-written SQL composition remain. |
+| D3 | Open — generated `SELECT *` still omits PostgreSQL `xmin`. |
+| D4 | Partial — tracked-instance updates are safe and replacement copies are rejected; detached full-state writes remain explicit and the full write-guard design is not built. |
+| D5/D7 | Closed — SDK DbContext registration attaches DI interceptors in order; tenant stamping is effective when opted in. |
+| D6 | Open — repositories still save per write; no session/unit boundary exists. |
+| D8 | Closed — `EntityFrameworkCoreOptions` properties are mutable through configuration callbacks. |
+| D9 | Closed — `RepointDbContext` preserves SDK-registered interceptors, covered by a provider-backed regression test. |
+
+The defect inventory below is the research-time snapshot; use this recheck for implementation status.
+
 Three independent findings converge on this:
 
 - the pipeline's **enabling premise is false today** (EF and Dapper cannot share a transaction — see D1)

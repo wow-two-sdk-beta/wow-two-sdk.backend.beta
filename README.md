@@ -1,6 +1,6 @@
 # wow-two-sdk.backend.beta
 
-> Beta-forever .NET 9 backend SDK — wraps the .NET ecosystem behind opinionated, descriptively-named registration extensions (`AddJwtBearerAuthentication`, `AddOpenTelemetryTracing`, `AddPerIpSlidingWindowRateLimit`, …) so a `Program.cs` becomes 1–2 liners per concern instead of 100.
+> Beta-forever .NET 10 backend SDK — wraps the .NET ecosystem behind opinionated, descriptively-named registration extensions (`AddJwtBearerAuthentication`, `AddOpenTelemetryTracing`, `AddPerIpSlidingWindowRateLimit`, …) so a `Program.cs` becomes 1–2 liners per concern instead of 100.
 
 ## Status
 
@@ -18,7 +18,9 @@
 | P5 | SaaS-shaped (tenancy + AI + flags) | planned |
 | P6 | heavy domain extensions | planned |
 
-Ships as a **mono-lib** — one NuGet (`WoW2.Sdk.Backend.Beta`) + a separate `.Testing` lib; per-area subpaths inside. Area-by-area status: [`engineering/architecture/package-registry.md`](./engineering/architecture/package-registry.md).
+Ships seven lockstep NuGets: the production mono library, web-free data abstractions, the `wow-migrate`
+tool and four testing libraries. Area-by-area status and package IDs:
+[`engineering/architecture/package-registry.md`](./engineering/architecture/package-registry.md).
 
 OAuth sign-in providers (16): Google, Microsoft, GitHub, Apple, Facebook, LinkedIn, Discord, Slack, GitLab, Amazon, Twitch, Spotify, Yandex, Reddit, Notion, VK. Passwordless: `AddOtpService` + `AddTelegramOtpDelivery` + `AddJwtTokenIssuance` + `AddRolePolicy`.
 
@@ -48,13 +50,16 @@ builder.Services
     {
         o.Issuer   = "https://issuer";
         o.Audience = "my-api";
-        o.JwksUri  = new Uri("https://issuer/.well-known/openid-configuration");
+        o.MetadataAddress = new Uri("https://issuer/.well-known/openid-configuration");
+        o.Algorithm = Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256;
     });
 
 var app = builder.Build();
-app.UseApiDefaults();
-app.UseAuthentication();
-app.UseAuthorization();
+app.UseApiDefaults(pipeline =>
+{
+    pipeline.UseAuthentication();
+    pipeline.UseAuthorization();
+});
 app.MapGet("/", () => "ok");
 app.Run();
 ```
@@ -77,6 +82,13 @@ export MSBUILDDISABLENODEREUSE=1
 dotnet restore WoW.Two.Sdk.Backend.Beta.slnx -m:1
 dotnet build WoW.Two.Sdk.Backend.Beta.slnx --no-restore -m:1
 ```
+
+## Release
+
+`src/Directory.Build.props` owns the shared `10.y.z-beta` version. Each main push runs
+`.github/workflows/publish.yml`: bump once, create the release commit/tag, restore, build, test,
+pack and verify all seven NuGets, publish them, push the commit/tag, then verify NuGet and the tag.
+The workflow retains the packages and `release-manifest.txt` as one Actions artifact.
 
 ## License
 

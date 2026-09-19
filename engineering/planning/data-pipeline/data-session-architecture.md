@@ -4,7 +4,7 @@
 
 ## Fixed constraints (owner)
 
-Reads stay Dapper (complex multi-entity queries) · partial updates deferred · caching plugs in later through the hook seam · no filter chain — registration list on the transaction · soft-delete configurable per entity · tenant predicate wired fail-closed on Dapper.
+Reads stay Dapper (complex multi-entity queries) · partial updates deferred · caching plugs in later through the hook seam · no filter chain — registration list on the transaction · soft-delete configurable per entity · tenant predicates come from the ambient server-owned tenant; no tenant is an explicit system/admin scope.
 
 ---
 
@@ -65,11 +65,11 @@ Reads stay Dapper (complex multi-entity queries) · partial updates deferred · 
 
 ---
 
-## Owner rulings needed
+## Owner rulings
 
-1. **Tenant asymmetry** — Dapper goes fail-closed; the shipped EF filter is fail-open (`TenantModelBuilderExtensions.cs:41`: no tenant → all rows). Align EF to fail-closed too, or accept the asymmetry?
-2. **`IdempotencyBehavior` ordering** — it stores the response *before* the unit commits; a rolled-back command can leave a cached SUCCESS replayed forever. Fix = store via `OnCommitted`. Approve?
-3. **Breaking changes** (one honest migration note, both lanes' deltas): `UpdateAsync` signature + semantics (`+1` PK SELECT, diff-only UPDATE, typed NotFound); `IWriteRepository`'s persist-immediately contract narrows to "per-write commit timing only when no session".
+1. **Tenant scope:** EF and generated Dapper CRUD align on ambient tenant predicates. No ambient tenant is reserved for explicit system/admin work; hand-written SQL owns its predicate.
+2. **Idempotency ordering:** once the session exists, persist successful idempotency responses through `OnCommitted`; a rolled-back command must not leave a cached success.
+3. **Breaking changes:** approved for the beta SDK. Document the final repository/session migration when the vector ships.
 
 ## Load-bearing probes — **measured 2026-07-24**, now permanent tests in `Data.Tests`
 

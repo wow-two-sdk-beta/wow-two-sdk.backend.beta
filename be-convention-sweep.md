@@ -1,157 +1,110 @@
 # Backend convention sweep
 
-*Last updated: 2026-08-24*
-
-> Every code change the settled conventions imply, for this SDK and the products that consume it.
-> Purpose — the conventions were rebuilt on 2026-08-17/18; this is the diff between what they say and what ships.
-> Use case — pick a row, do it, tick it. Add a row whenever a convention lands that the code does not yet obey.
+*Last updated: 2026-09-19*
 
 ## Status
 
-🔄 **10 of 69 rows open** — 54 shipped, 4 refuted, and the 31 product rows moved to `smart-qr-poc/smartqr-be-update.md` on 2026-08-25, since this file measures the SDK — counted in the tables below on 2026-08-22. A row carrying ✅ is
-shipped and one carrying ✗ is refuted; the rest are open. By lane — **27 product** (smart-qr · template · FE) ·
-**18 SDK-only** · **3 SDK + products** · **3 conventions**. The backend conventions settled on **2026-08-19** — rows N16-N34 come from that pass and
-are stable; N1-N15 predate it and should be re-read against the tree before acting.
+✅ **SDK commit batches and the follow-up convention sweep are complete.** Publication is pending.
+Fresh verification and the signed commit inventory are in the
+[batch verification report](../../../system/sessions/backend-beta-build/commit-batches-verification.md).
+This is the active handoff. Completed/refuted rows, old measurements and superseded discussion
+are retained in [the historical snapshot](be-convention-sweep-history.md).
+Historical completion markers are not a fresh source or runtime certification.
+[Live SDK recheck](../../../system/sessions/backend-beta-build/sdk-handoff-recheck.md) confirms the
+completed session naming/placement slices. The CloudEvents decoder's reopened N91 failure-contract
+work is also complete; its fresh verification is linked below.
 
-Shipped rows deleted from the tables instead of ticked: `N26` `N51` `N59` `N62`. `N48` was counted as landed
-and is not — its row stands open below. IDs above `N58` were assigned in chat on 2026-08-21 and never
-written here; the ones recoverable from the handoff and the raised tasks are restored below — `N52` `N60`
-`N69` `N74` `N77` `N81` `N82` `N85` `N86`. The remaining IDs in that range carry no recoverable text, so the
-numbering has holes and a new row takes `N87` onward.
+## Execution
 
-Source of truth for every rule cited here: `wow-two-ws/conventions/development/backend/dotnet/`,
-recut on 2026-08-19 into `core/` (scope) and `shapes/` (deliverable). Paths below use the new tree.
+- Finish SDK implementation and scoped checks; CI/release work follows the implementation sweep.
+- Rule owners live under `wow-two-ws/conventions/development/backend/dotnet/`; paths below are relative to it.
+- Recheck each row against current source and its owner. Historical counts are inventory leads.
+- Preserve row IDs. Highest naming ID is N114; only a distinct obligation earns N115.
+  Historical N94–N98 duplicates require subject-qualified references; new work extends an existing row.
+- Product adoption is separate: the 31 product rows live in
+  `workbench/ventures/10x-venture-forever-pin/foreverpin-be-update.md`.
+- Use `engineering/planning/sweep.sh` for convention checks; source checks do not replace runtime checks.
+- Ordinary agent commits require the workspace's explicit turn-scoped commit switch; the developer publishes.
+  Breaking SDK changes are approved; no production consumers exist.
 
-**Measured 2026-08-19** against 969 declared SDK types, 1208 directive rules. Every row carrying a count
-below was counted, not estimated; a row with no count was not mechanically checkable. Rows marked **[+]**
-were added by that measurement, and the corrected counts on N22 · N26 · N34 replace single-symbol
-estimates. Re-run the battery before and after any row: `engineering/planning/sweep.sh`.
+### Workstream order
 
-| Check | Rule | SDK hits |
-|---|---|---|
-| fold suffixes | `core/mla/constructs/constructs.md` § *Folds* | 56 across 10 suffixes |
-| banned suffixes | same § *Banned* | 6 across 4 suffixes |
-| bare-noun `static class` | same, `:145` | 46 |
-| bare `IEntity` on a concrete type | `entity-contracts.md:24` | 3 |
-| `<remarks>` over the 5-line cap | `remarks.md:111` | 119 of 261 |
-| `<para>` in a doc comment | `remarks.md` | 143 in 45 files |
-| `<list>` markup | `remarks.md:116` | 12 files |
-| severity glyph in a doc comment | `remarks.md:107` | 0 |
-| `Options` bound from configuration | constructs § *`Settings` vs `Options`* | 0 (both hits third-party) |
+1. Completed: drain the SDK's pending changes in cohesive, reviewed commit batches.
+2. Completed: sweep the SDK against the conventions again and resolve mechanical findings.
+3. Verify the release locally; the developer publishes the beta required for consumer repinning.
+4. Migrate ForeverPin using its own product track.
+5. Analyze the missing SDK pieces: data session, validation/errors, translation, identity and other platform vectors.
 
----
+Other consumer repins remain recorded below; they do not precede the requested ForeverPin migration.
 
-## Naming and shape
+The sweep includes data-safety slices such as tracked writes and migration guarantees. The full data-session build is
+larger than this sweep and remains owned by `engineering/planning/data-pipeline/`. Localization request culture and
+formatters exist; complete translation/i18n remains a later vector in `targets.md` and the errors architecture.
 
-| # | Change | Where | Source |
-|---|---|---|---|
-| ✅ N2 | ~~Introduce `Outcome`~~ — superseded by `N15`; the application shape is `{Noun}Model` | SDK + products | `core/mla/constructs/data/model.md` |
-| ✅ N6 | Gate 27 bare-noun statics against `constructs.md:228`, rename or instance-ify per verdict. The battery over-reports: `sweep.sh` greps for statics not ending `Constants|Extensions|Mapper` and knows neither the `Factory` carve-out at `:210` nor the two gates. **Landed:** `GeohashEncoder` → `GeohashMapper` (both gates pass, `:244` still demands a form; its namespace also said `Geo.GeohashEncoder`, named after the type rather than the folder) · `WebhookSignatureHasher` → instance behind `IWebhookSignatureHasher`, HMAC-SHA256 being a real algorithm that fails Simple. **No change:** `AppErrorFactory` · `AppResultFactory` · `ClaimProviderProfileFactory` — both gates pass and `:206` names `AppErrorFactory` as the worked example. `DbUpProviderFactory` → `DbUpExtensions` in `DbUp/Extensions/`, as `UsePostgres()` / `UseSqlServer()` / `UseMySql()` on `DbUpOptions`: it had zero call sites and existed only for a host to assign `UpgradeEngineFactory`, so it is configuration surface rather than a factory the SDK calls, and `Extensions` is one of the three allowed static forms. Named for the domain, not the type it extends (`extensions.md:49`), and filed under `Extensions/` (`:12`). `CronExpressionParser` → `ICronExpressionParser` and `GeoJsonSerializer` → `IGeoJsonSerializer`, both instance: parsing and JSON reading are real algorithms, so both fail Simple. Consumers re-pin — `dev-cycle.md` § *A consumer never gates an SDK fix*. `TestJson` → `TestJsonConstants` — a `static readonly JsonSerializerOptions` is a value, and `:218` names `JsonOptionsConstants` as the precedent. `BogusFakerFactory` passes both gates. `SagaTestHarness` earned a new carve-out instead of a rename: a non-generic companion to `SagaTestHarness<TState>` takes the generic type's exact name, the way `Result` sits beside `Result<T>`. **`sweep.sh` now counts `internal` statics too: 27, not 12.** 13 renamed in one batch — 4 value tables to `*Constants` (`AzureServiceBusHeaderConstants` · `MessagingDiagnosticConstants` · `KeySizeConstants` · `RedisStreamsFieldConstants`) and 9 deterministic transforms to `*Mapper` (`KafkaTopicNameMapper` · `NatsWireFormatMapper` · `OutboxDispatchHeaderMapper` · `CaptionTimecodeMapper` · …). `AesGcmCipher` and `HashChainHasher` went instance, both real algorithms failing Simple, each held as a field by the seam that already owned the registration choice (`ICryptoCore`, the sealer and verifier). `NamingConventionsMarker` was dead and is gone, its doc kept as the file's namespace comment. The last 6: `OAuthBaseline` → `OAuthExtensions` in `OAuth/Extensions/`, its two members now extending `OAuthOptions` across 17 provider registrations · `NatsTopology` and `RedisStreamsTopology` → `*TopologyBroker` instances, both doing async broker I/O · `CliCommands` → `CliCommandBuilder`, `Builder` being the keep-list role for assembling a tree · `AdapterOwnedHeaderContract` → instance, its publish loop being I/O · `WebhookAddressPolicy` split by role into `WebhookAddressMapper` (3 pure predicates, static) and `WebhookSsrfGuard` (the DNS + socket connect callback, instance) — one type had been holding both. **Closed: the battery reports only the 5 compliant `*Factory`, one of which (`AppErrorProblemDetailsFactory`) belongs to `car-t-012`.** `AppErrorProblemDetailsFactory` stays with `car-t-012` | SDK | `core/mla/constructs/constructs.md` § *Folds* |
-| ✅ N7 | resolved — it ships as `SqlNamingMapper`, and the battery's bare-noun static check no longer lists it | SDK | `core/mla/constructs/constructs.md:145` |
-| ✅ N8 | `StyleSpecNormalizer` → `StyleSpecMapper` | SDK `src/Codes/Models/Style/` | decided, unshipped |
-| N10 | the rename is moot — `ValidationResult` no longer exists; `IValidator.Validate` returns `ValidationError?`, so the open half is wrapping it in `Result<T>`, which is `R4` | SDK `Foundation/Validation/` | `results.md` § *What returns a `Result`* |
-| ✗ N11 | refuted by `N69` — a `Mapper` with no failure mode returns bare; the role never settles it | SDK + products | `results.md` § *What returns a `Result`* |
-| ✅ N12 | `IErrorMessageResolver` → `…Mapper`; `Resolver` is a folded suffix | SDK `Foundation/Errors/` | `core/mla/constructs/constructs.md` § *Folds* |
-| ✅ N13 | `IFieldErrorMessageResolver` → `…Mapper` | SDK `Foundation/Validation/` | same |
-| ✅ N21 | Add `IKeylessEntity : IEntity` and `ICompositeKeyEntity : IEntity` beside `IKeyedEntity<TId>` | SDK `Data/Abstractions/` | `core/mla/domains/persistence/entities/entity-contracts.md` § *Identity* |
-| ✅ N22 | 3 concrete types implement bare `IEntity` — `IdentityUserRole` · `IdentityUserLogin` · `IdentityUserToken`, all composite join rows | SDK `Identity/Core/IdentityRelations.cs:7,55,73` | same |
-| ✅ N23 | Bare `IEntity` never on a concrete type — audit every implementer once N21 lands | SDK + products | same |
-| N24 | Ship a JSON serializer holding options in a type-keyed dictionary; products stop declaring a `static readonly JsonSerializerOptions` | SDK, lifted from `SmartQr.Common.Domain.Serialization.Json` | `smart-qr/be-sweep-handoff.md` § *JSON seams* |
-| N25 | Re-test the `Json` keep-list row once N24 lands — the suffix's only claim was pinning options per type | conventions | `core/mla/constructs/constructs.md:75` |
-| 🔄 N26 | 46 bare-noun `static class` types are none of the three forms — `SqlNaming` · `Geohash` · `Polling` · `QuietZone` · `CaseConverter` · … | SDK, whole tree | `core/mla/constructs/constructs.md:145` |
-| ✅ N27 | `ColumnCase` / `ParameterCase` left the static as `SqlNamingOptions`, and every mapper method now takes its `CaseStyle` as an argument — `Options`, not `Settings`, because the caller supplies it in code | SDK `Data/Dapper/` | same + § *`Settings` vs `Options`* |
-| ✅ N28 | Repoint every `SqlNaming.*` call site and the 14 `dapper.md` citations after N26 | SDK + products + conventions | `core/mla/domains/persistence/access/dapper/dapper.md:104-226` |
-| ✅ N29 | `HostedService` folds into `BackgroundService` — rename `EfMigrationsHostedService<T>` and `DbUpHostedService` | SDK `Data/Migrations/` | `core/mla/constructs/constructs.md` § *Folds* |
-| 🔄 N34 | 19 of 29 folded and banned names landed — `Provider` → `Service` on the access-token, reply-address and topology seams · `Resolver` → `Mapper` on message types and `Service` on the tenant id · `Keeper` → `SealService` · `Scheduler` → `IDelayedDeliveryService` and `ISagaTimeoutService`, the `Service` arm `N93` added · `Strategy` → `IOutboxClaimRepository`. Every `Default…` prefix dropped, since `constructs.md:132` leaves a lone implementation the role's own name. **Left: 10** — the 4 `Observer` types wait on the contract-naming fork, and `IMasterKeyProvider` (Repository or Service), `ClaimProviderProfile`, `UserAccountManager`, `IAuditCurrentUserAccessor` and the `DatabaseProvider` enum each carry a live dispute | SDK | 28 fold hits + 5 banned names across 973 types — `Provider` 9 · `Resolver` 5 (3 `Source` hits cleared by `N92`) · `Observer` 4 · `Scheduler` 4 · `Source` 3 · `Keeper` 2 · `Profile` 1; banned `Strategy` 3 · `Manager` 1 · `Accessor` 1. Recounted 2026-08-22, down from 56 fold hits + 6 banned | SDK | `core/mla/constructs/constructs.md` § *Folds* · § *Banned* |
-| ✅ N38 | Section banners in `//` are gone repo-wide — the rule bans the construct, not one glyph, so the recount widened from 9 `──` banners in 4 source files to 25 across 8, the 16 extra being `// ---` in the test projects. Member groups past 60 lines took `#region`; the rest were deleted, since a banner inside a method body groups statements and the rule scopes a region to members | SDK | `core/lla/constructs/constructs.md` |
-| ✅ N39 | **[+]** the lookup normalizer collapsed into `NamingExtensions.ToCanonical()` — the interface, its impl and its DI registration are gone, and `CaseStringExtensions` took the domain name the rule asks for | SDK `Foundation/Naming/` | `core/mla/constructs/behavior/extensions.md` § *Type name* |
-| ✅ N40 | **[+]** `Options` gained a construct doc and a component doc, indexed from `data.md` · `components.md` · the keep-list | conventions | `core/mla/constructs/data/options.md` |
-| ✅ N41 | **[+]** `patterns.md:119,148` now links the owner instead of restating the rule | conventions | `conventions.md` § *One owner per rule* |
-| ✅ N42 | **[+]** 59 `*Options` classes became `sealed record` so `with` works — `TestAuthOptions` stays a class, it derives from a framework type | SDK | `core/mla/constructs/data/options.md` § *Declaration* |
-| ✅ N43 | **[+]** 41 `{ get; init; }` members on `*Options` types became `{ get; set; }` for the delegate | SDK | same |
-| ✅ N45 | **[+]** `{Capability}Extensions` and `{Primitive}Extensions` added to the naming rule; `CaseStringExtensions` → `CasingExtensions` | conventions + SDK | `core/mla/constructs/behavior/extensions.md` § *Type name* |
-| ✅ N46 | **[+]** `DbUpOptions.ConnectionString` is `required` and arrives as an `AddDbUpRunner` parameter | SDK `Data/Migrations/DbUp/` | `core/mla/components/options.md` § *Registration* |
-| N57 | **[+]** `AzureServiceBusOptions.ConnectionString` keeps its placeholder — the type stays on `AddOptions<T>()` for its `PostConfigure` chain, which cannot construct a `required` member | SDK `Messaging/AzureServiceBus/` | same |
-| ✅ N58 | **[+]** the defaults rule lifted to `constructs.md` § *`Settings` vs `Options`* and both docs link it; location split by shape — a service uses the layer's `Settings/`, a library sits beside its `Add*` | conventions | `core/mla/constructs/constructs.md:112` |
-| ✅ N47 | **[+]** 19 of 27 `AddOptions<T>()` registrations bought nothing and moved to `new T()` + `TryAddSingleton`; consumers dropped `IOptions<T>` and `.Value`. The 7 kept are the 5 transport→topology `PostConfigure` composers, `TopologyOptions`, and `WebhookOptions` for its `.Validate` delegates | SDK | `core/mla/components/options.md` § *Registration* |
-| N48 | **[+]** 4 of 5 `ValidateOnStart()` calls carry no `.Validate` delegate and no `ValidateDataAnnotations`, so they validate nothing — `DbUp` · `EfMigrations` · `Database` ×2 | SDK | `core/mla/components/settings.md` § *Registration* |
-| N49 | **[+]** one validation seam has to cover `Settings` and `Options` alike — a bound section and a delegate-filled instance validate through the same rules, so neither doc should ossify around `ValidateOnStart` | SDK + conventions | queued design |
-| ✅ N50 | **[+]** No conversion needed: every `IOptionsMonitor<T>` injection in the SDK is one of the 4 named-options sites, which is the one shape the monitor exists for. The row's premise was unsound as stated — `reloadOnChange` lives in the host's configuration builder, not in the SDK, so counting zero here proves nothing about whether a value can reload | SDK | `core/mla/components/options.md` § *Registration* |
-| ✅ N44 | **[+]** 7 broken relative links in the backend conventions repointed — 4 in `time.md`, 2 pre-move frontend paths, 1 repo path | conventions | mechanical |
-| ✅ N86 | 12 types renamed onto the single `Repository` role, engine in the prefix — `EfUserRepository` · `DapperRepository` · `LocalFileBlobRepository` · `HybridCacheRepository` · `InMemoryTenantRepository` · `MemoryOtpRepository`, and `ICacheRepository` · `IBlobRepository` · `IOtpRepository` · `IIdempotencyRepository` on the contract side. `Storage` and `Cache` stop being roles, so swapping Postgres for Redis is a host-configuration line and no use case learns it happened | SDK | `core/mla/constructs/constructs.md:101` § *`Repository`* |
-| ✅ N85 | folded into `N86` — ownership, contract shape and composition were each tried as the discriminator and each read an implementation fact, so none can carry a role | SDK | same |
-| N74 | One registration mechanism for `Options` and `Settings`, validation first — `required` is decorative under `AddOptions<T>` because `Activator` bypasses it, so validation is the only enforcement | SDK | raised as `car-t-013`; rides with `N47` · `N69` |
-| ✅ N87 | `MigrationScannerService` folded into `MigrationRunnerService` as a private `Scan()`, and `IMigrationScanner` deleted — source pluggability already lives in `IMigrationSource` (2 implementations plus a `sourceFactory` registration hook), while the scanner seam had 1 implementation, 1 consumer and no test fake, and no test called `Scan()` directly. DI registration dropped; Migrations suite 14/14 | SDK `Data/Migrations/Bespoke/` | `core/mla/constructs/constructs.md` § *Role and shape* |
-| ✅ N88 | `CliRunner` → `CliRunnerService`, an instance `sealed partial class` taking `IMigrationsPathBroker`; `CliCommands.Build()` constructs one and threads it through the 6 command builders. `partial` stays — it carries the `[GeneratedRegex]` `OrdinalPrefix()`, which is a source-generator requirement, not an extensions marker. `sweep.sh` still greps `public static class` and would miss the next `internal` one — widening it stays open. Originally: `CliRunner` was an `internal static partial class` with 8 public static methods and a `BuildProvider` that constructs a `ServiceProvider` — a bare-noun static is allowed only for `Constants` / `Extensions` / `Mapper`, so this becomes an instance service. `sweep.sh` greps `public static class` and missed it because the type is `internal` — widen the check | SDK `Data/Migrations/cli/CliRunner.cs:18` | `core/mla/constructs/constructs.md:145` |
-| ✅ N89 | `MigrationsPathResolver` → `MigrationsPathBroker` behind `IMigrationsPathBroker`, returning `Result<string>`. **`Broker`, not `Service`:** `constructs.md:188` folds `Resolver` by what it touches — pure → `Mapper`, out-of-process → `Broker`, injected collaborators → `Service` — and a directory probe is filesystem I/O. Originally: `MigrationsPathResolver` was an `internal static class` carrying a folded suffix — `Resolver` folds to `Mapper` (`N12` / `N13`), and the path lookup is meant to be overridable, which a static cannot be. Becomes an instance service behind a contract | SDK `Data/Migrations/cli/MigrationsPathResolver.cs:4` | `core/mla/constructs/constructs.md` § *Folds* + `:145` |
-| ✅ N90 | `IErrorMessageMapper` and `IFieldErrorMessageMapper` moved to `Web/ErrorMapping/`, and the DI half of `ExceptionMapping.cs` split into its own `*ServiceCollectionExtensions.cs` — `Foundation/Errors/` core is BCL-only, so the migrator CLI's exclude narrowed from 2 named files to the `*ServiceCollectionExtensions.cs` pattern. Originally: `IErrorMessageMapper` imports `Microsoft.AspNetCore.Http` and `ExceptionMapping` imports the DI container, both from `Foundation/Errors/` — a Foundation primitive must not know about web or hosting. Surfaced when the web-free migrator CLI had to exclude exactly these 2 files by name to link the `Result` carrier; move them to the web layer and the exclude list goes away | SDK `Foundation/Errors/` + `Data/Migrations/cli/*.csproj` | `core/mla/constructs/constructs.md` § *Role and shape* |
-| ✅ N92 | `IMigrationSource` → `IMigrationBroker`, with `FileSystemMigrationBroker` and `EmbeddedResourceMigrationBroker` — reading migrations off disk or out of an assembly is the app-side seam over an external store, which `broker.md` names outright ("store a file"), and the seam exists so a provider swap stops there. The folds table sent every `Source` to `Generator`; that row now splits — derives a value → `Generator`, reads one from an external store → `Broker`. Clears 3 of `N34`'s fold hits | SDK `Data/Migrations/Bespoke/` + conventions | `core/mla/constructs/constructs.md:190` |
-| N93 | The folds table sent every `Scheduler` to `BackgroundService` on the grounds that a poller schedules nothing. That fits a poller; `IEventScheduler` and `ISagaTimeoutScheduler` are called BY application code to deliver something later, so neither is host-run. Row split: runs itself on a timer → `BackgroundService`, takes a request to deliver later → `Service`. Same shape as the `Resolver` and `Source` splits | conventions | `core/mla/constructs/constructs.md` § *Folds* |
-| ✗ N94 | Coin `Observer` as a keep-list role — **refuted**, 3 of 3 refuters voted to kill. The word names a position and a permission, never a verb, so § *Adding a new suffix* returns `Service` at its own gate. The read-only claim the row would rest on is also false as shipped (`C8`). The fold row is recut rather than dropped: its `Handler` and `BackgroundService` arms were both wrong for these three types, and a third arm now carries them | conventions | `core/mla/constructs/constructs.md` § *Folds* |
-| ✅ N95 | `strategies.md` contradicted itself — § *Shape* required the contract be `suffixed Strategy` while § *Naming* forbade the suffix and § *Banned* bans the word outright. § *Shape* was the stale clause, since the keep-list owns the vocabulary and a pattern doc owns only how the pattern behaves (`constructs.md:15`). Rewritten to name the role the decision serves | conventions | `core/mla/constructs/patterns/strategies.md` § *Shape* |
-| ✅ N96 | `AppErrorObserver` → `ErrorRecordingService`, named for the work its own summary already stated. Nothing observes it — `ExceptionMappingInterceptor` calls `Record` directly — so it was never a chain step | `AppErrorObserver` is the last `Observer` in the tree and it is not a chain step at all — no pipeline calls it, `ExceptionMappingInterceptor` calls `Record` directly, and its own summary starts with **Records**. Originally: `AppErrorObserver` carries the `Observer` suffix on a type sitting on no pipeline, notified by nobody, and called imperatively as `observer.Record(error, exception)` from `ExceptionToResultBehavior`. Its own summary starts with **Records**, which is the verb the name should carry | SDK `Observability/Errors/` | `core/mla/constructs/constructs.md` § *Folds* |
-| ✅ N97 | Every file holds one type — 106 multi-type files split into 434, each named for what it holds. A generic keeps its non-generic companion, which the rule allows (`Result.cs` holds both arities). 7 file names that never matched their type were corrected alongside. The first pass cut a type's doc comment onto the previous type; the compiler caught it as CS1587/CS1591 and 4 identity types that had been sharing one summary now each state what they are | 106 files hold 2 or more top-level types, against `mla.md:21` § *One type, one file*, which is REQUIRED and allows only a generic beside its non-generic companion. Worst: `RequestClient.cs` 13, `MessagingReliability.cs` 12, `Topology.cs` 11, `RedisStreamsTransport.cs` 11, `EventSaga.cs` 11. `MessageSerialization.cs` holds 5 — `IMessageSerializer`, `SystemTextJsonMessageSerializer`, `IMessageTypeMapper`, `MessageTypeRegistry`, `MessageTypeMapper` | SDK | `core/mla/mla.md:21` |
-| ✅ N98 | Two words settled for the whole family: a `Handler` is the type the message was addressed to, an `Interceptor` is any step it passes through first, whatever that step does with it. 16 types renamed — the 8 mediator `Behavior`s, the 4 messaging `Filter`s and the 3 observer contracts — with the job in the middle word (`ValidatingInterceptor`, `ClaimCheckRehydratingConsumeInterceptor`, `IConsumeObservingInterceptor`). Keep-list row and `behavior/interceptor.md` written; `Behavior`, `Filter` and `Observer` all fold there. The framework-owned uses stay exempt, the exemption now scoped to a type deriving from a framework base | SDK + conventions | One pipeline family carries three words in code we own — `Filter` (`IConsumeFilter` + 4), `Behavior` (`IPipelineBehavior` + 7) and `Observer` (3 messaging hooks). The framework-owned uses are exempt and stay: `SaveChangesInterceptor` (5), `IExceptionHandler` (3), `AuthorizationHandler`, `AuthenticationHandler`, `DelegatingHandler`, Dapper `TypeHandler` (4), MVC filter, ASP.NET middleware. Settle the vocabulary, then rename ours to it | SDK + conventions | `core/mla/constructs/constructs.md` § *Folds* |
+## Remaining SDK work
 
----
+### Release-dependent consumer adoption
 
-## Result pattern
+- [ ] When TranscriptForge is repinned from `WoW2.Sdk.Backend.Beta` `10.0.44-beta` to the published sweep version,
+  add the new caption parser namespace in its fetcher and VTT tests, and run its consumer checks.
+  Exact files/imports: [parser verification](../../../system/sessions/backend-beta-build/parser-conformance-verification.md#reference-inventory-and-adoption).
+  This adoption task is separate from the 27 SDK implementation rows; it depends on the published version.
+- [ ] Repin the other direct consumers to the published sweep version and repair only the APIs each uses:
+  ForeverPin (`10.0.45-beta`), TransportBrain (`10.0.45-beta`), Tnis (`10.0.45-beta`), Drydock (`10.0.40-beta`),
+  SecretsVault (`10.0.40-beta`), Sift (`10.0.21-beta`), Arcade (`10.0.21-beta`), MuseumsGallery (`10.0.21-beta`) and
+  TnisMintrans (`10.0.21-beta`). Repin the product template (`10.0.21-beta`) separately so new ventures start current.
 
-| # | Change | Where | Source |
-|---|---|---|---|
-| ✗ R1 | refuted by `N69` — the failure mode decides, so "every behavior component" over-reaches | SDK + products | same |
-| ✗ R2 | refuted by `N69` — `Extensions` is not exempt either; `TryX` + `bool` stays a shape choice, not an exemption | SDK + products | same |
-| ✅ R3 | superseded by `N69` — the failure mode decides, not the role | SDK + products | `results.md` § *What returns a `Result`* |
-| ✅ R5 | Wired, not deleted — `AddMediator` registers it first. The audit found 10 paths that legitimately still throw, all of them pre-pipeline (`Mediator.cs:19,52,67,68` run before the pipeline is composed) or the throw-return bridge itself, so the unconditional claim in `results.md:75` was false and is now scoped to a request whose response carries a failure arm and that reaches the pipeline | SDK `Mediator/` | `ideas/exceptions-analysis.md` |
-| ✅ R7 | resolved — `results.md` § *Carriers* gives each a lane: `Result<T>` everywhere, `AppResult<TSuccess>` for mediator handlers ↔ controllers, and an inner `Result<T>` maps up in the handler | SDK | `results.md:13` § *Carriers* |
-| R8 | Add `Result<TSuccess, TFailure>` — a caller cannot branch exhaustively on `AppError` today | SDK `Foundation/Results/` | `shapes/service/platform/responses/results.md` § *Typed failure* |
-| ✅ N81 | **12 domain throws become `Result`** — 10 landed: `ClaimCheckPayloadRepository` (4, plus 2 `throw Missing(...)` helpers the `throw new` scan had missed) and `MigrationRunnerService` (5, scanner rows included). `Result<T>` gained `IsFailure(out error, out value)` along the way — the carrier has `Map` but no `Bind`, so propagating a failure through an async operation otherwise cost a cast per hop. Startup bridges back to a throw at `PostgresPersistenceStartupExtensions`, since a host has no result channel before its pipeline exists. `OAuth2TokenRepository.GetAccessTokenAsync` returns `Result<string>` and the `DelegatingHandler` bridges back, because the `HttpClient` pipeline reads only exceptions. **Two carve-outs close the row.** `DbUpBackgroundService:59` is an `IHostedService.StartAsync` — a host has no result channel before its pipeline exists, the same reason the Postgres startup path bridges back to a throw. `CloudEventsMessageSerializer:154` is blocked by the carrier, not by taste: `IMessageSerializer.Deserialize` returns `object?` and `Result<T>` constrains `T : notnull`, so converting it needs a redesigned serializer contract across every implementation and transport adapter — raised as `N91`, one type at a time. ✅ `ClaimCheckPayloadRepository` landed 2026-08-22 — `ReadAsync` returns `Result<byte[]>`, `Confine` returns `Result<string>`, `Missing` returns an `AppError`, and the filter bridges back at `ClaimCheck.cs:461` with `.Match(body => body, error => throw new ClaimCheckPayloadException(error.Message))`; 6 failure exits, not 4, because two were `throw Missing(...)` rather than `throw new`. Messaging suite 96/96. Scope filter — throws inside role-suffixed types only (`Service` · `Repository` · `Mapper` · `Adapter` · `Validator` · `Serializer`); 29 counted, 9 excluded as config-at-boot or programmer errors (`N82`), 7 excluded as argument guards and `NotSupportedException`. The 13, in landing order: `ClaimCheckPayloadRepository` 4 (`ClaimCheck.cs:223,242,291,295`) · `MigrationRunnerService` 5 (`:150,227,248` plus the 2 folded in by `N87`) · `DbUpBackgroundService` 1 (`:59`) · `OAuth2TokenRepository` 1 (`:102`) · `CloudEventsMessageSerializer` 1 (`:154`). `FluentValidationAdapter:52` is carved out — `ValidateAndThrow` is the declared throw half of the bridge, paired with `Validate` returning `ValidationError?`, so throwing is its contract rather than a missing `Result`. Re-scanned 2026-08-22 for throw-helpers (`throw Helper(...)`, the shape that hid two exits in the claim-check repository): none in the remaining types, so these counts stand. Each conversion changes a contract and every caller, so they land one type at a time with the suite green between them. Rides along: `ClaimCheckPayloadRepository`'s ctor parameter is still named `blobStorage` after `N86` | SDK | `results.md` § *What returns a `Result`* |
-| ✅ N82 | the 9 config-at-boot and programmer-error throws stay exceptions and guards stay guards — the framework's own seams only catch what is thrown. The 9: `DbUpBackgroundService:33,38,41` · `MigrationRunnerService:129,181` (both gated on `MigrationOptions.AllowRollback`) · `OAuth2TokenRepository:66,71` · `ConfigurationMapper:42` · `EfInterceptorWiringValidator:109` | SDK | same |
-| ✅ N69 | the failure mode decides, not the role — an operation with a failure mode wraps, one that cannot fail by construction returns bare. Supersedes `R3`, and opened by iteration 8 of the taxonomy analysis | SDK + products | same |
-| ✅ N60 | `AppErrorProblemDetailsFactory` is a static class, so it cannot be swapped or decorated and every branch lands in one method — creation moves behind an interface | SDK | raised as `car-t-012` |
-| ✅ N91 | `IMessageSerializer.Deserialize` returns `Result<object>` across all 3 serializers and its 8 call sites. `object` satisfies `notnull`; the blocker was the null-for-empty return, and that null was already a hand-rolled one-case result — the doc said every caller converted it into an explicit failure by hand. Empty, malformed, and decoded-to-null are now `SerializationFailed`, so the seam is total and never throws: `TryReconstruct` runs outside the adapters' try/catch, where a throw stops the subscription rather than costing one message. Closes the last `N81` throw (`CloudEventsMessageSerializer:154`). Originally: `Deserialize` returned `object?`, which `Result<T>` cannot carry under its `T : notnull` constraint — decide whether the seam returns `Result<object>` plus an explicit empty case, or stays throw-based as a documented boundary. Blocks the last `N81` throw (`CloudEventsMessageSerializer:154`) | SDK `Messaging/Serialization/` | `shapes/service/platform/responses/results.md` § *What returns a `Result`* |
+## Scope retained from confirmed decisions
 
----
+- C25 retains the phase/job ordering check from N98 (interceptor vocabulary), including
+  `ClaimCheckRehydratingConsumeInterceptor`; a completed rename does not establish pipeline behavior.
+- N100/N101 vocabulary is settled: Parser, Exporter, Formatter, Transport, Serializer and Bus are approved.
+  Integrity checks use Validator; Google token evidence uses Authenticator. Internal wrappers use Model;
+  actual event payloads retain Event. No naming decision remains pending.
 
-## Documentation
+## Verification evidence
 
-| # | Change | Where | Source |
-|---|---|---|---|
-| ✅ D6 · D3 | **[+]** Every `<remarks>` is at or under the 5-line cap, and `<para>` is gone — 0 of 181 multi-line blocks over cap, 143 `<para>` removed across 45 files. Run as three agent passes over 73 files: rewrite, then fix the 206 findings the verifiers raised, then close the 48 that survived. The passes converged 206 → 48 → 33, and the third introduced content regressions of its own, so the last 33 were finished by hand rather than a fourth pass. Three caller-facing facts restored after an agent cut them to satisfy the cap: Kafka's delivery count resetting to 1 on a redelivery whose offset was never stored, the `AddMessagingRecorder` idempotency note, and the inner exception on `ClaimCheckPayloadException` | SDK, `Messaging/` and `Testing/` carry most | `remarks.md:111` |
-| ✅ D7 | **[+]** `<list>` markup gone from all 12 files — 15 `<item>`s flattened to `- ` bullets, wrappers dropped | SDK | `remarks.md:116` |
-| ✅ N52 | 46 `<example>` tags stripped across 18 files — 36 single-line, 10 blocks; none remain | SDK | `core/lla/notation/documentation/inline.md:35` |
-
----
-
-## Correctness
-
-| # | Change | Where | Source |
-|---|---|---|---|
-| ✅ C3 | **[+]** Both `UseSerilogConventional` sinks render `{TraceId}` — Serilog 4.2.0 already populates `LogEvent.TraceId` from `Activity.Current`, so the gap was the output template, not the enrichment. No new seam: the console and file templates moved off the sink defaults, and the brackets render empty outside an activity. Verified against a real host — `[INF] [e9421149ccb8147aec30ca2876e6e37a] inside the request span` in the file sink, `[INF] [] outside any activity` beside it | SDK `Observability/Logging/` | `ideas/logging-analysis.md` § *Unused Serilog capability* |
-| ✅ C5 | ~~`UseOwaspSecureHeaders` hard-codes COOP/COEP with no opt-out~~ — `SecureHeadersOptions` fills from an `Action<T>? configure = null` delegate, both flags default `true`, so an unconfigured host is byte-identical. `AddDefaultSecurityHeaders()` seeds COOP/COEP/CORP itself, so skipping the explicit `Add*` call would not have dropped the header — the opt-out removes the keyed entry from the `HeaderPolicyCollection`. `ApiDefaultsOptions` carries the same two flags and forwards them, mirroring how `AllowedHosts` reaches `ProxyAwareHostingOptions`. 4 tests in `Web.Tests/SecureHeaders/` assert both directions over a TestServer | SDK | `docs/backend-inventory.md` |
-| ✅ C6 | The 4 null-forgiving lies are gone — each site now guards, retypes, or fails explicitly rather than asserting a non-null the code cannot promise | SDK | `ideas/nullability-and-fixtures-analysis.md` |
-| C8 | A message observer can settle the message it is only supposed to watch. `EventProcessingPipeline.cs:55,122` hands `PreReceiveAsync` / `PreConsumeAsync` the live `ReceiveContext`, whose surface carries `AcknowledgeAsync` (`TransportContracts.cs:114`) and `DeadLetterAsync` (`:121`) — an observer calling either leaves the pipeline to ack again at `:58` or dead-letter at `:83`, so one message settles twice. `Messaging.standard.md:88` states the guarantee the code does not enforce: a registered observer must not change behaviour relative to none registered | SDK `Messaging/Transport/` | `Messaging.standard.md:88` |
-| ✅ C9 | `Mediator.cs:60` now invokes with `BindingFlags.DoNotWrapExceptions`, so a synchronous throw reaches the mapper as itself and an `AppException(NotFound)` maps to its own status instead of 500 | `Mediator.cs:61` invokes the dispatcher through reflection without `BindingFlags.DoNotWrapExceptions`, so every synchronous pre-pipeline throw arrives as `TargetInvocationException`. `ExceptionMapper.Map` tests `exception is AppException` on the outer instance and never unwraps, so a handler constructor throwing `AppException(NotFound)` renders 500 instead of 404 | SDK `Mediator/` | `Foundation/Errors/ExceptionMapping.cs:39` |
-| ✅ C10 | The converter can no longer throw from its own recovery — the mapper call is guarded and falls back to `Unexpected(inner:)`, and the observer call cannot preempt an already-built failure | `ExceptionToResultBehavior` can throw from inside its own recovery. `:36` calls `exceptionMapper.Map` and `:38` calls `observer.Record` inside the bare catch, both reaching app-registered seams — a throwing `IExceptionMappingRule` or `IErrorNatureClassifier` escapes the one component whose contract is never to throw, and replaces the original exception | SDK `Mediator/ExceptionHandling/` | `results.md` § *Throw and return bridge* |
-| ✅ C11 | The bare catch excludes `NullReferenceException` · `ObjectDisposedException` · `StackOverflowException` · `OutOfMemoryException`, so a programmer error stays a throw, and the bridge back to a throw now carries the cause. A response with no failure arm keeps an `OperationCanceledException` as itself, which is what an awaiting caller expects | `ExceptionToResultBehavior.cs:34` catches bare `Exception` with no exclusion list, so `NullReferenceException` and `ObjectDisposedException` become failures — the standing rule keeps a programmer error as a throw. `:51` also calls `error.ToException()` with no `inner`, dropping the caught exception's type and stack | SDK `Mediator/ExceptionHandling/` | `core/mla/constructs/data/result.md` |
-| ✅ C12 | `AddMediator` registers the converter first, so it is outermost by construction and every behaviour an app adds afterwards sits inside it. `AddMediator(o => o.ExceptionToResult = false)` opts a host out | The outermost-first ordering that the no-throw guarantee depends on is stated only in an XML doc line (`ExceptionToResultBehavior.cs:58`) and enforced nowhere. `Mediator.cs:68` reverses DI order, so registering `AddMediatorValidationBehavior` before the converter puts validation outside it and every `ValidationException` escapes | SDK `Mediator/` | `Mediator/mediator.md` |
-| ✅ C13 | `AddMediatorExceptionToResultBehavior` brings both constructor dependencies plus `AddLogging()`, so a bare container resolves the behaviour at boot rather than failing at first dispatch | `AddMediatorExceptionToResultBehavior` registers `AddExceptionMapping()` for one constructor dependency and never `AddAppErrorObserver()` for the other, so a non-web host calling it alone fails at first dispatch rather than at boot — open-generic registrations skip `ValidateOnBuild` | SDK `Mediator/ExceptionHandling/` | `repo-structure.md` §3 also wants the missing `exception-handling.md` |
-
----
-
-## Phantom symbols
-
-Cited in conventions, absent from source. Either build them or cut the citation.
-
-- ~~`AddEnvironmentOverrides` · `AddIntegrations` · `AddPipelines` · `AddSchedulers` · `AddObservers`~~ —
-  **cut 2026-08-19.** The table that held them was the stale horizontal model; the doc now documents only
-  methods a host declares. `hosted-service.md:82` still cites `AddSchedulers()` — repoint it to `AddCodes()`-style
-  domain wiring.
-- `IErrorMessageMapper` / `IFieldErrorMessageMapper` — the docs are **right** and the source is wrong:
-  it ships as `…Resolver`, and `Resolver` is a folded suffix. Rows N12 and N13 rename the source.
-
----
-
-## Open
-
-- ~~whether the 5 phantom `Add*` methods were a plan or a mistake~~ — cut, they were the horizontal model's residue
+- [2026-09-19 batch verification](../../../system/sessions/backend-beta-build/commit-batches-verification.md):
+  Release checks pass 455 tests with one intentional Kafka skip. The follow-up fixes cover inbox lock lifecycle,
+  annotated release tags, four remaining helper roles and the startup child probe's build configuration.
+- [Naming inventory and report index](../../../system/sessions/backend-beta-build/sdk-naming-inventory.md).
+- [SDK handoff recheck](../../../system/sessions/backend-beta-build/sdk-handoff-recheck.md).
+- [Retained-role verification](../../../system/sessions/backend-beta-build/retained-role-conformance-verification.md):
+  Exporter/Serializer/Bus placement, scoped compilation and 26 existing serializer/pump tests.
+  These do not establish exporter runtime contracts, GeoJSON fidelity,
+  provider delivery guarantees or whole-SDK release readiness.
+- [CloudEvents decoder verification](../../../system/sessions/backend-beta-build/cloudevents-decoder-verification.md):
+  complete-document parsing and failure results for malformed JSON/base64; all 37 serializer tests passed.
+  Inbound context attributes remain outside this payload decoder's semantic validation contract.
+- [N101 verification](../../../system/sessions/backend-beta-build/n101-conformance-verification.md):
+  Transport placement, saga classification, GeoJSON contracts and Google cancellation are complete.
+- [N111 verification](../../../system/sessions/backend-beta-build/n111-options-registration-verification.md):
+  SDK-owned code options use direct values or startup-validated pipelines; only topology composers retain raw
+  `AddOptions<T>`, and resolving delayed-retry options no longer mutates the service collection.
+- [N115 verification](../../../system/sessions/backend-beta-build/n115-dependency-remediation-verification.md):
+  all 14 projects are vulnerability-clear against live NuGet data; the solution builds and 399 tests pass.
+- [C15 verification](../../../system/sessions/backend-beta-build/c15-api-defaults-pipeline-verification.md):
+  the host-controlled identity seam runs after routing and before limiter/cache policies; all 47 Web tests pass.
+- [C16 verification](../../../system/sessions/backend-beta-build/c16-build-packaging-verification.md):
+  test projects evaluate non-packable, seven release projects remain packable and local/CI use the same SDK pin.
+- [C17 verification](../../../system/sessions/backend-beta-build/c17-release-pipeline-verification.md):
+  CI tests one release commit, verifies all seven package pairs and records the exact revision/version manifest.
+- [C18 verification](../../../system/sessions/backend-beta-build/c18-test-host-isolation-verification.md):
+  both clock APIs share one test clock; host configuration and database-provider selection are instance-local.
+- [C19 verification](../../../system/sessions/backend-beta-build/c19-migration-guarantees-verification.md):
+  provider coordination, recovery, enum boundaries, SQLite rebuilds and CLI exits pass 26 migration tests.
+- [C20 verification](../../../system/sessions/backend-beta-build/c20-jwt-trust-verification.md):
+  one key source, secure metadata and algorithm-specific key requirements pass all 20 Identity tests.
+- [C22 verification](../../../system/sessions/backend-beta-build/c22-observability-contract-verification.md):
+  SDK telemetry collection, correlation, bounded tags and exporter isolation pass 69 Mediator and 121 Messaging tests.
+- [C23 verification](../../../system/sessions/backend-beta-build/c23-startup-failure-reporting-verification.md):
+  pre-host and options-validation child failures persist durably and exit nonzero; all 52 Web tests pass.
+- [C24 verification](../../../system/sessions/backend-beta-build/c24-http-replay-safety-verification.md):
+  unsafe methods run once by default, explicit idempotency selectors permit replay, and nine focused tests cover
+  cancellation, total budgets, streaming rejection and disposal.
+- [C25 verification](../../../system/sessions/backend-beta-build/c25-tenant-messaging-guarantees-verification.md):
+  EF and generated Dapper CRUD enforce ambient tenant scope; messaging documents and tests at-least-once delivery,
+  atomic durable dedupe/effect, bounded queues/retries, failed-outbox retention and forced-final claim-check rehydration.
+- [Release readiness](../../../system/sessions/backend-beta-build/release-readiness-verification.md):
+  the Release solution builds, 453 tests pass with one intentional Kafka skip, and all seven package/symbol pairs
+  pass the metadata, asset, dependency and revision verifier at `10.0.55-beta`.

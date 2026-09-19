@@ -2757,7 +2757,7 @@ The agent's bundled-package recommendations (consider for `targets.md`):
 - **Default multi-tenancy:** wrap Finbuckle.MultiTenant; offer per-row + per-DB strategies via `ITenantStore`.
 - **Default AI:** wrap `Microsoft.Extensions.AI` + SK connectors so consumers swap providers (OpenAI / Azure OpenAI / Bedrock / Anthropic / Gemini / Ollama / LLamaSharp) by config only.
 - **Default billing:** abstraction (`IBillingProvider`) with first-class Stripe.net adapter.
-- **Default comms:** abstractions (`IEmailSender`, `ISmsSender`, `IPushSender`) backed by FluentEmail + Twilio + FCM + dotAPNS.
+- **Default comms:** abstractions (`IEmailBroker`, `ISmsSender`, `IPushSender`) backed by FluentEmail + Twilio + FCM + dotAPNS.
 - **Default geo/IP:** NetTopologySuite + MaxMind.GeoIP2 behind `IGeoIp`; geocoding facade over Geocoding.Net.
 - **Default media:** ImageSharp (commercial threshold) + QuestPDF (same caveat); Magick.NET for format-heavy.
 - **Default tooling:** Spectre.Console + Spectre.Console.Cli for internal CLIs; Nuke for build orchestration; Octokit for GitHub.

@@ -110,9 +110,9 @@ src/<area>/<package>/
 
 The package-id / folder / namespace shape is SDK-architecture and lives here. **Symbol-level naming** (extension-class / registration-method / options / predicates / data-verbs / acronyms / banned symbols) is centralized in `wow-two-ws/conventions/development/backend/code-style/naming.md` and applies to this repo.
 
-- **NuGet package id**: `WoW.Two.Sdk.Backend.Beta.<Area>[.<SubArea>]` — PascalCase, dotted, no abbreviations except established ones (`OAuth`, `Sql`, `Http`)
+- **NuGet package id**: `WoW2.Sdk.Backend.Beta[.<Role>]` — the seven IDs are listed in the [package registry](package-registry.md#published-package-family)
 - **Folder name**: `PascalCase`, matching the package-id / namespace segment 1:1 (`Time/`, `OutputCache/`, `FeatureFlags/`). Provider leaves nest under their concept parent — `Comms/Email/MailKit/` → `…Comms.Email.MailKit`, not a flat `Comms/EmailMailKit/`
-- **Namespace**: matches the package id 1:1, file-scoped (`namespace WoW.Two.Sdk.Backend.Beta.Time;`)
+- **Namespace**: follows the folder tree under `WoW.Two.Sdk.Backend.Beta`, file-scoped (`namespace WoW.Two.Sdk.Backend.Beta.Time;`)
 - **Linux CI is case-sensitive** — build-file path globs (`DefaultItemExcludes`, `.slnx` paths, workflow `dotnet pack` paths) must match the on-disk PascalCase exactly; a lowercased path silently no-ops on `ubuntu-latest`
 
 Examples: `WoW.Two.Sdk.Backend.Beta` (meta) · `…Beta.Caching.Redis` · `…Beta.Identity.OAuth.Google` · `…Beta.Testing.Containers.Postgres`.
@@ -136,14 +136,12 @@ This mirrors the UI lib's foundation/domain rule. Future: enforce via custom Ros
 
 ## Solution organization
 
-Single `WoW.Two.Sdk.Backend.Beta.slnx` at `src/` root, with **solution folders** mirroring the directory structure (Foundation, Observability, Web, etc.).
-
-For consumers and IDE perf at scale, plan to add `.slnf` filters per phase (e.g., `WoW.Two.Sdk.Backend.Beta.P1.slnf` opens just P1 packages).
+Single `WoW.Two.Sdk.Backend.Beta.slnx` at `src/` root, split into `Libraries` and `Tests` solution folders.
 
 ## Versioning
 
-- All packages ship as `0.x.y`
-- Single version across all packages — bumped together by CI on push to `main`
+- All packages ship as `10.y.z-beta`.
+- Single version across all seven packages — bumped together by CI on push to `main`.
 - Consumers should pin exact versions for stability
 
 ## Doc strategy (three layers)
@@ -158,10 +156,11 @@ We wrap the .NET ecosystem (~10K+ packages reachable via composition). We can't 
 
 ## Build / pack
 
-Each csproj is configured to produce a NuGet on `dotnet pack`. CI publishes the entire bundle in lockstep.
+Seven release projects produce NuGets. Seven test projects evaluate `IsPackable=false`.
+CI tests and verifies the release revision before publishing the family in lockstep.
 
 ## What does NOT live in src/
 
-- Tests of the SDK itself — beta-forever rule says no required tests for the lib
+- Product-specific tests; SDK contract and integration tests live in the seven `*.Tests` projects.
 - Sample apps for individual packages — only `apps/playground/` end-to-end
 - Documentation generators — `engineering/` is hand-authored markdown

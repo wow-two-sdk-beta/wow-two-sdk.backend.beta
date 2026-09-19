@@ -33,7 +33,7 @@
 | Per-user claims | ✅ copy | `IUserClaimStore` |
 | Normalizer (upper-invariant keys) | ✅ copy | `ILookupNormalizer` |
 | Claims-principal factory | ✅ copy | `IUserClaimsPrincipalFactory<TUser>` |
-| `UserManager` god-object | ❌ skip | replaced by a thin `UserAccountManager` that composes only registered slices |
+| `UserManager` god-object | ❌ skip | replaced by a thin `UserAccountService` that composes only registered slices |
 | `SignInManager` (cookie-coupled) | 🟡 split | `ISignInService` slice; cookie vs JWT chosen by `.AddCookieSignIn()` / `.AddJwtIssuance()` |
 | Identity UI / Razor scaffolding | ❌ skip | API-only; UI is the frontend lib's job |
 
@@ -41,7 +41,7 @@
 
 ```
                  ┌─────────────────────────────────────────────┐
-                 │  UserAccountManager<TUser>  (thin facade)    │
+                 │  UserAccountService<TUser>  (thin facade)    │
                  │  feature-detects which slices are registered │
                  └─────────────────────────────────────────────┘
                                    │ depends on (all optional except core)
@@ -172,7 +172,7 @@ The rebuild is mostly **glue + the user model + the stores** — ~60% of the sur
 
 ## 9. Build order
 
-1. ✅ **DONE 2026-07-10** — `identity/core` (`src/Identity/Core/`): 7 entities + `IUserStore`/`EfUserStore` + normalizer + options + `UserAccountManager` facade + `IdentityResult` + `ApplyIdentitySchema` (EF-owned schema, normalized-name unique indexes). Entry: **`AddUserAccounts<TUser>()`** → `IdentityBuilder.AddEntityFrameworkStores<TContext>()` (renamed from `AddIdentityCore` — collides with ASP.NET's shared-framework extension). Vertical create→find→delete + dup-reject green on SQLite (`Identity.Tests/`).
+1. ✅ **DONE 2026-07-10** — `identity/core` (`src/Identity/Core/`): 7 entities + `IUserStore`/`EfUserStore` + normalizer + options + `UserAccountService` facade + `IdentityResult` + `ApplyIdentitySchema` (EF-owned schema, normalized-name unique indexes). Entry: **`AddUserAccounts<TUser>()`** → `IdentityBuilder.AddEntityFrameworkStores<TContext>()` (renamed from `AddIdentityCore` — collides with ASP.NET's shared-framework extension). Vertical create→find→delete + dup-reject green on SQLite (`Identity.Tests/`).
 2. Password slice — `IUserPasswordStore` + Argon2 wire + set/verify/change.
 3. Email + token slices — `IUserEmailStore` + `IUserTokenStore` + a token provider → confirmation + reset.
 4. Lockout + security-stamp — `IUserLockoutStore` + `IUserSecurityStampStore` (unlocks revocation).
@@ -196,7 +196,7 @@ The rebuild is mostly **glue + the user model + the stores** — ~60% of the sur
 - `identity/core` in the core meta vs a `WoW.Two.Sdk.Backend.Beta.Identity.Core` sub-area? (lean: sub-area folder, mono-lib for now.)
 - Token providers: ASP.NET DataProtection vs our own HMAC + `TimeProvider`? (lean: HMAC, fewer deps, AOT-friendly.)
 - Normalized-key uniqueness enforced in store vs DB index only? (lean: both.)
-- `UserAccountManager` granularity — one facade vs per-slice managers (UserManager/RoleManager/SignInManager split)? (lean: one facade + `ISignInService`.)
+- `UserAccountService` granularity — one facade vs per-slice managers (UserManager/RoleManager/SignInManager split)? (lean: one facade + `ISignInService`.)
 - Recovery-code storage shape (hashed list in `IUserToken` vs dedicated table).
 
 ## 11. Security items this subsumes

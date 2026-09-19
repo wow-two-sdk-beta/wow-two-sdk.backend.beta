@@ -2,11 +2,11 @@
 
 ## What is this
 
-The `WoW.Two.Sdk.Backend.Beta.*` family — beta-forever .NET 9 backend SDK aggregating wrappers around the entire .NET ecosystem (~10K+ packages reachable via composition). Single big NuGet meta with subpath imports per concern. Same beta-forever philosophy as the UI lib: no CHANGELOG, no PR gates, no required tests, push to main, fix-forward.
+The `WoW.Two.Sdk.Backend.Beta.*` family — beta-forever .NET 10 backend SDK aggregating wrappers around the entire .NET ecosystem (~10K+ packages reachable via composition). Same beta-forever philosophy as the UI lib: no CHANGELOG or PR gate; required checks run in the release workflow, and main pushes publish the family.
 
-> **Beta-forever rules**: no CHANGELOG, no PR gates, no required tests, push directly to main, fix-forward when broken. CI builds + auto-bumps `0.0.y` on each main push.
+> **Beta-forever rules**: no CHANGELOG or PR gate; push directly to main and fix forward. CI tests, auto-bumps `10.y.z-beta`, verifies seven packages, publishes and records the release commit/tag.
 
-> **⚠️ Structure (current): MONO-LIB.** The per-concern `.csproj` files were collapsed into **two** class libraries — `src/WoW.Two.Sdk.Backend.Beta.csproj` (all shipping concerns) and `src/Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj` (test helpers). Each globs its folder tree; the per-area folders are **PascalCase, matching the namespace/package-id segment 1:1**, with provider leaves nested under their concept parent (e.g. `src/Comms/Email/MailKit/` → `…Comms.Email.MailKit`). Rationale + migration log + backlog: [`engineering/architecture/analysis/mono-lib-migration.md`](./engineering/architecture/analysis/mono-lib-migration.md). We split back into granular packages when the surface matures. Sections below that describe "per-package csproj" shape are historical until rewritten.
+> **Structure (current): seven release projects.** `src/WoW.Two.Sdk.Backend.Beta.csproj` compiles all production concerns. Separate projects ship data abstractions, the migration CLI and four testing libraries. Seven test suites are non-packable. Per-area folders are PascalCase and match namespace segments. Rationale + migration log + backlog: [`engineering/architecture/analysis/mono-lib-migration.md`](./engineering/architecture/analysis/mono-lib-migration.md).
 
 ## Source-of-truth docs
 
@@ -109,7 +109,9 @@ Set `MSBUILDDISABLENODEREUSE=1` and `ulimit -n 65535` if you hit "too many open 
 
 ## Package naming
 
-`WoW.Two.Sdk.Backend.Beta.<Area>[.<SubArea>]` — package-id grammar in [`engineering/architecture/package-layout.md`](./engineering/architecture/package-layout.md).
+Published IDs use the owned `WoW2.Sdk.Backend.Beta[.*]` prefix; namespaces use
+`WoW.Two.Sdk.Backend.Beta.*`. Package-id grammar lives in
+[`engineering/architecture/package-layout.md`](./engineering/architecture/package-layout.md).
 
 Registration: descriptive method names without `WowTwo` prefix — `services.AddJwtBearerAuthentication(...)`, `services.AddPerIpSlidingWindowRateLimit()`, `services.AddOpenTelemetryTracing(...)`. The package name carries the brand; the method name carries the meaning. Full rule: `wow-two-ws/conventions/development/backend/code-style/naming.md` (§Registration and extension-method naming).
 
@@ -130,7 +132,7 @@ Three-layer strategy + cadence: [`engineering/architecture/package-layout.md`](.
 
 ## Out of scope
 
-- No tests of the SDK itself (beta-forever rule)
+- No compatibility guarantee between beta releases
 - No CHANGELOG (git log is the changelog)
 - No PR review (push to main)
 - No graduation/distill rule yet — beta-forever until platform layer matures.

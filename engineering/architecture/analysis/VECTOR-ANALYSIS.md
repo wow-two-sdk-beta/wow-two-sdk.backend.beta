@@ -81,7 +81,7 @@ Far past its stale docs (`README`/`CLAUDE` still say "planned"). Real transport-
 | reliability | 4 | Retry (exp+jitter), dead-letter store w/ redrive, Polly swap-in |
 | serialization | 3 | STJ + stable-type-token registry; outbox+webhooks still bypass it on direct STJ |
 
-**Top improvements:** (1) **saga durability** (`ISagaRepository<TState>` — the headline feature is memory-only); (2) per-consumer inbox scoping; (3) **`IMessagingMetrics` + per-transport health checks** (zero today); (4) **Azure Service Bus adapter** (highest-value next broker — native DLQ/sessions/dedupe); (5) webhook DLQ + persistence; (6) Wave-2 correctness (RabbitMQ auto-recovery, publisher confirms).
+**Top improvements:** (1) **saga durability** (`ISagaRepository<TState>` — the headline feature is memory-only); (2) per-consumer inbox scoping; (3) **`IMessagingMetricsService` + per-transport health checks** (zero today); (4) **Azure Service Bus adapter** (highest-value next broker — native DLQ/sessions/dedupe); (5) webhook DLQ + persistence; (6) Wave-2 correctness (RabbitMQ auto-recovery, publisher confirms).
 
 ---
 

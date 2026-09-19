@@ -39,7 +39,7 @@
 | P3 write guards + attach | **integration** + emitted-SQL capture (`LogTo`) | the assertion is the `SET` column list, which exists only at the provider |
 | 3 cross-phase flows | **E2E** (mediator → handler → session → repo → PG) | sanctioned update · rollback discards hooks · idempotency-before-commit each span every component |
 
-**Pin Postgres for P1–P3.** `TestSetupOptions.Current.Database` is a process global; SQLite has no `xmin`, no `xid`, no `FOR UPDATE`, and different savepoint semantics. Override `Provider` per suite — see *Determinism* §D10.
+**Pin Postgres for P1–P3.** Pass `DatabaseProvider.Postgres` through each fixture; SQLite has no `xmin`, no `xid`, no `FOR UPDATE`, and different savepoint semantics. See *Determinism* §D10.
 
 ---
 
@@ -231,7 +231,7 @@ Ordered by *silence* — the ones with no exception, no log, no diagnostic come 
 | **D7** | Respawn truncates but keeps `migration_history` and does not reset sequences (`PostgresFixture.cs:52-57`); `ResetAsync` **silently returns early** when the respawner is null (`:64-65`) | **P0-08** guards the whole suite's isolation premise. Never assume reset ran |
 | **D8** | a concurrency test needs **two real connections**. Under the lease everything joins one connection by design | the "other writer" must be `Autonomous` or a raw `NpgsqlConnection`; otherwise the test **deadlocks against itself** rather than conflicting — and a deadlock reads as a hang, not a failure |
 | **D9** | house pattern is one container per test class (`Messaging.Tests` starts 7+ per run). P2+P3 is ~60 cases | one `ICollectionFixture` container + `ResetAsync` per test. Requires harness delta **H3** — `RelationalTestDb` constructs its container inline (`:56`) and cannot be handed one |
-| **D10** | `TestSetupOptions.Current.Database` is a **process global** provider switch | override `Provider` per suite to pin Postgres for P1–P3. On SQLite, `ConnectionString` is `DataSource=:memory:` (`:50`) — a Dapper connection opened from it hits a different, empty DB and the assertion passes on nothing |
+| **D10** | provider selection shared across fixtures would make parallel suites race | pass the provider to each `RelationalTestDb<TContext>` instance. On SQLite, `ConnectionString` is `DataSource=:memory:` (`:50`) — a Dapper connection opened from it hits a different, empty DB and the assertion passes on nothing |
 | **D11** | `ConditionalWeakTable` release is GC-timed | do **not** force a collection to prove the bridge released. Assert the observable property instead: a reused `DbTransaction` never resolves a stale session (**P2-30**) |
 | **D12** | `await using` scope exit vs assertion ordering | assert rollback-on-dispose from a **second** connection *after* the scope closes — asserting inside it reads the transaction's own uncommitted view and always passes |
 

@@ -106,7 +106,7 @@ What `Find` does **not** give:
 | ASP.NET request | per request | framework |
 | mediator command | **none** — rides the ambient scope | `Mediator` is transient (`src/Mediator/MediatorServiceCollectionExtensions.cs:23`) |
 | message consume | per event | `src/Messaging/Transport/EventProcessingPipeline.cs:125` |
-| saga step | per step | `src/Messaging/EventSaga/EventSagaRunner.cs:22` |
+| event saga | per execution, shared by steps | `src/Messaging/EventSaga/Services/EventSagaService.cs:21` |
 | outbox dispatch | per batch | `src/Messaging/Reliability/Ef/OutboxDispatcher.cs:301` |
 | hosted service / job | per job | the activator |
 

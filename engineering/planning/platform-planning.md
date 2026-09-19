@@ -1,6 +1,6 @@
 # Backend Beta — Platform Planning
 
-*Last updated: 2026-06-10*
+*Last updated: 2026-09-16*
 
 > Standing **roadmap + backlog** for the backend SDK. Format follows
 > `conventions/planning/platform-planning/`. This is the durable home for everything we intend to
@@ -15,6 +15,15 @@
 - **Deep-dives** = a feature too big for one backlog row gets `engineering/planning/<feature>/<feature>-architecture.md` and is linked from here.
 - When an item ships → move its status here, update `package-registry.md`, sync `targets.md`.
 
+## Active sequence
+
+1. Verify and publish the completed convention-sweep SDK release.
+2. Repin every direct consumer and repair its used breaking APIs; apply ForeverPin's product track separately.
+3. Build the residual data-session vector: shared EF/Dapper transaction, soft-delete/xmin read hardening, unit of work and commit hooks.
+4. Complete translated error rendering: SDK resx mappers, fallback rules, plural/message formatting and pseudo-localization tests.
+
+Request validation, aggregated validation failures and RFC 9457 ProblemDetails rendering already ship. They are inputs to translated error rendering, not a separate unfinished validation rebuild.
+
 ## Roadmap
 
 | Track | Scope | Status |
@@ -23,7 +32,7 @@
 | P1 boot floor | foundation + observability + web + `AddApiDefaults` meta | ✅ shipped |
 | P2 pipeline + auth | mediator + identity (jwt/cookies/oidc/oauth×16/mfa/argon2/otp/issuance/policies) | ✅ shipped |
 | P3 persistence + outbound | data ✅ · http ✅ · caching ⏸️ (pre-fix needed) | 🚧 |
-| **Identity rebuild** | own ASP.NET-Identity-compatible user model, sliced lego stores | 🚧 **step 1 `identity/core` ✅ (2026-07-10)** — entities + user store + `UserAccountManager` + `ApplyIdentitySchema` + `AddUserAccounts`; steps 2-10 next. See [identity/](identity/identity-architecture.md) |
+| **Identity rebuild** | own ASP.NET-Identity-compatible user model, sliced lego stores | 🚧 **step 1 `identity/core` ✅ (2026-07-10)** — entities + user store + `UserAccountService` + `ApplyIdentitySchema` + `AddUserAccounts`; steps 2-10 next. See [identity/](identity/identity-architecture.md) |
 | Security batch | request-limits · token revocation · CSRF · HTTPS/HSTS · SSRF guard · lockout | ⏳ planned (partly subsumed by Identity rebuild) |
 | P4 distributed | comms/email ✅ · jobs/hangfire ✅ · **messaging ✅** (custom transport-port: in-mem/RabbitMQ/Kafka/NATS + EF outbox(+PG skip-locked) + EventSaga) · **webhooks ✅** (HMAC + SSRF guard) · CAP ⏳ · sms/push ⏳ | 🚧 |
 | P5 SaaS-shaped | tenancy · ai/core + vector · feature-flags | ⏳ planned |
@@ -48,7 +57,10 @@
 | webhooks (HMAC sign/verify + replay window + SSRF guard) | feature | P4 | **✅ shipped 2026-07-10** — `Messaging/Webhooks`: HMAC-SHA256 (`timestamp.body`) + SSRF guard (scheme/host pre-flight + connect-time private-IP block). Replay window is receiver-side (timestamp header shipped). Residual: durable store + mgmt API. |
 | sms/push comms channels | feature | P4 | Twilio/Vonage SMS · FCM/APNS push. |
 | ai/core (Microsoft.Extensions.AI) + SSE streaming + pgvector | feature | P5 | Pulled forward by transcript-forge. |
-| **data session** (`IDataSession` + hooks + Dapper hardening + write guards) | feature | P3 | Researched + designed 2026-07-19. **7 live defects found** (D1–D7): Dapper writes escape EF transactions · no tenant/soft-delete predicate on Dapper reads · `SELECT *` never returns `xmin` · `Set.Update()` writes defaults over real data · `AddPostgresPersistence` drops `AddEfInterceptor` registrations · no unit of work · tenant row-stamping never invoked. See deep-dive. |
+| localization/translation completion | feature | P4 | Request culture, `.resx` loading and formatter bases ship. Add SDK `IErrorMessageMapper`/`IFieldErrorMessageMapper` resx implementations, fallback rules, plural/message formatting and pseudo-localization tests. |
+| error completion | feature | P2/P4 | Core `AppError`, exception mapping, aggregated validation and ProblemDetails ship. Remaining SDK work: `HttpClientError`, result combinators, translated message keys and an error-code analyzer. Product error-catalog adoption belongs to the consumer pass. |
+| **data session** (`IDataSession` + hooks + Dapper hardening + write guards) | feature | P3 | Researched + designed. Sweep fixed interceptor wiring, options mutability, tracked-instance replacement, generated Dapper tenant scope and test-provider interceptor preservation. Remaining: shared EF/Dapper transaction (D1), Dapper soft-delete/xmin reads (D2/D3), unit of work/hooks (D6) and full write guards. See deep-dive. |
+| sweep consumer adoption | check | Release | After the new beta publishes, repin all direct ventures and the product template; repair only the APIs each consumer uses. ForeverPin's 31 product rows stay in its own track. |
 | **component registry** (TryAdd-skip / Replace-displacement ledger) | feature | Quality | Idea 2026-07-19 → **build narrower**. 175 `Add*` · 184 `TryAdd` sites; a skipped `TryAdd` leaves *no trace anywhere*. The BCL already dumps the positive space (`DependencyInjectionEventSource` event 8); only the **negative space** is unsolved — and it's the class D5/D7 belong to. See deep-dive. |
 | Roslyn analyzer: foundation-can't-import-domain | check | Quality | Decision 9.14 open. |
 | `apps/playground/` Aspire end-to-end smoke | check | Quality | Nothing validates wrappers end-to-end today. |
