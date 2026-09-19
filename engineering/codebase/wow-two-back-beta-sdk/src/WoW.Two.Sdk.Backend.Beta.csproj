@@ -14,8 +14,8 @@
     mature and saturated. Cost accepted: this package's transitive closure is large (every DB
     driver, OpenTelemetry, Serilog, etc.).
 
-    Test helpers (P0) ship as a SEPARATE mono-lib (Testing/WoW.Two.Sdk.Backend.Beta.Testing.csproj)
-    so xUnit / Testcontainers never leak into a production reference. Excluded from this compile below.
+    Test helpers (P0) ship in four separate Testing projects so xUnit / Testcontainers never leak
+    into a production reference. All four trees are excluded from this compile below.
   -->
 
   <PropertyGroup>
@@ -66,6 +66,7 @@
     <PackageReference Include="TimeZoneConverter" />
     <PackageReference Include="StronglyTypedId" />
     <PackageReference Include="Vogen" />
+    <PackageReference Include="FastCloner" />
   </ItemGroup>
 
   <!--
@@ -122,7 +123,6 @@
   </ItemGroup>
 
   <ItemGroup Label="Http / outbound — Refit + Polly v8 resilience + header propagation">
-    <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.AspNetCore.HeaderPropagation" />
     <PackageReference Include="Refit" />

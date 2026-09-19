@@ -11,12 +11,11 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <!-- Beta-forever: keep perf/style/design analyzer suggestions + NuGet advisories visible (warnings) but non-blocking.
-         Correctness analyzers stay as errors. NU1510 = framework-provided pkg not pruned (net10); NU1902/1903 =
-         transitive-dep vulnerability advisories (revisit: Snappier is HIGH). Tighten per-area as the surface matures. -->
+    <!-- Beta-forever: keep perf/style/design analyzer suggestions visible but non-blocking.
+         Correctness analyzers stay as errors. -->
     <!-- CA1822 (mark member static) + CA1720 (identifier contains type name, e.g. EmojiSpec.Char): design/perf, not
          correctness. Renaming would churn the extracted Codes engine + its serialized StyleJson contract — keep non-blocking. -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);CA1848;CA1873;CA1305;CA1000;CA1716;CA1822;CA1720;NU1510;NU1902;NU1903</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);CA1848;CA1873;CA1305;CA1000;CA1716;CA1822;CA1720</WarningsNotAsErrors>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
@@ -29,10 +28,10 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
-  <!-- Packaging defaults — every csproj produces a NuGet by default -->
+  <!-- Packaging defaults — every csproj produces a NuGet unless the project explicitly opts out -->
 
   <PropertyGroup>
-    <IsPackable>true</IsPackable>
+    <IsPackable Condition="'$(IsPackable)' == ''">true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>WoW Two</Authors>
     <Company>WoW Two</Company>
@@ -56,12 +55,6 @@
     <AssemblyVersion>10.0.0.0</AssemblyVersion>
     <FileVersion>10.0.55</FileVersion>
   </PropertyGroup>
-
-  <!-- Source-link & deterministic builds -->
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
-  </ItemGroup>
 
   <!-- README is the package's PackageReadmeFile when one sits next to the csproj (e.g. src/README.md for the mono-lib).
        This is a functional NuGet file, NOT a folder lead-doc — the no-README-below-root rule does not apply to it.
