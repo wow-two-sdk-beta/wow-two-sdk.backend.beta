@@ -51,9 +51,9 @@
 
   <PropertyGroup>
     <!-- Source of truth. CI (publish.yml) bumps Version + FileVersion and commits this back on each release. -->
-    <Version>10.0.56-beta</Version>
+    <Version>10.0.57-beta</Version>
     <AssemblyVersion>10.0.0.0</AssemblyVersion>
-    <FileVersion>10.0.56</FileVersion>
+    <FileVersion>10.0.57</FileVersion>
   </PropertyGroup>
 
   <!-- README is the package's PackageReadmeFile when one sits next to the csproj (e.g. src/README.md for the mono-lib).
