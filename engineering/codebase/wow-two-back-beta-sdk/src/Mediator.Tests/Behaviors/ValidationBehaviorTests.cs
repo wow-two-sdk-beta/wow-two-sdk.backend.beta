@@ -15,11 +15,11 @@ public sealed class ValidationBehaviorTests
     private sealed record Req(int Age) : IRequest<string>;
 
     // Test-double validator: throws ValidationException from ValidateAndThrow when the predicate fails.
-    private sealed class PredicateValidator(Func<Req, bool> isValid) : IValidator<Req>
+    private sealed class PredicateValidator(Func<Req, bool> isValid, string code = "rule") : IValidator<Req>
     {
         public ValidationError? Validate(Req instance) => isValid(instance)
             ? null
-            : ValidationError.From([new FieldError { Property = nameof(Req.Age), Message = "invalid", Code = "rule" }]);
+            : ValidationError.From([new FieldError { Property = nameof(Req.Age), Message = "invalid", Code = code }]);
 
         public void ValidateAndThrow(Req instance)
         {
@@ -62,18 +62,29 @@ public sealed class ValidationBehaviorTests
     }
 
     [Fact]
-    public async Task HandleAsync_ShouldThrow_WhenAnyValidatorFails()
+    public async Task HandleAsync_ShouldAggregateFailures_FromEveryValidator()
     {
-        // First passes, second fails → still throws.
+        var calls = new List<string>();
         var behavior = new ValidatingInterceptor<Req, string>(
         [
-            new PredicateValidator(_ => true),
-            new PredicateValidator(_ => false),
+            new PredicateValidator(_ =>
+            {
+                calls.Add("first");
+                return false;
+            }, "first.rule"),
+            new PredicateValidator(_ =>
+            {
+                calls.Add("second");
+                return false;
+            }, "second.rule"),
         ]);
 
         var act = async () => await behavior.HandleAsync(new Req(1), () => ValueTask.FromResult("ok"), CancellationToken.None);
 
-        await act.Should().ThrowAsync<ValidationException>();
+        var exception = await act.Should().ThrowAsync<ValidationException>();
+        calls.Should().Equal("first", "second");
+        exception.Which.ValidationError.Failures.Select(failure => failure.Code)
+            .Should().Equal("first.rule", "second.rule");
     }
 
     [Fact]

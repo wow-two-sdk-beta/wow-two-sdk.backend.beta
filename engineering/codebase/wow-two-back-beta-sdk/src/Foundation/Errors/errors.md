@@ -6,7 +6,7 @@
 
 - **`AppError`** — open `record` carrying `Type` (`AppErrorType`), `Message`, optional `Metadata`, and log-only `Origin`. Authored via `AppError.Of(...)`, `AppError.FromException(...)`, or the `AppErrorFactory` catalog (`AppErrorFactory.NotFound(...)`, `Conflict`, `Validation`, …). `Type` is the wire `code`.
 - **`AppException`** — the throw form; *carries* an `AppError` (one source of truth). Bridge both ways: `error.Throw()` / `error.ToException()`.
-- **`ErrorNature {Transient, Permanent, Defect}`** via `IErrorNatureClassifier` (DI) — consumers derive retry/fallback/log level.
+- **`ErrorNature {Transient, Permanent, Defect}`** via `IErrorNatureMapper` (DI) — consumers derive retry/fallback/log level.
 
 ## Returning vs throwing
 
@@ -37,5 +37,6 @@ builder.Services.AddExceptionMappingRule<PaymentDeclinedRule>();
 ## See also
 
 - [Foundation.Results](../Results/) — `Result` / `Result<T>` wrappers
-- [Web.ErrorMapping / Web.ExceptionHandling](../../Web/ExceptionHandling/) — `IErrorHttpStatusCodeMapper`, the ProblemDetails factory + handlers
+- [Web.ErrorMapping / Web.ExceptionHandling](../../Web/ExceptionHandling/) — `IErrorHttpStatusCodeMapper`,
+  `IAppErrorProblemDetailsFactory` and the exception handlers
 - [`engineering/planning/errors/errors-architecture-investigation.md`](../../../../../planning/errors/errors-architecture-investigation.md) — full design record

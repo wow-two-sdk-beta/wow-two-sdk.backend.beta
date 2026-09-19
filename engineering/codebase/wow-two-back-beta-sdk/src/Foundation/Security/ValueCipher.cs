@@ -1,8 +1,8 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Security;
 
-/// <summary>Default <see cref="ICryptoCore"/> — envelope-encryption data plane built on AES-256-GCM.</summary>
+/// <summary>Encrypts and decrypts values through the AES-256-GCM primitive.</summary>
 /// <remarks>A thin, stateless adapter over <see cref="AesGcmCipher"/>; safe to register as a singleton and share across threads.</remarks>
-internal sealed class CryptoCore : ICryptoCore
+internal sealed class ValueCipher : IValueCipher
 {
     private readonly AesGcmCipher _cipher = new();
 

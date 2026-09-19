@@ -34,7 +34,7 @@ internal sealed class AesGcmCipher
         using var gcm = new AesGcm(key, TagSize);
         gcm.Encrypt(nonce, plaintext, cipherText, tag, aad);
 
-        return new EncryptedPayload(nonce, tag, cipherText);
+        return new EncryptedPayload { Nonce = nonce, Tag = tag, CipherText = cipherText };
     }
 
     /// <summary>Decrypts <paramref name="payload"/> under <paramref name="key"/>, verifying the tag against <paramref name="associatedData"/>.</summary>

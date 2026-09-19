@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Logging;
 
-/// <summary>Logs the request name and elapsed time at <see cref="LogLevel.Information"/>, failures at <see cref="LogLevel.Error"/>.</summary>
+/// <summary>Traces a mediator request and logs its start and successful completion.</summary>
 /// <param name="logger">The logger that records request start, completion, and failure.</param>
 public sealed partial class LoggingInterceptor<TRequest, TResponse>(ILogger<LoggingInterceptor<TRequest, TResponse>> logger)
     : IRequestInterceptor<TRequest, TResponse>
@@ -19,20 +19,16 @@ public sealed partial class LoggingInterceptor<TRequest, TResponse>(ILogger<Logg
         ArgumentNullException.ThrowIfNull(nextStep);
 
         var name = typeof(TRequest).Name;
+        using var activity = MediatorDiagnosticConstants.Source.StartActivity(name, ActivityKind.Internal);
+        if (activity?.IsAllDataRequested is true)
+            activity.SetTag("request.type", typeof(TRequest).FullName ?? name);
+
         var sw = Stopwatch.StartNew();
         LogRequestStart(logger, name);
 
-        try
-        {
-            var response = await nextStep().ConfigureAwait(false);
-            LogRequestCompleted(logger, name, sw.ElapsedMilliseconds);
-            return response;
-        }
-        catch (Exception ex)
-        {
-            LogRequestFailed(logger, name, sw.ElapsedMilliseconds, ex);
-            throw;
-        }
+        var response = await nextStep().ConfigureAwait(false);
+        LogRequestCompleted(logger, name, sw.ElapsedMilliseconds);
+        return response;
     }
 
     [LoggerMessage(EventId = 1001, Level = LogLevel.Information, Message = "→ {Request}")]
@@ -41,6 +37,4 @@ public sealed partial class LoggingInterceptor<TRequest, TResponse>(ILogger<Logg
     [LoggerMessage(EventId = 1002, Level = LogLevel.Information, Message = "← {Request} in {ElapsedMs}ms")]
     private static partial void LogRequestCompleted(ILogger logger, string request, long elapsedMs);
 
-    [LoggerMessage(EventId = 1003, Level = LogLevel.Error, Message = "✕ {Request} failed after {ElapsedMs}ms")]
-    private static partial void LogRequestFailed(ILogger logger, string request, long elapsedMs, Exception exception);
 }

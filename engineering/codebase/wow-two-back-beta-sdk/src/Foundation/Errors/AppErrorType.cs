@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
-/// <summary>Defines the abstract kind of an <see cref="AppError"/> — the classifier mapped to a transport status at the edge.</summary>
+/// <summary>Refers to the abstract kind of an <see cref="AppError"/> — the classifier mapped to a transport status at the edge.</summary>
 public enum AppErrorType
 {
     /// <summary>Unexpected server-side failure with no more specific kind.</summary>

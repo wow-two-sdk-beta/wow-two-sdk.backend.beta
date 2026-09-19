@@ -1,10 +1,10 @@
-namespace WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Errors.Mappers;
 
-/// <summary>Provides the default classification; apps override via DI to tune retry/fallback.</summary>
-public sealed class DefaultErrorNatureClassifier : IErrorNatureClassifier
+/// <summary>Maps an AppErrorType to its descriptive ErrorNature; apps override through DI.</summary>
+public sealed class ErrorNatureMapper : IErrorNatureMapper
 {
     /// <inheritdoc/>
-    public ErrorNature Classify(AppErrorType type)
+    public ErrorNature Map(AppErrorType type)
     {
         return type switch
         {

@@ -72,8 +72,7 @@ public sealed class ExceptionMappingInterceptor<TRequest, TResponse>(ErrorRecord
             return failure;
         }
 
-        // A response with no failure arm keeps the original: a caller awaiting a bare value still reads
-        // cancellation as OperationCanceledException, which is what every await in the framework expects.
+        // Preserve cancellation when the response has no failure arm.
         if (cause is OperationCanceledException)
         {
             throw cause;

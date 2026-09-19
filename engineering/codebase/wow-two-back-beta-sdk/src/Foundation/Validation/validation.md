@@ -31,6 +31,8 @@ public class CreateUserValidator : AbstractValidator<CreateUserRequest>
 }
 ```
 
+Use external validation for request, entity, and value-object data by default. Validate a copied or deserialized candidate at the boundary that accepts it for use or persistence. Constructor guards remain for programmer preconditions; constructor data checks require an exceptional type contract that documents how copies and deserialization preserve the invariant.
+
 ## What a failure carries
 
 `ValidationError.Failures` is a list of `FieldError`:

@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Mediator;
 
-/// <summary>Handles a notification — invoked once per registered handler.</summary>
+/// <summary>Defines behavior that handles a notification — invoked once per registered handler.</summary>
 public interface INotificationHandler<in TNotification> where TNotification : INotification
 {
     /// <summary>Handle the notification.</summary>

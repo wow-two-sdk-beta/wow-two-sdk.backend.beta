@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
-/// <summary>Splits an identifier into its constituent words, independent of input casing — boundaries fall at separators, lower→upper transitions, acronym-run→word transitions, and letter↔digit transitions.</summary>
+/// <summary>Maps an identifier to its constituent words independently of input casing.</summary>
 public static class WordMapper
 {
     /// <summary>Splits <paramref name="value"/> into lowercased words. Returns an empty array for null/empty/separator-only input.</summary>

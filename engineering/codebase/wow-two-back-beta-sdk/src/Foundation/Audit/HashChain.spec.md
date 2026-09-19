@@ -1,6 +1,6 @@
 # HashChain — spec
 
-*Last updated: 2026-06-24*
+*Last updated: 2026-09-15*
 
 > **Concrete API + usage.** Updated when public surface changes.
 
@@ -10,6 +10,7 @@ NuGet: `WoW.Two.Sdk.Backend.Beta` (mono-lib) · namespace `WoW.Two.Sdk.Backend.B
 
 ```csharp
 using WoW.Two.Sdk.Backend.Beta.Foundation.Audit;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Audit.Validators;
 
 builder.Services.AddHashChain<AuditEntry, AuditEntryCanonicalizer>();
 
@@ -18,8 +19,8 @@ var sealer = sp.GetRequiredService<IHashChainSealer<AuditEntry>>();
 sealer.Seal(newEntry, lastEntry);   // lastEntry == null for the first (genesis) entry
 
 // audit
-var verifier = sp.GetRequiredService<IHashChainVerifier<AuditEntry>>();
-var result = verifier.Verify(entriesOrderedBySequence);
+var validator = sp.GetRequiredService<IHashChainValidator<AuditEntry>>();
+var result = validator.Validate(entriesOrderedBySequence);
 ```
 
 ## Public API
@@ -36,7 +37,7 @@ var result = verifier.Verify(entriesOrderedBySequence);
 
 | Member | Type | Notes |
 |---|---|---|
-| `SchemeVersion` | `int { get; }` | Version of the field set; hashed into every entry so versions never collide. Verify each segment with the canonicalizer that sealed it (the consumer selects, not the verifier). |
+| `SchemeVersion` | `int { get; }` | Version of the field set; hashed into every entry. A validator checks one versioned chain from genesis. |
 | `Write(TEntry entry, ICanonicalPayloadBuilder builder)` | `void` | Consumer appends its chosen domain fields, in fixed order. The SDK adds chain fields itself. |
 
 ### `ICanonicalPayloadBuilder` (concrete: `CanonicalPayloadBuilder`)
@@ -59,13 +60,15 @@ Fluent (each returns `ICanonicalPayloadBuilder`). Each writes `tag + length + by
 |---|---|
 | `Seal(TEntry entry, TEntry? previous)` | Sets `Sequence` = `(previous?.Sequence ?? 0) + 1`, `PreviousHash` = `previous?.Hash ?? []`, `Hash` = hash of (`SchemeVersion`, `Sequence`, `PreviousHash`, then canonicalizer output). Throws `ArgumentNullException` on a null `entry`. |
 
-### `IHashChainVerifier<in TEntry>` where `TEntry : IHashChainedEntry` (concrete: `HashChainVerifier<TEntry>`)
+### `IHashChainValidator<in TEntry>` where `TEntry : IHashChainedEntry` (concrete: `HashChainValidator<TEntry>`)
 
 | Method | Returns | Notes |
 |---|---|---|
-| `Verify(IEnumerable<TEntry> orderedEntries)` | `HashChainVerificationResult` | Walks once in order; returns the first break or `Intact`. Throws `ArgumentNullException` on a null collection or null element. |
+| `Validate(IEnumerable<TEntry> orderedEntries)` | `HashChainValidationResult` | Walks once in order; returns the first break or `Intact`. Throws `ArgumentNullException` on a null collection or null element. |
 
-### `HashChainVerificationResult` (record)
+An `Intact` result establishes consistency of the supplied entries only. This API checks no trusted external checkpoint; tail truncation and a consistently rewritten chain can pass.
+
+### `HashChainValidationResult` (record)
 
 | Member | Type | Notes |
 |---|---|---|
@@ -73,8 +76,8 @@ Fluent (each returns `ICanonicalPayloadBuilder`). Each writes `tag + length + by
 | `Reason` | `HashChainBreakReason` | `None` · `HashMismatch` · `BrokenLink` · `SequenceGap`. |
 | `BrokenSequence` | `long?` | Sequence of the first broken entry; `null` when intact. |
 | `BrokenIndex` | `int?` | Zero-based position in the collection; `null` when intact. |
-| `Intact` (static) | `HashChainVerificationResult` | The intact singleton. |
-| `Broken(reason, brokenSequence, brokenIndex)` (static) | `HashChainVerificationResult` | Builds a break result. |
+| `Intact` (static) | `HashChainValidationResult` | The intact singleton. |
+| `Broken(reason, brokenSequence, brokenIndex)` (static) | `HashChainValidationResult` | Builds a break result. |
 
 ### `HashChainOptions`
 
@@ -88,7 +91,7 @@ Fluent (each returns `ICanonicalPayloadBuilder`). Each writes `tag + length + by
 
 | Method | Returns | Notes |
 |---|---|---|
-| `AddHashChain<TEntry, TCanonicalizer>(this IServiceCollection, Action<HashChainOptions>? = null)` | `IServiceCollection` | Registers canonicalizer + sealer + verifier as singletons (`TryAdd`). |
+| `AddHashChain<TEntry, TCanonicalizer>(this IServiceCollection, Action<HashChainOptions>? = null)` | `IServiceCollection` | Registers canonicalizer + sealer + validator as singletons (`TryAdd`). |
 | `AddHashChain<TEntry>(this IServiceCollection, IChainedEntryCanonicalizer<TEntry>, Action<HashChainOptions>? = null)` | `IServiceCollection` | Same, with a pre-built canonicalizer instance. |
 
 ## Versioning a field-set change
@@ -103,7 +106,7 @@ public sealed class AuditEntryCanonicalizerV2 : IChainedEntryCanonicalizer<Audit
 }
 ```
 
-`SchemeVersion` is hashed, so v1 and v2 entries never collide. Verify each segment with the canonicalizer that sealed it.
+`SchemeVersion` is hashed, so v1 and v2 entries never collide. Start v2 as a new chain and retain the v1 canonicalizer for the old chain; the validator does not accept a mid-chain checkpoint.
 
 ## See also
 

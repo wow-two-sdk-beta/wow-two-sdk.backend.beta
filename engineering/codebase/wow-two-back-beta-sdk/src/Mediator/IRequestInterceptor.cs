@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Mediator;
 
-/// <summary>Pipeline behavior wrapping a request handler.</summary>
+/// <summary>Defines pipeline behavior wrapping a request handler.</summary>
 public interface IRequestInterceptor<in TRequest, TResponse> where TRequest : notnull
 {
     /// <summary>Invoke the next behavior or the handler. Await <paramref name="nextStep"/> exactly once.</summary>

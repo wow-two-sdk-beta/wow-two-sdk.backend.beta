@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Configuration;
 
-/// <summary>Binds a configuration section (named after the type) then overlays <see cref="EnvironmentVariableAttribute"/>-marked properties from environment variables, treating empty values as absent.</summary>
+/// <summary>Maps a configuration section and environment overrides to a typed value.</summary>
 /// <remarks>Section name defaults to the type name; env overlay wins over appsettings; an empty env var is treated as null and does not override.</remarks>
 public static class ConfigurationMapper
 {

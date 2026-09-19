@@ -1,13 +1,13 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Audit;
 
-/// <summary>Represents the outcome of verifying a hash chain — intact, or the first entry where it broke and why.</summary>
-public sealed record HashChainVerificationResult
+/// <summary>Represents the outcome of validating the consistency of a supplied hash chain.</summary>
+public sealed record HashChainValidationResult
 {
-    private HashChainVerificationResult()
+    private HashChainValidationResult()
     {
     }
 
-    /// <summary>Gets a value indicating whether the whole chain verified intact.</summary>
+    /// <summary>Gets a value indicating whether the supplied entries form a consistent chain.</summary>
     public bool IsIntact => Reason == HashChainBreakReason.None;
 
     /// <summary>Gets the reason the chain broke, or <see cref="HashChainBreakReason.None"/> when intact.</summary>
@@ -16,19 +16,19 @@ public sealed record HashChainVerificationResult
     /// <summary>Gets the sequence of the first broken entry, or <see langword="null"/> when the chain is intact.</summary>
     public long? BrokenSequence { get; private init; }
 
-    /// <summary>Gets the zero-based position of the first broken entry within the verified collection, or <see langword="null"/> when intact.</summary>
+    /// <summary>Gets the zero-based position of the first broken entry within the validated collection, or <see langword="null"/> when intact.</summary>
     public int? BrokenIndex { get; private init; }
 
-    /// <summary>Represents an intact chain.</summary>
-    public static HashChainVerificationResult Intact { get; } = new() { Reason = HashChainBreakReason.None };
+    /// <summary>Represents a consistent supplied chain.</summary>
+    public static HashChainValidationResult Intact { get; } = new() { Reason = HashChainBreakReason.None };
 
     /// <summary>Creates a result describing the first broken entry.</summary>
     /// <param name="reason">Why the chain broke.</param>
     /// <param name="brokenSequence">The sequence of the offending entry.</param>
-    /// <param name="brokenIndex">The zero-based position of the offending entry in the verified collection.</param>
-    public static HashChainVerificationResult Broken(HashChainBreakReason reason, long brokenSequence, int brokenIndex)
+    /// <param name="brokenIndex">The zero-based position of the offending entry in the validated collection.</param>
+    public static HashChainValidationResult Broken(HashChainBreakReason reason, long brokenSequence, int brokenIndex)
     {
-        return new HashChainVerificationResult
+        return new HashChainValidationResult
         {
             Reason = reason,
             BrokenSequence = brokenSequence,

@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
-/// <summary>Converts identifiers between <see cref="CaseStyle"/>s by tokenizing with <see cref="WordMapper"/> (source style does not matter) then re-joining.</summary>
+/// <summary>Maps identifiers between <see cref="CaseStyle"/> values.</summary>
 public static class CaseMapper
 {
     /// <summary>Converts <paramref name="value"/> to <paramref name="style"/>. Returns the input unchanged when null/empty.</summary>

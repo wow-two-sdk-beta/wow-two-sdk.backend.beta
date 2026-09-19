@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
-/// <summary>Provides a flattened, depth-capped view of an exception's inner chain for diagnostics.</summary>
+/// <summary>Maps an exception chain to a flattened, depth-capped diagnostic list.</summary>
 public static class ExceptionChainMapper
 {
     private const int MaxDepth = 5;

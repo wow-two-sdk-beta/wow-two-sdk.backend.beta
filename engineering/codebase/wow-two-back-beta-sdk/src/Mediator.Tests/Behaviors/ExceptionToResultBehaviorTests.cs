@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors.Mappers;
 using WoW.Two.Sdk.Backend.Beta.Mediator;
 using WoW.Two.Sdk.Backend.Beta.Mediator.ExceptionHandling;
 using WoW.Two.Sdk.Backend.Beta.Mediator.Result;
@@ -23,7 +24,7 @@ public sealed class ExceptionToResultBehaviorTests
     private sealed record PlainReq : IRequest<string>;
 
     private static ErrorRecordingService Observer()
-        => new(NullLogger<ErrorRecordingService>.Instance, new DefaultErrorNatureClassifier());
+        => new(NullLogger<ErrorRecordingService>.Instance, new ErrorNatureMapper());
 
     private static ExceptionMappingInterceptor<TReq, TResp> Behavior<TReq, TResp>()
         where TReq : notnull

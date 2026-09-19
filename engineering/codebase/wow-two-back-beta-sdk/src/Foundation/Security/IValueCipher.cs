@@ -1,8 +1,8 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Security;
 
-/// <summary>Encrypts and decrypts arbitrary values under a caller-supplied data-encryption key (DEK) — the data-plane half of envelope encryption.</summary>
+/// <summary>Defines behavior that encrypts and decrypts arbitrary values under a caller-supplied data-encryption key (DEK) — the data-plane half of envelope encryption.</summary>
 /// <remarks>The key is passed in per call rather than held: this type never sees the master key and stays oblivious to where the DEK came from, so the same instance serves every owner and tenant. Pair with an <see cref="ISealService"/>, which wraps and unwraps the DEK under a master key.</remarks>
-public interface ICryptoCore
+public interface IValueCipher
 {
     /// <summary>Encrypts <paramref name="plaintext"/> under <paramref name="dataKey"/>, binding it to <paramref name="associatedData"/> so the same context must be supplied to decrypt.</summary>
     /// <param name="plaintext">The bytes to protect.</param>

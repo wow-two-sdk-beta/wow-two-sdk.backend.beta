@@ -24,9 +24,9 @@ app.Services.GetRequiredService<ISealKeeper>().Unseal();
 
 | Method | Returns | Notes |
 |---|---|---|
-| `AddEnvelopeCryptography(this IServiceCollection, Action<EnvelopeCryptographyOptions>? configure = null)` | `IServiceCollection` | Registers `ICryptoCore`, `ISealKeeper`, and the default `IMasterKeyProvider` as singletons (all `TryAdd*`). Idempotent. |
+| `AddEnvelopeCryptography(this IServiceCollection, Action<EnvelopeCryptographyOptions>? configure = null)` | `IServiceCollection` | Registers `IValueCipher`, `ISealService`, and the default `IMasterKeyBroker` as singletons (all `TryAdd*`). Idempotent. |
 
-### `ICryptoCore` (default `CryptoCore`, singleton)
+### `IValueCipher` (default `ValueCipher`, singleton)
 
 | Member | Returns | Notes |
 |---|---|---|
@@ -38,12 +38,12 @@ app.Services.GetRequiredService<ISealKeeper>().Unseal();
 | Member | Returns | Notes |
 |---|---|---|
 | `IsSealed` | `bool` | `true` until the KEK is loaded. |
-| `Unseal()` | `void` | Loads the KEK via `IMasterKeyProvider`; no-op (stays sealed) when none configured; throws `MasterKeyFormatException` when malformed. |
+| `Unseal()` | `void` | Loads the KEK via `IMasterKeyBroker`; no-op (stays sealed) when none configured; throws `MasterKeyFormatException` when malformed. |
 | `GenerateDataKey()` | `byte[]` | Fresh random 256-bit DEK. |
 | `WrapDataKey(byte[] dataKey, string associatedData)` | `EncryptedPayload` | Encrypts the DEK under the KEK. Throws `InvalidOperationException` if sealed. |
 | `UnwrapDataKey(EncryptedPayload wrapped, string associatedData)` | `byte[]` | Decrypts the DEK. Throws if sealed / AAD mismatch. |
 
-### `IMasterKeyProvider` (default `EnvironmentMasterKeyProvider`, singleton)
+### `IMasterKeyBroker` (default `EnvironmentMasterKeyBroker`, singleton)
 
 | Member | Returns | Notes |
 |---|---|---|
@@ -66,12 +66,12 @@ Thrown for a present-but-malformed key. Message is key-free (safe to log). A *mi
 ## Custom key source (KMS / HSM)
 
 ```csharp
-internal sealed class KmsMasterKeyProvider(IKmsClient kms) : IMasterKeyProvider
+internal sealed class KmsMasterKeyBroker(IKmsClient kms) : IMasterKeyBroker
 {
     public byte[]? TryLoadKey() => kms.Decrypt(/* wrapped KEK */);   // null if not provisioned
 }
 
-builder.Services.AddSingleton<IMasterKeyProvider, KmsMasterKeyProvider>(); // before AddEnvelopeCryptography
+builder.Services.AddSingleton<IMasterKeyBroker, KmsMasterKeyBroker>(); // before AddEnvelopeCryptography
 builder.Services.AddEnvelopeCryptography();                               // TryAdd keeps yours
 ```
 

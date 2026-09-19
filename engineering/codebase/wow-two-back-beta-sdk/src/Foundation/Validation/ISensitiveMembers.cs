@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
-/// <summary>Declares which of a validator's members must publish no rule operands in <see cref="FieldError.Params"/>.</summary>
+/// <summary>Defines behavior that declares which of a validator's members must publish no rule operands in <see cref="FieldError.Params"/>.</summary>
 /// <remarks>
 ///   - declare per validator — sensitivity belongs to the operation, not the member name
 ///   - a listed member reports <see cref="FieldError.Params"/> as <see langword="null"/>, not a filtered set

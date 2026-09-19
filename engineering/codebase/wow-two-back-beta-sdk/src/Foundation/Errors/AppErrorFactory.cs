@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
-/// <summary>Provides factory helpers for the SDK's base <see cref="AppError"/> kinds.</summary>
+/// <summary>Creates the SDK's base <see cref="AppError"/> kinds.</summary>
 public static class AppErrorFactory
 {
     /// <summary>Creates an <see cref="AppErrorType.NotFound"/> error.</summary>

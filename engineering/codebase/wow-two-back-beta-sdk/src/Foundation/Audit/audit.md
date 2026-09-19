@@ -1,6 +1,6 @@
 # Foundation.Audit
 
-> Tamper-evident **hash-chain** primitives — a SHA-256 chain over append-only records where each entry links to the one before it, so any alteration, insert, mid-chain delete, or reorder is detectable (tail truncation needs an external length/checkpoint anchor — see the standard's non-goals). **Pure library**: no EF, no persistence, BCL-only.
+> **Hash-chain** primitives that check the consistency of supplied records: sequence, links and recomputed hashes. An intact result does not prove completeness or authenticity; tail truncation and a consistently rewritten chain can pass without a trusted external checkpoint. **Pure library**: no EF, no persistence, BCL-only.
 
 The SDK locks **no domain field**. It owns only the chain (`Sequence`, `PreviousHash`, `Hash`); the consumer declares exactly which of its own fields are part of the proof via a canonicalizer. This is the canonical-payload seam.
 
@@ -16,7 +16,7 @@ A naive `a|b|c` hash is ambiguous — `("a","b|c")` and `("a|b","c")` produce th
 | `IChainedEntryCanonicalizer<TEntry>` | **You** write which domain fields are hashed, and in what order, plus a `SchemeVersion`. |
 | `ICanonicalPayloadBuilder` / `CanonicalPayloadBuilder` | Unambiguous typed/length-prefixed encoder. |
 | `IHashChainSealer<TEntry>` | `Seal(entry, previous)` — stamps `Sequence`, `PreviousHash`, `Hash` before persist. |
-| `IHashChainVerifier<TEntry>` | `Verify(orderedEntries)` — recomputes + checks links; returns the first break. |
+| `IHashChainValidator<TEntry>` | `Validate(orderedEntries)` — recomputes + checks links; returns the first break. |
 | `HashChainOptions` / `HashChainAlgorithm` | Pluggable hash (SHA-256 default / 384 / 512). |
 
 ## Quick start
@@ -49,12 +49,12 @@ builder.Services.AddHashChain<AuditEntry, AuditEntryCanonicalizer>();      // SH
 sealer.Seal(entry, lastEntry);    // sets Sequence, PreviousHash, Hash
 
 // 5. Audit: replay the chain.
-var result = verifier.Verify(entriesOrderedBySequence);
+var result = validator.Validate(entriesOrderedBySequence);
 if (!result.IsIntact)
     log.Warning("Chain broke at sequence {Seq}: {Reason}", result.BrokenSequence, result.Reason);
 ```
 
-The sealer always prepends `SchemeVersion + Sequence + PreviousHash` to the hashed payload, so a consumer **cannot** omit the chain fields and weaken tamper-evidence. A field-set change ships as a new `SchemeVersion` (hashed, so versions never collide) — verify each version-segment with the canonicalizer that sealed it (one canonicalizer per verifier; the consumer selects, not the verifier).
+The sealer always prepends `SchemeVersion + Sequence + PreviousHash` to the hashed payload, so a consumer **cannot** omit the chain fields and weaken tamper-evidence. A field-set change starts a new chain with a new `SchemeVersion`; retain the old canonicalizer for the prior chain. Each validator checks one chain from sequence 1 and an empty previous hash.
 
 ## See also
 

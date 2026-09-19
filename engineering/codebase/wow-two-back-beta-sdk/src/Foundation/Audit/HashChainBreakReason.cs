@@ -1,15 +1,15 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Audit;
 
-/// <summary>Defines why a hash-chain verification failed.</summary>
+/// <summary>Refers to why a hash-chain validation failed.</summary>
 public enum HashChainBreakReason
 {
-    /// <summary>The chain verified intact — no break.</summary>
+    /// <summary>The chain validated intact — no break.</summary>
     None = 0,
 
-    /// <summary>An entry's stored hash does not match the hash recomputed from its fields — the entry was altered.</summary>
+    /// <summary>An entry's stored hash does not match the hash recomputed from its fields.</summary>
     HashMismatch,
 
-    /// <summary>An entry's previous-hash link does not match the prior entry's hash — an entry was inserted, removed, or reordered.</summary>
+    /// <summary>An entry's previous-hash link does not match the prior entry's hash.</summary>
     BrokenLink,
 
     /// <summary>An entry's sequence is not exactly one past its predecessor — a gap or duplicate in the chain.</summary>

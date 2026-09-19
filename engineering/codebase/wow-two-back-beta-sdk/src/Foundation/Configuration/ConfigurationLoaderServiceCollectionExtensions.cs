@@ -7,7 +7,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Configuration;
 /// <summary>Registration helpers that bind settings via <see cref="ConfigurationMapper"/> (appsettings section and environment-variable overlay).</summary>
 public static class ConfigurationLoaderServiceCollectionExtensions
 {
-    /// <summary>Binds <typeparamref name="T"/> through <see cref="ConfigurationMapper.Load{T}"/> and registers the resolved instance as <see cref="IOptions{T}"/>.</summary>
+    /// <summary>Binds <typeparamref name="T"/> through <see cref="ConfigurationMapper.Load{T}"/> and registers the resolved instance directly and as <see cref="IOptions{T}"/> for compatibility.</summary>
     /// <typeparam name="T">The settings type to bind, overlay, and register.</typeparam>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configuration">The configuration the section is bound from.</param>

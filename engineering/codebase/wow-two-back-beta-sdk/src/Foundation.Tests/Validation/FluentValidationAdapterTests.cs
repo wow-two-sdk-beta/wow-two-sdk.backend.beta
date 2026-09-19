@@ -55,6 +55,14 @@ public sealed class FluentValidationAdapterTests
         }
     }
 
+    private sealed class StableCodePersonValidator : AbstractValidator<Person>
+    {
+        public StableCodePersonValidator()
+            => RuleFor(person => person.Age)
+                .GreaterThanOrEqualTo(18)
+                .WithErrorCode("person.age.minimum");
+    }
+
     private static FluentValidationAdapter<Person> Adapter()
         => new([new PersonValidator()]);
 
@@ -76,6 +84,16 @@ public sealed class FluentValidationAdapterTests
         error.Failures.Should().HaveCount(2);
         error.Failures.Should().Contain(f => f.Property == nameof(Person.Name));
         error.Failures.Should().Contain(f => f.Property == nameof(Person.Age));
+    }
+
+    [Fact]
+    public void Validate_ShouldPreserveAuthoredRuleCode()
+    {
+        var adapter = new FluentValidationAdapter<Person>([new StableCodePersonValidator()]);
+
+        var error = adapter.Validate(new Person("Ada", 15));
+
+        error!.Failures.Single().Code.Should().Be("person.age.minimum");
     }
 
     [Fact]

@@ -2,7 +2,7 @@ using TimeZoneConverter;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Time;
 
-/// <summary>Provides cross-platform time-zone resolution — accepts Windows or IANA IDs on any host OS.</summary>
+/// <summary>Maps Windows and IANA time-zone identifiers to cross-platform zones.</summary>
 public static class TimeZoneMapper
 {
     /// <summary>Resolves any time-zone identifier (Windows or IANA) to a <see cref="TimeZoneInfo"/>.</summary>

@@ -5,9 +5,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Security;
 
 /// <summary>Default <see cref="ISealService"/> — keeps the master key (KEK) in memory and wraps/unwraps data keys with AES-256-GCM.</summary>
 /// <remarks>
-/// Flow: <see cref="Unseal"/> pulls the KEK from the injected <see cref="IMasterKeyProvider"/> and holds it in a single private buffer; wrap/unwrap then run AES-GCM under that key. The source of the key is abstracted, so the same keeper works with env vars, a KMS, or an HSM. The key is cleared from memory on <see cref="Dispose"/>; no key material is ever logged. Register as a singleton (the unsealed key must outlive a request).
+/// Flow: <see cref="Unseal"/> pulls the KEK from the injected <see cref="IMasterKeyBroker"/> and holds it in a single private buffer; wrap/unwrap then run AES-GCM under that key. The source of the key is abstracted, so the same keeper works with env vars, a KMS, or an HSM. The key is cleared from memory on <see cref="Dispose"/>; no key material is ever logged. Register as a singleton (the unsealed key must outlive a request).
 /// </remarks>
-internal sealed partial class SealService(IMasterKeyProvider keyProvider, ILogger<SealService> logger)
+internal sealed partial class SealService(IMasterKeyBroker keyBroker, ILogger<SealService> logger)
     : ISealService, IDisposable
 {
     private readonly AesGcmCipher _cipher = new();
@@ -22,7 +22,7 @@ internal sealed partial class SealService(IMasterKeyProvider keyProvider, ILogge
         if (!IsSealed)
             return;
 
-        var key = keyProvider.TryLoadKey();
+        var key = keyBroker.TryLoadKey();
         if (key is null)
         {
             LogNoMasterKey();
@@ -34,7 +34,10 @@ internal sealed partial class SealService(IMasterKeyProvider keyProvider, ILogge
     }
 
     /// <inheritdoc />
-    public byte[] GenerateDataKey() => RandomNumberGenerator.GetBytes(KeySizeConstants.SymmetricKeyBytes);
+    public byte[] GenerateDataKey()
+    {
+        return RandomNumberGenerator.GetBytes(KeySizeConstants.SymmetricKeyBytes);
+    }
 
     /// <inheritdoc />
     public EncryptedPayload WrapDataKey(byte[] dataKey, string associatedData)

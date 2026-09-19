@@ -1,7 +1,7 @@
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
-/// <summary>Provides the default exception mapping: unwraps a carried <see cref="AppException"/>, then applies the registered <see cref="IExceptionMappingRule"/> contributors (last-registered first, so an app rule shadows an SDK rule), then falls back to <see cref="AppErrorType.Unexpected"/>.</summary>
+/// <summary>Maps an exception to an <see cref="AppError"/> through registered rules and the default fallback.</summary>
 public sealed class ExceptionMapper : IExceptionMapper
 {
     private readonly IExceptionMappingRule[] _rules;

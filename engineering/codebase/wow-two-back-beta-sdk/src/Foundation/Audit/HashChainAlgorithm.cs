@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Audit;
 
-/// <summary>Defines the cryptographic hash function used to seal and verify a chain.</summary>
+/// <summary>Refers to the cryptographic hash function used to seal and validate a chain.</summary>
 /// <remarks>SHA-256 is the default and matches the vault's chain semantics. The value is part of the on-disk proof's interpretation — changing it for an existing chain invalidates every prior hash, so pick once per chain.</remarks>
 public enum HashChainAlgorithm
 {

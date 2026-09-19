@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Idempotency;
 
-/// <summary>Storage abstraction for idempotency dedup. Implement to plug Redis / SQL / etc.</summary>
+/// <summary>Defines storage abstraction for idempotency dedup. Implement to plug Redis / SQL / etc.</summary>
 public interface IIdempotencyRepository
 {
     /// <summary>Try to acquire a slot for the given key. Returns the cached response if already processed.</summary>

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using WoW.Two.Sdk.Backend.Beta.Mediator;
 using WoW.Two.Sdk.Backend.Beta.Mediator.Logging;
@@ -7,8 +8,8 @@ using Xunit;
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Tests.Behaviors;
 
 /// <summary>
-/// <see cref="LoggingInterceptor{TRequest,TResponse}"/> — wraps the handler, logs start + completion on success,
-/// logs an error and rethrows on failure.
+/// <see cref="LoggingInterceptor{TRequest,TResponse}"/> — opens a module span and logs start + completion on success;
+/// a propagating failure is left to its handling boundary.
 /// </summary>
 public sealed class LoggingBehaviorTests
 {
@@ -47,7 +48,7 @@ public sealed class LoggingBehaviorTests
     }
 
     [Fact]
-    public async Task HandleAsync_ShouldLogFailureAndRethrow_WhenHandlerThrows()
+    public async Task HandleAsync_ShouldRethrowWithoutLoggingTheFailure_WhenHandlerThrows()
     {
         var logger = new CapturingLogger<LoggingInterceptor<Req, string>>();
         var behavior = new LoggingInterceptor<Req, string>(logger);
@@ -58,9 +59,30 @@ public sealed class LoggingBehaviorTests
             CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("kaboom");
-        logger.Entries.Should().Contain(e => e.EventId == 1001);                              // start
-        logger.Entries.Should().Contain(e => e.EventId == 1003 && e.Level == LogLevel.Error); // failure (Error)
-        logger.Entries.Should().NotContain(e => e.EventId == 1002);                           // never completed
+        logger.Entries.Should().Contain(e => e.EventId == 1001); // start
+        logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error); // the handling boundary records once
+        logger.Entries.Should().NotContain(e => e.EventId == 1002); // never completed
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldCreateMediatorActivity_WhenListenerIsEnabled()
+    {
+        Activity? stopped = null;
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "WoW.Two.Mediator",
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = activity => stopped = activity,
+        };
+        ActivitySource.AddActivityListener(listener);
+        var behavior = new LoggingInterceptor<Req, string>(new CapturingLogger<LoggingInterceptor<Req, string>>());
+
+        await behavior.HandleAsync(new Req("x"), () => ValueTask.FromResult("ok"), CancellationToken.None);
+
+        stopped.Should().NotBeNull();
+        stopped!.Source.Name.Should().Be("WoW.Two.Mediator");
+        stopped.Kind.Should().Be(ActivityKind.Internal);
+        stopped.GetTagItem("request.type").Should().Be(typeof(Req).FullName);
     }
 
     [Fact]

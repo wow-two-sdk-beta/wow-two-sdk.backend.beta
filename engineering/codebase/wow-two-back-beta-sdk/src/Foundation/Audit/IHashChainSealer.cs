@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Audit;
 
-/// <summary>Defines the contract for stamping an entry's chain fields so it links to the one before it.</summary>
+/// <summary>Defines stamping an entry's chain fields so it links to the one before it.</summary>
 /// <typeparam name="TEntry">The consumer's entry type, which must expose the chain fields.</typeparam>
 public interface IHashChainSealer<TEntry>
     where TEntry : IHashChainedEntry

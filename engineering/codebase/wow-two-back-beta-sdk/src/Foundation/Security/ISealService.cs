@@ -1,15 +1,15 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Security;
 
-/// <summary>Holds the master key (KEK) in memory and wraps/unwraps data keys (DEKs) — the key-management half of envelope encryption.</summary>
+/// <summary>Defines behavior that holds the master key (KEK) in memory and wraps/unwraps data keys (DEKs) — the key-management half of envelope encryption.</summary>
 /// <remarks>
-/// Two-tier key model: one long-lived master key (KEK) encrypts many short-lived data keys (DEKs); each DEK encrypts the actual values via <see cref="ICryptoCore"/>. The keeper never persists the KEK — it lives only in process memory after <see cref="Unseal"/>, so a restart starts sealed. Register as a singleton so the unsealed key survives across requests.
+/// Two-tier key model: one long-lived master key (KEK) encrypts many short-lived data keys (DEKs); each DEK encrypts the actual values via <see cref="IValueCipher"/>. The keeper never persists the KEK — it lives only in process memory after <see cref="Unseal"/>, so a restart starts sealed. Register as a singleton so the unsealed key survives across requests.
 /// </remarks>
 public interface ISealService
 {
     /// <summary>Gets a value indicating the master key is not loaded — no wrap/unwrap is possible until <see cref="Unseal"/> succeeds.</summary>
     bool IsSealed { get; }
 
-    /// <summary>Loads the master key into memory from the configured <see cref="IMasterKeyProvider"/>; a no-op leaving the keeper sealed when no key is configured.</summary>
+    /// <summary>Loads the master key into memory from the configured <see cref="IMasterKeyBroker"/>; a no-op leaving the keeper sealed when no key is configured.</summary>
     /// <exception cref="MasterKeyFormatException">A key is configured but malformed.</exception>
     void Unseal();
 

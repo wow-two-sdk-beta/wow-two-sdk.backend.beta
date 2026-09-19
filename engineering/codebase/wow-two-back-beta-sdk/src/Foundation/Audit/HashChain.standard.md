@@ -1,12 +1,12 @@
 # HashChain — standard
 
-*Last updated: 2026-06-24*
+*Last updated: 2026-09-15*
 
 > **Behavioral contract.** RFC 2119 (MUST / SHOULD / MAY). Changes only when the *contract* does, not when implementation moves.
 
 ## Purpose
 
-Provide tamper-evident integrity over an ordered, append-only set of consumer records: each entry's hash binds its own fields plus the prior entry's hash, so altering, inserting, removing a non-tail entry, or reordering breaks the chain at a detectable point (tail truncation is a non-goal — see below). The SDK owns the chain mechanics; the consumer owns the field set.
+Validate the consistency of an ordered set of supplied consumer records: each entry's hash binds its selected fields plus the prior entry's hash. The SDK checks sequence, links and recomputed hashes; the consumer owns the field set. Success establishes consistency of those supplied records, not their completeness or authenticity against a trusted external checkpoint.
 
 ## Canonical payload
 
@@ -24,20 +24,20 @@ Provide tamper-evident integrity over an ordered, append-only set of consumer re
 - `Seal` **MUST NOT** read or require any persistence; it operates purely on the two in-memory entries.
 - `Seal` **MUST** throw on a `null` entry.
 
-## Verification
+## Validation
 
-- `Verify` **MUST** process entries in the supplied order and assume that order is ascending by sequence.
-- For each entry, `Verify` **MUST** check, in this order: the sequence advances by exactly one from its predecessor (first expected `1`); the `PreviousHash` equals the predecessor's `Hash` (empty for the first); the stored `Hash` equals the hash recomputed from the same payload `Seal` would produce.
-- On the first failed check, `Verify` **MUST** return a result naming the reason (`SequenceGap` / `BrokenLink` / `HashMismatch`) and the offending entry's sequence and zero-based index, and **MUST** stop.
-- An empty collection **MUST** verify as intact.
-- `Verify` **MUST** use a full, length-independent comparison for hash bytes (no early-out that leaks position); it **MUST NOT** mutate any entry.
-- `Verify` **MUST** throw on a `null` collection or a `null` element.
+- `Validate` **MUST** process entries in the supplied order and assume that order is ascending by sequence.
+- For each entry, `Validate` **MUST** check, in this order: the sequence advances by exactly one from its predecessor (first expected `1`); the `PreviousHash` equals the predecessor's `Hash` (empty for the first); the stored `Hash` equals the hash recomputed from the same payload `Seal` would produce.
+- On the first failed check, `Validate` **MUST** return a result naming the reason (`SequenceGap` / `BrokenLink` / `HashMismatch`) and the offending entry's sequence and zero-based index, and **MUST** stop.
+- An empty collection **MUST** validate as intact.
+- `Validate` **MUST** use a full, length-independent comparison for hash bytes (no early-out that leaks position); it **MUST NOT** mutate any entry.
+- `Validate` **MUST** throw on a `null` collection or a `null` element.
 
 ## Scheme version
 
 - The scheme version **MUST** be part of the hashed payload, so entries sealed under different field sets never collide.
-- A consumer changing which fields are hashed **SHOULD** bump `SchemeVersion` and keep the prior canonicalizer available, then verify each historical segment with the canonicalizer that sealed it.
-- The SDK **MUST NOT** assume a single global version — version selection is the consumer's responsibility across mixed-version history. A given verifier instance carries one canonicalizer; mixed-version history is verified segment-by-segment, one verifier per version.
+- A consumer changing which fields are hashed **SHOULD** start a new chain with a bumped `SchemeVersion` and keep the prior canonicalizer available for the prior chain.
+- A validator instance **MUST** validate one chain from genesis with one canonicalizer; the SDK does not resolve mixed versions or accept a mid-chain checkpoint.
 
 ## Algorithm
 
@@ -47,7 +47,7 @@ Provide tamper-evident integrity over an ordered, append-only set of consumer re
 
 ## Registration
 
-- `AddHashChain` **MUST** register the sealer and verifier for the entry type, plus the consumer canonicalizer.
+- `AddHashChain` **MUST** register the sealer and validator for the entry type, plus the consumer canonicalizer.
 - Registrations **MUST** be additive/idempotent (`TryAdd`) so a repeated call does not double-register.
 - Defaults **MUST** be safe with no further config (SHA-256, options bound).
 
@@ -55,7 +55,7 @@ Provide tamper-evident integrity over an ordered, append-only set of consumer re
 
 - Does **not** persist, query, order, or load entries — the consumer owns storage and supplies entries already ordered.
 - Does **not** define domain fields, an entity base class, table names, or EF mappings.
-- Does **not** sign, encrypt, or key the hash (no HMAC/MAC) — it detects tampering, it does not by itself prove *who* tampered against an attacker who can rewrite the whole chain. Pair with a signed checkpoint or external anchoring for that.
+- Does **not** sign, encrypt, or key the hash (no HMAC/MAC) — an attacker who can rewrite entries and recompute all affected hashes can supply a consistent forged chain that passes. Compare against a trusted signed checkpoint or external anchor to detect divergence from trusted history.
 - Does **not** detect **tail truncation** (dropping entries from the end) — the chain has no length or head anchor, so a well-linked shorter prefix still verifies as intact. Record the expected length/head out-of-band, or pair with a signed checkpoint, to close it.
 - Does **not** authenticate callers or authorize the audited operation.
 

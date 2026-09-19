@@ -3,7 +3,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Validation;
 
-/// <summary>Validates each request through the <see cref="IValidator{T}"/> wrapper and throws when it is invalid.</summary>
+/// <summary>Validates each request through every <see cref="IValidator{T}"/> and throws one aggregate failure when it is invalid.</summary>
 /// <typeparam name="TRequest">The request type.</typeparam>
 /// <typeparam name="TResponse">The response type.</typeparam>
 /// <param name="validators">The validators applied to each request.</param>
@@ -19,8 +19,22 @@ public sealed class ValidatingInterceptor<TRequest, TResponse>(IEnumerable<IVali
     {
         ArgumentNullException.ThrowIfNull(nextStep);
 
-        foreach (var validator in validators)
-            validator.ValidateAndThrow(request);
+        var errors = validators
+            .Select(validator => validator.Validate(request))
+            .Where(error => error is not null)
+            .Cast<ValidationError>()
+            .ToArray();
+
+        if (errors.Length == 1)
+        {
+            throw new ValidationException(errors[0]);
+        }
+
+        if (errors.Length > 1)
+        {
+            throw new ValidationException(ValidationError.From(
+                errors.SelectMany(error => error.Failures).ToArray()));
+        }
 
         return await nextStep().ConfigureAwait(false);
     }

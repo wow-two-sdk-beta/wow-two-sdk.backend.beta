@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Idempotency;
 
-/// <summary>Default in-memory <see cref="IIdempotencyRepository"/> — single-instance only.</summary>
+/// <summary>Accesses idempotency records in process memory.</summary>
 /// <param name="cache">The backing memory cache for stored responses.</param>
 public sealed class InMemoryIdempotencyRepository(IMemoryCache cache) : IIdempotencyRepository
 {

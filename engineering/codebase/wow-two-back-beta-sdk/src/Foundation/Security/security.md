@@ -6,9 +6,9 @@ master-key source is abstracted (env var now, KMS/HSM later). Application-agnost
 
 | Seam | Default | Role |
 |---|---|---|
-| `ICryptoCore` | `CryptoCore` | Encrypt/decrypt a value under a supplied DEK + AAD (data plane) |
+| `IValueCipher` | `ValueCipher` | Encrypt/decrypt a value under a supplied DEK + AAD (data plane) |
 | `ISealKeeper` | `MasterKeySealKeeper` | Hold the KEK in memory; generate, wrap, unwrap DEKs (key plane) |
-| `IMasterKeyProvider` | `EnvironmentMasterKeyProvider` | Where the KEK comes from — base64 256-bit key from an env var |
+| `IMasterKeyBroker` | `EnvironmentMasterKeyBroker` | Where the KEK comes from — base64 256-bit key from an env var |
 
 ```csharp
 builder.Services.AddEnvelopeCryptography(o => o.MasterKeyEnvironmentVariable = "MASTER_KEY");
@@ -35,7 +35,7 @@ CryptographicOperations.ZeroMemory(dek2);
   `AuthenticationTagMismatchException` on any tamper / wrong key / wrong AAD — never returns corrupt bytes.
 - **Sealed until unsealed.** No key configured → stays sealed (wrap/unwrap throw). A malformed key throws
   `MasterKeyFormatException` (key-free message, safe to log). Restart → sealed again.
-- **Swap the key source** by registering your own `IMasterKeyProvider` before `AddEnvelopeCryptography`
+- **Swap the key source** by registering your own `IMasterKeyBroker` before `AddEnvelopeCryptography`
   (it uses `TryAddSingleton`). Env now, KMS/HSM later — nothing else changes.
 - **Generate a key:** `openssl rand -base64 32` → set as the env var.
 

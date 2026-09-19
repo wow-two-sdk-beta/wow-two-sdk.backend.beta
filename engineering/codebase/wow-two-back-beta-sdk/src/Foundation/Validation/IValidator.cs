@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
-/// <summary>Defines the contract for validating an instance of <typeparamref name="T"/>.</summary>
+/// <summary>Defines validating an instance of <typeparamref name="T"/>.</summary>
 /// <typeparam name="T">The validated type.</typeparam>
 public interface IValidator<in T>
 {

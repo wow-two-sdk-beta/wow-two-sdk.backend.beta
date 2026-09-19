@@ -16,6 +16,9 @@ dotnet add package WoW.Two.Sdk.Backend.Beta.Time
 builder.Services.AddTimeProviders();
 ```
 
+The registered NodaTime `IClock` reads from the same `TimeProvider`. Supplying a fake
+`TimeProvider` therefore controls both clock surfaces.
+
 ### Resolve a time zone (any id format)
 
 ```csharp
@@ -26,12 +29,19 @@ var tz2 = TimeZoneMapper.ResolveTimeZone("Eastern Standard Time"); // works on L
 ### Cron expressions
 
 ```csharp
-var expr = CronExpressionParser.Parse("*/15 * * * *");
-var next = CronExpressionParser.NextOccurrence(
-    "0 0 8 * * *",
+using WoW.Two.Sdk.Backend.Beta.Foundation.Time.Parsers;
+
+ICronExpressionParser parser = new CronExpressionParser();
+var expression = parser.Parse("0 0 8 * * *");
+var next = expression.GetNextOccurrence(
     DateTimeOffset.UtcNow,
     TimeZoneInfo.FindSystemTimeZoneById("UTC"));
 ```
+
+`ICronExpressionParser` and `CronExpressionParser` live under `Time/Parsers/`.
+Six space-separated fields select the seconds form; other field counts use the standard form.
+Null or blank input is rejected by argument checks; invalid or incomplete cron syntax throws `CronFormatException`.
+The parser returns a complete expression or throws. Occurrence calculation belongs to the returned expression.
 
 ## See also
 

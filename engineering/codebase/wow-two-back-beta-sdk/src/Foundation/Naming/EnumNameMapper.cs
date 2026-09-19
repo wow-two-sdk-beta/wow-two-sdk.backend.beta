@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
-/// <summary>Converts enum values to and from case-styled string labels reversibly, cached per (enum, style).</summary>
+/// <summary>Maps enum values to and from case-styled string labels.</summary>
 /// <typeparam name="TEnum">The enum type.</typeparam>
 public static class EnumNameMapper<TEnum> where TEnum : struct, Enum
 {

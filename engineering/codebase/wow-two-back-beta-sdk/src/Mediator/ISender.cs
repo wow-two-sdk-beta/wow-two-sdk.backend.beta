@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Mediator;
 
-/// <summary>Sender — fire a request and await its response.</summary>
+/// <summary>Defines sender — fire a request and await its response.</summary>
 public interface ISender
 {
     /// <summary>Send a strongly-typed request.</summary>

@@ -1,6 +1,6 @@
 # WoW.Two.Sdk.Backend.Beta.Mediator.Logging
 
-> Pipeline behavior — logs request name + elapsed time using source-generated log methods (`[LoggerMessage]`).
+> Request interceptor — opens a `WoW.Two.Mediator` span and logs request start + successful completion through source-generated log methods.
 
 ## Install
 
@@ -15,13 +15,10 @@ builder.Services.AddMediator(typeof(Program).Assembly);
 builder.Services.AddMediatorLoggingBehavior();
 ```
 
-Output:
+Success output:
 ```
 → GetUser
 ← GetUser in 4ms
 ```
 
-Failure:
-```
-✕ GetUser failed after 12ms — System.KeyNotFoundException
-```
+A thrown failure propagates without another error log. The exception/result handling boundary records it once.

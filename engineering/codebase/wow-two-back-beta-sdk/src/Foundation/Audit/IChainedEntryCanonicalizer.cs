@@ -5,7 +5,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Audit;
 /// <typeparam name="TEntry">The consumer's entry type whose domain fields are hashed.</typeparam>
 public interface IChainedEntryCanonicalizer<in TEntry>
 {
-    /// <summary>Gets the scheme version this canonicalizer writes — the verifier selects a canonicalizer by this value so a field-set change ships as a new version rather than a breaking re-hash of history.</summary>
+    /// <summary>Gets the scheme version this canonicalizer writes — the consumer selects the matching canonicalizer so a field-set change ships as a new version rather than a breaking re-hash of history.</summary>
     int SchemeVersion { get; }
 
     /// <summary>Appends the entry's domain fields to <paramref name="builder"/> in a fixed order — the SDK supplies the chain fields, the consumer supplies the rest.</summary>

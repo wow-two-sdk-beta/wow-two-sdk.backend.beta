@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
-/// <summary>Defines the descriptive nature of a failure — consumers derive retry, fallback, and log decisions from it.</summary>
+/// <summary>Refers to the descriptive nature of a failure — consumers derive retry, fallback, and log decisions from it.</summary>
 public enum ErrorNature
 {
     /// <summary>Temporary; retrying may succeed (timeout, 503, 429).</summary>

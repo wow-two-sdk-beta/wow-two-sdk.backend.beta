@@ -57,9 +57,7 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
             .GetMethod(nameof(DispatchTyped), BindingFlags.NonPublic | BindingFlags.Static)!
             .MakeGenericMethod(requestType, responseType);
 
-        // Returns ValueTask<TResponse> boxed to object; SendAsync<TResponse> unboxes it — one box per dispatch, no Task wrap.
-        // DoNotWrapExceptions keeps a synchronous throw as itself: the mapper matches on AppException, and a
-        // TargetInvocationException around one maps to Unexpected instead of the status the error names.
+        // Invoke without wrapping synchronous exceptions that the error mapper must classify.
         return (sp, req, ct) => method.Invoke(null, BindingFlags.DoNotWrapExceptions, binder: null, [sp, req, ct], culture: null)!;
     }
 

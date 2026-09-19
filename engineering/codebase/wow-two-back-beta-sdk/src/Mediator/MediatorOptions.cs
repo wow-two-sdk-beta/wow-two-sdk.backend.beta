@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Mediator;
 
-/// <summary>Configuration for what <c>AddMediator</c> wires beside the dispatcher.</summary>
+/// <summary>Holds configuration for what <c>AddMediator</c> wires beside the dispatcher.</summary>
 public sealed record MediatorOptions
 {
     /// <summary>Gets or sets whether a handler exception comes back as an <c>AppResult.Failure</c>. Default on.</summary>

@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
-/// <summary>Identifier casing styles produced and parsed by <see cref="CaseMapper"/>.</summary>
+/// <summary>Refers to identifier casing styles produced and parsed by <see cref="CaseMapper"/>.</summary>
 public enum CaseStyle
 {
     /// <summary>Lowercase words joined by underscores. Example: <c>order_line_item</c>.</summary>
