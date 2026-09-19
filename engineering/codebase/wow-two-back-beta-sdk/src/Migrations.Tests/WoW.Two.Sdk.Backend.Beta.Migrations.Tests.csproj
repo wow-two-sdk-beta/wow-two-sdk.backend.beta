@@ -4,8 +4,9 @@
     SQLITE DIALECT TESTS for the bespoke SQL migrator (beta-forever exception, like Mediator.Tests).
 
     Proves the engine on SQLite via temp-file databases — NO Testcontainers / Docker: apply, drift + repair,
-    orphan, @no-transaction, concurrency (weaker than Postgres — busy_timeout + ordinal PK, not an advisory
-    lock), failure mid-batch, rollback, plus direct dialect checks. Adds a NetArchTest web-freedom guard on the
+    orphan, @no-transaction, single-applicant SQLite coordination, failure mid-batch, rollback, plus direct
+    dialect checks. Postgres integration tests cover advisory locking, enum boundaries and interrupted indexes.
+    Adds a NetArchTest web-freedom guard on the
     engine namespace. References the core mono-lib and matches its FrameworkReference so Microsoft.Extensions.*
     resolve from the shared framework rather than CPM-pinned packages.
   -->
@@ -39,10 +40,18 @@
     <ProjectReference Include="../WoW.Two.Sdk.Backend.Beta.csproj" />
     <!-- Dogfood: the SDK's own migrator suite consumes the extracted Testing.Data harness (MigratorHarness, MigrationsWorkspace). -->
     <ProjectReference Include="../Testing.Data/WoW.Two.Sdk.Backend.Beta.Testing.Data.csproj" />
+    <ProjectReference Include="../Data/Migrations/cli/WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli.csproj"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="TestData/Embedded/Migrations/002-missing/Apply.sql">
+      <LogicalName>Migrations/002-missing/Apply.sql</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

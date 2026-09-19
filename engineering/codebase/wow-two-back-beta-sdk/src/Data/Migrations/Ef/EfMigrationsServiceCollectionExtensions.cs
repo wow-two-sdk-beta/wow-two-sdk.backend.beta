@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Ef;
 
@@ -27,8 +26,11 @@ public static class EfMigrationsServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.AddOptions<EfMigrationsOptions>().Configure(options => configure?.Invoke(options));
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<EfMigrationsOptions>>().Value);
+        services.AddValidatedOptions<EfMigrationsOptions>(
+            configure,
+            builder => builder
+                .Validate(options => options.MaxConnectAttempts > 0, "EfMigrationsOptions.MaxConnectAttempts must be positive.")
+                .Validate(options => options.ConnectRetryDelay >= TimeSpan.Zero, "EfMigrationsOptions.ConnectRetryDelay must not be negative."));
         services.AddHostedService<EfMigrationsBackgroundService<TContext>>();
         return services;
     }

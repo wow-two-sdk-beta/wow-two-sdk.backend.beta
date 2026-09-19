@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
-using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit;
+using WoW.Two.Sdk.Backend.Beta.Identity.CurrentUser;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SoftDelete;
 
@@ -9,15 +9,15 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SoftDelete;
 public sealed class SoftDeleteInterceptor : SaveChangesInterceptor
 {
     private readonly TimeProvider _timeProvider;
-    private readonly IAuditCurrentUserAccessor? _userAccessor;
+    private readonly ICurrentUserService? _currentUser;
 
     /// <summary>Initializes a new instance of the <see cref="SoftDeleteInterceptor"/> class.</summary>
     /// <param name="timeProvider">The clock used for the <c>DeletedAt</c> timestamp; falls back to the system clock when null.</param>
-    /// <param name="userAccessor">The accessor resolving the current user id for <c>DeletedBy</c> stamping.</param>
-    public SoftDeleteInterceptor(TimeProvider timeProvider, IAuditCurrentUserAccessor? userAccessor = null)
+    /// <param name="currentUser">The service resolving the current user id for <c>DeletedBy</c> stamping.</param>
+    public SoftDeleteInterceptor(TimeProvider timeProvider, ICurrentUserService? currentUser = null)
     {
         _timeProvider = timeProvider ?? TimeProvider.System;
-        _userAccessor = userAccessor;
+        _currentUser = currentUser;
     }
 
     /// <inheritdoc />
@@ -42,7 +42,7 @@ public sealed class SoftDeleteInterceptor : SaveChangesInterceptor
         if (context is null) return;
 
         var now = _timeProvider.GetUtcNow();
-        var userId = _userAccessor?.GetCurrentUserId();
+        var userId = _currentUser?.Id;
 
         foreach (var entry in context.ChangeTracker.Entries())
         {

@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Tenancy.Core;
 
 /// <summary>
-/// Ambient access to the current request's tenant. Readable from anywhere — including singleton EF
+/// Defines ambient access to the current request's tenant. Readable from anywhere — including singleton EF
 /// interceptors and query filters — because the default implementation is a singleton backed by an
 /// <see cref="System.Threading.AsyncLocal{T}"/> that flows with the request's async context.
 /// </summary>

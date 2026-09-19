@@ -1,38 +1,50 @@
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
+
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
-/// <summary>Provides migrations read from <c>{root}/NNN-name/{Apply,Rollback}.sql</c> on disk for the CLI and dev.</summary>
+/// <summary>Integrates migration scripts stored on the local filesystem.</summary>
 public sealed class FileSystemMigrationBroker(string migrationsRoot) : IMigrationBroker
 {
     /// <summary>Gets the migrations root — the folder containing the <c>NNN-name</c> directories.</summary>
     public string Root { get; } = migrationsRoot;
 
     /// <inheritdoc />
-    /// <exception cref="InvalidOperationException">A migration folder is missing its Rollback script.</exception>
-    public IReadOnlyList<RawMigration> Read()
+    public Result<IReadOnlyList<RawMigration>> Read()
     {
-        if (!Directory.Exists(Root))
-            return [];
-
-        var migrations = new List<RawMigration>();
-        foreach (var dir in Directory.GetDirectories(Root))
+        try
         {
-            var applyPath = Path.Combine(dir, MigrationConventions.ApplyFileName);
-            if (!File.Exists(applyPath))
-                continue; // Skip the Dev folder and anything without an Apply script.
+            if (!Directory.Exists(Root))
+                return Result<IReadOnlyList<RawMigration>>.Ok([]);
 
-            var rollbackPath = Path.Combine(dir, MigrationConventions.RollbackFileName);
-            if (!File.Exists(rollbackPath))
-                throw new InvalidOperationException(
-                    $"Migration '{Path.GetFileName(dir)}' is missing {MigrationConventions.RollbackFileName} — every migration must ship a rollback.");
-
-            migrations.Add(new RawMigration
+            var migrations = new List<RawMigration>();
+            foreach (var dir in Directory.GetDirectories(Root))
             {
-                Name = Path.GetFileName(dir),
-                ApplySql = File.ReadAllText(applyPath),
-                RollbackSql = File.ReadAllText(rollbackPath),
-            });
-        }
+                var applyPath = Path.Combine(dir, MigrationConstants.ApplyFileName);
+                if (!File.Exists(applyPath))
+                    continue; // Skip the Dev folder and anything without an Apply script.
 
-        return migrations;
+                var rollbackPath = Path.Combine(dir, MigrationConstants.RollbackFileName);
+                if (!File.Exists(rollbackPath))
+                {
+                    return Result<IReadOnlyList<RawMigration>>.Fail(AppErrorFactory.FileNotFound(
+                        $"Migration '{Path.GetFileName(dir)}' is missing {MigrationConstants.RollbackFileName}."));
+                }
+
+                migrations.Add(new RawMigration
+                {
+                    Name = Path.GetFileName(dir),
+                    ApplySql = File.ReadAllText(applyPath),
+                    RollbackSql = File.ReadAllText(rollbackPath),
+                });
+            }
+
+            return Result<IReadOnlyList<RawMigration>>.Ok(migrations);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return Result<IReadOnlyList<RawMigration>>.Fail(AppErrorFactory.DataIntegrity(
+                $"Migration source '{Root}' could not be read.", exception));
+        }
     }
 }

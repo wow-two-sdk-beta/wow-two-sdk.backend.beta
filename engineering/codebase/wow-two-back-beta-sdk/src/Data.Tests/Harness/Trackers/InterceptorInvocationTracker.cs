@@ -2,10 +2,10 @@ using System.Collections.Concurrent;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-namespace WoW.Two.Sdk.Backend.Beta.Data.Tests.Harness;
+namespace WoW.Two.Sdk.Backend.Beta.Data.Tests.Harness.Trackers;
 
-/// <summary>The shared ordered log every recording interceptor appends to — invocation order is the assertion for the ordering cases.</summary>
-public sealed class InterceptorLog
+/// <summary>Tracks interceptor invocations in order for test assertions.</summary>
+public sealed class InterceptorInvocationTracker
 {
     private readonly ConcurrentQueue<string> _entries = new();
 

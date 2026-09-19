@@ -29,6 +29,25 @@ Task<bool>    DeleteByIdAsync(TId id, ct);          // false if no such row
 
 Entities must implement `IKeyedEntity<TId>`. Reads honor global query filters (e.g. the SDK soft-delete filter). Each write persists immediately (`SaveChangesAsync`).
 
+## Tracked writes
+
+Load, modify and save the same tracked entity instance. Assign accepted properties or invoke domain operations,
+then pass that instance to `UpdateAsync`; the repository lets EF retain original concurrency values and
+property-level change tracking without calling `DbSet.Update`.
+
+```csharp
+var product = await repository.GetByIdAsync(id, ct);
+product!.Name = request.Name;
+await repository.UpdateAsync(product, ct);
+```
+
+Do not pass `product with { Name = request.Name }` while `product` is tracked. The repository rejects that
+duplicate-key replacement instead of merging it, detaching the original or clearing the tracker.
+
+A detached instance remains an explicitly supported update path when no same-key instance is tracked.
+`UpdateAsync` attaches it through `DbSet.Update`, which marks its complete mapped state as modified; use it only
+when that full-state write is the intended operation.
+
 ## Usage
 
 ```csharp

@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Tenancy.Core;
 
-/// <summary>In-memory <see cref="ITenantRepository"/> over a fixed set of tenants (case-insensitive ids). Thread-safe.</summary>
+/// <summary>Accesses a fixed set of tenants in process memory.</summary>
 public sealed class InMemoryTenantRepository : ITenantRepository
 {
     private readonly IReadOnlyDictionary<string, TenantInfo> _tenants;

@@ -2,9 +2,12 @@ using System.Data.Common;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
-/// <summary>Defines the contract for provider-specific migration SQL: database creation, locking, and history DDL.</summary>
+/// <summary>Defines provider-specific migration SQL: database creation, locking, and history DDL.</summary>
 public interface IMigrationDialect
 {
+    /// <summary>Gets the provider's simultaneous-applicant guarantee.</summary>
+    MigrationCoordinationMode CoordinationMode { get; }
+
     /// <summary>Creates the target database if it is missing, returning whether a create occurred.</summary>
     /// <param name="connectionString">The connection string whose database name is ensured.</param>
     /// <param name="ct">Token to cancel the operation.</param>

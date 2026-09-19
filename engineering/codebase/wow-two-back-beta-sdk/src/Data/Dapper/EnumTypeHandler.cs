@@ -4,7 +4,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper;
 
-/// <summary>Maps an enum to and from a case-styled string column reversibly, across any provider.</summary>
+/// <summary>Handles reversible enum mapping to case-styled string columns.</summary>
 /// <remarks>Register per enum: <c>SqlMapper.AddTypeHandler(new EnumTypeHandler&lt;OrderStatus&gt;());</c>.</remarks>
 /// <typeparam name="TEnum">The enum type stored as text.</typeparam>
 public sealed class EnumTypeHandler<TEnum> : SqlMapper.TypeHandler<TEnum>

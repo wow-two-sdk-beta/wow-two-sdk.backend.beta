@@ -2,7 +2,7 @@
 
 Data-tier test helpers for the backend SDK — the companion to the dependency-light `Testing` package.
 
-Holds the helpers that need the core mono-lib (migrator engine, connection factories) or EF Core, so the base `Testing` package never takes that dependency. Reference `WoW2.Sdk.Backend.Beta.Testing.Data` from a test project only; it pulls base `Testing` + core transitively.
+Holds the helpers that need the core mono-lib (migrator engine, connection factories) or EF Core, so the base `Testing` package never takes that dependency. Reference `WoW2.Sdk.Backend.Beta.Testing.Data` from a test project only; it pulls base `Testing` + core transitively. Each `RelationalTestDb<TContext>` instance owns its provider selection; no static test setup is shared across fixtures.
 
 ## Layout
 

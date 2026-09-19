@@ -3,7 +3,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Naming;
 
-/// <summary>Persists an enum as a case-styled string (default <see cref="CaseStyle.Snake"/>) reversibly.</summary>
+/// <summary>Maps an enum to and from a case-styled string.</summary>
 /// <typeparam name="TEnum">The enum type stored as text.</typeparam>
 public sealed class EnumCaseMapper<TEnum> : ValueConverter<TEnum, string>
     where TEnum : struct, Enum

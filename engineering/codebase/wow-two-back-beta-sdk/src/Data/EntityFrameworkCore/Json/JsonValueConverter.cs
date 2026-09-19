@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Serialization;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Json;
 
@@ -7,8 +8,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Json;
 /// <typeparam name="T">The CLR type being converted.</typeparam>
 public sealed class JsonValueConverter<T> : ValueConverter<T, string>
 {
-    /// <summary>Initializes the converter with default <see cref="JsonSerializerOptions"/>.</summary>
-    public JsonValueConverter() : this(new JsonSerializerOptions(JsonSerializerDefaults.Web))
+    /// <summary>Initializes the converter with the stored preset, <see cref="StoredJsonConstants.Default"/>.</summary>
+    public JsonValueConverter() : this(StoredJsonConstants.Default)
     {
     }
 

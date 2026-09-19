@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 
@@ -19,14 +19,12 @@ public static class DatabaseServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        services.AddOptions<DatabaseSettings>()
-            .Bind(configuration.GetSection(sectionName))
-            .ValidateOnStart();
-
-        // Projects the bound record so consumers take it, never the wrapper.
-        services.AddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value);
-
-        return services;
+        return services.AddValidatedSettings<DatabaseSettings>(
+            configuration,
+            sectionName,
+            static builder => builder.Validate(
+                static settings => !string.IsNullOrWhiteSpace(settings.ConnectionString),
+                $"{nameof(DatabaseSettings)}.{nameof(DatabaseSettings.ConnectionString)} is required."));
     }
 
     /// <summary>Registers <see cref="DatabaseSettings"/> from a connection string supplied in code.</summary>
@@ -39,7 +37,6 @@ public static class DatabaseServiceCollectionExtensions
 
         var settings = new DatabaseSettings { ConnectionString = connectionString };
         services.AddSingleton(settings);
-        services.AddSingleton<IOptions<DatabaseSettings>>(Options.Create(settings));
 
         return services;
     }

@@ -2,7 +2,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
-/// <summary>Defines the contract for running pending migrations.</summary>
+/// <summary>Defines running pending migrations.</summary>
 public interface IMigrationRunnerService
 {
     /// <summary>Applies all pending migrations under the advisory lock, returning the labels applied (empty when up to date).</summary>

@@ -35,10 +35,11 @@ public static class PostgresPersistenceServiceCollectionExtensions
         var options = new PostgresPersistenceOptions();
         configure?.Invoke(options);
 
-        var connectionString = ResolveConnectionString(configuration, options);
-
-        // AddNpgsqlDataSource reads the settings, so the same overload the host would call registers them here.
-        services.AddDatabaseSettings(connectionString);
+        // Resolve lazily so WebApplicationFactory host-local configuration can override the app defaults.
+        services.AddSingleton(_ => new DatabaseSettings
+        {
+            ConnectionString = ResolveConnectionString(configuration, options)
+        });
 
         // Shared NpgsqlDataSource (+ DbDataSource) consumed by EF Core and Dapper; the connection factory rides the DbDataSource.
         services.AddNpgsqlDataSource();
@@ -48,9 +49,7 @@ public static class PostgresPersistenceServiceCollectionExtensions
         // Npgsql/EF exceptions escaping a handler now map to their AppError (unique-violation -> Conflict, etc.).
         services.AddDbExceptionMapping();
 
-        // Same context-configuration path as AddEntityFrameworkCore<T> — the one place interceptors attach.
-        // AddDbContext (not AddDbContextPool) is deliberate: the scoped provider stays available in the callback,
-        // which pooling would take away. Pooling remains opt-in via AddEntityFrameworkCore<T>.
+        // Keep the scoped provider available while the shared context path attaches interceptors.
         var registry = services.GetOrAddEfContextWiringRegistry();
         registry.Register(typeof(TContext));
 
@@ -80,7 +79,7 @@ public static class PostgresPersistenceServiceCollectionExtensions
     private static string ResolveConnectionString(IConfiguration configuration, PostgresPersistenceOptions options)
     {
         var fromConfig = configuration[options.ConnectionStringConfigKey];
-        var fromEnvironment = Environment.GetEnvironmentVariable(options.ConnectionStringEnvironmentVariable);
+        var fromEnvironment = configuration[options.ConnectionStringEnvironmentVariable];
         var connectionString = string.IsNullOrWhiteSpace(fromEnvironment) ? fromConfig : fromEnvironment;
 
         if (string.IsNullOrWhiteSpace(connectionString))

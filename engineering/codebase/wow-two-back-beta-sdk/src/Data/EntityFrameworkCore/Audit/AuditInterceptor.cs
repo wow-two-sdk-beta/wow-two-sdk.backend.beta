@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
+using WoW.Two.Sdk.Backend.Beta.Identity.CurrentUser;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit;
 
@@ -9,15 +10,15 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit;
 public sealed class AuditInterceptor : SaveChangesInterceptor
 {
     private readonly TimeProvider _timeProvider;
-    private readonly IAuditCurrentUserAccessor? _userAccessor;
+    private readonly ICurrentUserService? _currentUser;
 
     /// <summary>Initializes a new instance of the <see cref="AuditInterceptor"/> class.</summary>
     /// <param name="timeProvider">The clock used for audit timestamps; falls back to the system clock when null.</param>
-    /// <param name="userAccessor">The accessor resolving the current user id for <c>CreatedBy</c> and <c>UpdatedBy</c> stamping.</param>
-    public AuditInterceptor(TimeProvider timeProvider, IAuditCurrentUserAccessor? userAccessor = null)
+    /// <param name="currentUser">The service resolving the current user id for <c>CreatedBy</c> and <c>UpdatedBy</c> stamping.</param>
+    public AuditInterceptor(TimeProvider timeProvider, ICurrentUserService? currentUser = null)
     {
         _timeProvider = timeProvider ?? TimeProvider.System;
-        _userAccessor = userAccessor;
+        _currentUser = currentUser;
     }
 
     /// <inheritdoc />
@@ -44,7 +45,7 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
         if (context is null) return;
 
         var now = _timeProvider.GetUtcNow();
-        var userId = _userAccessor?.GetCurrentUserId();
+        var userId = _currentUser?.Id;
 
         foreach (var entry in context.ChangeTracker.Entries())
         {

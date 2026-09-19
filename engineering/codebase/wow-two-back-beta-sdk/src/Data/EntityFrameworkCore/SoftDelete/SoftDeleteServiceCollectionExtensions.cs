@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit;
 using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Interceptors;
+using WoW.Two.Sdk.Backend.Beta.Identity.CurrentUser;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.SoftDelete;
 
@@ -19,14 +20,14 @@ public static class SoftDeleteServiceCollectionExtensions
         return services.AddEfInterceptor<SoftDeleteInterceptor>();
     }
 
-    /// <summary>Registers the soft-delete interceptor and a singleton current-user accessor for <c>DeletedBy</c> stamping.</summary>
-    /// <typeparam name="TAccessor">The current-user accessor implementation to register.</typeparam>
+    /// <summary>Registers the soft-delete interceptor and a singleton current-user service for <c>DeletedBy</c> stamping.</summary>
+    /// <typeparam name="TCurrentUser">The current-user service implementation to register.</typeparam>
     /// <param name="services">The service collection to configure.</param>
-    public static IServiceCollection AddEfCoreSoftDeleteFilter<TAccessor>(this IServiceCollection services)
-        where TAccessor : class, IAuditCurrentUserAccessor
+    public static IServiceCollection AddEfCoreSoftDeleteFilter<TCurrentUser>(this IServiceCollection services)
+        where TCurrentUser : class, ICurrentUserService
     {
         services.AddEfCoreSoftDeleteFilter();
-        services.TryAddSingleton<IAuditCurrentUserAccessor, TAccessor>();
+        services.TryAddSingleton<ICurrentUserService, TCurrentUser>();
         return services;
     }
 

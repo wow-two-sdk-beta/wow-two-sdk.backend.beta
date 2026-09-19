@@ -26,7 +26,7 @@ public static class DapperRepositoryServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registers <see cref="DapperRepository{TEntity, TId}"/> for the <b>read</b> side of a CQRS split — binds <see cref="IReadRepository{TEntity, TId}"/> only (not <see cref="IWriteRepository{TEntity, TId}"/>/<see cref="IRepository{TEntity, TId}"/>). Pair with <c>AddEfWriteRepositories&lt;TContext&gt;()</c>. Requires an <see cref="IDbConnectionFactory"/>. Idempotent per entity.</summary>
+    /// <summary>Registers <see cref="DapperRepository{TEntity, TId}"/> for the read side of a CQRS split — binds <see cref="IReadRepository{TEntity, TId}"/> only (not <see cref="IWriteRepository{TEntity, TId}"/>/<see cref="IRepository{TEntity, TId}"/>). Pair with <c>AddEfWriteRepositories&lt;TContext&gt;()</c>. Requires an <see cref="IDbConnectionFactory"/>. Idempotent per entity.</summary>
     /// <typeparam name="TEntity">The entity type the read repository serves.</typeparam>
     /// <typeparam name="TId">The primary-key type.</typeparam>
     /// <param name="services">The service collection to configure.</param>

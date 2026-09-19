@@ -25,13 +25,21 @@ public sealed class TenantResolutionMiddleware
     {
         ArgumentNullException.ThrowIfNull(httpContext);
 
-        var tenantId = await resolver.ResolveAsync(httpContext);
-        if (tenantId is not null)
+        tenantContext.Clear();
+        try
         {
-            var tenant = await tenantStore.FindAsync(tenantId, httpContext.RequestAborted);
-            tenantContext.Set(tenantId, tenant);
-        }
+            var tenantId = await resolver.ResolveAsync(httpContext);
+            if (tenantId is not null)
+            {
+                var tenant = await tenantStore.FindAsync(tenantId, httpContext.RequestAborted);
+                tenantContext.Set(tenantId, tenant);
+            }
 
-        await _next(httpContext);
+            await _next(httpContext);
+        }
+        finally
+        {
+            tenantContext.Clear();
+        }
     }
 }

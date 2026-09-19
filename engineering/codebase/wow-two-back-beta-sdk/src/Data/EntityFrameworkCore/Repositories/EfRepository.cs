@@ -3,7 +3,7 @@ using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Repositories;
 
-/// <summary>EF Core implementation of <see cref="IRepository{TEntity, TId}"/> — each write persists immediately via <c>SaveChangesAsync</c>, and reads honor any global query filters on the context (e.g. the SDK soft-delete filter).</summary>
+/// <summary>Accesses entities through EF Core with eager writes and filtered reads.</summary>
 /// <remarks>The constructor takes the base <see cref="DbContext"/> so the type stays arity-2 and registers as an open generic; in multi-context apps, subclass per context (or register the target context as <see cref="DbContext"/>) — see <c>AddEfRepositories</c>.</remarks>
 /// <typeparam name="TEntity">The entity type.</typeparam>
 /// <typeparam name="TId">The primary-key type.</typeparam>
@@ -63,7 +63,26 @@ public class EfRepository<TEntity, TId> : IRepository<TEntity, TId>
     public virtual async Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
-        Set.Update(entity);
+
+        var entry = Context.Entry(entity);
+        if (entry.State == EntityState.Detached)
+        {
+            var tracked = Context.ChangeTracker
+                .Entries<TEntity>()
+                .FirstOrDefault(candidate =>
+                    candidate.State != EntityState.Detached
+                    && EqualityComparer<TId>.Default.Equals(candidate.Entity.Id, entity.Id));
+
+            if (tracked is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot update a detached '{typeof(TEntity).Name}' while another instance with key '{entity.Id}' is tracked. "
+                    + "Apply accepted changes to the tracked instance.");
+            }
+
+            Set.Update(entity);
+        }
+
         await Context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

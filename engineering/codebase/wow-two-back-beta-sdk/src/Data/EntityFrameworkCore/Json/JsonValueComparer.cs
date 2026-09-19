@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Serialization;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Json;
 
@@ -8,8 +9,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Json;
 /// <typeparam name="T">The CLR type being compared.</typeparam>
 public sealed class JsonValueComparer<T> : ValueComparer<T>
 {
-    /// <summary>Initializes the comparer with default <see cref="JsonSerializerOptions"/>.</summary>
-    public JsonValueComparer() : this(new JsonSerializerOptions(JsonSerializerDefaults.Web))
+    /// <summary>Initializes the comparer with the stored preset, <see cref="StoredJsonConstants.Default"/>.</summary>
+    public JsonValueComparer() : this(StoredJsonConstants.Default)
     {
     }
 

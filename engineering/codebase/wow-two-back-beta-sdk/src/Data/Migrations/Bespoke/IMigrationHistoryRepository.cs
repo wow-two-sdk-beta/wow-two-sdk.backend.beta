@@ -2,7 +2,7 @@ using System.Data.Common;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
-/// <summary>Defines the contract for the migration-history table and the apply-loop advisory lock.</summary>
+/// <summary>Defines access to the migration-history table and the apply-loop advisory lock.</summary>
 public interface IMigrationHistoryRepository
 {
     /// <summary>Creates the history table if missing — safe to call on every startup.</summary>

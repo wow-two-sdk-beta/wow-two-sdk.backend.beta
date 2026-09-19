@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
-/// <summary>Configuration for the SQL migrator, shared by every host.</summary>
+/// <summary>Holds configuration for the SQL migrator, shared by every host.</summary>
 public sealed record MigrationOptions
 {
     /// <summary>Gets or sets the version label stamped onto applied rows.</summary>

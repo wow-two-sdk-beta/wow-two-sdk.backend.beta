@@ -1,6 +1,5 @@
 using System.Data.Common;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Npgsql;
 using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 
@@ -21,7 +20,7 @@ public static class PostgresServiceCollectionExtensions
 
         services.AddSingleton(serviceProvider =>
         {
-            var connectionString = serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value.ConnectionString;
+            var connectionString = serviceProvider.GetRequiredService<DatabaseSettings>().ConnectionString;
             var builder = new NpgsqlDataSourceBuilder(connectionString);
             configure?.Invoke(builder);
             return builder.Build();

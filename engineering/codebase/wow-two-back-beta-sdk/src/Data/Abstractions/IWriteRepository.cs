@@ -19,8 +19,9 @@ public interface IWriteRepository<TEntity, in TId>
     Task CreateRangeAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing <paramref name="entity"/>.</summary>
-    /// <param name="entity">The entity whose changes to save.</param>
+    /// <param name="entity">The tracked entity whose accepted properties changed, or a detached entity when no instance with the same key is tracked.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <remarks>A replacement copy is rejected while the original instance is tracked. A detached update marks its complete mapped state as modified.</remarks>
     Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
 
     /// <summary>Removes an existing <paramref name="entity"/>.</summary>

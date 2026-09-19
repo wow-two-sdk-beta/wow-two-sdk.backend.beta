@@ -20,7 +20,8 @@ public sealed partial class MigrationRunnerService(
     IMigrationHistoryRepository history,
     IDbConnectionFactory connections,
     MigrationOptions options,
-    ILogger<MigrationRunnerService> logger) : IMigrationRunnerService
+    ILogger<MigrationRunnerService> logger,
+    IMigrationChecksumHasher checksumHasher) : IMigrationRunnerService
 {
     /// <inheritdoc />
     /// <remarks>
@@ -89,7 +90,10 @@ public sealed partial class MigrationRunnerService(
         // No-transaction migrations run bare (e.g. CREATE INDEX CONCURRENTLY), then record in a separate statement.
         if (migration.NoTransaction)
         {
-            await conn.ExecuteAsync(new CommandDefinition(migration.ApplySql, cancellationToken: ct));
+            // Npgsql cannot pipeline CREATE INDEX CONCURRENTLY with adjacent statements. Execute each parsed
+            // statement separately so an idempotent drop + create recovery script stays outside a transaction.
+            foreach (var statement in SqlStatementSplitter.Split(migration.ApplySql))
+                await conn.ExecuteAsync(new CommandDefinition(statement, cancellationToken: ct));
             stopwatch.Stop();
             await history.RecordAsync(conn, null, BuildEntry(migration, appliedBy, stopwatch.ElapsedMilliseconds), ct);
             return stopwatch.ElapsedMilliseconds;
@@ -242,12 +246,17 @@ public sealed partial class MigrationRunnerService(
     /// <summary>Reads the source, parses <c>NNN-name</c>, computes checksums, and returns migrations ordered by ordinal.</summary>
     private Result<List<MigrationDescriptor>> Scan()
     {
+        if (migrations.Read().IsFailure(out var sourceError, out var rawMigrations))
+        {
+            return Result<List<MigrationDescriptor>>.Fail(sourceError);
+        }
+
         var descriptors = new List<MigrationDescriptor>();
 
-        foreach (var raw in migrations.Read())
+        foreach (var raw in rawMigrations)
         {
             // Parse the NNN-name prefix; reject anything that does not match.
-            var match = MigrationConventions.FolderPattern().Match(raw.Name);
+            var match = MigrationConstants.FolderPattern().Match(raw.Name);
             if (!match.Success)
             {
                 return Result<List<MigrationDescriptor>>.Fail(AppErrorFactory.Validation(
@@ -260,7 +269,7 @@ public sealed partial class MigrationRunnerService(
                 Name = match.Groups[2].Value,
                 ApplySql = raw.ApplySql,
                 RollbackSql = raw.RollbackSql,
-                Checksum = raw.ApplySql.ToMigrationChecksum(),
+                Checksum = checksumHasher.Hash(raw.ApplySql),
                 NoTransaction = HasNoTransactionDirective(raw.ApplySql),
             });
         }
@@ -288,7 +297,7 @@ public sealed partial class MigrationRunnerService(
                 continue;
             if (!trimmed.StartsWith("--", StringComparison.Ordinal))
                 break; // The first non-comment line ends the header.
-            if (trimmed.Replace(" ", "").Equals(MigrationConventions.NoTransactionDirectiveCompact, StringComparison.OrdinalIgnoreCase))
+            if (trimmed.Replace(" ", "").Equals(MigrationConstants.NoTransactionDirectiveCompact, StringComparison.OrdinalIgnoreCase))
                 return true;
         }
 

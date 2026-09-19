@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Interceptors;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Data.EntityFrameworkCore;
 
@@ -42,7 +43,11 @@ public static class DbContextProviderSwapExtensions
         ArgumentNullException.ThrowIfNull(configure);
 
         services.RemoveAllForDbContext<TContext>();
-        services.AddDbContext<TContext>(configure);
+        services.AddDbContext<TContext>((serviceProvider, options) =>
+        {
+            options.AddRegisteredInterceptors(serviceProvider);
+            configure(options);
+        });
         return services;
     }
 }

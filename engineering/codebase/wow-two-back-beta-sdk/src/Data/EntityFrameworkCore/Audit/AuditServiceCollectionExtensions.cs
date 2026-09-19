@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Interceptors;
+using WoW.Two.Sdk.Backend.Beta.Identity.CurrentUser;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit;
 
@@ -9,7 +10,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Audit;
 public static class AuditServiceCollectionExtensions
 {
     /// <summary>Registers the <see cref="AuditInterceptor"/> on the pluggable-interceptor seam, so every SDK-registered DbContext attaches it automatically.</summary>
-    /// <remarks><c>TimeProvider</c> falls back to <see cref="TimeProvider.System"/> if not registered; register <see cref="IAuditCurrentUserAccessor"/> if you want <c>CreatedBy</c>/<c>UpdatedBy</c> stamping. Audit runs in DI registration order relative to the other registered interceptors — register a guard interceptor before this call to have it run first.</remarks>
+    /// <remarks><c>TimeProvider</c> falls back to <see cref="TimeProvider.System"/> if not registered; register <see cref="ICurrentUserService"/> if you want <c>CreatedBy</c>/<c>UpdatedBy</c> stamping. Audit runs in DI registration order relative to the other registered interceptors — register a guard interceptor before this call to have it run first.</remarks>
     /// <param name="services">The service collection to configure.</param>
     public static IServiceCollection AddEfCoreAuditInterceptor(this IServiceCollection services)
     {
@@ -18,14 +19,14 @@ public static class AuditServiceCollectionExtensions
         return services.AddEfInterceptor<AuditInterceptor>();
     }
 
-    /// <summary>Registers the audit interceptor and a custom <typeparamref name="TAccessor"/> implementation for current-user resolution.</summary>
-    /// <typeparam name="TAccessor">The current-user accessor implementation to register.</typeparam>
+    /// <summary>Registers the audit interceptor and a custom <typeparamref name="TCurrentUser"/> implementation for current-user resolution.</summary>
+    /// <typeparam name="TCurrentUser">The current-user service implementation to register.</typeparam>
     /// <param name="services">The service collection to configure.</param>
-    public static IServiceCollection AddEfCoreAuditInterceptor<TAccessor>(this IServiceCollection services)
-        where TAccessor : class, IAuditCurrentUserAccessor
+    public static IServiceCollection AddEfCoreAuditInterceptor<TCurrentUser>(this IServiceCollection services)
+        where TCurrentUser : class, ICurrentUserService
     {
         services.AddEfCoreAuditInterceptor();
-        services.TryAddSingleton<IAuditCurrentUserAccessor, TAccessor>();
+        services.TryAddSingleton<ICurrentUserService, TCurrentUser>();
         return services;
     }
 

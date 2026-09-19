@@ -3,7 +3,7 @@ using DbUp.Builder;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.DbUp;
 
-/// <summary>Options for the DbUp startup runner.</summary>
+/// <summary>Holds options for the DbUp startup runner.</summary>
 public sealed record DbUpOptions
 {
     /// <summary>Gets a value indicating whether the runner is enabled. Default <c>true</c>.</summary>

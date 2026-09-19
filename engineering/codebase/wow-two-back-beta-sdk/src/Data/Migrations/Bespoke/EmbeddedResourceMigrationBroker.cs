@@ -1,14 +1,15 @@
 using System.Reflection;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
-/// <summary>Provides migrations embedded as assembly resources (logical name <c>Migrations/NNN-name/Apply.sql</c>).</summary>
+/// <summary>Integrates migration scripts stored as assembly resources.</summary>
 /// <remarks>Use at runtime so the schema ships inside the binary — no filesystem dependency at deploy.</remarks>
 public sealed class EmbeddedResourceMigrationBroker(Assembly assembly, string folderPrefix = "Migrations/") : IMigrationBroker
 {
     /// <inheritdoc />
-    /// <exception cref="InvalidOperationException">A migration is missing its embedded Rollback resource, or a resource stream cannot be opened.</exception>
-    public IReadOnlyList<RawMigration> Read()
+    public Result<IReadOnlyList<RawMigration>> Read()
     {
         var apply = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var rollback = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -29,33 +30,60 @@ public sealed class EmbeddedResourceMigrationBroker(Assembly assembly, string fo
             var file = relative[(slash + 1)..];
 
             // Bucket each resource by folder into apply / rollback.
-            if (file.Equals(MigrationConventions.ApplyFileName, StringComparison.OrdinalIgnoreCase))
-                apply[folder] = ReadResource(resourceName);
-            else if (file.Equals(MigrationConventions.RollbackFileName, StringComparison.OrdinalIgnoreCase))
-                rollback[folder] = ReadResource(resourceName);
+            if (file.Equals(MigrationConstants.ApplyFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                if (ReadResource(resourceName).IsFailure(out var applyError, out var applyResourceSql))
+                    return Result<IReadOnlyList<RawMigration>>.Fail(applyError);
+
+                apply[folder] = applyResourceSql;
+            }
+            else if (file.Equals(MigrationConstants.RollbackFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                if (ReadResource(resourceName).IsFailure(out var rollbackError, out var rollbackResourceSql))
+                    return Result<IReadOnlyList<RawMigration>>.Fail(rollbackError);
+
+                rollback[folder] = rollbackResourceSql;
+            }
         }
 
-        return apply
-            .Select(kv => new RawMigration
+        var migrations = new List<RawMigration>(apply.Count);
+        foreach (var (folder, applySql) in apply)
+        {
+            if (!rollback.TryGetValue(folder, out var rollbackSql))
             {
-                Name = kv.Key,
-                ApplySql = kv.Value,
-                RollbackSql = GetRollbackOrThrow(rollback, kv.Key),
-            })
-            .ToList();
+                return Result<IReadOnlyList<RawMigration>>.Fail(AppErrorFactory.FileNotFound(
+                    $"Migration '{folder}' is missing {MigrationConstants.RollbackFileName}."));
+            }
+
+            migrations.Add(new RawMigration
+            {
+                Name = folder,
+                ApplySql = applySql,
+                RollbackSql = rollbackSql,
+            });
+        }
+
+        return Result<IReadOnlyList<RawMigration>>.Ok(migrations);
     }
 
-    private static string GetRollbackOrThrow(Dictionary<string, string> rollback, string folder) =>
-        rollback.TryGetValue(folder, out var sql)
-            ? sql
-            : throw new InvalidOperationException(
-                $"Migration '{folder}' is missing {MigrationConventions.RollbackFileName} — every migration must ship a rollback.");
-
-    private string ReadResource(string name)
+    private Result<string> ReadResource(string name)
     {
-        using var stream = assembly.GetManifestResourceStream(name)
-            ?? throw new InvalidOperationException($"Embedded migration resource '{name}' could not be opened.");
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+        try
+        {
+            using var stream = assembly.GetManifestResourceStream(name);
+            if (stream is null)
+            {
+                return Result<string>.Fail(AppErrorFactory.DataIntegrity(
+                    $"Embedded migration resource '{name}' could not be opened."));
+            }
+
+            using var reader = new StreamReader(stream);
+            return Result<string>.Ok(reader.ReadToEnd());
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return Result<string>.Fail(AppErrorFactory.DataIntegrity(
+                $"Embedded migration resource '{name}' could not be read.", exception));
+        }
     }
 }

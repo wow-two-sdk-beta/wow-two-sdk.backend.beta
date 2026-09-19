@@ -10,7 +10,7 @@ using Xunit;
 
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Data.EntityFrameworkCore;
 
-/// <summary>A provider-switchable EF test database — a Postgres container (Respawn reset) or an in-memory SQLite database — behind one uniform API, selected by <see cref="TestSetupOptions"/>.</summary>
+/// <summary>An EF test database using one fixture-owned provider: Postgres with Respawn or in-memory SQLite.</summary>
 /// <remarks>Subclass per app to supply the model conventions via <see cref="CreateContext"/>; expose the subclass as an xUnit <c>ICollectionFixture</c> and reset per test with <see cref="ResetAsync"/>. Override <see cref="Provider"/> to pin one suite to a specific provider.</remarks>
 /// <typeparam name="TContext">The application <see cref="DbContext"/> under test.</typeparam>
 [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable", Justification = "Teardown runs in IAsyncLifetime.DisposeAsync, which xUnit invokes.")]
@@ -22,19 +22,28 @@ public abstract class RelationalTestDb<TContext> : IAsyncLifetime
     private SqliteConnection? _sqlite;
 
     /// <summary>Creates a fixture that constructs and owns its own pinned Postgres container.</summary>
-    protected RelationalTestDb() => _ownsPostgres = true;
+    protected RelationalTestDb() : this(DatabaseProvider.Postgres) { }
 
-    /// <summary>Creates a fixture over a <b>pre-built</b> <see cref="PostgresFixture"/> — one container shared by a whole test collection instead of one per class.</summary>
+    /// <summary>Creates a fixture that owns the selected provider's resources.</summary>
+    /// <param name="provider">The provider used by this fixture instance.</param>
+    protected RelationalTestDb(DatabaseProvider provider)
+    {
+        Provider = provider;
+        _ownsPostgres = true;
+    }
+
+    /// <summary>Creates a fixture over a pre-built <see cref="PostgresFixture"/> — one container shared by a whole test collection instead of one per class.</summary>
     /// <remarks>The caller keeps ownership: <see cref="DisposeAsync"/> leaves the supplied fixture alone. Pass an <em>unstarted</em> fixture; <see cref="InitializeAsync"/> starts it (<c>StartAsync</c> is idempotent, so an already-started one is fine too).</remarks>
     /// <param name="postgres">The externally-owned Postgres fixture this test database binds to.</param>
     protected RelationalTestDb(PostgresFixture postgres)
     {
         _postgres = postgres ?? throw new ArgumentNullException(nameof(postgres));
+        Provider = DatabaseProvider.Postgres;
         _ownsPostgres = false;
     }
 
-    /// <summary>The provider this fixture uses; defaults to <see cref="TestSetupOptions.Current"/>. Override to pin a single suite to a specific provider.</summary>
-    public virtual DatabaseProvider Provider => TestSetupOptions.Current.Database;
+    /// <summary>The provider owned by this fixture instance.</summary>
+    public DatabaseProvider Provider { get; }
 
     /// <summary>The connection string of the active test database.</summary>
     public string ConnectionString => Provider == DatabaseProvider.Sqlite
@@ -76,8 +85,8 @@ public abstract class RelationalTestDb<TContext> : IAsyncLifetime
         return CreateContext(builder);
     }
 
-    /// <summary>Opens a <b>second, real</b> <see cref="DbConnection"/> against the same database — the raw connection the Dapper tier and every cross-connection visibility assertion needs.</summary>
-    /// <remarks>The caller owns and disposes the returned connection. <b>Postgres only.</b> On SQLite the connection string is <c>DataSource=:memory:</c>, so a second connection would open a different, empty database and every assertion made through it would pass vacuously — this throws instead of manufacturing that confidence.</remarks>
+    /// <summary>Opens a second, real <see cref="DbConnection"/> against the same database — the raw connection the Dapper tier and every cross-connection visibility assertion needs.</summary>
+    /// <remarks>The caller owns and disposes the returned connection. Postgres only. On SQLite the connection string is <c>DataSource=:memory:</c>, so a second connection would open a different, empty database and every assertion made through it would pass vacuously — this throws instead of manufacturing that confidence.</remarks>
     /// <param name="cancellationToken">Token to cancel the open.</param>
     /// <exception cref="NotSupportedException">The active provider is SQLite.</exception>
     public async Task<DbConnection> OpenConnectionAsync(CancellationToken cancellationToken = default)

@@ -172,7 +172,7 @@ internal sealed partial class CliRunnerService(IMigrationsPathBroker pathBroker)
     public int NewMigration(string? sqlDir, string name)
     {
         var slug = Slugify(name);
-        var devDir = Path.Combine(ResolveSqlDir(sqlDir), MigrationConventions.DevFolderName);
+        var devDir = Path.Combine(ResolveSqlDir(sqlDir), MigrationConstants.DevFolderName);
         Directory.CreateDirectory(devDir);
 
         var path = Path.Combine(devDir, $"{slug}.sql");
@@ -185,7 +185,7 @@ internal sealed partial class CliRunnerService(IMigrationsPathBroker pathBroker)
         File.WriteAllText(path,
             $"-- Dev migration: {slug}\n" +
             "-- Iterate freely. Promote to a numbered Apply/Rollback pair with: wow-migrate promote\n" +
-            $"-- Put '{MigrationConventions.NoTransactionDirective}' as the FIRST line if this must run outside a transaction\n" +
+            $"-- Put '{MigrationConstants.NoTransactionDirective}' as the FIRST line if this must run outside a transaction\n" +
             "--   (such files re-run on a mid-apply crash, so make them idempotent: IF NOT EXISTS, guarded DO blocks).\n\n");
 
         Console.WriteLine($"✓ Created {path}");
@@ -197,7 +197,7 @@ internal sealed partial class CliRunnerService(IMigrationsPathBroker pathBroker)
     public int PromoteDev(string? sqlDir)
     {
         var root = ResolveSqlDir(sqlDir);
-        var devDir = Path.Combine(root, MigrationConventions.DevFolderName);
+        var devDir = Path.Combine(root, MigrationConstants.DevFolderName);
         if (!Directory.Exists(devDir))
         {
             Console.WriteLine("No Dev/ folder — nothing to promote.");
@@ -218,8 +218,8 @@ internal sealed partial class CliRunnerService(IMigrationsPathBroker pathBroker)
             var folder = Path.Combine(root, $"{next:D3}-{name}");
             Directory.CreateDirectory(folder);
 
-            File.Copy(file, Path.Combine(folder, MigrationConventions.ApplyFileName));
-            File.WriteAllText(Path.Combine(folder, MigrationConventions.RollbackFileName),
+            File.Copy(file, Path.Combine(folder, MigrationConstants.ApplyFileName));
+            File.WriteAllText(Path.Combine(folder, MigrationConstants.RollbackFileName),
                 $"-- Rollback for {next:D3}-{name}. Write the inverse of Apply.sql (dev/test only).\n");
             File.Delete(file);
 

@@ -5,12 +5,9 @@ using WoW.Two.Sdk.Backend.Beta.Testing.Data.EntityFrameworkCore;
 namespace WoW.Two.Sdk.Backend.Beta.Data.Tests.Harness;
 
 /// <summary>The suite's shared Postgres test database — one container for the whole collection, truncated per test.</summary>
-/// <remarks><see cref="Provider"/> is pinned rather than read from <c>TestSetupOptions</c>: SQLite has no <c>xmin</c>, no <c>FOR UPDATE</c> and different savepoint semantics, and its <c>DataSource=:memory:</c> connection string makes a second connection open a different, empty database — a green SQLite run here would assert on nothing.</remarks>
+/// <remarks>SQLite has no <c>xmin</c>, no <c>FOR UPDATE</c> and different savepoint semantics, and its <c>DataSource=:memory:</c> connection string makes a second connection open a different, empty database — a green SQLite run here would assert on nothing.</remarks>
 public sealed class DataTestDb : RelationalTestDb<DataTestDbContext>
 {
-    /// <inheritdoc />
-    public override DatabaseProvider Provider => DatabaseProvider.Postgres;
-
     /// <inheritdoc />
     /// <remarks>snake_case matches <c>AddPostgresPersistence</c>'s own convention, so the DDL <c>EnsureCreated</c> emits is the DDL the flagship registration maps over — including the outbox columns the claim strategy's raw SQL names. Applied here, not in <see cref="CreateContext"/>, so the DI-built path gets it too.</remarks>
     protected override void ApplyConventions(DbContextOptionsBuilder builder)

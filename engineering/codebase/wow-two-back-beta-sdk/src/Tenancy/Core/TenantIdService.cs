@@ -1,12 +1,11 @@
 using System.Net;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Tenancy.Core;
 
 /// <summary>
-/// Default <see cref="ITenantIdService"/> — tries the providers enabled in
-/// <see cref="TenancyConventionOptions"/> in the order header → route → claim → subdomain and returns
+/// Provides tenant-id resolution through the providers enabled in
+/// <see cref="TenancyConventionOptions"/> in the order claim → route → header → subdomain and returns
 /// the first non-empty tenant id.
 /// </summary>
 public sealed class TenantIdService : ITenantIdService
@@ -15,10 +14,10 @@ public sealed class TenantIdService : ITenantIdService
 
     /// <summary>Creates the resolver from the tenancy options.</summary>
     /// <param name="options">The tenancy convention options.</param>
-    public TenantIdService(IOptions<TenancyConventionOptions> options)
+    public TenantIdService(TenancyConventionOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        _options = options.Value;
+        _options = options;
     }
 
     /// <inheritdoc />
@@ -27,9 +26,9 @@ public sealed class TenantIdService : ITenantIdService
         ArgumentNullException.ThrowIfNull(httpContext);
 
         string? tenantId = null;
-        if (_options.UseHeader) tenantId ??= FromHeader(httpContext);
-        if (_options.UseRoute) tenantId ??= FromRoute(httpContext);
         if (_options.UseClaim) tenantId ??= FromClaim(httpContext);
+        if (_options.UseRoute) tenantId ??= FromRoute(httpContext);
+        if (_options.UseHeader) tenantId ??= FromHeader(httpContext);
         if (_options.UseSubdomain) tenantId ??= FromSubdomain(httpContext);
 
         return ValueTask.FromResult(string.IsNullOrWhiteSpace(tenantId) ? null : tenantId);

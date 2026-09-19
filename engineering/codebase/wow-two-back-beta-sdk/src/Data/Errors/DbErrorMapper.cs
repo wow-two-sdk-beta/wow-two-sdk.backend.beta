@@ -2,7 +2,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Errors;
 
-/// <summary>Provides the static, DI-free convenience for translating an Npgsql/EF Core exception into an <see cref="AppError"/> at a database catch site; shares its switch with <see cref="DbExceptionMappingRule"/>.</summary>
+/// <summary>Maps an Npgsql or EF Core exception to an <see cref="AppError"/>.</summary>
 public static class DbErrorMapper
 {
     /// <summary>Translates <paramref name="exception"/> into an <see cref="AppError"/>, falling back to <see cref="AppErrorType.Unexpected"/> for a non-database exception.</summary>

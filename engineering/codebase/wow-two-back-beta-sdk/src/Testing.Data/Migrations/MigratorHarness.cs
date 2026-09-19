@@ -30,6 +30,10 @@ public sealed class MigratorHarness : IAsyncDisposable
     /// <summary>The effective options the engine runs under, after the configure hook.</summary>
     public MigrationOptions Options => _provider.GetRequiredService<MigrationOptions>();
 
+    /// <summary>The target provider's simultaneous-applicant guarantee.</summary>
+    public MigrationCoordinationMode CoordinationMode =>
+        _provider.GetRequiredService<IMigrationDialect>().CoordinationMode;
+
     /// <summary>Builds a Postgres migrator over <paramref name="connectionString"/> reading filesystem migrations from <paramref name="migrationsRoot"/>.</summary>
     /// <param name="connectionString">The Postgres connection string, typically a container DB.</param>
     /// <param name="migrationsRoot">The on-disk <c>NNN-name</c> migrations root, typically a <see cref="MigrationsWorkspace.Root"/>.</param>

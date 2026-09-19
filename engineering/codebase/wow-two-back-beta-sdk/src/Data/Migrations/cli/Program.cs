@@ -2,8 +2,7 @@ using System.CommandLine;
 using Dapper;
 using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Cli;
 
-// wow-migrate — web-free CLI over the SQL migrator engine (ported from smart-qr-migrate).
-// Command tree + global options live in CliCommands; command bodies + DI wiring live in CliRunner.
+// Run the web-free migration CLI assembled by CliCommands and CliRunner.
 
 DefaultTypeMap.MatchNamesWithUnderscores = true; // Dapper snake_case → PascalCase for migration_history reads
 

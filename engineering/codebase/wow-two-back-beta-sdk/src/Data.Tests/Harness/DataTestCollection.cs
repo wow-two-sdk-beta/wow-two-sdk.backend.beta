@@ -8,6 +8,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Tests.Harness;
 [CollectionDefinition(Name)]
 public sealed class DataTestCollection : ICollectionFixture<DataTestDb>
 {
-    /// <summary>The collection name test classes attach to.</summary>
+    /// <summary>Holds the collection name test classes attach to.</summary>
     public const string Name = "data";
 }

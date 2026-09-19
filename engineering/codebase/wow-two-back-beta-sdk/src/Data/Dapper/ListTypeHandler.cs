@@ -3,7 +3,7 @@ using Dapper;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper;
 
-/// <summary>Bridges <see cref="List{T}"/> CLR properties to providers that return arrays for array-typed columns (e.g. Postgres <c>TEXT[]</c>, <c>INT[]</c>).</summary>
+/// <summary>Handles <see cref="List{T}"/> columns returned as arrays.</summary>
 public sealed class ListTypeHandler<T> : SqlMapper.TypeHandler<List<T>>
 {
     /// <inheritdoc />

@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Ef;
 
-/// <summary>Options for the EF Migrations startup runner.</summary>
+/// <summary>Holds options for the EF Migrations startup runner.</summary>
 public sealed record EfMigrationsOptions
 {
     /// <summary>Gets a value indicating whether the runner is enabled. Default <c>true</c> — flip to <c>false</c> in production when migrations are applied out-of-band (CI step, ops job).</summary>

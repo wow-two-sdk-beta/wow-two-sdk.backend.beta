@@ -14,6 +14,9 @@ public sealed class SqliteMigrationDialect : IMigrationDialect
     static SqliteMigrationDialect() => SqlMapper.AddTypeHandler(new DateTimeOffsetTextHandler());
 
     /// <inheritdoc />
+    public MigrationCoordinationMode CoordinationMode => MigrationCoordinationMode.SingleApplicantRequired;
+
+    /// <inheritdoc />
     public Task<bool> EnsureDatabaseExistsAsync(string connectionString, CancellationToken ct = default)
     {
         var builder = new SqliteConnectionStringBuilder(connectionString);

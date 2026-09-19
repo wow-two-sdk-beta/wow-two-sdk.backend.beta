@@ -29,7 +29,7 @@ public static class RepositoryServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registers the EF Core repository for the <b>write</b> side of a CQRS split — binds the open-generic <see cref="IWriteRepository{TEntity, TId}"/> to <see cref="EfRepository{TEntity, TId}"/>. Pair with <c>AddDapperReadRepository&lt;TEntity, TId&gt;()</c> for the read side. Idempotent (safe to call per entity).</summary>
+    /// <summary>Registers the EF Core repository for the write side of a CQRS split — binds the open-generic <see cref="IWriteRepository{TEntity, TId}"/> to <see cref="EfRepository{TEntity, TId}"/>. Pair with <c>AddDapperReadRepository&lt;TEntity, TId&gt;()</c> for the read side. Idempotent (safe to call per entity).</summary>
     /// <typeparam name="TContext">The DbContext type backing the write repositories.</typeparam>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="lifetime">The service lifetime. Default scoped.</param>

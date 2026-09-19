@@ -9,8 +9,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Tenancy.PerRow;
 
 /// <summary>
 /// Stamps the current tenant id onto newly-inserted <see cref="IHasTenant{TTenantId}">IHasTenant&lt;string&gt;</see>
-/// entities that don't already carry one, so callers never set <c>TenantId</c> by hand. No-op when no tenant
-/// is in scope (system operations). Mirrors the audit/soft-delete interceptor pattern.
+/// entities and validates the stored tenant before updates or deletes. No-op when no tenant is in scope
+/// (explicit system operations). Mirrors the audit/soft-delete interceptor pattern.
 /// </summary>
 public sealed class TenantStampInterceptor : SaveChangesInterceptor
 {
@@ -27,18 +27,18 @@ public sealed class TenantStampInterceptor : SaveChangesInterceptor
     /// <inheritdoc />
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
-        Stamp(eventData.Context);
+        Enforce(eventData.Context);
         return base.SavingChanges(eventData, result);
     }
 
     /// <inheritdoc />
-    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+    public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
-        Stamp(eventData.Context);
-        return base.SavingChangesAsync(eventData, result, cancellationToken);
+        await EnforceAsync(eventData.Context, cancellationToken).ConfigureAwait(false);
+        return await base.SavingChangesAsync(eventData, result, cancellationToken).ConfigureAwait(false);
     }
 
-    private void Stamp(DbContext? context)
+    private void Enforce(DbContext? context)
     {
         if (context is null) return;
 
@@ -47,12 +47,68 @@ public sealed class TenantStampInterceptor : SaveChangesInterceptor
 
         foreach (var entry in context.ChangeTracker.Entries())
         {
-            if (entry.State == EntityState.Added
-                && entry.Entity is IHasTenant<string> tenanted
-                && string.IsNullOrEmpty(tenanted.TenantId))
+            if (entry.Entity is not IHasTenant<string> tenanted)
+                continue;
+
+            if (entry.State == EntityState.Added)
             {
                 tenanted.TenantId = tenantId;
+                continue;
             }
+
+            if (entry.State is not (EntityState.Modified or EntityState.Deleted))
+                continue;
+
+            var stored = entry.GetDatabaseValues();
+            ValidateStoredTenant(entry.Metadata.ClrType, stored?[nameof(IHasTenant<string>.TenantId)] as string, tenantId);
+            if (entry.State == EntityState.Modified)
+                PreserveTenant(entry, tenanted, tenantId);
+        }
+    }
+
+    private async ValueTask EnforceAsync(DbContext? context, CancellationToken cancellationToken)
+    {
+        if (context is null) return;
+
+        var tenantId = _tenantContext.TenantId;
+        if (tenantId is null) return;
+
+        foreach (var entry in context.ChangeTracker.Entries())
+        {
+            if (entry.Entity is not IHasTenant<string> tenanted)
+                continue;
+
+            if (entry.State == EntityState.Added)
+            {
+                tenanted.TenantId = tenantId;
+                continue;
+            }
+
+            if (entry.State is not (EntityState.Modified or EntityState.Deleted))
+                continue;
+
+            var stored = await entry.GetDatabaseValuesAsync(cancellationToken).ConfigureAwait(false);
+            ValidateStoredTenant(entry.Metadata.ClrType, stored?[nameof(IHasTenant<string>.TenantId)] as string, tenantId);
+            if (entry.State == EntityState.Modified)
+                PreserveTenant(entry, tenanted, tenantId);
+        }
+    }
+
+    private static void PreserveTenant(
+        Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry,
+        IHasTenant<string> entity,
+        string tenantId)
+    {
+        entity.TenantId = tenantId;
+        entry.Property(nameof(IHasTenant<string>.TenantId)).IsModified = false;
+    }
+
+    private static void ValidateStoredTenant(Type entityType, string? storedTenantId, string currentTenantId)
+    {
+        if (storedTenantId is not null && !string.Equals(storedTenantId, currentTenantId, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Cannot write '{entityType.Name}' from tenant '{currentTenantId}' because the stored row belongs to another tenant.");
         }
     }
 }

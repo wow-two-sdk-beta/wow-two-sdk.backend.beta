@@ -4,10 +4,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
-namespace WoW.Two.Sdk.Backend.Beta.Testing.Data.Migrations;
+namespace WoW.Two.Sdk.Backend.Beta.Testing.Data.Migrations.Services;
 
-/// <summary>No-op <see cref="IMigrationRunnerService"/> for tests whose schema is created outside the bespoke migrator.</summary>
-internal sealed class NoOpMigrationRunner : IMigrationRunnerService
+/// <summary>Provides no-op migrations for tests whose schema is created outside the bespoke migrator.</summary>
+/// <remarks>Replace with the real <see cref="IMigrationRunnerService"/> when the test exercises migrations.</remarks>
+internal sealed class NoOpMigrationRunnerService : IMigrationRunnerService
 {
     /// <inheritdoc />
     public Task<Result<IReadOnlyList<string>>> ApplyPendingAsync(string appliedBy, CancellationToken ct = default) =>

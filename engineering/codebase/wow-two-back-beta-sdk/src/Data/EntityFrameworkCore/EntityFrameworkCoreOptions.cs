@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 
-/// <summary>Configuration for a DbContext registered via <c>AddEntityFrameworkCore&lt;T&gt;</c>.</summary>
+/// <summary>Holds configuration for a DbContext registered via <c>AddEntityFrameworkCore&lt;T&gt;</c>.</summary>
 public sealed record EntityFrameworkCoreOptions
 {
     /// <summary>Gets a value indicating whether DbContext pooling is enabled. Default <c>true</c>.</summary>

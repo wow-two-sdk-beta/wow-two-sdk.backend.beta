@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Tenancy.Core;
 
-/// <summary>Resolves the tenant id for an incoming request.</summary>
+/// <summary>Defines behavior that resolves the tenant id for an incoming request.</summary>
 public interface ITenantIdService
 {
     /// <summary>Resolves the tenant id from the request, or <see langword="null"/> when none applies.</summary>

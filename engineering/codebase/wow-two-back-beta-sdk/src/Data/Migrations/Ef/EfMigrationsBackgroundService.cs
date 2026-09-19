@@ -6,58 +6,46 @@ using Microsoft.Extensions.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Ef;
 
-/// <summary>Hosted service that applies pending EF Core migrations on application startup for the configured <typeparamref name="TContext"/>.</summary>
-public sealed partial class EfMigrationsBackgroundService<TContext> : IHostedService
+/// <summary>Runs pending EF Core migrations during host startup.</summary>
+/// <param name="services">The root provider used to create a scope for the context.</param>
+/// <param name="options">The EF migrations runner options.</param>
+/// <param name="logger">The logger for migration progress and retries.</param>
+public sealed partial class EfMigrationsBackgroundService<TContext>(
+    IServiceProvider services,
+    EfMigrationsOptions options,
+    ILogger<EfMigrationsBackgroundService<TContext>> logger) : IHostedService
     where TContext : DbContext
 {
-    private readonly IServiceProvider _services;
-    private readonly EfMigrationsOptions _options;
-    private readonly ILogger<EfMigrationsBackgroundService<TContext>> _logger;
-
-    /// <summary>Initializes a new instance.</summary>
-    /// <param name="services">The root provider used to create a scope for the context.</param>
-    /// <param name="options">The EF migrations runner options.</param>
-    /// <param name="logger">The logger for migration progress and retries.</param>
-    public EfMigrationsBackgroundService(
-        IServiceProvider services,
-        EfMigrationsOptions options,
-        ILogger<EfMigrationsBackgroundService<TContext>> logger)
-    {
-        _services = services;
-        _options = options;
-        _logger = logger;
-    }
-
     /// <inheritdoc />
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        if (!_options.Enabled)
+        if (!options.Enabled)
         {
-            LogDisabled(_logger);
+            LogDisabled(logger);
             return;
         }
 
-        using var scope = _services.CreateScope();
+        using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<TContext>();
 
-        for (var attempt = 1; attempt <= _options.MaxConnectAttempts; attempt++)
+        for (var attempt = 1; attempt <= options.MaxConnectAttempts; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             try
             {
-                LogApplying(_logger, typeof(TContext).Name, attempt, _options.MaxConnectAttempts);
+                LogApplying(logger, typeof(TContext).Name, attempt, options.MaxConnectAttempts);
 
                 await context.Database.MigrateAsync(cancellationToken);
 
-                LogApplied(_logger, typeof(TContext).Name);
+                LogApplied(logger, typeof(TContext).Name);
                 return;
             }
-            catch (Exception ex) when (attempt < _options.MaxConnectAttempts)
+            catch (Exception ex) when (attempt < options.MaxConnectAttempts)
             {
-                LogAttemptFailed(_logger, attempt, _options.ConnectRetryDelay, ex);
+                LogAttemptFailed(logger, attempt, options.ConnectRetryDelay, ex);
 
-                await Task.Delay(_options.ConnectRetryDelay, cancellationToken);
+                await Task.Delay(options.ConnectRetryDelay, cancellationToken);
             }
         }
     }

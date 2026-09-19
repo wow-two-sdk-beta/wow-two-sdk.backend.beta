@@ -10,6 +10,9 @@ public sealed class PostgresMigrationDialect : IMigrationDialect
     private const string MaintenanceDatabase = "postgres";
 
     /// <inheritdoc />
+    public MigrationCoordinationMode CoordinationMode => MigrationCoordinationMode.DatabaseLock;
+
+    /// <inheritdoc />
     public async Task<bool> EnsureDatabaseExistsAsync(string connectionString, CancellationToken ct = default)
     {
         var builder = new NpgsqlConnectionStringBuilder(connectionString);

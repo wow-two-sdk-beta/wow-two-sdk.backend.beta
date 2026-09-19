@@ -2,7 +2,7 @@ using System.Data.Common;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 
-/// <summary>Creates a fresh <see cref="DbConnection"/> for ad-hoc Dapper queries — implement once per provider (Npgsql, Sqlite, SqlClient).</summary>
+/// <summary>Defines behavior that creates a fresh <see cref="DbConnection"/> for ad-hoc Dapper queries — implement once per provider (Npgsql, Sqlite, SqlClient).</summary>
 public interface IDbConnectionFactory
 {
     /// <summary>Creates a new closed connection. Caller is responsible for opening and disposing.</summary>

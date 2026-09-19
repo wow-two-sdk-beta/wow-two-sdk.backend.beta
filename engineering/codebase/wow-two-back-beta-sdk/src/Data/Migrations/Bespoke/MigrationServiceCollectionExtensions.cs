@@ -1,8 +1,8 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Migrations.Bespoke;
 
@@ -34,14 +34,20 @@ public static class MigrationServiceCollectionExtensions
     private static IServiceCollection AddDatabaseBespokeMigrations(
         this IServiceCollection services, Func<IServiceProvider, IMigrationBroker> brokerFactory, Action<MigrationOptions>? configure)
     {
-        services.AddOptions<MigrationOptions>().Configure(options => configure?.Invoke(options));
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<MigrationOptions>>().Value);
+        services.AddValidatedOptions<MigrationOptions>(
+            configure,
+            builder => builder
+                .Validate(options => !string.IsNullOrWhiteSpace(options.Version), "MigrationOptions.Version must not be empty.")
+                .Validate(options => Enum.IsDefined(options.Provider), "MigrationOptions.Provider must be a defined database provider.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.SchemaName), "MigrationOptions.SchemaName must not be empty.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.TableName), "MigrationOptions.TableName must not be empty."));
 
         services.AddSingleton(brokerFactory);
         // Resolved rather than captured, so the dialect reads the provider AFTER Configure has run.
         services.AddSingleton<IMigrationDialect>(serviceProvider =>
             CreateDialect(serviceProvider.GetRequiredService<MigrationOptions>().Provider));
         services.AddSingleton<IMigrationHistoryRepository, MigrationHistoryRepository>();
+        services.TryAddSingleton<IMigrationChecksumHasher, MigrationChecksumHasher>();
         services.AddSingleton<IMigrationRunnerService, MigrationRunnerService>();
 
         return services;

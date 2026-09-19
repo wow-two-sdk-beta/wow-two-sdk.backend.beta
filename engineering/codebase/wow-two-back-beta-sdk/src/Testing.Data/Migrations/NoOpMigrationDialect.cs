@@ -10,6 +10,9 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing.Data.Migrations;
 internal sealed class NoOpMigrationDialect : IMigrationDialect
 {
     /// <inheritdoc />
+    public MigrationCoordinationMode CoordinationMode => MigrationCoordinationMode.SingleApplicantRequired;
+
+    /// <inheritdoc />
     public Task<bool> EnsureDatabaseExistsAsync(string connectionString, CancellationToken ct = default) => Task.FromResult(false);
 
     /// <inheritdoc />

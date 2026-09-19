@@ -7,8 +7,8 @@ using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Repositories;
 namespace WoW.Two.Sdk.Backend.Beta.Data;
 
 /// <summary>
-/// Registers the CQRS repository split — <b>reads via Dapper</b> (<see cref="IReadRepository{TEntity, TId}"/>),
-/// <b>writes via EF Core</b> (<see cref="IWriteRepository{TEntity, TId}"/>). Additive and non-enforcing: apps may
+/// Registers the CQRS repository split — reads via Dapper (<see cref="IReadRepository{TEntity, TId}"/>),
+/// writes via EF Core (<see cref="IWriteRepository{TEntity, TId}"/>). Additive and non-enforcing: apps may
 /// still use the unified <see cref="IRepository{TEntity, TId}"/> via <c>AddEfRepositories</c> / <c>AddDapperRepository</c>.
 /// </summary>
 public static class CqrsRepositoryServiceCollectionExtensions

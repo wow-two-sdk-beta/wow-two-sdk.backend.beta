@@ -5,7 +5,7 @@ Two seams: repoint an app's context onto a test provider, and run a whole suite 
 ## Repoint an existing context
 
 - `RemoveAllForDbContext<T>()` — strips a context's provider registrations, including the internal options-configuration (matched by open-generic name).
-- `RepointDbContext<T>(configure)` — strip + re-add in one call.
+- `RepointDbContext<T>(configure)` — strip + re-add in one call while preserving SDK-registered interceptors.
 
 ```csharp
 builder.ConfigureTestServices(services =>
@@ -22,7 +22,7 @@ A provider-switchable test database — Postgres container (Respawn reset) or in
 ```csharp
 public sealed class AppTestDb : RelationalTestDb<AppDbContext>
 {
-    public override DatabaseProvider Provider => DatabaseProvider.Postgres; // pin when the suite needs real PG semantics
+    public AppTestDb() : base(DatabaseProvider.Postgres) { }
 
     protected override void ApplyConventions(DbContextOptionsBuilder builder) => builder.UseSnakeCaseNamingConvention();
 

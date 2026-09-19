@@ -26,8 +26,7 @@ public static class EfInterceptorServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton<TInterceptor>();
 
-        // TryAddEnumerable de-duplicates on the factory's return type, so a concern registered from two places
-        // (e.g. AddPostgresPersistence and the consumer) yields one IInterceptor entry, not two.
+        // Deduplicate interceptors registered by both an SDK preset and its consumer.
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IInterceptor, TInterceptor>(static sp => sp.GetRequiredService<TInterceptor>()));
 

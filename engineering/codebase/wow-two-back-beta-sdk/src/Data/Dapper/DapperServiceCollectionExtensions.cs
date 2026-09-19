@@ -1,7 +1,6 @@
 using Dapper;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Naming;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper;
@@ -24,8 +23,9 @@ public static class DapperServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddOptions<SqlNamingOptions>().Configure(options => configureNaming?.Invoke(options));
-        services.TryAddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<SqlNamingOptions>>().Value);
+        var naming = new SqlNamingOptions();
+        configureNaming?.Invoke(naming);
+        services.TryAddSingleton(naming);
 
         if (System.Threading.Interlocked.Exchange(ref _conventionsApplied, 1) == 0)
         {
@@ -49,7 +49,4 @@ public static class DapperServiceCollectionExtensions
         return services;
     }
 
-    // IDbConnectionFactory registration (AddDbConnectionFactory / AddDataSourceConnectionFactory) lives in
-    // ConnectionFactoryServiceCollectionExtensions in the web-free WoW.Two.Sdk.Backend.Beta.Data.Abstractions
-    // project, alongside IDbConnectionFactory + DataSourceConnectionFactory (namespace ...Data.Abstractions).
 }

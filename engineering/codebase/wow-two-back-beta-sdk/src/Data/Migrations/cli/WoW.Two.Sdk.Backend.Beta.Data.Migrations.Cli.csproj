@@ -48,6 +48,7 @@
     <Compile Include="../../../Foundation/Results/**/*.cs" />
     <Compile Include="../../../Foundation/Errors/**/*.cs"
              Exclude="../../../Foundation/Errors/**/*ServiceCollectionExtensions.cs" />
+    <Compile Include="../../../Foundation/Options/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -59,7 +60,10 @@
     <PackageReference Include="Ardalis.GuardClauses" />
     <!-- DI host + logging: the engine references only the abstractions; the CLI brings the concrete container. -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
   </ItemGroup>
 
 </Project>

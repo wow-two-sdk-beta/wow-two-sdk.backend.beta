@@ -68,6 +68,8 @@ builder.Services.AddDapperRepository<OrderRepository, Order, long>();
 
 Same contracts, swap freely. EF repo for change-tracked write workflows; Dapper repo for the read-heavy hot path (no tracking overhead, raw SQL). Complex queries stay hand-written either way — subclass and add methods. The SDK ships no `IQueryable`/Specification layer (it can't lower to Dapper).
 
+For entities implementing `IHasTenant<string>`, the generic Dapper repository consumes `ITenantContext` when tenancy is registered. It stamps the current tenant on inserts and updates, and adds the tenant predicate to reads, updates and deletes. With no tenant in scope, CRUD is unscoped for explicit system/admin work. Custom repository subclasses that serve tenant-owned rows must pass `ITenantContext` to the three-argument base constructor; hand-written SQL must add the same predicate itself.
+
 ## Provider notes
 
 - **Postgres** (native `uuid`, `int`, text) — works as-is.

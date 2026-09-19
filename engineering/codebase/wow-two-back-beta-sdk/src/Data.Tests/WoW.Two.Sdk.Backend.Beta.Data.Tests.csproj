@@ -8,7 +8,7 @@
     architecture probes promoted to permanent tests (savepoint events + synthetic-frame fallback, DbContextPool
     Tracked-subscription survival, outbox/session transaction collision).
 
-    Testcontainers Postgres — the provider is PINNED (DataTestDb.Provider), never TestSetupOptions: SQLite has no
+    Testcontainers Postgres — the provider is pinned by each fixture instance: SQLite has no
     xmin, no FOR UPDATE and different savepoint semantics, so a green SQLite run here would manufacture confidence.
     References the core mono-lib and matches its FrameworkReference so Microsoft.Extensions.* resolve from the
     shared framework rather than CPM-pinned packages.
