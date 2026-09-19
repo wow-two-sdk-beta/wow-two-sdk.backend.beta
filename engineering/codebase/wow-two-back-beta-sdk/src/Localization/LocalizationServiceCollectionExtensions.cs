@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using WoW.Two.Sdk.Backend.Beta.Localization.Humanizing;
+using WoW.Two.Sdk.Backend.Beta.Localization.Formatters;
 
 namespace WoW.Two.Sdk.Backend.Beta.Localization;
 
@@ -66,7 +66,7 @@ public static class LocalizationServiceCollectionExtensions
 
     /// <summary>
     /// Registers the humanizing services as singletons: <see cref="IRelativeTimeFormatter"/> (TimeProvider-backed
-    /// "3 hours ago" phrasing) and <see cref="ITextHumanizer"/> (ordinals, quantities, pluralization). Both
+    /// "3 hours ago" phrasing) and <see cref="IHumanizedTextFormatter"/> (ordinals, quantities, pluralization). Both
     /// honour the ambient request culture set by the localization middleware. Idempotent.
     /// </summary>
     /// <param name="services">The service collection to configure.</param>
@@ -77,7 +77,7 @@ public static class LocalizationServiceCollectionExtensions
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IRelativeTimeFormatter, RelativeTimeFormatter>();
-        services.TryAddSingleton<ITextHumanizer, TextHumanizer>();
+        services.TryAddSingleton<IHumanizedTextFormatter, HumanizedTextFormatter>();
         return services;
     }
 }

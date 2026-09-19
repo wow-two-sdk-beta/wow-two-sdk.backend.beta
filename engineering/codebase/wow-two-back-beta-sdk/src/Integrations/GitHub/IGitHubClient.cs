@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Integrations.GitHub;
 
-/// <summary>Reads repository metadata from the GitHub REST API, authorizing each call with the configured <see cref="IAccessTokenService"/> so visibility matches that token.</summary>
+/// <summary>Defines behavior that reads repository metadata from the GitHub REST API, authorizing each call with the configured <see cref="IAccessTokenService"/> so visibility matches that token.</summary>
 public interface IGitHubClient
 {
     /// <summary>Probes whether <paramref name="repo"/> (an <c>{owner}/{repo}</c> reference) exists and is visible to the current token.</summary>

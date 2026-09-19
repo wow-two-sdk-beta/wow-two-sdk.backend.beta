@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Storage.Core;
 
-/// <summary>Normalizes and validates logical blob paths, guarding against directory traversal.</summary>
+/// <summary>Maps logical blob paths to normalized, traversal-safe paths.</summary>
 public static class BlobStoragePathMapper
 {
     /// <summary>

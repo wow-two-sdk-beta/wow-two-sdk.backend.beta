@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Localization;
 
 /// <summary>
-/// Conventional request-localization tunables applied by
+/// Holds conventional request-localization tunables applied by
 /// <see cref="LocalizationServiceCollectionExtensions.AddRequestLocalizationConventions"/>. Supply at
 /// least one supported culture; the resolution order is query string → cookie → <c>Accept-Language</c>.
 /// </summary>

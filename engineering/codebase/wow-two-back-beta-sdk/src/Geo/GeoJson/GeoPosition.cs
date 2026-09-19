@@ -7,18 +7,24 @@ namespace WoW.Two.Sdk.Backend.Beta.Geo.GeoJson;
 /// <c>[longitude, latitude]</c>, the reverse of the usual spoken order). Convert to/from the
 /// latitude-first <see cref="GeoCoordinate"/> with <see cref="FromCoordinate"/> / <see cref="ToCoordinate"/>.
 /// </summary>
-/// <param name="Longitude">Longitude in decimal degrees.</param>
-/// <param name="Latitude">Latitude in decimal degrees.</param>
-/// <param name="AltitudeMeters">Optional altitude in metres.</param>
-public readonly record struct GeoPosition(double Longitude, double Latitude, double? AltitudeMeters = null)
+public readonly record struct GeoPosition
 {
+    /// <summary>Longitude in decimal degrees.</summary>
+    public required double Longitude { get; init; }
+
+    /// <summary>Latitude in decimal degrees.</summary>
+    public required double Latitude { get; init; }
+
+    /// <summary>Optional altitude in metres.</summary>
+    public double? AltitudeMeters { get; init; }
+
     /// <summary>Creates a position from a latitude-first <see cref="GeoCoordinate"/>.</summary>
     /// <param name="coordinate">The coordinate to convert.</param>
     /// <returns>The equivalent GeoJSON position.</returns>
     public static GeoPosition FromCoordinate(GeoCoordinate coordinate)
     {
         ArgumentNullException.ThrowIfNull(coordinate);
-        return new GeoPosition(coordinate.Longitude, coordinate.Latitude, coordinate.AltitudeMeters);
+        return new GeoPosition { Longitude = coordinate.Longitude, Latitude = coordinate.Latitude, AltitudeMeters = coordinate.AltitudeMeters };
     }
 
     /// <summary>Converts this position to a latitude-first <see cref="GeoCoordinate"/>.</summary>

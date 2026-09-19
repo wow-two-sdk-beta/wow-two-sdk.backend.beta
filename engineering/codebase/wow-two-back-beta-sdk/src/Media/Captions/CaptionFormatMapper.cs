@@ -2,8 +2,8 @@ using System.Text.RegularExpressions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Media.Captions;
 
-/// <summary>Sniffs the <see cref="CaptionFormat"/> of a caption document from its leading content.</summary>
-public static partial class CaptionFormatDetector
+/// <summary>Maps a caption document's leading content to its <see cref="CaptionFormat"/>.</summary>
+public static partial class CaptionFormatMapper
 {
     [GeneratedRegex(@"\d{1,2}:\d{2}:\d{2},\d{3}\s*-->")]
     private static partial Regex SubRipTiming();

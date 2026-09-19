@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Caching.Core;
 
 /// <summary>
-/// Per-entry cache tunables for <see cref="ICacheRepository"/> — total (distributed L2) expiration, a shorter
+/// Holds per-entry cache tunables for <see cref="ICacheRepository"/> — total (distributed L2) expiration, a shorter
 /// in-process (L1) expiration, and tags for grouped invalidation. All are optional; unset values fall
 /// back to the cache's configured defaults.
 /// </summary>

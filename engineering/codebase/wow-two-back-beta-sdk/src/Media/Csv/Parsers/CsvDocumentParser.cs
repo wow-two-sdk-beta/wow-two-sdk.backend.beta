@@ -2,9 +2,9 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using CsvHelper;
 
-namespace WoW.Two.Sdk.Backend.Beta.Media.Csv;
+namespace WoW.Two.Sdk.Backend.Beta.Media.Csv.Parsers;
 
-/// <summary>Default <see cref="ICsvParser"/> over CsvHelper (invariant culture, header-mapped). Stateless and thread-safe.</summary>
+/// <summary>Parses CSV streams into header-mapped records through CsvHelper with invariant culture.</summary>
 public sealed class CsvDocumentParser : ICsvParser
 {
     /// <inheritdoc />

@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Integrations.Ghcr;
 
-/// <summary>Outcome of probing whether an image tag exists in the registry — separates a missing image from one the caller isn't authorized to see.</summary>
+/// <summary>Refers to outcome of probing whether an image tag exists in the registry — separates a missing image from one the caller isn't authorized to see.</summary>
 public enum ImageCheck
 {
     /// <summary>The image tag exists → the manifest request returned 200.</summary>

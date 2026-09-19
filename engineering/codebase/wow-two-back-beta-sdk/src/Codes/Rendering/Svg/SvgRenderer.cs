@@ -56,8 +56,7 @@ public sealed class SvgRenderer
 
         var foregroundFill = hasGradient ? $"url(#{ForegroundGradientId})" : style.ForegroundColor;
 
-        // A center emoji knocks its footprint out of the data matrix — a genuine blank center (not an overlay over live
-        // modules), so a transparent background reads as a real hole. The auto-bumped ECC=H reconstructs the cleared modules.
+        // Knock emoji space out of the matrix; ECC=H recovers the cleared modules.
         var bodyMatrix = style.Emoji is { } emoji
             ? matrix.WithCenterHole(size * Math.Clamp(emoji.SizeRatio, EmojiMinRatio, EmojiMaxRatio) * EmojiHoleFactor)
             : matrix;
@@ -142,8 +141,7 @@ public sealed class SvgRenderer
         if (body.Length > 0)
             sb.Append("<path fill=\"").Append(foregroundFill).Append("\" d=\"").Append(body).Append("\"/>\n");
 
-        // L2b — finder eyes: outer frame (FinderShape) + inner pupil (FinderDotShape), one group each, drawn from geometry
-        // (not the matrix bits) so the eyes are always complete and crisp regardless of body shape.
+        // Draw complete finder eyes from geometry rather than styled matrix bits.
         if (finders.Count == 0)
             return;
 
@@ -496,8 +494,7 @@ public sealed class SvgRenderer
         var side = sizeModules * ratio;
         var center = sizeModules / 2.0;
 
-        // The data modules under the glyph are already knocked out of the matrix (a genuine blank center). On a solid
-        // background, smooth the matrix-quantized hole edge with a bg-colored disc; on a transparent background, leave the real hole.
+        // Smooth the matrix-cut hole only when a solid background can paint it.
         if (!transparent)
             sb.Append("<circle cx=\"").Append(Num(center)).Append("\" cy=\"").Append(Num(center))
                 .Append("\" r=\"").Append(Num(side * EmojiHoleFactor)).Append("\" fill=\"").Append(backgroundColor).Append("\"/>\n");

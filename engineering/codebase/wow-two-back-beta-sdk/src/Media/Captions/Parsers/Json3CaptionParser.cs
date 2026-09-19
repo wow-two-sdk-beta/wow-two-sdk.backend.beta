@@ -2,13 +2,11 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace WoW.Two.Sdk.Backend.Beta.Media.Captions;
+namespace WoW.Two.Sdk.Backend.Beta.Media.Captions.Parsers;
 
 /// <summary>
-/// Default <see cref="IJson3CaptionParser"/> — parses YouTube's <c>json3</c> caption payload. Emits one
-/// segment per event that carries text, joining <c>segs[].utf8</c> runs, collapsing whitespace, and
-/// skipping the window/position-only events YouTube interleaves. Returns empty on malformed JSON rather
-/// than throwing. Stateless and thread-safe.
+/// Parses YouTube <c>json3</c> text into one caption segment per accepted text-bearing event.
+/// Concatenates text runs and collapses whitespace; invalid JSON syntax yields no segments.
 /// </summary>
 public sealed partial class Json3CaptionParser : IJson3CaptionParser
 {

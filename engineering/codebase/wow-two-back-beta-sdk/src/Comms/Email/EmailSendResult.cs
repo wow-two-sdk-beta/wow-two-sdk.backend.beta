@@ -1,7 +1,14 @@
 namespace WoW.Two.Sdk.Backend.Beta.Comms.Email;
 
-/// <summary>Outcome of a send attempt.</summary>
-/// <param name="Success">Whether the provider accepted the message.</param>
-/// <param name="ProviderMessageId">Provider-assigned message id, when available.</param>
-/// <param name="FailureReason">Provider-specific failure detail (present on failure).</param>
-public sealed record EmailSendResult(bool Success, string? ProviderMessageId = null, string? FailureReason = null);
+/// <summary>Represents outcome of a send attempt.</summary>
+public sealed record EmailSendResult
+{
+    /// <summary>Whether the provider accepted the message.</summary>
+    public required bool Success { get; init; }
+
+    /// <summary>Provider-assigned message id, when available.</summary>
+    public string? ProviderMessageId { get; init; }
+
+    /// <summary>Provider-specific failure detail (present on failure).</summary>
+    public string? FailureReason { get; init; }
+}

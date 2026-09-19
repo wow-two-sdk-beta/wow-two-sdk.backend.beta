@@ -3,7 +3,7 @@ using WoW.Two.Sdk.Backend.Beta.Integrations.Ghcr;
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Integrations;
 
 /// <summary>
-/// Configurable test double for <see cref="IContainerRegistryClient"/> — short-circuits the GHCR manifest probe
+/// Connects tests to configurable container-registry outcomes without a remote probe
 /// so a test never reaches the real registry.
 /// </summary>
 /// <remarks>

@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Media.Captions;
 
-/// <summary>The caption/subtitle serialization formats the SDK can parse.</summary>
+/// <summary>Refers to the caption/subtitle serialization formats the SDK can parse.</summary>
 public enum CaptionFormat
 {
     /// <summary>WebVTT (<c>.vtt</c>) — the web standard; <c>WEBVTT</c> header, <c>hh:mm:ss.mmm</c> timings.</summary>

@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Integrations.GitHub;
 
-/// <summary>Outcome of probing for a file at a path in a repo → tells whether a marker/config file is present.</summary>
+/// <summary>Refers to outcome of probing for a file at a path in a repo → tells whether a marker/config file is present.</summary>
 public enum FileCheck
 {
     /// <summary>The file exists at the requested path → 200.</summary>

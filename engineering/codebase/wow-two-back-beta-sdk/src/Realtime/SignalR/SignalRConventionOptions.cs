@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace WoW.Two.Sdk.Backend.Beta.Realtime.SignalR;
 
 /// <summary>
-/// Conventional SignalR hub tunables applied by
+/// Holds conventional SignalR hub tunables applied by
 /// <see cref="SignalRExtensions.AddConventionalSignalR"/>. Defaults favour responsive presence
 /// detection (fast keep-alive + client timeout) and a bounded receive size to blunt abuse.
 /// </summary>

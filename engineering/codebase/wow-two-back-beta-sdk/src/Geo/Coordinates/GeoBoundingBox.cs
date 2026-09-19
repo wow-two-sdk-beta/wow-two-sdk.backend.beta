@@ -4,6 +4,10 @@ namespace WoW.Two.Sdk.Backend.Beta.Geo.Coordinates;
 /// An axis-aligned latitude/longitude rectangle (a GeoJSON-style bbox). Does not span the antimeridian —
 /// <see cref="West"/> ≤ <see cref="East"/> and <see cref="South"/> ≤ <see cref="North"/>. Immutable.
 /// </summary>
+/// <remarks>
+/// Edge ordering is an exceptional constructor-enforced type contract: an inverted rectangle has no supported meaning.
+/// Get-only edges keep record copies immutable, and constructor-based deserialization applies the same ordering checks.
+/// </remarks>
 public sealed record GeoBoundingBox
 {
     /// <summary>Creates a validated bounding box.</summary>

@@ -4,7 +4,7 @@ using WoW.Two.Sdk.Backend.Beta.Caching.Core;
 namespace WoW.Two.Sdk.Backend.Beta.Caching.Hybrid;
 
 /// <summary>
-/// Default <see cref="ICacheRepository"/> — adapts .NET's <see cref="HybridCache"/> (L1 in-process + optional L2
+/// Accesses cached values through .NET's <see cref="HybridCache"/> (L1 in-process + optional L2
 /// distributed, with built-in stampede protection and tag invalidation). Registered by
 /// <see cref="HybridCachingServiceCollectionExtensions.AddHybridCaching"/>.
 /// </summary>

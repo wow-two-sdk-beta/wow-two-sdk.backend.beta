@@ -1,25 +1,24 @@
 using Amazon.SimpleEmailV2;
 using Amazon.SimpleEmailV2.Model;
-using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Comms.Email;
 
 namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.Ses;
 
-/// <summary>Wraps Amazon SES v2 simple send to deliver email; attachments are rejected with <c>attachments_not_supported_by_ses_simple_send</c>.</summary>
-public sealed class SesEmailSender : IEmailSender
+/// <summary>Integrates Amazon SES v2 as the email provider.</summary>
+public sealed class SesEmailBroker : IEmailBroker
 {
     private readonly IAmazonSimpleEmailServiceV2 _client;
     private readonly EmailOptions _emailOptions;
 
     /// <summary>Creates the sender over an SES v2 client.</summary>
-    /// <param name="client">The SES client (registered by <c>AddSesEmailSender</c>).</param>
+    /// <param name="client">The SES client (registered by <c>AddSesEmailBroker</c>).</param>
     /// <param name="emailOptions">Cross-provider defaults (From / Reply-To).</param>
-    public SesEmailSender(IAmazonSimpleEmailServiceV2 client, IOptions<EmailOptions> emailOptions)
+    public SesEmailBroker(IAmazonSimpleEmailServiceV2 client, EmailOptions emailOptions)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(emailOptions);
         _client = client;
-        _emailOptions = emailOptions.Value;
+        _emailOptions = emailOptions;
     }
 
     /// <inheritdoc />
@@ -30,12 +29,12 @@ public sealed class SesEmailSender : IEmailSender
         var from = message.From ?? _emailOptions.DefaultFrom;
         if (from is null)
         {
-            return new EmailSendResult(false, FailureReason: "no_from_address");
+            return new EmailSendResult { Success = false, FailureReason = "no_from_address" };
         }
 
         if (message.Attachments is { Count: > 0 })
         {
-            return new EmailSendResult(false, FailureReason: "attachments_not_supported_by_ses_simple_send");
+            return new EmailSendResult { Success = false, FailureReason = "attachments_not_supported_by_ses_simple_send" };
         }
 
         var body = new Body();
@@ -77,11 +76,11 @@ public sealed class SesEmailSender : IEmailSender
         try
         {
             var response = await _client.SendEmailAsync(request, cancellationToken).ConfigureAwait(false);
-            return new EmailSendResult(true, ProviderMessageId: response.MessageId);
+            return new EmailSendResult { Success = true, ProviderMessageId = response.MessageId };
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return new EmailSendResult(false, FailureReason: exception.Message);
+            return new EmailSendResult { Success = false, FailureReason = exception.Message };
         }
     }
 

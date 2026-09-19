@@ -1,12 +1,11 @@
 using MailKit.Net.Smtp;
-using Microsoft.Extensions.Options;
 using MimeKit;
 using WoW.Two.Sdk.Backend.Beta.Comms.Email;
 
 namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.MailKit;
 
-/// <summary>Wraps MailKit to send email over any SMTP relay, connecting per send.</summary>
-public sealed class MailKitEmailSender : IEmailSender
+/// <summary>Integrates an SMTP relay through MailKit as the email provider.</summary>
+public sealed class MailKitEmailBroker : IEmailBroker
 {
     private readonly MailKitEmailOptions _smtpOptions;
     private readonly EmailOptions _emailOptions;
@@ -14,12 +13,12 @@ public sealed class MailKitEmailSender : IEmailSender
     /// <summary>Creates the sender from SMTP and email defaults.</summary>
     /// <param name="smtpOptions">SMTP connection settings.</param>
     /// <param name="emailOptions">Cross-provider defaults (From / Reply-To).</param>
-    public MailKitEmailSender(IOptions<MailKitEmailOptions> smtpOptions, IOptions<EmailOptions> emailOptions)
+    public MailKitEmailBroker(MailKitEmailOptions smtpOptions, EmailOptions emailOptions)
     {
         ArgumentNullException.ThrowIfNull(smtpOptions);
         ArgumentNullException.ThrowIfNull(emailOptions);
-        _smtpOptions = smtpOptions.Value;
-        _emailOptions = emailOptions.Value;
+        _smtpOptions = smtpOptions;
+        _emailOptions = emailOptions;
     }
 
     /// <inheritdoc />
@@ -30,12 +29,12 @@ public sealed class MailKitEmailSender : IEmailSender
         var from = message.From ?? _emailOptions.DefaultFrom;
         if (from is null)
         {
-            return new EmailSendResult(false, FailureReason: "no_from_address");
+            return new EmailSendResult { Success = false, FailureReason = "no_from_address" };
         }
 
         if (string.IsNullOrWhiteSpace(_smtpOptions.Host))
         {
-            return new EmailSendResult(false, FailureReason: "smtp_host_not_configured");
+            return new EmailSendResult { Success = false, FailureReason = "smtp_host_not_configured" };
         }
 
         var mime = BuildMime(message, from);
@@ -46,16 +45,19 @@ public sealed class MailKitEmailSender : IEmailSender
             await client.ConnectAsync(_smtpOptions.Host, _smtpOptions.Port, _smtpOptions.SecureSocket, cancellationToken).ConfigureAwait(false);
             if (!string.IsNullOrEmpty(_smtpOptions.Username))
             {
-                await client.AuthenticateAsync(_smtpOptions.Username, _smtpOptions.Password, cancellationToken).ConfigureAwait(false);
+                await client.AuthenticateAsync(
+                    _smtpOptions.Username,
+                    _smtpOptions.Password ?? string.Empty,
+                    cancellationToken).ConfigureAwait(false);
             }
 
             var serverResponse = await client.SendAsync(mime, cancellationToken).ConfigureAwait(false);
             await client.DisconnectAsync(quit: true, cancellationToken).ConfigureAwait(false);
-            return new EmailSendResult(true, ProviderMessageId: serverResponse);
+            return new EmailSendResult { Success = true, ProviderMessageId = serverResponse };
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return new EmailSendResult(false, FailureReason: exception.Message);
+            return new EmailSendResult { Success = false, FailureReason = exception.Message };
         }
     }
 

@@ -78,7 +78,7 @@ internal sealed partial class GitHubClient(
                     var release = await ReadReleaseAsync(response, repo, ct);
                     return release is null
                         ? ReleaseList.Empty(ReleaseLookup.Failed)
-                        : new ReleaseList(ReleaseLookup.Found, [release]);
+                        : new ReleaseList { Outcome = ReleaseLookup.Found, Releases = [release] };
                 case HttpStatusCode.NotFound:
                     return ReleaseList.Empty(ReleaseLookup.None);
                 case HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden:
@@ -109,7 +109,7 @@ internal sealed partial class GitHubClient(
                     var releases = await ReadReleasesAsync(response, repo, ct);
                     return releases is null
                         ? ReleaseList.Empty(ReleaseLookup.Failed)
-                        : new ReleaseList(releases.Count == 0 ? ReleaseLookup.None : ReleaseLookup.Found, releases);
+                        : new ReleaseList { Outcome = releases.Count == 0 ? ReleaseLookup.None : ReleaseLookup.Found, Releases = releases };
                 case HttpStatusCode.NotFound:
                     return ReleaseList.Empty(ReleaseLookup.None);
                 case HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden:
@@ -232,7 +232,7 @@ internal sealed partial class GitHubClient(
         if (release is null || string.IsNullOrWhiteSpace(release.TagName))
             return null;
 
-        return new ReleaseInfo(release.TagName, release.PublishedAt);
+        return new ReleaseInfo { Tag = release.TagName, PublishedAtUtc = release.PublishedAt };
     }
 
     private T Unexpected<T>(string repo, HttpStatusCode status, T failed)

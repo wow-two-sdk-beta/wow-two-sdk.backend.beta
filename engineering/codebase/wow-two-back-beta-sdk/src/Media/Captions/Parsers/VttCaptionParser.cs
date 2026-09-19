@@ -2,12 +2,11 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace WoW.Two.Sdk.Backend.Beta.Media.Captions;
+namespace WoW.Two.Sdk.Backend.Beta.Media.Captions.Parsers;
 
 /// <summary>
-/// Default <see cref="IVttCaptionParser"/> — a minimal WebVTT parser that strips YouTube auto-caption
-/// inline timing and styling tags, decodes HTML entities, and de-duplicates rolling overlays, emitting
-/// plain-text segments. Stateless and thread-safe.
+/// Parses WebVTT caption text into plain-text segments, stripping inline tags and decoding HTML entities.
+/// Omits adjacent duplicate rolling overlays from YouTube auto-captions.
 /// </summary>
 public sealed partial class VttCaptionParser : IVttCaptionParser
 {
@@ -75,9 +74,7 @@ public sealed partial class VttCaptionParser : IVttCaptionParser
             var text = textBuilder.ToString().Trim();
             if (text.Length == 0) continue;
 
-            // YouTube auto-captions emit each segment twice (rolling overlay effect):
-            // dedupe by skipping if this segment is identical to the previous one
-            // and starts where the previous ended.
+            // Drop YouTube's duplicate rolling-overlay segment at the prior boundary.
             if (lastText == text && lastEnd is { } prevEnd && Math.Abs((start - prevEnd).TotalMilliseconds) < 50)
                 continue;
 

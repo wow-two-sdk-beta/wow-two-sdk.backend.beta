@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Caching.Hybrid;
 
-/// <summary>Conventional defaults for the HybridCache registered by <see cref="HybridCachingServiceCollectionExtensions"/>.</summary>
+/// <summary>Holds conventional defaults for the HybridCache registered by <see cref="HybridCachingServiceCollectionExtensions"/>.</summary>
 public sealed record HybridCacheConventionOptions
 {
     /// <summary>Gets the default total (L1+L2) entry lifetime. Default 5 minutes.</summary>

@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Integrations.Ghcr;
 
-/// <summary>Reads image metadata from a container registry to confirm a published, deployable image exists.</summary>
+/// <summary>Defines behavior that reads image metadata from a container registry to confirm a published, deployable image exists.</summary>
 public interface IContainerRegistryClient
 {
     /// <summary>Probes whether the image for <paramref name="repo"/> at <paramref name="tag"/> (i.e. <c>ghcr.io/{owner}/{repo}:{tag}</c>) is published.</summary>

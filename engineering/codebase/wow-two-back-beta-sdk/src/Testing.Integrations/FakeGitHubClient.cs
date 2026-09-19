@@ -3,7 +3,7 @@ using WoW.Two.Sdk.Backend.Beta.Integrations.GitHub;
 namespace WoW.Two.Sdk.Backend.Beta.Testing.Integrations;
 
 /// <summary>
-/// Configurable test double for <see cref="IGitHubClient"/> — short-circuits every GitHub probe so a test never
+/// Connects tests to configurable GitHub outcomes without a remote probe, so a test never
 /// calls the real GitHub REST API (which would also need a signed-in user's OAuth token).
 /// </summary>
 /// <remarks>
@@ -88,7 +88,7 @@ public sealed class FakeGitHubClient : IGitHubClient
         if (Releases.Count == 0)
             return Task.FromResult(ReleaseList.Empty(ReleaseLookup.None));
 
-        return Task.FromResult(new ReleaseList(ReleaseLookup.Found, [Releases[0]]));
+        return Task.FromResult(new ReleaseList { Outcome = ReleaseLookup.Found, Releases = [Releases[0]] });
     }
 
     /// <inheritdoc />
@@ -100,7 +100,7 @@ public sealed class FakeGitHubClient : IGitHubClient
             return Task.FromResult(ReleaseList.Empty(ReleaseLookup.None));
 
         var page = Releases.Take(limit).ToList();
-        return Task.FromResult(new ReleaseList(ReleaseLookup.Found, page));
+        return Task.FromResult(new ReleaseList { Outcome = ReleaseLookup.Found, Releases = page });
     }
 
     /// <inheritdoc />

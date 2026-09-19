@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Comms.Email;
 
-/// <summary>Cross-provider email defaults.</summary>
+/// <summary>Holds cross-provider email defaults.</summary>
 public sealed record EmailOptions
 {
     /// <summary>Sender used when a message doesn't set <see cref="EmailMessage.From"/>.</summary>

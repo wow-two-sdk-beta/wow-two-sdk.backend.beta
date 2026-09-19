@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.FeatureFlags.Core;
 
 /// <summary>
-/// A minimal, vendor-neutral feature-flag check. The default implementation wraps
+/// Defines a minimal, vendor-neutral feature-flag check. The default implementation wraps
 /// <c>Microsoft.FeatureManagement</c>; swap it for an OpenFeature-backed one without touching call sites.
 /// </summary>
 public interface IFeatureFlags

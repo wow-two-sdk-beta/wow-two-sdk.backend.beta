@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Integrations.GitHub;
 
-/// <summary>Outcome of a releases lookup — separates a repo with no releases from one the token can't see or a transport failure.</summary>
+/// <summary>Refers to outcome of a releases lookup — separates a repo with no releases from one the token can't see or a transport failure.</summary>
 public enum ReleaseLookup
 {
     /// <summary>One or more releases were resolved → <see cref="ReleaseList.Releases"/> is populated.</summary>

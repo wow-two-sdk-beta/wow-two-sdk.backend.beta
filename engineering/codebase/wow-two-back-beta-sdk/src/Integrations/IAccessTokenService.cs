@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WoW.Two.Sdk.Backend.Beta.Integrations;
 
-/// <summary>Supplies the access token an integration client authorizes its calls with; swap the implementation to control which token each call carries.</summary>
+/// <summary>Defines behavior that supplies the access token an integration client authorizes its calls with; swap the implementation to control which token each call carries.</summary>
 public interface IAccessTokenService
 {
     /// <summary>Resolves the current access token, or <c>null</c> when none is available.</summary>

@@ -1,10 +1,10 @@
 using System.Globalization;
 using Humanizer;
 
-namespace WoW.Two.Sdk.Backend.Beta.Localization.Humanizing;
+namespace WoW.Two.Sdk.Backend.Beta.Localization.Formatters;
 
-/// <summary>Default <see cref="ITextHumanizer"/> over Humanizer's extensions. Stateless and thread-safe.</summary>
-public sealed class TextHumanizer : ITextHumanizer
+/// <summary>Formats numbers and words as ordinals, counted quantities and English inflections using Humanizer.</summary>
+public sealed class HumanizedTextFormatter : IHumanizedTextFormatter
 {
     /// <inheritdoc />
     public string Ordinalize(int number) => number.Ordinalize(CultureInfo.CurrentCulture);

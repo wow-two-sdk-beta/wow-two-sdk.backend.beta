@@ -2,7 +2,7 @@ using MailKit.Security;
 
 namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.MailKit;
 
-/// <summary>SMTP connection settings for the MailKit sender.</summary>
+/// <summary>Holds sMTP connection settings for the MailKit sender.</summary>
 public sealed record MailKitEmailOptions
 {
     /// <summary>SMTP host. Required.</summary>

@@ -4,6 +4,9 @@
 
 Namespace root: `WoW.Two.Sdk.Backend.Beta.Media`.
 
+Exporter types live under `Tabular/Exporters/`, `Csv/Exporters/` and `Excel/Exporters/`, with matching namespaces.
+Parser types live under `Captions/Parsers/` and `Csv/Parsers/`, with matching namespaces.
+
 ## Components
 
 | Folder | Surface | Role |
@@ -16,6 +19,12 @@ Namespace root: `WoW.Two.Sdk.Backend.Beta.Media`.
 ## Tabular export — quickstart
 
 ```csharp
+using WoW.Two.Sdk.Backend.Beta.Media.Csv;
+using WoW.Two.Sdk.Backend.Beta.Media.Csv.Parsers;
+using WoW.Two.Sdk.Backend.Beta.Media.Excel;
+using WoW.Two.Sdk.Backend.Beta.Media.Tabular;
+using WoW.Two.Sdk.Backend.Beta.Media.Tabular.Exporters;
+
 builder.Services.AddCsvExport().AddExcelExport();
 
 public sealed class Reports(IEnumerable<ITabularExporter> exporters, ICsvParser csv)
@@ -33,8 +42,11 @@ public sealed class Reports(IEnumerable<ITabularExporter> exporters, ICsvParser 
 
 ## Notes
 
-- Row public properties become columns; a header row is written. Streams are left open for the caller to dispose.
-- CSV uses invariant culture (stable machine format). Excel writes one worksheet as a table.
+- [Tabular export contracts](Tabular/tabular.md) define each format's schema, empty output, stream and cancellation behavior.
+- CSV uses invariant default conversion; XLSX stores typed cells in one worksheet. Their column rules differ.
+- CSV parsing reads lazily from the current stream position without seeking; enumeration requires the stream to stay open.
+- Empty CSV input yields no rows. CsvHelper mapping or data errors propagate during enumeration, possibly after earlier rows were yielded.
+- CSV parsing forwards cancellation to CsvHelper. Its reader uses UTF-8 by default with byte-order-mark detection.
 - Licenses: CsvHelper (MS-PL/Apache-2.0), ClosedXML (MIT).
 
 ## Roadmap (not yet built)

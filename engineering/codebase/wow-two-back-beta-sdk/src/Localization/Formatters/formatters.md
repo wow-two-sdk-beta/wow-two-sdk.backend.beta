@@ -1,11 +1,11 @@
-# Localization.Humanizing
+# Localization.Formatters
 
 *Human-friendly time and text phrasing — injectable, testable facades over Humanizer.*
 
 | Type | Role |
 |---|---|
 | `IRelativeTimeFormatter` / `RelativeTimeFormatter` | "3 hours ago" / "in 2 days"; "now" comes from the injected `TimeProvider` (deterministic under test) |
-| `ITextHumanizer` / `TextHumanizer` | `Ordinalize(int)` · `Quantity(word, count)` · `Pluralize` / `Singularize` |
+| `IHumanizedTextFormatter` / `HumanizedTextFormatter` | `Ordinalize(int)` · `Quantity(word, count)` · `Pluralize` / `Singularize` |
 
 ```csharp
 builder.Services.AddHumanizing();   // also registers TimeProvider.System if absent

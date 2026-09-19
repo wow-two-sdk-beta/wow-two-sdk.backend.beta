@@ -1,8 +1,8 @@
 using System.Globalization;
 
-namespace WoW.Two.Sdk.Backend.Beta.Localization.Humanizing;
+namespace WoW.Two.Sdk.Backend.Beta.Localization.Formatters;
 
-/// <summary>Formats an instant as a human relative-time phrase (e.g. "3 hours ago", "in 2 days"), relative to now.</summary>
+/// <summary>Defines formatting of an instant as a human relative-time phrase (e.g. "3 hours ago", "in 2 days"), relative to now.</summary>
 public interface IRelativeTimeFormatter
 {
     /// <summary>Formats <paramref name="instant"/> relative to the current time.</summary>

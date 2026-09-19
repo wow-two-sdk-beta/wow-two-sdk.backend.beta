@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Storage.Core;
 
 /// <summary>
-/// A provider-neutral blob (file object) store — save, read, existence, delete, metadata, and listing over
+/// Defines a provider-neutral blob (file object) store — save, read, existence, delete, metadata, and listing over
 /// forward-slash logical paths. The default implementation is the local filesystem; cloud adapters
 /// (S3, Azure Blob, GCS) implement the same surface so call sites don't change.
 /// </summary>

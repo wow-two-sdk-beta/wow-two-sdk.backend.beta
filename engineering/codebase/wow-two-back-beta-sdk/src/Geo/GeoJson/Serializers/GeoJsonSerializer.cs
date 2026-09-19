@@ -1,9 +1,9 @@
 using System.Text;
 using System.Text.Json;
 
-namespace WoW.Two.Sdk.Backend.Beta.Geo.GeoJson;
+namespace WoW.Two.Sdk.Backend.Beta.Geo.GeoJson.Serializers;
 
-/// <summary>Reads and writes GeoJSON through System.Text.Json.</summary>
+/// <summary>Serializes supported geometries, features and feature collections as GeoJSON and decodes those shapes.</summary>
 public sealed class GeoJsonSerializer : IGeoJsonSerializer
 {
     private static readonly JsonWriterOptions WriterOptions = new() { Indented = false };
@@ -72,13 +72,16 @@ public sealed class GeoJsonSerializer : IGeoJsonSerializer
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
         using var document = JsonDocument.Parse(json);
+        RequireType(document.RootElement, "FeatureCollection");
+
+        if (!document.RootElement.TryGetProperty("features", out var array) || array.ValueKind != JsonValueKind.Array)
+            throw new JsonException("A GeoJSON FeatureCollection must contain a 'features' array.");
 
         var features = new List<GeoJsonFeature>();
-        if (document.RootElement.TryGetProperty("features", out var array) && array.ValueKind == JsonValueKind.Array)
-            foreach (var feature in array.EnumerateArray())
-                features.Add(ReadFeature(feature));
+        foreach (var feature in array.EnumerateArray())
+            features.Add(ReadFeature(feature));
 
-        return new GeoJsonFeatureCollection(features);
+        return new GeoJsonFeatureCollection { Features = features };
     }
 
     private static string Write(Action<Utf8JsonWriter> body)
@@ -121,7 +124,13 @@ public sealed class GeoJsonSerializer : IGeoJsonSerializer
         writer.WriteString("type", "Feature");
 
         if (feature.Id is { } id)
-            writer.WriteString("id", id);
+        {
+            if (id.ValueKind is not (JsonValueKind.String or JsonValueKind.Number))
+                throw new JsonException("A GeoJSON Feature id must be a string or number.");
+
+            writer.WritePropertyName("id");
+            id.WriteTo(writer);
+        }
 
         writer.WritePropertyName("geometry");
         if (feature.Geometry is { } geometry) WriteGeometry(writer, geometry);
@@ -170,43 +179,77 @@ public sealed class GeoJsonSerializer : IGeoJsonSerializer
 
         return type switch
         {
-            "Point" => new GeoJsonPoint(ReadPosition(coordinates)),
-            "LineString" => new GeoJsonLineString(ReadPositions(coordinates)),
-            "Polygon" => new GeoJsonPolygon(coordinates.EnumerateArray().Select(ReadPositions).ToArray()),
+            "Point" => new GeoJsonPoint { Position = ReadPosition(coordinates) },
+            "LineString" => new GeoJsonLineString { Positions = ReadPositions(coordinates) },
+            "Polygon" => new GeoJsonPolygon { Rings = coordinates.EnumerateArray().Select(ReadPositions).ToArray() },
             _ => throw new NotSupportedException($"Unsupported GeoJSON geometry type '{type}'."),
         };
     }
 
     private static GeoJsonFeature ReadFeature(JsonElement element)
     {
-        GeoJsonGeometry? geometry = null;
-        if (element.TryGetProperty("geometry", out var geometryElement) && geometryElement.ValueKind == JsonValueKind.Object)
-            geometry = ReadGeometry(geometryElement);
+        RequireType(element, "Feature");
+
+        if (!element.TryGetProperty("geometry", out var geometryElement))
+            throw new JsonException("A GeoJSON Feature must contain 'geometry'.");
+
+        var geometry = geometryElement.ValueKind switch
+        {
+            JsonValueKind.Null => null,
+            JsonValueKind.Object => ReadGeometry(geometryElement),
+            _ => throw new JsonException("A GeoJSON Feature geometry must be an object or null."),
+        };
 
         IReadOnlyDictionary<string, JsonElement>? properties = null;
-        if (element.TryGetProperty("properties", out var propertiesElement) && propertiesElement.ValueKind == JsonValueKind.Object)
+        if (!element.TryGetProperty("properties", out var propertiesElement))
+            throw new JsonException("A GeoJSON Feature must contain 'properties'.");
+
+        if (propertiesElement.ValueKind == JsonValueKind.Object)
         {
             var map = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
             foreach (var property in propertiesElement.EnumerateObject())
                 map[property.Name] = property.Value.Clone();
             properties = map;
         }
+        else if (propertiesElement.ValueKind != JsonValueKind.Null)
+        {
+            throw new JsonException("A GeoJSON Feature properties value must be an object or null.");
+        }
 
-        string? id = null;
+        JsonElement? id = null;
         if (element.TryGetProperty("id", out var idElement))
-            id = idElement.ValueKind == JsonValueKind.String ? idElement.GetString() : idElement.GetRawText();
+        {
+            if (idElement.ValueKind is not (JsonValueKind.String or JsonValueKind.Number))
+                throw new JsonException("A GeoJSON Feature id must be a string or number.");
 
-        return new GeoJsonFeature(geometry, properties, id);
+            id = idElement.Clone();
+        }
+
+        return new GeoJsonFeature { Geometry = geometry, Properties = properties, Id = id };
     }
 
     private static GeoPosition ReadPosition(JsonElement element)
     {
+        if (element.ValueKind != JsonValueKind.Array || element.GetArrayLength() is not (2 or 3))
+            throw new JsonException("A supported GeoJSON position must contain longitude, latitude, and optional altitude only.");
+
         var longitude = element[0].GetDouble();
         var latitude = element[1].GetDouble();
         double? altitude = element.GetArrayLength() > 2 ? element[2].GetDouble() : null;
-        return new GeoPosition(longitude, latitude, altitude);
+        return new GeoPosition { Longitude = longitude, Latitude = latitude, AltitudeMeters = altitude };
     }
 
     private static IReadOnlyList<GeoPosition> ReadPositions(JsonElement element)
         => element.EnumerateArray().Select(ReadPosition).ToArray();
+
+    private static void RequireType(JsonElement element, string expected)
+    {
+        if (element.ValueKind != JsonValueKind.Object
+            || !element.TryGetProperty("type", out var type)
+            || type.ValueKind != JsonValueKind.String
+            || !string.Equals(type.GetString(), expected, StringComparison.Ordinal))
+        {
+            throw new JsonException($"Expected a GeoJSON {expected} object.");
+        }
+    }
 }

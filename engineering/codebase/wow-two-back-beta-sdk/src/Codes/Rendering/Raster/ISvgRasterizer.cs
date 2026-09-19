@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Codes.Rendering.Raster;
 
-/// <summary>Defines the contract for rasterizing an SVG document to PNG bytes.</summary>
+/// <summary>Defines rasterizing an SVG document to PNG bytes.</summary>
 public interface ISvgRasterizer
 {
     /// <summary>Renders <paramref name="svg"/> to PNG bytes, scaled so the output is at least <paramref name="minOutputPixels"/> on its longest side.</summary>

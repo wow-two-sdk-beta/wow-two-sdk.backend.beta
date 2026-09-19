@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Codes.Models.Style;
 
-/// <summary>Provides pre-emit normalization over a <see cref="StyleSpec"/>, returning a render-safe copy rather than throwing so the render path always produces a scannable code.</summary>
+/// <summary>Maps a <see cref="StyleSpec"/> to a normalized, render-safe copy.</summary>
 /// <remarks>Run before the emitter consumes the spec.</remarks>
 public static class StyleSpecMapper
 {

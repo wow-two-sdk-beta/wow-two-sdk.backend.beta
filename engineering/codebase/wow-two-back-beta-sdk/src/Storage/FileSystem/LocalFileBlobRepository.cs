@@ -4,7 +4,7 @@ using WoW.Two.Sdk.Backend.Beta.Storage.Core;
 namespace WoW.Two.Sdk.Backend.Beta.Storage.FileSystem;
 
 /// <summary>
-/// <see cref="IBlobRepository"/> over the local filesystem, rooted at a configured directory. Logical blob
+/// Accesses blobs on the local filesystem under a configured root. Logical blob
 /// paths map to files under the root; all access is traversal-guarded so a path can never escape the root.
 /// Content types are not persisted (the local file store has nowhere to keep them). Thread-safe.
 /// </summary>

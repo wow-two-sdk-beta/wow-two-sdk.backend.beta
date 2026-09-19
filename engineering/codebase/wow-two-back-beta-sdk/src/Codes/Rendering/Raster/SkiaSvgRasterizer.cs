@@ -29,8 +29,7 @@ public sealed class SkiaSvgRasterizer : ISvgRasterizer
         using var surface = SKSurface.Create(info);
         var canvas = surface.Canvas;
 
-        // Transparent canvas: a transparent-background SVG (no <rect>) rasterizes with a clear backdrop;
-        // a solid-background SVG paints its own rect over this.
+        // Keep the canvas clear so the SVG alone defines its background.
         canvas.Clear(SKColors.Transparent);
         canvas.Scale(scale);
         canvas.DrawPicture(picture);

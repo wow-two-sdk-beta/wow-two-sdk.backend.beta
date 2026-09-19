@@ -3,13 +3,11 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 
-namespace WoW.Two.Sdk.Backend.Beta.Media.Captions;
+namespace WoW.Two.Sdk.Backend.Beta.Media.Captions.Parsers;
 
 /// <summary>
-/// Default <see cref="ITtmlCaptionParser"/> — a namespace-agnostic TTML/DFXP parser. Reads every
-/// <c>&lt;p&gt;</c> cue regardless of prefix, resolves timing from <c>begin</c>+<c>end</c> or
-/// <c>begin</c>+<c>dur</c>, flattens nested styling spans, maps <c>&lt;br/&gt;</c> to a space, and
-/// collapses whitespace. Returns empty on malformed XML rather than throwing. Stateless and thread-safe.
+/// Parses TTML/DFXP XML into caption segments from paragraphs in any namespace.
+/// Resolves begin/end or begin/duration, flattens inline spans, and collapses whitespace.
 /// </summary>
 public sealed partial class TtmlCaptionParser : ITtmlCaptionParser
 {

@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire;
 
-/// <summary>Server tuning for Hangfire background processing.</summary>
+/// <summary>Holds server tuning for Hangfire background processing.</summary>
 public sealed record HangfireJobsOptions
 {
     /// <summary>Concurrent workers. Null = Hangfire default (processor count × 5).</summary>

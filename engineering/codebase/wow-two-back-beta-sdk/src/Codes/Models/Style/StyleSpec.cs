@@ -4,7 +4,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Codes.Models.Style;
 /// <remarks>Add a new styling feature as a new field (typically its own nested sub-record), never a new code path; bump <see cref="CurrentSchemaVersion"/> on a non-additive change. Construct the render-default via <see cref="Default"/>.</remarks>
 public sealed record StyleSpec
 {
-    /// <summary>The current schema version, incremented on a non-additive change to any field's meaning.</summary>
+    /// <summary>Holds the current schema version, incremented on a non-additive change to any field's meaning.</summary>
     public const int CurrentSchemaVersion = 1;
 
     /// <summary>Gets the schema version of this spec, letting the deserializer migrate an older persisted shape forward.</summary>

@@ -12,13 +12,13 @@ public sealed class CodeRenderer(IQrCodeRenderer qr, IBarcodeRenderer barcode) :
         if (request.Symbology == BarcodeFormat.QrCode)
         {
             return request.Format == ImageFormat.Png
-                ? new RenderedCode(qr.RenderPng(request.Payload, request.Style), "image/png", ImageFormat.Png)
-                : new RenderedCode(Utf8(qr.RenderSvg(request.Payload, request.Style)), "image/svg+xml", ImageFormat.Svg);
+                ? new RenderedCode { Content = qr.RenderPng(request.Payload, request.Style), ContentType = "image/png", Format = ImageFormat.Png }
+                : new RenderedCode { Content = Utf8(qr.RenderSvg(request.Payload, request.Style)), ContentType = "image/svg+xml", Format = ImageFormat.Svg };
         }
 
         // Barcodes render to plain SVG; route them through the rasterizer for PNG once that is wired.
         var svg = barcode.RenderSvg(request.Payload, request.Symbology, request.Style);
-        return new RenderedCode(Utf8(svg), "image/svg+xml", ImageFormat.Svg);
+        return new RenderedCode { Content = Utf8(svg), ContentType = "image/svg+xml", Format = ImageFormat.Svg };
     }
 
     private static byte[] Utf8(string s) => Encoding.UTF8.GetBytes(s);

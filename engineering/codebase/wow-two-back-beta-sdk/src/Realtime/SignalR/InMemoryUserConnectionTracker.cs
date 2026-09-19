@@ -31,8 +31,7 @@ public sealed class InMemoryUserConnectionTracker : IUserConnectionTracker
 
         connections.TryRemove(connectionId, out _);
 
-        // Drop the empty bucket, then guard against a concurrent Track that re-added between the emptiness
-        // check and the removal.
+        // Remove an empty bucket only if a concurrent Track did not replace it.
         if (connections.IsEmpty && _byUser.TryRemove(userId, out var removed) && !removed.IsEmpty)
             foreach (var kept in removed) _byUser.GetOrAdd(userId, static _ => new ConcurrentDictionary<string, byte>(StringComparer.Ordinal))[kept.Key] = 0;
     }

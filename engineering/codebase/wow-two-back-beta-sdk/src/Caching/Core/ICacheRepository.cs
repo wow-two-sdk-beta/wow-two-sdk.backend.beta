@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Caching.Core;
 
 /// <summary>
-/// The SDK cache facade — a small, provider-neutral surface over a two-tier (L1 in-process + L2 distributed)
+/// Defines the SDK cache facade — a small, provider-neutral surface over a two-tier (L1 in-process + L2 distributed)
 /// cache with stampede protection and tag-based invalidation. The default implementation wraps .NET's
 /// <c>HybridCache</c>; call <c>AddHybridCaching()</c> to register it.
 /// </summary>

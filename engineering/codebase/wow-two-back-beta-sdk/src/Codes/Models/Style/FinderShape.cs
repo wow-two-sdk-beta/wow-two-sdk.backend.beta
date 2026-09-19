@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Codes.Models.Style;
 
-/// <summary>Defines the geometry of the outer 7×7 frame of each finder pattern, rendered independently of <see cref="ModuleShape"/> so the data body can be stylised while the eyes stay crisp.</summary>
+/// <summary>Refers to the geometry of the outer 7×7 frame of each finder pattern, rendered independently of <see cref="ModuleShape"/> so the data body can be stylised while the eyes stay crisp.</summary>
 public enum FinderShape
 {
     /// <summary>A square ring — the standard finder frame and the default.</summary>

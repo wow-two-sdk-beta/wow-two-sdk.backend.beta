@@ -3,7 +3,7 @@ using WoW.Two.Sdk.Backend.Beta.Codes.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Codes.Rendering;
 
-/// <summary>Defines the contract for rendering 1D/2D barcodes to SVG.</summary>
+/// <summary>Defines rendering 1D/2D barcodes to SVG.</summary>
 public interface IBarcodeRenderer
 {
     /// <summary>Renders the payload in the given symbology as an SVG string.</summary>

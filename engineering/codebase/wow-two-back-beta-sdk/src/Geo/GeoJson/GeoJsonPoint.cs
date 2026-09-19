@@ -1,9 +1,11 @@
 namespace WoW.Two.Sdk.Backend.Beta.Geo.GeoJson;
 
 /// <summary>A GeoJSON <c>Point</c> — a single position.</summary>
-/// <param name="Position">The point's position.</param>
-public sealed record GeoJsonPoint(GeoPosition Position) : GeoJsonGeometry
+public sealed record GeoJsonPoint : GeoJsonGeometry
 {
+    /// <summary>The point's position.</summary>
+    public required GeoPosition Position { get; init; }
+
     /// <inheritdoc />
     public override string Type => "Point";
 }

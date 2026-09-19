@@ -4,7 +4,7 @@ using WoW.Two.Sdk.Backend.Beta.Geo.Coordinates;
 namespace WoW.Two.Sdk.Backend.Beta.Geo.Geohash;
 
 /// <summary>
-/// GeohashMapper encode/decode and neighbour lookup — the public-domain base-32 geohash scheme that maps a
+/// Maps coordinates, geohashes and neighbouring cells through the public-domain base-32 geohash scheme that maps a
 /// coordinate to a short string whose shared prefix length implies proximity. Useful as a cheap spatial
 /// index key and for proximity bucketing. Pure algorithm, no dependencies.
 /// </summary>
@@ -149,8 +149,7 @@ public static class GeohashMapper
         ];
     }
 
-    // Adjacency lookup tables (public-domain geohash algorithm). Odd-length tables are the even tables of
-    // the rotated direction: top.odd = right.even, bottom.odd = left.even, right.odd = top.even, left.odd = bottom.even.
+    // Derive odd-length adjacency tables by rotating the even-length directions.
     private static (string Neighbors, string Borders) Table(GeohashDirection direction, bool even)
     {
         const string TopN = "p0r21436x8zb9dcf5h7kjnmqesgutwvy";

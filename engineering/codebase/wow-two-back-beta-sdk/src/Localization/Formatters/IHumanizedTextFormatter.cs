@@ -1,11 +1,11 @@
-namespace WoW.Two.Sdk.Backend.Beta.Localization.Humanizing;
+namespace WoW.Two.Sdk.Backend.Beta.Localization.Formatters;
 
 /// <summary>
-/// Turns values into human-friendly text — ordinals, counted quantities, and English inflection — for
+/// Defines formatting of values as human-friendly text — ordinals, counted quantities, and English inflection — for
 /// user-facing strings. An injectable, testable facade over Humanizer's static extensions; methods honour
 /// the ambient request culture where the underlying operation is culture-sensitive.
 /// </summary>
-public interface ITextHumanizer
+public interface IHumanizedTextFormatter
 {
     /// <summary>Returns the ordinal form of a number (e.g. <c>1</c> → <c>"1st"</c>).</summary>
     /// <param name="number">The number to ordinalize.</param>

@@ -9,7 +9,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Geo.Distance;
 /// </summary>
 public sealed class GeoDistanceCalculator : IGeoDistanceCalculator
 {
-    /// <summary>The IUGG mean Earth radius in metres.</summary>
+    /// <summary>Holds the IUGG mean Earth radius in metres.</summary>
     public const double EarthRadiusMeters = 6_371_008.8;
 
     /// <inheritdoc />

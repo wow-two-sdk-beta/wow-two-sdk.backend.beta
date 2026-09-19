@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 namespace WoW.Two.Sdk.Backend.Beta.Realtime.WebSockets;
 
 /// <summary>
-/// Handles an accepted raw WebSocket for its full lifetime. Implementations run the receive/send loop
+/// Defines behavior that handles an accepted raw WebSocket for its full lifetime. Implementations run the receive/send loop
 /// and return when the socket should close; <see cref="WebSocketAcceptExtensions"/> performs the accept
 /// handshake and the closing handshake around this call.
 /// </summary>

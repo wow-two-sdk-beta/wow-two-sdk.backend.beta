@@ -1,9 +1,9 @@
 namespace WoW.Two.Sdk.Backend.Beta.Realtime.SignalR;
 
 /// <summary>
-/// Tracks which SignalR connection ids belong to which authenticated user, so an application can answer
+/// Defines behavior that tracks which SignalR connection ids belong to which authenticated user, so an application can answer
 /// "is this user online?" and target every device a user has open. The default implementation is
-/// in-memory and therefore <b>per-node</b>: behind a scale-out backplane it reflects only the
+/// in-memory and therefore per-node: behind a scale-out backplane it reflects only the
 /// connections on the local server. Cross-node presence needs a distributed store.
 /// </summary>
 public interface IUserConnectionTracker

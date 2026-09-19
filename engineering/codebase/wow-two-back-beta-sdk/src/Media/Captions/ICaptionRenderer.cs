@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Media.Captions;
 
 /// <summary>
-/// Serializes caption segments back into a text format. Pairing a parser with a writer of a different
+/// Defines behavior that serializes caption segments back into a text format. Pairing a parser with a writer of a different
 /// format performs conversion (e.g. YouTube json3 → SubRip).
 /// </summary>
 public interface ICaptionRenderer

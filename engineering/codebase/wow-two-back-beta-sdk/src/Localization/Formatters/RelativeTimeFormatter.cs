@@ -1,10 +1,10 @@
 using System.Globalization;
 using Humanizer;
 
-namespace WoW.Two.Sdk.Backend.Beta.Localization.Humanizing;
+namespace WoW.Two.Sdk.Backend.Beta.Localization.Formatters;
 
 /// <summary>
-/// Default <see cref="IRelativeTimeFormatter"/> — phrases an instant relative to "now" via Humanizer,
+/// Formats an instant as localized relative-time display text via Humanizer,
 /// with "now" sourced from the injected <see cref="TimeProvider"/> so it is deterministic under test.
 /// Stateless and thread-safe.
 /// </summary>

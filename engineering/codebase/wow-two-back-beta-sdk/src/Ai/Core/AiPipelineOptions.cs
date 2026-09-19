@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Ai.Core;
 
 /// <summary>
-/// Conventional middleware toggles applied by the SDK around every provider's <c>IChatClient</c>
+/// Holds conventional middleware toggles applied by the SDK around every provider's <c>IChatClient</c>
 /// (function/tool invocation and OpenTelemetry). Providers accept this so the pipeline is uniform
 /// regardless of which broker backs it.
 /// </summary>

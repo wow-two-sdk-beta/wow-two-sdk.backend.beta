@@ -2,13 +2,11 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace WoW.Two.Sdk.Backend.Beta.Media.Captions;
+namespace WoW.Two.Sdk.Backend.Beta.Media.Captions.Parsers;
 
 /// <summary>
-/// Default <see cref="ISrtCaptionParser"/> — a resilient SubRip parser that tolerates missing or
-/// out-of-order index lines, blank-line-separated cues, comma or dot decimals, and CRLF/LF line endings,
-/// stripping inline tags (<c>&lt;i&gt;</c>, <c>&lt;font&gt;</c>, …) and decoding HTML entities.
-/// Stateless and thread-safe.
+/// Parses blank-line-separated SubRip cue text into caption segments, stripping inline tags and decoding HTML entities.
+/// Accepts missing or out-of-order indices, comma or dot decimals, and CRLF/LF line endings.
 /// </summary>
 public sealed partial class SrtCaptionParser : ISrtCaptionParser
 {

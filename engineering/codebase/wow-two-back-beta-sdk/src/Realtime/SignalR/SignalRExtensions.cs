@@ -34,8 +34,7 @@ public static class SignalRExtensions
             hub.EnableDetailedErrors = options.EnableDetailedErrors;
         });
 
-        // Copy the preset — SignalR mutates PayloadSerializerOptions (adds converters) and would throw
-        // if handed the frozen shared instance.
+        // Copy the frozen preset because SignalR adds converters to its options.
         var payloadOptions = new JsonSerializerOptions(options.JsonOptions ?? JsonOptionsConstants.Default);
         builder.AddJsonProtocol(json => json.PayloadSerializerOptions = payloadOptions);
 

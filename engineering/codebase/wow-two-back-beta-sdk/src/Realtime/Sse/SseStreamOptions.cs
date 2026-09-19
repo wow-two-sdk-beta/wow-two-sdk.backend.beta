@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace WoW.Two.Sdk.Backend.Beta.Realtime.Sse;
 
 /// <summary>
-/// Tunables for streaming an <see cref="IAsyncEnumerable{T}"/> as Server-Sent Events via
+/// Holds tunables for streaming an <see cref="IAsyncEnumerable{T}"/> as Server-Sent Events via
 /// <see cref="SseEndpointExtensions"/>. Defaults suit LLM token streaming — a 15-second heartbeat
 /// keeps proxies from closing an idle connection while a model is still producing.
 /// </summary>

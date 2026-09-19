@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Options;
 using SendGrid;
 using SendGrid.Helpers.Mail;
 using WoW.Two.Sdk.Backend.Beta.Comms.Email;
@@ -6,21 +5,21 @@ using EmailAddress = WoW.Two.Sdk.Backend.Beta.Comms.Email.EmailAddress;
 
 namespace WoW.Two.Sdk.Backend.Beta.Comms.Email.SendGrid;
 
-/// <summary><see cref="IEmailSender"/> over the SendGrid v3 API.</summary>
-public sealed class SendGridEmailSender : IEmailSender
+/// <summary>Integrates the SendGrid v3 API as the email provider.</summary>
+public sealed class SendGridEmailBroker : IEmailBroker
 {
     private readonly ISendGridClient _client;
     private readonly EmailOptions _emailOptions;
 
     /// <summary>Creates the sender over a SendGrid client.</summary>
-    /// <param name="client">The SendGrid client (registered by <c>AddSendGridEmailSender</c>).</param>
+    /// <param name="client">The SendGrid client (registered by <c>AddSendGridEmailBroker</c>).</param>
     /// <param name="emailOptions">Cross-provider defaults (From / Reply-To).</param>
-    public SendGridEmailSender(ISendGridClient client, IOptions<EmailOptions> emailOptions)
+    public SendGridEmailBroker(ISendGridClient client, EmailOptions emailOptions)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(emailOptions);
         _client = client;
-        _emailOptions = emailOptions.Value;
+        _emailOptions = emailOptions;
     }
 
     /// <inheritdoc />
@@ -31,7 +30,7 @@ public sealed class SendGridEmailSender : IEmailSender
         var from = message.From ?? _emailOptions.DefaultFrom;
         if (from is null)
         {
-            return new EmailSendResult(false, FailureReason: "no_from_address");
+            return new EmailSendResult { Success = false, FailureReason = "no_from_address" };
         }
 
         var mail = new SendGridMessage
@@ -76,15 +75,15 @@ public sealed class SendGridEmailSender : IEmailSender
                 var messageId = response.Headers is not null && response.Headers.TryGetValues("X-Message-Id", out var values)
                     ? values.FirstOrDefault()
                     : null;
-                return new EmailSendResult(true, ProviderMessageId: messageId);
+                return new EmailSendResult { Success = true, ProviderMessageId = messageId };
             }
 
             var body = await response.Body.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            return new EmailSendResult(false, FailureReason: $"sendgrid_{(int)response.StatusCode}: {body}");
+            return new EmailSendResult { Success = false, FailureReason = $"sendgrid_{(int)response.StatusCode}: {body}" };
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return new EmailSendResult(false, FailureReason: exception.Message);
+            return new EmailSendResult { Success = false, FailureReason = exception.Message };
         }
     }
 

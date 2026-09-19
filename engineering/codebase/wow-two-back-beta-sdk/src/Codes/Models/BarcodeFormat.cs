@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Codes.Models;
 
-/// <summary>Concrete symbology the engine renders. QR is the default; the rest cover the "all code types" surface.</summary>
+/// <summary>Refers to concrete symbology the engine renders. QR is the default; the rest cover the "all code types" surface.</summary>
 /// <remarks>
 /// This is the SDK's <em>rendering</em> vocabulary. A consuming product keeps its own persisted/domain
 /// format enum and maps into this at the render boundary — the SDK never owns a persisted product column.

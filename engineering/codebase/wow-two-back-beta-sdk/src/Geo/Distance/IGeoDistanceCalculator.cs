@@ -2,7 +2,7 @@ using WoW.Two.Sdk.Backend.Beta.Geo.Coordinates;
 
 namespace WoW.Two.Sdk.Backend.Beta.Geo.Distance;
 
-/// <summary>Computes great-circle distances, bearings, and destination points on the Earth's surface.</summary>
+/// <summary>Defines behavior that computes great-circle distances, bearings, and destination points on the Earth's surface.</summary>
 public interface IGeoDistanceCalculator
 {
     /// <summary>Returns the great-circle (surface) distance between two coordinates in metres.</summary>
