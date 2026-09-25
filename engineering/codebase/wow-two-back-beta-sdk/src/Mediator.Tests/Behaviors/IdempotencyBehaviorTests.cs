@@ -70,18 +70,18 @@ public sealed class IdempotencyBehaviorTests
         var store = NewStore();
 
         // Acquire a slot, then store with a tiny TTL.
-        var (acquired, _) = await store.TryAcquireAsync("k", typeof(int), CancellationToken.None);
+        var (acquired, _, ownership) = await store.TryAcquireAsync("k", typeof(int), CancellationToken.None);
         acquired.Should().BeTrue();
-        await store.StoreAsync("k", 99, TimeSpan.FromMilliseconds(50), CancellationToken.None);
+        await store.StoreAsync("k", ownership, 99, TimeSpan.FromMilliseconds(50), CancellationToken.None);
 
         // Within TTL → cached, not acquirable.
-        var (acquiredAgain, cached) = await store.TryAcquireAsync("k", typeof(int), CancellationToken.None);
+        var (acquiredAgain, cached, _) = await store.TryAcquireAsync("k", typeof(int), CancellationToken.None);
         acquiredAgain.Should().BeFalse();
         cached.Should().Be(99);
 
         // After TTL → entry gone, acquirable again.
         await Task.Delay(120);
-        var (acquiredAfter, cachedAfter) = await store.TryAcquireAsync("k", typeof(int), CancellationToken.None);
+        var (acquiredAfter, cachedAfter, _) = await store.TryAcquireAsync("k", typeof(int), CancellationToken.None);
         acquiredAfter.Should().BeTrue("the TTL elapsed so the cached response should be forgotten");
         cachedAfter.Should().BeNull();
     }

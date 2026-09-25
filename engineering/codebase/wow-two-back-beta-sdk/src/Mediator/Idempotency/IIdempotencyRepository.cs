@@ -11,12 +11,19 @@ public interface IIdempotencyRepository
     /// <param name="key">The idempotency key to acquire.</param>
     /// <param name="responseType">The expected response type for the cached entry.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
-    Task<(bool Acquired, object? CachedResponse)> TryAcquireAsync(string key, Type responseType, CancellationToken cancellationToken);
+    Task<(bool Acquired, object? CachedResponse, Guid Ownership)> TryAcquireAsync(string key, Type responseType, CancellationToken cancellationToken);
 
     /// <summary>Persist the response for a previously acquired key.</summary>
     /// <param name="key">The idempotency key to store under.</param>
+    /// <param name="ownership">The token returned by acquisition.</param>
     /// <param name="response">The response payload to cache.</param>
     /// <param name="ttl">The lifetime of the cached entry.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
-    Task StoreAsync(string key, object? response, TimeSpan ttl, CancellationToken cancellationToken);
+    Task StoreAsync(string key, Guid ownership, object? response, TimeSpan ttl, CancellationToken cancellationToken);
+
+    /// <summary>Releases an acquired key without caching a response after failure or rollback.</summary>
+    /// <param name="key">The owned idempotency key.</param>
+    /// <param name="ownership">The token returned by acquisition.</param>
+    /// <param name="cancellationToken">Cancels cleanup.</param>
+    Task ReleaseAsync(string key, Guid ownership, CancellationToken cancellationToken);
 }

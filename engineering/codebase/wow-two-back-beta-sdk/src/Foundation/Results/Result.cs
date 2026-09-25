@@ -3,7 +3,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 namespace WoW.Two.Sdk.Backend.Beta.Foundation.Results;
 
 /// <summary>Represents the outcome of an operation that returns no value.</summary>
-public abstract record Result
+public abstract record Result : IResult
 {
     private Result()
     {
@@ -65,7 +65,7 @@ public abstract record Result
 
 /// <summary>Represents the outcome of an operation that returns a <typeparamref name="T"/> value.</summary>
 /// <typeparam name="T">The success value type.</typeparam>
-public abstract record Result<T> where T : notnull
+public abstract record Result<T> : IResult where T : notnull
 {
     private Result()
     {
@@ -134,7 +134,7 @@ public abstract record Result<T> where T : notnull
 /// <typeparam name="TSuccess">The success value type.</typeparam>
 /// <typeparam name="TFailure">The failure case type — a domain enum or a sealed union, closed so a <see langword="switch"/> over it is exhaustive.</typeparam>
 /// <remarks>The handler maps each failure case to its catalog <see cref="AppError"/> — <see cref="ToResult"/> for the default carrier, <see cref="Match{TOut}"/> for anything else; the carrier itself never learns a status.</remarks>
-public abstract record Result<TSuccess, TFailure>
+public abstract record Result<TSuccess, TFailure> : IResult
     where TSuccess : notnull
     where TFailure : notnull
 {

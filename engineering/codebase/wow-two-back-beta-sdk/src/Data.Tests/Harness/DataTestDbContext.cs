@@ -39,6 +39,13 @@ public sealed class DataTestDbContext(DbContextOptions<DataTestDbContext> option
             entity.Property(widget => widget.Name).HasMaxLength(200);
         });
 
+        modelBuilder.Entity<XminWidget>(entity =>
+        {
+            entity.ToTable(XminWidget.TableName);
+            entity.HasKey(widget => widget.Id);
+            entity.Property(widget => widget.Xmin).IsRowVersion();
+        });
+
         // The outbox entity's EF configuration is internal to the SDK assembly — apply it explicitly.
         modelBuilder.ApplyOutboxModel();
     }

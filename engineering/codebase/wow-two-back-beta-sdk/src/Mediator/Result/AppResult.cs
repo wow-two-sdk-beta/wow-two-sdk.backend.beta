@@ -4,7 +4,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Mediator.Result;
 
 /// <summary>Represents the outcome of an application operation — a typed success or an <see cref="AppError"/> failure, each with optional context.</summary>
 /// <typeparam name="TSuccess">The success payload type.</typeparam>
-public abstract record AppResult<TSuccess> where TSuccess : notnull
+public abstract record AppResult<TSuccess> : WoW.Two.Sdk.Backend.Beta.Foundation.Results.IResult where TSuccess : notnull
 {
     private AppResult()
     {

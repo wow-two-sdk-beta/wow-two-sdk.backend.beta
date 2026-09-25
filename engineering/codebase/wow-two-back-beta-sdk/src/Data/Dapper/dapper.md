@@ -1,58 +1,42 @@
-# WoW.Two.Sdk.Backend.Beta.Data.Dapper
+# Dapper
 
-> Dapper conventions for the hot-read path — snake_case mapping, `DateOnly` + `List<T>` type handlers, `IDbConnectionFactory` abstraction.
+*Last updated: 2026-09-26*
 
-## Install
+Included in `WoW2.Sdk.Backend.Beta`. `AddDapperConventions()` configures underscore matching,
+`DateOnly` and list type handlers. `SqlNamingOptions` controls generated identifiers per repository.
+Register global type handlers before queries; do not change them per request.
 
-```
-dotnet add package WoW.Two.Sdk.Backend.Beta.Data.Dapper
-```
+## Connections and units
 
-## Usage
-
-```csharp
-builder.Services.AddDapperConventions();
-builder.Services.AddDbConnectionFactory<NpgsqlConnectionFactory>();
-
-public sealed class NpgsqlConnectionFactory(IOptions<DbOptions> opt) : IDbConnectionFactory
-{
-    public DbConnection Create() => new NpgsqlConnection(opt.Value.ConnectionString);
-    public async ValueTask<DbConnection> CreateOpenAsync(CancellationToken ct = default)
-    {
-        var conn = Create();
-        await conn.OpenAsync(ct);
-        return conn;
-    }
-}
-
-// Use it
-public sealed class ChannelsQuery(IDbConnectionFactory factory)
-{
-    public async Task<IReadOnlyList<Channel>> List(CancellationToken ct)
-    {
-        await using var db = await factory.CreateOpenAsync(ct);
-        var rows = await db.QueryAsync<Channel>("SELECT * FROM channels WHERE is_active = TRUE");
-        return rows.AsList();
-    }
-}
-```
-
-## What `AddDapperConventions()` does
-
-| Convention | Effect |
-|---|---|
-| `DefaultTypeMap.MatchNamesWithUnderscores = true` | `image_urls` → `ImageUrls` |
-| `DateOnlyTypeHandler` | `DATE` → `DateOnly` |
-| `ListTypeHandler<string>` | `TEXT[]` → `List<string>` |
-
-Need more list handlers? Register them yourself:
+Register a shared `DbDataSource` with `AddDataSourceConnectionFactory()`.
+Independent operations open and dispose factory connections. Optional `AddDataSession<TContext>()`
+lets DI-created repositories borrow the active EF connection and transaction.
+Hand-written SQL participates explicitly:
 
 ```csharp
-SqlMapper.AddTypeHandler(new ListTypeHandler<int>());
-SqlMapper.AddTypeHandler(new ListTypeHandler<Guid>());
+await using var lease = await session.OpenConnectionAsync(connectionFactory, ct);
+var rows = await lease.Connection.QueryAsync<Channel>(
+    new CommandDefinition(sql, parameters, transaction: lease.Transaction, cancellationToken: ct));
 ```
 
-## See also
+Direct factory calls remain autonomous. Dispose a lease before completing its unit.
+See [data sessions](../Sessions/sessions.spec.md) for nesting and rollback recovery.
 
-- [Dapper](https://github.com/DapperLib/Dapper)
-- `…Data.EntityFrameworkCore` — for transactional / write paths
+## Generated CRUD
+
+`AddDapperRepository<TEntity, TId>()` registers single-table operations for entities implementing
+`IKeyedEntity<TId>` and `IHasTableName`. Ambient tenants scope generated CRUD; no ambient tenant
+means an explicit unscoped system/admin operation.
+
+All generated reads exclude `ISoftDeletable.IsDeleted` rows. A specialized administrative repository
+can override `IncludeSoftDeleted`. This is a read policy; generated deletes remain physical deletes.
+Custom SQL owns equivalent tenant and soft-delete predicates.
+
+PostgreSQL `IHasXmin` reads explicitly select `xmin`. Insert/update property lists omit that
+store-generated column. Insert does not refresh its value: re-read before EF attachment.
+The scalar Dapper-read → attach unchanged → mutate → EF-save path is tested against PostgreSQL.
+Generic Dapper updates/deletes do not implement optimistic concurrency checks.
+
+This remains a reflection-based single-table repository. EF value converters, owned graphs,
+partial projections, row locking and full-row provenance are not inferred from the EF model.
+Use bespoke SQL or EF for those contracts.
