@@ -1,6 +1,6 @@
 # Backend Implementation Targets — what we'll build
 
-*Last updated: 2026-05-04*
+*Last updated: 2026-09-26*
 
 > Companion: [`ideas.md`](./ideas.md) — every .NET tech / pattern / library / runtime API that exists. **No verdicts.**
 >
@@ -9,6 +9,15 @@
 > **Target package**: `wow-two-sdk.backend.beta` — single big NuGet bundling everything below. Dependency bloat is *intentional*; one-import is the win.
 
 ---
+
+## Current implementation checkpoint
+
+The phase inventories below retain the original catalog priorities; they are not a release manifest.
+Current source and test evidence: [September 26 sweep](../../../planning/sdk-completion/sweep-2026-09-26.md).
+The mono library plus six companion outputs target .NET 10. Outbound destination safety, scoped data
+sessions, generated Dapper read policies and atomic mediator idempotency are implemented locally,
+with publication pending. Background workers, transaction-aware cache invalidation, full-row write
+guards and translation remain active completion work.
 
 ## 0. Verdict legend
 
@@ -29,19 +38,19 @@
 | # | Decision | LOCKED rationale |
 |---|---|---|
 | 1.1 | **Single big package** — `wow-two-sdk.backend.beta` aggregates every concern; subpath imports per area | Dependency bloat is explicitly accepted. One install, batteries included. Mirrors UI lib's "one big package, subpath exports". |
-| 1.2 | **.NET 9 baseline, multi-target later if needed** | Native AOT, HybridCache, first-party OpenAPI, `Microsoft.Extensions.AI` are .NET 9. Don't carry old-runtime debt. |
-| 1.3 | **C# 13+ language features freely** | Primary constructors, collection expressions, partial properties, etc. No `LangVersion` floor pinning. |
+| 1.2 | **.NET 10 baseline, multi-target later if needed** | Evaluated projects target `net10.0`; SDK `10.0.300` is pinned with patch roll-forward. |
+| 1.3 | **Current C# language features freely** | `LangVersion=latest` under the pinned .NET SDK; runtime and language changes follow evaluated build settings. |
 | 1.4 | **Built-in DI (`Microsoft.Extensions.DependencyInjection`) is the contract** | Don't ship Autofac/Lamar replacements. Consumers can swap if they want — we expose `IServiceCollection` extensions. |
 | 1.5 | **Source-gen preferred over reflection** for mapping, JSON, validation, DI graph, regex | AOT-friendly, faster, fewer trim warnings. |
 | 1.6 | **AOT-compatible best-effort** | Don't *require* AOT, but every component should compile under `<PublishAot>true</PublishAot>` without warnings if possible. |
 | 1.7 | **Modular Monolith first** — microservices is a deployment choice, not a code shape | Make module boundaries cheap (DI conventions, in-process mediator, Outbox abstractions). Easy escalation path to distributed messaging later. |
 | 1.8 | **Clean Architecture × Vertical Slice hybrid** | Layering for the foundation (`tokens`, `primitives`, `domains`); vertical slices inside each domain feature. Borrow the UI lib's `foundation/domain` mental model. |
-| 1.9 | **Beta-forever versioning** | `0.x.y`, CI auto-bumps `y` on every merge to `main`. Fix-forward when broken. No CHANGELOG, no PR gates, no required tests. Mirrors UI lib's beta-forever rule. |
+| 1.9 | **Beta-forever versioning** | `10.y.z-beta`, CI auto-bumps on main publication. Fix-forward; no CHANGELOG or PR gate. Required Release tests and seven-package verification precede publication. |
 | 1.10 | **System.Text.Json default; Newtonsoft only when an external lib forces it** | STJ is now feature-complete enough (polymorphism, source-gen, JsonNode mutability). Newtonsoft pulled in transitively only. |
 | 1.11 | **`Microsoft.Extensions.Logging.ILogger<T>` is the only public log surface** | Internally we may use Serilog, but consumers see `ILogger<T>`. Same pattern for telemetry — `ActivitySource` and `Meter` are the public seams. |
 | 1.12 | **No commercial license deps in the core meta-package** | MediatR (commercial 12.0+), AutoMapper (commercial 14.0+), MassTransit (commercial v9+ announced), Duende.IdentityServer (RPL), iText7 (AGPL), Aspose, Spire — all are SKIP for the core. May surface as opt-in adapters in companion packages but never as core dependencies. |
 | 1.13 | **Permissive licenses only in core**: MIT, Apache-2.0, BSD-3, BSD-2, MS-PL, Unlicense | LGPL only when it's truly transitive-and-isolated (e.g. linking decisions). AGPL never. |
-| 1.14 | **No PR gates, no required tests, push to main** | Beta-forever rule, mirrors UI lib. |
+| 1.14 | **No PR gate; required release checks** | The developer publishes main; CI runs tests and package verification before publishing all seven outputs. |
 | 1.15 | **Standard + spec before code (per-component)** | Borrow the UI lib pattern — every public abstraction begins as `*.standard.md` (RFC 2119 contract) and `*.spec.md` (concrete API). |
 | 1.16 | **Subpath exports per top-level src/ folder** | Consumers can pull `wow-two-sdk.backend.beta.web` only, or pull the meta. Modeled on UI lib's `forms/`, `display/`, `nav/` subpaths. |
 

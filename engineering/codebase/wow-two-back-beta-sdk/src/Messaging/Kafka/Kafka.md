@@ -64,5 +64,5 @@ A producer switched ahead of its consumers produces to a topic nobody subscribes
 
 ## See also
 
-- Port: [`../Transport/TransportContracts.cs`](../Transport/TransportContracts.cs) · RabbitMQ (native DLQ): [`../RabbitMq/RabbitMq.md`](../RabbitMq/RabbitMq.md)
+- Port: [`../Transport/ISendTransport.cs`](../Transport/ISendTransport.cs) · [`IReceiveTransport.cs`](../Transport/IReceiveTransport.cs) · RabbitMQ (native DLQ): [`../RabbitMq/RabbitMq.md`](../RabbitMq/RabbitMq.md)
 - [`../Messaging.md`](../Messaging.md) · analysis: [`messaging-architecture-investigation.md`](../../../../../planning/messaging/messaging-architecture-investigation.md)

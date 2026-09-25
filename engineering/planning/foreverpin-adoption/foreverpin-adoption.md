@@ -1,6 +1,6 @@
 # ForeverPin SDK adoption sweep
 
-*Last updated: 2026-09-19*
+*Last updated: 2026-09-24*
 
 > Full backend component inventory for one coordinated SDK improvement and ForeverPin upgrade cut.
 > This owns the SDK-facing sweep; product UX and unresolved delivery choices remain in ForeverPin's v0.9 track.
@@ -13,13 +13,14 @@
 - [x] Improve and test publication verification; published in `10.0.57-beta` from `a645d1b`.
 - [x] Implement the autonomous SDK cut with focused regressions; product-only rows remain below.
 - [x] Verify the complete candidate family and prepare the developer-owned release.
-- [ ] Upgrade ForeverPin once to that published candidate; apply the product adoption cut.
+- [x] Publish the candidate: `ba2a87e` released as `10.0.58-beta`; all seven packages verified on NuGet.
+- [ ] Upgrade ForeverPin once to `10.0.58-beta`; apply the product adoption cut.
 - [ ] Run the complete product verifier, including real PostgreSQL and both HTTP hosts.
 
 This is a source and contract sweep, not a claim that the upgraded product passes its runtime suite.
 The user authorized deep implementation where the answer follows from current contracts.
 Work requiring new product or platform policy is deferred explicitly below.
-Commit permission remains OFF. The developer commits and publishes the SDK candidate before ForeverPin adoption.
+Commit permission remains OFF. The SDK candidate is published as `10.0.58-beta`; ForeverPin adoption targets that version.
 
 ---
 
@@ -34,9 +35,8 @@ Commit permission remains OFF. The developer commits and publishes the SDK candi
 - The shared ForeverPin checkout has another lane's solution/verification changes; preserve its index and worktree.
 - The prior package probe's 29 compilation errors were the first failing layers, not an exhaustive migration list.
   Source review also finds current-user/guest names, style serialization, error factories and fixture API changes.
-- The final adoption version is the version actually published from the completed candidate.
-  SDK HEAD is `66aceb2` (`10.0.57-beta`); the new candidate is uncommitted. CI would next increment to `10.0.58-beta`.
-  Adopt only the version actually published from the completed SDK changes.
+- The final adoption version is `10.0.58-beta`: candidate commit `ba2a87e`, release commit `546466e`,
+  annotated tag `v10.0.58-beta` peeling to `546466e`. Adopt it for runtime and testing references alike.
 
 Product file names below resolve under ForeverPin's `engineering/codebase/forever-pin.backend-services/`.
 SDK source paths resolve under `engineering/codebase/wow-two-back-beta-sdk/src/`.
@@ -302,8 +302,10 @@ Further findings can extend these subjects; do not create a new discussion for a
 - Full suite required native execution after sandbox `SocketException (13)`; the authorized retry completed successfully.
 - Mechanical convention sweep reports no folded/banned role, bare IEntity, para-tag or severity-glyph hits.
   Static-form hits are the existing permitted factories; new behavior implementations use instance roles.
-- Breaking adoption requirements are recorded under A02. The SDK candidate is uncommitted and unpublished.
-- Proposed subject: `feat: completed breaking SDK fixes for ForeverPin adoption`.
+- Breaking adoption requirements are recorded under A02.
+- Committed as `ba2a87e` (`feat: completed breaking SDK fixes for ForeverPin adoption`).
+- [Publish run 35442850653](https://github.com/wow-two-sdk-beta/wow-two-sdk.backend.beta/actions/runs/35442850653)
+  reran the same seven suites on that commit: 552 passed, one Kafka skip. It released `10.0.58-beta`.
 - Deferred D01–D09 remain decisions, not partially implemented platform guarantees.
 
 ### Original baseline reproductions — corrected in this candidate
@@ -340,8 +342,8 @@ the product suite has not been rerun and no product source or package pins were 
 ### Coordinated upgrade gates
 
 1. Completed: autonomous SDK corrections and regression tests; CI correction already published.
-2. Build/test the full SDK Release solution and verify all seven package/symbol pairs from one revision.
-3. Developer commits/publishes; confirm actual package versions and the exact tag revision.
+2. Completed: full SDK Release solution tested; seven package/symbol pairs verified from one revision.
+3. Completed: `10.0.58-beta` published; seven packages available and the tag peels to `546466e`.
 4. Repin all ForeverPin SDK references once, apply adoption changes and run all backend suites on PostgreSQL.
 5. Run the product's full verifier for frontend wire compatibility; browser/manual QA remains developer-owned.
 

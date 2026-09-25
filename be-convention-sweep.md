@@ -1,11 +1,16 @@
 # Backend convention sweep
 
-*Last updated: 2026-09-19*
+*Last updated: 2026-09-26*
 
 ## Status
 
+The [September 26 implementation sweep](engineering/planning/sdk-completion/sweep-2026-09-26.md)
+is the current SDK completion handoff: opt-in data sessions, Dapper read safety, outbound HTTP
+protection and atomic idempotency are implemented locally. Release tests passed 609 with one
+existing Kafka skip; seven local package/symbol pairs verified. Publication remains pending.
+
 ✅ **SDK commit batches and the follow-up convention sweep are complete.** `10.0.57-beta` contains the CI correction.
-The autonomous SDK adoption cut is implemented; its release verification is recorded in the adoption track.
+The autonomous SDK adoption cut (`ba2a87e`) is published as `10.0.58-beta`; its verification is in the adoption track.
 The [ForeverPin adoption sweep](engineering/planning/foreverpin-adoption/foreverpin-adoption.md) owns the newly
 identified behavioral fixes and the combined upgrade cut; earlier convention completion does not close those findings.
 Fresh verification and the signed commit inventory are in the
@@ -27,7 +32,7 @@ work is also complete; its fresh verification is linked below.
 - Product adoption is separate: the 31 product rows live in
   `workbench/ventures/10x-venture-forever-pin/foreverpin-be-update.md`.
 - Use `engineering/planning/sweep.sh` for convention checks; source checks do not replace runtime checks.
-- Ordinary agent commits require the workspace's explicit turn-scoped commit switch; the developer publishes.
+- Ordinary agent commits require the repository's persistent native commit switch; the developer publishes.
   Breaking SDK changes are approved; no production consumers exist.
 
 ### Workstream order
@@ -35,9 +40,9 @@ work is also complete; its fresh verification is linked below.
 1. Completed: drain the SDK's pending changes in cohesive, reviewed commit batches.
 2. Completed: sweep the SDK against the conventions again and resolve mechanical findings.
 3. Completed: CI publication-verifier correction committed as `a645d1b`, released in `10.0.57-beta`.
-4. Execute the full ForeverPin SDK-facing sweep: correct autonomous SDK gaps and preserve deferred policy decisions.
-5. Publish the completed candidate and upgrade ForeverPin once, including its product adoption changes.
-6. Resume missing SDK vectors from the recorded deferred decisions, rather than opening them during this cut.
+4. Completed: full ForeverPin SDK-facing sweep; autonomous SDK gaps corrected, deferred policy decisions preserved.
+5. Completed publication as `10.0.58-beta`. Upgrade ForeverPin once, including its product adoption changes.
+6. September 26: autonomous SDK completion is authorized independently of consumer adoption; current work and remaining vectors live in the implementation sweep.
 
 Other consumer repins remain recorded below; they do not precede the requested ForeverPin migration.
 
@@ -55,8 +60,9 @@ formatters exist; complete translation/i18n remains a later vector in `targets.m
   This adoption task is separate from the 27 SDK implementation rows; it depends on the published version.
 - [ ] Repin the other direct consumers to the published sweep version and repair only the APIs each uses:
   ForeverPin (`10.0.45-beta`), TransportBrain (`10.0.45-beta`), Tnis (`10.0.45-beta`), Drydock (`10.0.40-beta`),
-  SecretsVault (`10.0.40-beta`), Sift (`10.0.21-beta`), Arcade (`10.0.21-beta`), MuseumsGallery (`10.0.21-beta`) and
-  TnisMintrans (`10.0.21-beta`). Repin the product template (`10.0.21-beta`) separately so new ventures start current.
+  SecretsVault (`10.0.56-beta`), ListingShelf (`10.0.56-beta`), Sift (`10.0.21-beta`), Arcade (`10.0.21-beta`),
+  MuseumsGallery (`10.0.21-beta`) and TnisMintrans (`10.0.21-beta`). Pins rechecked 2026-09-24; SecretsVault
+  already consumes `IValueCipher`. Repin the product template (`10.0.21-beta`) separately so new ventures start current.
 
 ## Scope retained from confirmed decisions
 

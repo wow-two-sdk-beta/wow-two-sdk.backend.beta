@@ -156,5 +156,5 @@ builder.Services.AddSingleton<IWebhookDeliveryLoggingService, MetricsDeliveryLog
 ## See also
 
 - Standard: [Webhooks.standard.md](./Webhooks.standard.md) · folder: [webhooks.md](./webhooks.md)
-- Retry primitive: [`../Reliability/MessagingReliability.cs`](../Reliability/MessagingReliability.cs)
+- Retry primitive: [`../Reliability/IRetryPolicy.cs`](../Reliability/IRetryPolicy.cs)
 - Built-ins: [`System.Security.Cryptography.HMACSHA256`](https://learn.microsoft.com/dotnet/api/system.security.cryptography.hmacsha256) · [`IHttpClientFactory`](https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory)

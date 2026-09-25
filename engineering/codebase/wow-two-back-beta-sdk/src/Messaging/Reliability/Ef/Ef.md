@@ -133,5 +133,5 @@ Successfully processed rows are pruned after the retention window. Rows stopped 
 
 ## See also
 
-- Ports: [`../MessagingReliability.cs`](../MessagingReliability.cs) (`IOutbox` / `OutboxRecord` / `IOutboxDispatcher`)
+- Ports: [`../IOutbox.cs`](../IOutbox.cs) · [`../OutboxRecord.cs`](../OutboxRecord.cs) · [`../IOutboxDispatcher.cs`](../IOutboxDispatcher.cs)
 - Pluggable EF interceptors: `Data/EntityFrameworkCore/Interceptors/` (`AddEfSaveChangesInterceptor<T>()`)

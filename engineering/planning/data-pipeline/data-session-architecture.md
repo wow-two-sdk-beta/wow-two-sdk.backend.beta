@@ -2,6 +2,18 @@
 
 *2026-07-19 · Synthesis of 4 verified component designs + adversarial cross-check (14 contradictions resolved). Research base: [`research/01–05`](./research/), verdict: [`data-pipeline-verdict.md`](./data-pipeline-verdict.md). Design decisions below are post-resolution — where lanes disagreed, the verifier's resolution is what's recorded.*
 
+## September 26 implementation boundary
+
+[Implemented session contract](../../codebase/wow-two-back-beta-sdk/src/Data/Sessions/sessions.spec.md)
+and [sweep evidence](../sdk-completion/sweep-2026-09-26.md) govern the current subset. The design below
+remains the complete-vector roadmap. Implemented: scoped EF-first transactions, Dapper leases,
+nested savepoints, explicit completion callbacks, transactional mediator requests and delayed
+idempotency replay. Nested rollback clears the tracker and requires reload; automatic graph snapshot
+restoration is not implemented. Generic Dapper reads filter soft deletes and carry xmin, but no
+EF-model read builder, FullRow provenance, converter/owned-graph materializer, strict write guard,
+manual-flush mode or automatic EF-savepoint hook integration is advertised. Commit acknowledgment
+failure remains uncertain and suppresses both success and rollback callbacks.
+
 ## Fixed constraints (owner)
 
 Reads stay Dapper (complex multi-entity queries) · partial updates deferred · caching plugs in later through the hook seam · no filter chain — registration list on the transaction · soft-delete configurable per entity · tenant predicates come from the ambient server-owned tenant; no tenant is an explicit system/admin scope.

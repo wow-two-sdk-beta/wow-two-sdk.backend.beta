@@ -84,5 +84,5 @@ which subject a message lands on, widens the stream, and raises the server floor
 
 ## See also
 
-- Port: [`../Transport/TransportContracts.cs`](../Transport/TransportContracts.cs) · emulated-DLQ sibling: [`../Kafka/Kafka.md`](../Kafka/Kafka.md) · native-DLQ sibling: [`../RabbitMq/RabbitMq.md`](../RabbitMq/RabbitMq.md)
+- Port: [`../Transport/ISendTransport.cs`](../Transport/ISendTransport.cs) · [`IReceiveTransport.cs`](../Transport/IReceiveTransport.cs) · emulated-DLQ sibling: [`../Kafka/Kafka.md`](../Kafka/Kafka.md) · native-DLQ sibling: [`../RabbitMq/RabbitMq.md`](../RabbitMq/RabbitMq.md)
 - [`../Messaging.md`](../Messaging.md) · analysis: [`engineering/planning/messaging/messaging-architecture-investigation.md`](../../../../../planning/messaging/messaging-architecture-investigation.md)

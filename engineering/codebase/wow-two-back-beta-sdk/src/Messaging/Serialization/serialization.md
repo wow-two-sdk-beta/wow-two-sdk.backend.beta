@@ -129,5 +129,5 @@ serialization adoption is a follow-up.
 
 ## See also
 
-- [`../Messaging.md`](../Messaging.md) · [`../Transport/TransportContracts.cs`](../Transport/TransportContracts.cs) (`ISendTransport` owns the wire format)
+- [`../Messaging.md`](../Messaging.md) · [`../Transport/ISendTransport.cs`](../Transport/ISendTransport.cs) (`ISendTransport` owns the wire format)
 - Maturity backlog §3.2: [`engineering/planning/messaging/events-maturity-backlog.md`](../../../../../planning/messaging/events-maturity-backlog.md)

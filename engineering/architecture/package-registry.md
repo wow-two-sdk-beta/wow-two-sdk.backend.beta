@@ -1,6 +1,6 @@
 # Package registry
 
-*Last updated: 2026-09-19*
+*Last updated: 2026-09-26*
 
 > The seven published NuGets and the capability areas compiled into them.
 
@@ -23,10 +23,18 @@ not additional package outputs.
 
 ## Capability status
 
-### Current release candidate
+### Implemented locally, publication pending
+
+The [September 26 sweep](../planning/sdk-completion/sweep-2026-09-26.md) adds `Data.Sessions`
+(`AddDataSession<TContext>`, nested units, borrowed connections, completion hooks),
+`Mediator.DataUnits` (`ITransactionalRequest`, `AddMediatorDataUnitInterceptor`), and `Http.Safety`
+(`AddSafeOutboundHttp`). Dapper reads gain soft-delete/xmin policies; idempotency gains atomic
+ownership, release and commit-aware replay. These changes are not included in `10.0.58-beta`.
+
+### Published in 10.0.58-beta
 
 The [ForeverPin SDK adoption cut](../planning/foreverpin-adoption/foreverpin-adoption.md) adds these mono-library capabilities;
-source completion does not claim NuGet publication.
+publication was recorded in the adoption track. Consumer upgrades are separate.
 
 - `Codes`: bounded SVG/PNG for every declared symbology, reusable validators and typed render results.
 - `Codes.Payloads`: `AddCodePayloads`, typed scanner serializers, vCard and floating VEVENT exporters.
@@ -37,7 +45,7 @@ source completion does not claim NuGet publication.
 - `Data.Errors` and `Foundation.Serialization`: wrapped database classification and closed immutable subtype registration.
 
 
-> Status: **stub** = csproj exists, no impl · **scaffold** = registration + minimal API · **shipped** = real wrapper, tested · **planned** = not yet started.
+> Status: **stub** = placeholder · **scaffold** = registration/minimal API · **shipped** = included in the published mono library · **planned** = absent. These older capability rows are not separate package outputs. Provider runtime verification must be read from the owning test evidence.
 
 ---
 
@@ -121,7 +129,7 @@ source completion does not claim NuGet publication.
 | `WoW.Two.Sdk.Backend.Beta.Mediator.Validation` | `AddMediatorValidationBehavior()` — FluentValidation pipeline behavior | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Mediator.Logging` | `AddMediatorLoggingBehavior()` — source-gen `[LoggerMessage]` request/response logging | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Mediator.Authorization` | `AddMediatorAuthorizationBehavior()` + `IRequireAuthorization` marker | shipped |
-| `WoW.Two.Sdk.Backend.Beta.Mediator.Idempotency` | `AddMediatorIdempotencyBehavior()` + `IIdempotent` + pluggable `IIdempotencyStore` | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Mediator.Idempotency` | `AddMediatorDeduplicatingInterceptor()` + `IIdempotent` + `IIdempotencyRepository`; ownership-token contract implemented locally | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity` | Meta — JWT + cookies + Identity API endpoints | planned |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Core` | `AddUserAccounts<TUser>()` — own sliced-lego user model: 7 entities + `ApplyIdentitySchema` + `IUserStore`/`EfUserStore` + `UserAccountService` facade (step 1 of the identity rebuild) | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Jwt` | `AddJwtBearerAuthentication()` — JWT bearer (symmetric or JWKS) | shipped |
@@ -184,9 +192,9 @@ source completion does not claim NuGet publication.
 | Package | Niche | Status |
 |---|---|---|
 | `WoW.Two.Sdk.Backend.Beta.Caching` | Meta — HybridCache defaults | planned |
-| `WoW.Two.Sdk.Backend.Beta.Caching.Hybrid` | Microsoft.Extensions.Caching.Hybrid wiring | planned |
-| `WoW.Two.Sdk.Backend.Beta.Caching.Memory` | In-process IMemoryCache wiring | planned |
-| `WoW.Two.Sdk.Backend.Beta.Caching.Redis` | StackExchange.Redis as L2 backend | planned |
+| `WoW.Two.Sdk.Backend.Beta.Caching.Hybrid` | `AddHybridCaching`, `ICacheRepository`, cache key builder and HybridCache adapter | shipped (mono-lib; distributed invalidation remains) |
+| `WoW.Two.Sdk.Backend.Beta.Caching.Memory` | `AddInMemoryCaching` | shipped (mono-lib; distributed invalidation remains) |
+| `WoW.Two.Sdk.Backend.Beta.Caching.Redis` | `AddRedisDistributedCache` as the optional L2 backend | shipped (mono-lib; distributed invalidation remains) |
 | `WoW.Two.Sdk.Backend.Beta.Caching.SqlServer` | SQL Server as L2 backend | planned |
 | `WoW.Two.Sdk.Backend.Beta.Caching.Cosmos` | Cosmos as L2 backend | planned |
 | `WoW.Two.Sdk.Backend.Beta.Caching.FusionCache` | FusionCache as alt | planned |

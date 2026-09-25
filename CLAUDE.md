@@ -25,11 +25,11 @@ See [`targets.md` §6](./engineering/architecture/analysis/philosophy/targets.md
 
 | Phase | Bundle | Status |
 |---|---|---|
-| P0 | testing scaffold (parallel track) | ✅ shipped (12 packages) |
-| P1 | boot floor — foundation + observability + web basics | ✅ shipped (24 packages: 7 foundation + 8 observability + 9 web) |
+| P0 | testing helpers and seven regression suites | implemented; four published testing companions |
+| P1 | boot floor — foundation + observability + web basics | shipped within the mono library |
 | P2 | request pipeline + auth | ✅ shipped (mediator + identity, incl. otp/otp.telegram/jwt.issuance/policies + 16 OAuth providers) |
-| P3 | persistence + outbound | 🚧 data ✅ · http ✅ · caching deferred |
-| P4 | distributed essentials | 🚧 comms/email ✅ · jobs/hangfire(+postgres) ✅ · messaging + webhooks planned |
+| P3 | persistence + outbound | data/HTTP/cache adapters ship; session/safety completion is local, unpublished |
+| P4 | distributed essentials | comms/email, Hangfire, messaging and webhooks ship; scoped workers remain |
 | meta | `AddApiDefaults()` / `UseApiDefaults()` one-import boot floor (`src/Meta/`) | ✅ shipped |
 | P5 | SaaS-shaped (tenancy + AI + flags) | planned |
 | P6 | heavy domain extensions | planned |
@@ -72,11 +72,10 @@ wow-two-sdk.backend.beta/
 
 ## Per-package shape
 
-Every wrapper folder follows:
+Capability folders compile into the mono library. Only the seven declared release projects own csproj files; a capability folder follows:
 
 ```
 src/<area>/<package>/
-├── WoW.Two.Sdk.Backend.Beta.<Domain>.csproj
 ├── <Module>ServiceCollectionExtensions.cs   ← descriptive `Add<Concrete>` extension(s)
 ├── <Public types>.cs
 ├── <Module>.standard.md                     ← RFC 2119 contract (when API has shape)
@@ -84,9 +83,9 @@ src/<area>/<package>/
 └── <folder>.md                              ← folder lead doc (kebab folder name, e.g. `time.md`) — 1-screen quickstart + see-also. NOT `README.md` below the repo root
 ```
 
-**Naming**: package id carries the brand (`WoW.Two.Sdk.Backend.Beta.<Area>`), but **method/class names do NOT have a `WowTwo` prefix** — they describe what they actually do (e.g. `AddJwtBearerAuthentication`, `AddOpenTelemetryTracing`, `UseOwaspSecureHeaders`, `JsonOptionsPresets`, `WebApiTestBase<T>`). Mirrors the older `Backbone.Language.Features.Serialization` package convention. Symbol-level naming is centralized in `wow-two-ws/conventions/development/backend/code-style/naming.md` (§Registration and extension-method naming); package-id grammar lives in [`engineering/architecture/package-layout.md`](./engineering/architecture/package-layout.md).
+**Naming**: package IDs use `WoW2.Sdk.Backend.Beta[.*]`; namespaces use `WoW.Two.Sdk.Backend.Beta.*`, but **method/class names do NOT have a `WowTwo` prefix** — they describe what they actually do (e.g. `AddJwtBearerAuthentication`, `AddOpenTelemetryTracing`, `UseOwaspSecureHeaders`, `JsonOptionsPresets`, `WebApiTestBase<T>`). Mirrors the older `Backbone.Language.Features.Serialization` package convention. Symbol-level naming is centralized in `wow-two-ws/conventions/development/backend/dotnet/core/lla/notation/naming/naming.md` (§Registration and extension-method naming); package-id grammar lives in [`engineering/architecture/package-layout.md`](./engineering/architecture/package-layout.md).
 
-Tiny adapter packages (e.g. each container engine) ship just csproj + main file + the folder lead doc `{folder}.md`. Standard/spec are reserved for packages where the API has non-trivial shape.
+Tiny adapter folders (e.g. each container engine) contain the implementation and folder lead doc `{folder}.md`. Standard/spec are reserved for packages where the API has non-trivial shape.
 
 See [`engineering/architecture/package-layout.md`](./engineering/architecture/package-layout.md).
 
@@ -116,13 +115,13 @@ Published IDs use the owned `WoW2.Sdk.Backend.Beta[.*]` prefix; namespaces use
 `WoW.Two.Sdk.Backend.Beta.*`. Package-id grammar lives in
 [`engineering/architecture/package-layout.md`](./engineering/architecture/package-layout.md).
 
-Registration: descriptive method names without `WowTwo` prefix — `services.AddJwtBearerAuthentication(...)`, `services.AddPerIpSlidingWindowRateLimit()`, `services.AddOpenTelemetryTracing(...)`. The package name carries the brand; the method name carries the meaning. Full rule: `wow-two-ws/conventions/development/backend/code-style/naming.md` (§Registration and extension-method naming).
+Registration: descriptive method names without `WowTwo` prefix — `services.AddJwtBearerAuthentication(...)`, `services.AddPerIpSlidingWindowRateLimit()`, `services.AddOpenTelemetryTracing(...)`. The package name carries the brand; the method name carries the meaning. Full rule: `wow-two-ws/conventions/development/backend/dotnet/core/lla/notation/naming/naming.md` (§Registration and extension-method naming).
 
 ## Documentation strategy
 
 **Wrappers** ship docs (`spec.md`, `standard.md`, the folder lead doc `{folder}.md`, `Tests.cs` examples). **Underlying libs** are NOT documented by us — we link to their official docs.
 
-Three-layer strategy + cadence: [`engineering/architecture/package-layout.md`](./engineering/architecture/package-layout.md) §Doc strategy. Wrapper-doc format (`*.standard.md` / `*.spec.md` / xUnit-as-docs): `wow-two-ws/conventions/development/backend/code-style/documentation.md` §Wrapper / package docs.
+Three-layer strategy + cadence: [`engineering/architecture/package-layout.md`](./engineering/architecture/package-layout.md) §Doc strategy. Wrapper-doc format (`*.standard.md` / `*.spec.md` / xUnit-as-docs): `wow-two-ws/conventions/development/backend/dotnet/core/lla/notation/documentation/documentation.md` §Wrapper / package docs.
 
 ## Working rules
 

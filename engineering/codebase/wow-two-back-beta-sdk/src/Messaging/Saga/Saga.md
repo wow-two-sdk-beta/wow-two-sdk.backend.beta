@@ -1,7 +1,7 @@
 # Messaging.Saga
 
 State-machine sagas: **correlated, persisted** process state that lives *between* messages. Sibling of the
-routing-slip runner in [`../EventSaga/`](../EventSaga/EventSaga.cs) — both stay, they answer different questions.
+routing-slip runner in [`../EventSaga/`](../EventSaga/) — both stay, they answer different questions.
 
 | | routing slip (`EventSaga/`) | state machine (`Saga/`) |
 |---|---|---|
@@ -129,8 +129,8 @@ topology and logs an unbound one once (`EventSagaPublisherService.cs`).
 
 ## See also
 
-- Routing slip: [`../EventSaga/EventSaga.cs`](../EventSaga/EventSaga.cs) · scheduler port:
-  [`../Reliability/MessagingReliability.cs`](../Reliability/MessagingReliability.cs) · ordering:
-  [`../Transport/MessagePump.cs`](../Transport/MessagePump.cs) · topology: [`../Transport/Topology.cs`](../Transport/Topology.cs)
+- Routing slip: [`../EventSaga/`](../EventSaga/) · scheduler port:
+  [`../Reliability/IDelayedDeliveryService.cs`](../Reliability/IDelayedDeliveryService.cs) · ordering:
+  [`../Transport/MessagePump.cs`](../Transport/MessagePump.cs) · topology: [`../Transport/ITopologyService.cs`](../Transport/ITopologyService.cs)
 - [`../Messaging.md`](../Messaging.md) · backlog §3.7:
   [`engineering/planning/messaging/events-maturity-backlog.md`](../../../../../planning/messaging/events-maturity-backlog.md)

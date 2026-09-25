@@ -76,8 +76,8 @@ Outbound webhooks POST to caller-supplied URLs — an SSRF vector — so deliver
 ## See also
 
 - [Webhooks.spec.md](./Webhooks.spec.md) · [Webhooks.standard.md](./Webhooks.standard.md)
-- Retry primitive: [`../Reliability/MessagingReliability.cs`](../Reliability/MessagingReliability.cs) (`IRetryPolicy` / `RetryConfig`)
-- Bus contracts: [`../MessagingContracts.cs`](../MessagingContracts.cs) · [`../Messaging.md`](../Messaging.md)
+- Retry primitive: [`../Reliability/IRetryPolicy.cs`](../Reliability/IRetryPolicy.cs) · [`../Reliability/RetryConfig.cs`](../Reliability/RetryConfig.cs)
+- Bus contracts: [`../Buses/IEventBus.cs`](../Buses/IEventBus.cs) · [`../IEvent.cs`](../IEvent.cs) · [`../Messaging.md`](../Messaging.md)
 
 ## Payload contract
 

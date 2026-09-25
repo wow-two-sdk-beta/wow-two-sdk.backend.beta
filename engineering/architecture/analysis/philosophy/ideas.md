@@ -6,7 +6,7 @@
 >
 > **Purpose**: enumerate the universe of .NET backend tech, libraries, runtime APIs, patterns, and conventions. **No verdicts.** Source of ideas, not a roadmap.
 >
-> **Target package**: `wow-two-sdk.backend.beta` — single big NuGet bundling everything. Dependency bloat is explicitly accepted; the goal is one-import, batteries-included.
+> **Distribution**: `WoW2.Sdk.Backend.Beta` is the production mono library; six companion outputs provide data abstractions, migrations and test helpers. The .NET 10 implementation checkpoint and current verdicts live in [`targets.md`](targets.md). This catalog is an inventory, not proof that a provider has been implemented or tested.
 >
 > **Scope today**: web/API backends (HTTP, gRPC, GraphQL, real-time), data access (relational, NoSQL, event store), cross-cutting concerns (DI, config, logging, validation, mapping, resilience, observability, security, caching, rate limiting, jobs, health, feature flags, multi-tenancy, i18n), messaging (in-process + distributed), search, storage, AI/LLM/vector, time, files, comms (email/sms/push), workflow/state machines, BCL/runtime APIs, testing surface, tooling. **Future scope**: client SDK generation, source-only deliverables, AOT-only branch — sketched in §10.
 
