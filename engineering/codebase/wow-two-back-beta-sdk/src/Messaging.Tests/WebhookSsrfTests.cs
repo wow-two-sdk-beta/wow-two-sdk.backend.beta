@@ -8,6 +8,25 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Tests;
 /// <summary>SSRF guard: https-scheme + host-allowlist pre-flight, and connect-time blocking of private-IP targets.</summary>
 public sealed class WebhookSsrfTests
 {
+    [Fact]
+    public async Task GuardedTransportDisablesRedirectsProxiesAndSharedCookies()
+    {
+        var services = new ServiceCollection();
+        services.AddWebhooks();
+        await using var provider = services.BuildServiceProvider();
+        HttpMessageHandler handler = provider.GetRequiredService<IHttpMessageHandlerFactory>()
+            .CreateHandler(WebhookDefaultConstants.HttpClientName);
+        while (handler is DelegatingHandler delegating)
+        {
+            handler = delegating.InnerHandler!;
+        }
+        var sockets = Assert.IsType<SocketsHttpHandler>(handler);
+        Assert.False(sockets.AllowAutoRedirect);
+        Assert.False(sockets.UseProxy);
+        Assert.False(sockets.UseCookies);
+        Assert.NotNull(sockets.ConnectCallback);
+    }
+
     private sealed class CountingHandler : HttpMessageHandler
     {
         public int Calls { get; private set; }

@@ -1,5 +1,5 @@
 using System.Net;
-using System.Net.Sockets;
+using WoW.Two.Sdk.Backend.Beta.Http.Safety.Validators;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 
@@ -25,26 +25,6 @@ internal static class WebhookAddressMapper
     /// <summary>True if <paramref name="address"/> falls in a range a webhook must never reach (private / loopback / link-local / ULA / CGNAT / multicast / unspecified).</summary>
     public static bool IsBlocked(IPAddress address)
     {
-        var ip = address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
-        if (IPAddress.IsLoopback(ip) || ip.Equals(IPAddress.Any) || ip.Equals(IPAddress.IPv6Any))
-            return true;
-
-        var bytes = ip.GetAddressBytes();
-        if (ip.AddressFamily == AddressFamily.InterNetwork)
-        {
-            return bytes[0] == 0                                  // 0.0.0.0/8 "this network"
-                || bytes[0] == 10                                 // 10.0.0.0/8 private
-                || (bytes[0] == 100 && (bytes[1] & 0xC0) == 64)   // 100.64.0.0/10 CGNAT
-                || bytes[0] == 127                                // 127.0.0.0/8 loopback
-                || (bytes[0] == 169 && bytes[1] == 254)           // 169.254.0.0/16 link-local (cloud metadata)
-                || (bytes[0] == 172 && (bytes[1] & 0xF0) == 16)   // 172.16.0.0/12 private
-                || (bytes[0] == 192 && bytes[1] == 168)           // 192.168.0.0/16 private
-                || bytes[0] >= 224;                               // 224.0.0.0/4 multicast + 240.0.0.0/4 reserved
-        }
-
-        return ip.IsIPv6LinkLocal
-            || ip.IsIPv6SiteLocal
-            || ip.IsIPv6Multicast
-            || (bytes[0] & 0xFE) == 0xFC;                         // fc00::/7 unique-local
+        return !new OutboundAddressValidator().IsAllowed(address);
     }
 }

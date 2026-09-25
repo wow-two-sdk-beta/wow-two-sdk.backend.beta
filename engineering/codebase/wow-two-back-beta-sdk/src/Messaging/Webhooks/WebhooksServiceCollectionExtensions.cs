@@ -33,7 +33,12 @@ public static class WebhooksServiceCollectionExtensions
             .ConfigurePrimaryHttpMessageHandler(static sp =>
             {
                 var webhookOptions = sp.GetRequiredService<WebhookOptions>();
-                var handler = new SocketsHttpHandler();
+                var handler = new SocketsHttpHandler
+                {
+                    AllowAutoRedirect = false,
+                    UseProxy = false,
+                    UseCookies = false
+                };
                 if (!webhookOptions.AllowPrivateNetworkTargets)
                     handler.ConnectCallback = new WebhookSsrfGuard().GuardedConnectAsync;
                 return handler;

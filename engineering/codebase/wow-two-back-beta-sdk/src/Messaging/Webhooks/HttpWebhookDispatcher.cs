@@ -41,7 +41,7 @@ internal sealed partial class HttpWebhookDispatcher(
         }
 
         var retryConfig = new RetryConfig { MaxAttempts = opt.MaxAttempts, Backoff = BackoffKind.ExponentialJitter, BaseDelay = opt.BaseRetryDelay, MaxDelay = opt.MaxRetryDelay };
-        var client = httpClientFactory.CreateClient(WebhookDefaultConstants.HttpClientName);
+        using var client = httpClientFactory.CreateClient(WebhookDefaultConstants.HttpClientName);
 
         var attempts = 0;
         int? lastStatus = null;
@@ -105,7 +105,10 @@ internal sealed partial class HttpWebhookDispatcher(
 
         try
         {
-            using var response = await client.SendAsync(request, timeoutCts.Token);
+            using var response = await client.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                timeoutCts.Token);
             var status = (int)response.StatusCode;
             if (response.IsSuccessStatusCode)
                 return (SendOutcome.Success, status);
