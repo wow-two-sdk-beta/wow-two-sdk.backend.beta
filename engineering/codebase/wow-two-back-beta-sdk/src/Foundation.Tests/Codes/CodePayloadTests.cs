@@ -82,4 +82,18 @@ public sealed class CodePayloadTests
             _events.Export(model).ValueOrThrow());
         Assert.False(_events.Export(model with { End = model.Start }).IsSuccess);
     }
+
+    [Fact]
+    public void Calendar_OmitsAbsentEndWithoutInventingDuration()
+    {
+        var model = new FloatingCalendarEventModel
+        {
+            Title = "Launch", Start = new LocalDateTime(2026, 7, 1, 18, 30),
+        };
+        Assert.Equal("BEGIN:VEVENT\r\nSUMMARY:Launch\r\nDTSTART:20260701T183000\r\nEND:VEVENT",
+            _events.Export(model).ValueOrThrow());
+        Assert.False(_events.Export(model with { End = new LocalDateTime(2026, 7, 1, 18, 29) }).IsSuccess);
+        Assert.False(_events.Export(model with { End = new LocalDateTime(2026, 7, 1, 19, 0).WithCalendar(CalendarSystem.Julian) }).IsSuccess);
+        Assert.False(_events.Export(model with { Start = new LocalDateTime(0, 1, 1, 0, 0) }).IsSuccess);
+    }
 }

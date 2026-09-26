@@ -12,7 +12,8 @@ Optional null/blank fields are omitted; SSIDs/passwords and literal text retain 
 - vCard emits the supplied contact as v3: N, FN, optional ORG/TITLE/TEL/EMAIL/URL/ADR/NOTE. Text is escaped;
   CR/LF cannot inject properties. CRLF separates lines; folding caps physical lines at 75 UTF-8 octets without splitting a scalar.
 - VEVENT export explicitly takes timezone-free LocalDateTime. No conversion or product timezone choice is implied.
-  UTC/TZID/full VCALENDAR, UID and delivery semantics remain the deferred calendar vector. End must follow start.
+  UTC/TZID/full VCALENDAR, UID and delivery semantics remain the deferred calendar vector.
+  A supplied end must follow start; an absent end omits DTEND without inferring a duration.
 - Typed encoders return Result<string> for invalid format data. They do not validate product entitlement or field requirements.
 
 Protocol corrections to the product corpus: mailto space/plus encoding, body CRLF, vCard/VEVENT CRLF and safe line folding.

@@ -9,8 +9,8 @@ public sealed record FloatingCalendarEventModel
     /// <summary>Gets the Start value.</summary>
     public NodaTime.LocalDateTime Start { get; init; }
 
-    /// <summary>Gets the End value.</summary>
-    public NodaTime.LocalDateTime End { get; init; }
+    /// <summary>Gets the optional end; absence leaves the event duration unspecified.</summary>
+    public NodaTime.LocalDateTime? End { get; init; }
 
     /// <summary>Gets the Location value.</summary>
     public string? Location { get; init; }
