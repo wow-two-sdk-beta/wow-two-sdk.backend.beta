@@ -10,7 +10,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Testing;
 
 /// <summary>
 /// Test host wrapping <see cref="WebApplicationFactory{TEntryPoint}"/> with conventional defaults:
-/// - Environment forced to <c>"Testing"</c>.
+/// - Environment defaults to <c>Development</c> so the host validates dependency lifetimes.
 /// - <see cref="FakeTimeProvider"/> registered as the default <see cref="TimeProvider"/>.
 /// - <see cref="IClock"/> adapted to that same fake clock.
 /// - Hooks for replacing services and adding host-local configuration before the host builds.
@@ -30,7 +30,7 @@ public class WebApiTestHost<TEntryPoint> : WebApplicationFactory<TEntryPoint>
     public Action<IServiceCollection>? ConfigureServicesHook { get; init; }
 
     /// <summary>
-    /// Adds a host-local configuration step before the host's services are created.
+    /// Adds host-local configuration before the host builds. Bind settings lazily through DI or options.
     /// </summary>
     public Action<IConfigurationBuilder>? ConfigureConfigurationHook { get; init; }
 
@@ -42,7 +42,7 @@ public class WebApiTestHost<TEntryPoint> : WebApplicationFactory<TEntryPoint>
     /// <inheritdoc />
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment(Environments.Production); // typically Production-shape; override via ConfigureHostHook
+        builder.UseEnvironment(Environments.Development);
 
         builder.ConfigureAppConfiguration((_, configuration) =>
             ConfigureConfigurationHook?.Invoke(configuration));
