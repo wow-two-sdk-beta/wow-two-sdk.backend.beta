@@ -1,9 +1,9 @@
 # ForeverPin SDK adoption sweep
 
-*Last updated: 2026-09-24*
+*Last updated: 2026-09-26*
 
 > Full backend component inventory for one coordinated SDK improvement and ForeverPin upgrade cut.
-> This owns the SDK-facing sweep; product UX and unresolved delivery choices remain in ForeverPin's v0.9 track.
+> This owns the SDK-facing sweep; product UX and unresolved delivery choices remain in ForeverPin's product tracks.
 
 ## Status
 
@@ -14,17 +14,20 @@
 - [x] Implement the autonomous SDK cut with focused regressions; product-only rows remain below.
 - [x] Verify the complete candidate family and prepare the developer-owned release.
 - [x] Publish the candidate: `ba2a87e` released as `10.0.58-beta`; all seven packages verified on NuGet.
-- [ ] Upgrade ForeverPin once to `10.0.58-beta`; apply the product adoption cut.
-- [ ] Run the complete product verifier, including real PostgreSQL and both HTTP hosts.
+- [x] Apply the authorized product adoption cut across both hosts and all 12 backend projects.
+- [x] Complete final product regressions against the local SDK candidate: 231 passed, zero skipped.
+- [ ] Publish the adoption-discovered SDK corrections and repin ForeverPin to the verified release.
+- [ ] Run the published-package backend verifier; frontend acceptance belongs to its separate lane.
 
-This is a source and contract sweep, not a claim that the upgraded product passes its runtime suite.
 The user authorized deep implementation where the answer follows from current contracts.
 Work requiring new product or platform policy is deferred explicitly below.
-Commit permission remains OFF. The SDK candidate is published as `10.0.58-beta`; ForeverPin adoption targets that version.
+The original `10.0.58-beta` cut is published. Adoption exposed two additional SDK corrections, now locally packaged;
+publication and the final consumer pin remain open. Commit permission is enforced by each repository's native switch.
+Product evidence: [backend adoption](../../../../../ventures/10x-venture-forever-pin/engineering/architecture/backend-adoption.md).
 
 ---
 
-## Baseline
+## Original baseline
 
 - SDK source baseline: `b01f6b6`; CI released `10.0.56-beta` at `a7f98013abfc6b7fb4c1ea2bbc08b228297726ea`.
   The peeled remote tag matches the revision recorded by the workflow's pack and package-verification steps.
@@ -35,8 +38,9 @@ Commit permission remains OFF. The SDK candidate is published as `10.0.58-beta`;
 - The shared ForeverPin checkout has another lane's solution/verification changes; preserve its index and worktree.
 - The prior package probe's 29 compilation errors were the first failing layers, not an exhaustive migration list.
   Source review also finds current-user/guest names, style serialization, error factories and fixture API changes.
-- The final adoption version is `10.0.58-beta`: candidate commit `ba2a87e`, release commit `546466e`,
-  annotated tag `v10.0.58-beta` peeling to `546466e`. Adopt it for runtime and testing references alike.
+- The first published adoption cut was `10.0.58-beta`: candidate commit `ba2a87e`, release commit `546466e`,
+  annotated tag `v10.0.58-beta` peeling to `546466e`. The final consumer release must also include the later
+  optional-calendar-end and test-host corrections recorded below.
 
 Product file names below resolve under ForeverPin's `engineering/codebase/forever-pin.backend-services/`.
 SDK source paths resolve under `engineering/codebase/wow-two-back-beta-sdk/src/`.
@@ -97,27 +101,28 @@ not a request for confirmation. Apply SDK corrections first and consume them thr
 
 ### A02 — Complete API migration inventory
 
-- [ ] Consume `ICodeRenderer.Render` as `Result<RenderedCode>` and map its validation error at the HTTP boundary.
-- [ ] Replace manually constructed renderers with SDK registration or pass the new rasterizer collaborator.
-- [ ] Configure persistent/shared Data Protection keys for intended guest-sharing hosts; legacy raw guest cookies are rejected.
+- [x] Consume `ICodeRenderer.Render` as `Result<RenderedCode>` and map its validation error at the HTTP boundary.
+- [x] Replace manually constructed renderers with SDK registration or pass the new rasterizer collaborator.
+- [x] Configure persistent/shared Data Protection keys for intended guest-sharing hosts; legacy raw guest cookies are rejected.
 
-- [ ] Align runtime and testing references to the same final published version.
-- [ ] Migrate `ConfigurationLoader` to `ConfigurationMapper`.
-- [ ] Migrate `IGoogleIdTokenVerifier` / registration / fake to the authenticator contract.
-- [ ] Migrate `ICurrentUser` and `IGuestSession` to `ICurrentUserService` and `IGuestSessionService`.
-- [ ] Migrate `StyleSpecNormalizer` to `StyleSpecMapper`.
-- [ ] Replace static ProblemDetails creation and `IErrorMessageResolver` with `IAppErrorProblemDetailsFactory`.
-- [ ] Replace migration exception assertions with `Result<T>` success/failure assertions.
-- [ ] Replace removed `MultiHostFixture.ConfigureEnvironment` with host-local configuration hooks.
+- [x] Centralize runtime and testing references under one version property.
+- [ ] Set that property to the verified published version containing the adoption-discovered corrections.
+- [x] Migrate `ConfigurationLoader` to `ConfigurationMapper`.
+- [x] Migrate `IGoogleIdTokenVerifier` / registration / fake to the authenticator contract.
+- [x] Migrate `ICurrentUser` and `IGuestSession` to `ICurrentUserService` and `IGuestSessionService`.
+- [x] Migrate `StyleSpecNormalizer` to `StyleSpecMapper`.
+- [x] Replace static ProblemDetails creation and `IErrorMessageResolver` with `IAppErrorProblemDetailsFactory`.
+- [x] Replace migration exception assertions with `Result<T>` success/failure assertions.
+- [x] Replace removed `MultiHostFixture.ConfigureEnvironment` with host-local configuration hooks.
 - Acceptance: every backend project compiles, including the management host and test harnesses previously hidden
   behind upstream compiler failures. Update the host-local connection, redirect URL and fake-service registrations.
 
 ### A03 — Error classification and safe responses
 
 - [x] Teach SDK database mapping to classify EF-wrapped provider failures while preserving the outer diagnostic cause.
-- [ ] Remove product broad catches that convert unexpected exceptions and cancellation into `Unexpected(ex.Message)`.
-- [ ] Keep deliberately handled business failures typed and safe; scope webhook signature handling narrowly.
-- [ ] Render product failures through the registered SDK ProblemDetails factory, preserving field paths and headers.
+- [x] Remove product broad catches that convert unexpected exceptions and cancellation into `Unexpected(ex.Message)`.
+- [x] Keep deliberately handled business failures typed and safe; scope webhook signature handling narrowly.
+- [x] Render product failures through the registered SDK ProblemDetails factory, preserving field paths and headers.
 - [x] Move the generic controller-to-ProblemDetails adapter into the SDK; no product-specific logic belongs in it.
 - Reproduced: direct PostgreSQL `23505` maps to `Conflict`; the same error inside `DbUpdateException` is unmapped.
   Removing product catches alone will therefore not establish correct 409 behavior.
@@ -129,11 +134,11 @@ not a request for confirmation. Apply SDK corrections first and consume them thr
 - [x] Harden SDK subtype registration: decoded JSON tokens, unique discriminators, declared kinds, closed/non-null types and read-only entries.
 - [x] Verify stored JSON snapshots isolate nested mutation and retain equality across serialization.
 
-- [ ] Remove the local generic registry, modifier and `JsonbOptions` duplicates.
-- [ ] Register product union profiles explicitly in both hosts and provider-specific test contexts.
-- [ ] Replace `CodeContentJson`, `CodeRuleJson` and removed `StyleSpecJson` calls with direct SDK-backed serialization.
-- [ ] Replace the custom shallow EF comparer/converter with `HasJsonConversion` under the stored rule profile.
-- [ ] Add corpus tests for every content/rule subtype, reordered jsonb discriminators and legacy style documents.
+- [x] Remove the local generic registry, modifier and `JsonbOptions` duplicates.
+- [x] Register product union profiles explicitly in both hosts and provider-specific test contexts.
+- [x] Replace `CodeContentJson`, `CodeRuleJson` and removed `StyleSpecJson` calls with direct SDK-backed serialization.
+- [x] Replace the custom shallow EF comparer/converter with `HasJsonConversion` under the stored rule profile.
+- [x] Add corpus tests for every content/rule subtype, reordered jsonb discriminators and legacy style documents.
 - Preserve the accepting boundary's established absence behavior: content null/blank → absent; rules null/blank → empty.
 - Style tests currently promise null/blank/`{}`/malformed → default. Raw `JsonSerializer.Deserialize<StyleSpec>` does not
   preserve that behavior; keep the default/recovery policy at the stored-style read boundary, without a wrapper role.
@@ -157,11 +162,11 @@ not a request for confirmation. Apply SDK corrections first and consume them thr
 
 ### A06 — Validation at product entry points
 
-- [ ] Validate preview input before rendering; it currently bypasses mediator validation.
-- [ ] Reject null collections/content/style and undefined enum values at the HTTP boundary.
-- [ ] Load the owner-scoped entity before mode-dependent update validation; use its persisted mode.
-- [ ] Reuse product validators through SDK adapters while preserving `Rules[i].Content.*` failure paths.
-- [ ] Validate condition values as device/country/language/time-window data rather than only nonempty strings.
+- [x] Validate preview input before rendering; it currently bypasses mediator validation.
+- [x] Reject null collections/content/style and undefined enum values at the HTTP boundary.
+- [x] Load the owner-scoped entity before mode-dependent update validation; use its persisted mode.
+- [x] Reuse product validators through SDK adapters while preserving `Rules[i].Content.*` failure paths.
+- [x] Validate condition values as device/country/language/time-window data rather than only nonempty strings.
 - Keep input validation external. The loaded-data phase must not introduce nested request dispatch.
 - Acceptance: malformed preview returns 400; a static update cannot acquire multiple rules; unauthorized/absent targets
   retain the product's owner-scoped response contract; failed validation leaves the row unchanged.
@@ -171,7 +176,7 @@ not a request for confirmation. Apply SDK corrections first and consume them thr
 - [x] Replace SDK raw-GUID cookie trust with an authenticated guest capability, shared by provisioning and resolution.
 - [x] Reject tampered/raw values and isolate the guest capability's purpose from registered account authentication.
 - [x] Clear the request's resolved guest state consistently when the guest session is cleared.
-- [ ] Require a valid guest capability for product guest-to-account reassignment.
+- [x] Require a valid guest capability for product guest-to-account reassignment.
 - Reproduced: setting an arbitrary GUID in `user-id` makes `CookieCurrentUserService` return that owner as a guest.
   Product repositories scope directly by this ID; sign-in may reassign all rows owned by that supplied ID.
 - Acceptance: forged account/guest IDs cannot read, mutate or claim rows; valid same-device guest claiming still works.
@@ -180,21 +185,21 @@ not a request for confirmation. Apply SDK corrections first and consume them thr
 
 ### A08 — Host composition, settings and clocks
 
-- [ ] Apply settled subject names: `AddPostgresDatabase`, `AddCodes`, `AddMediator`, `AddRouting`.
-- [ ] Put identity middleware in the SDK's `UseApiDefaults` callback.
-- [ ] Use startup diagnostics for both hosts and validate settings for explicitly enabled external capabilities.
-- [ ] Replace inert `Logging:LogLevel` with the Serilog configuration actually consumed.
-- [ ] Inject `TimeProvider` into redirect request context and tests instead of reading `DateTimeOffset.UtcNow` directly.
+- [x] Apply settled subject names: `AddPostgresDatabase`, `AddCodes`, `AddMediator`, `AddRouting`.
+- [x] Put identity middleware in the SDK's `UseApiDefaults` callback.
+- [x] Use startup diagnostics for both hosts and validate settings for explicitly enabled external capabilities.
+- [x] Replace inert `Logging:LogLevel` with the Serilog configuration actually consumed.
+- [x] Inject `TimeProvider` into redirect request context and tests instead of reading `DateTimeOffset.UtcNow` directly.
 - Acceptance: both hosts boot; identity precedes identity-sensitive policies; one fake clock controls routing/audit tests.
 
 ### A09 — Bounded correctness work in data and background processing
 
-- [ ] Keep tracked entity mutation; reject accidental detached replacement writes rather than silently doing nothing.
-- [ ] Make one scan flush atomically insert events and update their counters using the existing EF transaction API.
-- [ ] Add shutdown/drain and drop/failure observability to the existing bounded scan queue.
+- [x] Keep tracked entity mutation; reject accidental detached replacement writes rather than silently doing nothing.
+- [x] Make one scan flush atomically insert events and update their counters using the existing EF transaction API.
+- [x] Add shutdown/drain and drop/failure observability to the existing bounded scan queue.
 - [x] Add SDK unbiased cryptographic ID generation with caller-owned length/alphabet.
-- [ ] Adopt the generator in the product; bound collision retries and rely on the database unique constraint.
-- The generator currently reduces bytes modulo 62; use unbiased selection rather than carrying that bias into the SDK.
+- [x] Adopt the generator in the product; bound collision retries and rely on the database unique constraint.
+- The original product generator reduced bytes modulo 62; the adopted SDK generator uses unbiased selection.
 - Do not invent a universal data-session abstraction to fix one EF-only transaction.
 - Acceptance: failed scan flush cannot leave events/counters inconsistent; cancellation does not masquerade as success;
   a forced slug collision cannot spin indefinitely or overwrite an existing code.
@@ -205,10 +210,10 @@ not a request for confirmation. Apply SDK corrections first and consume them thr
 
 - [x] Extract protocol encoding from product-specific content records into typed SDK serializers, retaining the union locally.
 - [x] Preserve the current valid payload corpus before changing protocol details; add boundary/escaping/culture tests.
-- [ ] Fix the known HTTP destination path to read the URL from URL/mobile-app content rather than calling `Encode()`.
+- [x] Fix the known HTTP destination path to read the URL from URL/mobile-app content rather than calling `Encode()`.
 - [x] Extract reusable User-Agent classification and preference-aware language parsing; retain product rule evaluation.
-- Source evidence: URL and mobile-app `Encode()` deliberately return null, while `RoutingService.Resolve` calls `Encode()`.
-  Their dynamic routing currently falls through to `NotFound`; existing route tests use text payloads containing URLs.
+- Original source evidence: URL and mobile-app `Encode()` returned null while `RoutingService.Resolve` called it.
+  Dynamic routing fell through to `NotFound`; adoption now reads the destination URL and has product regressions.
 - SDK `FloatingCalendarEventExporter` explicitly accepts timezone-free `LocalDateTime`; it does not infer timezone policy.
 - Protocol corrections are tested and recorded in `Codes/Payloads/Payloads.spec.md`; the product corpus changes during adoption.
 - Calendar timezone semantics and non-HTTP delivery remain deferred, not guessed during generic extraction.
@@ -217,22 +222,22 @@ not a request for confirmation. Apply SDK corrections first and consume them thr
 
 ### A11 — Testing and build reproducibility
 
-- [ ] Centralize family versions; evaluate direct package usage before removing duplicate/transitive references.
-- [ ] Pin currently floating build dependencies and the .NET SDK to a verified compatible baseline.
-- [ ] Add shared build settings consistent with the service convention; run all resulting diagnostics.
-- [ ] Replace global environment mutations and the obsolete test-provider comment with instance-owned fixture settings.
-- [ ] Ensure test overrides preserve audit/other production interceptors.
-- [ ] Keep generic migration engine tests in SDK; retain product migration resources and host startup coverage locally.
+- [x] Centralize family versions; evaluate direct package usage before removing duplicate/transitive references.
+- [x] Pin currently floating build dependencies and the .NET SDK to a verified compatible baseline.
+- [x] Add shared build settings consistent with the service convention; run all resulting diagnostics.
+- [x] Replace global environment mutations and the obsolete test-provider comment with instance-owned fixture settings.
+- [x] Ensure test overrides preserve audit/other production interceptors.
+- [x] Keep generic migration engine tests in SDK; retain product migration resources and host startup coverage locally.
 - Nullable is already enabled in the current projects. The old handoff claim that no `Directory.Build.props` means
   nullable warnings cannot surface is refuted; the gap is centralized reproducible policy, not absent nullable analysis.
 - Do not rename or restage another lane's solution/verification files during this cut.
 
 ### A12 — API/application convention adoption
 
-- [ ] Apply domain-first API placement and settled `*Dto` edge / `*Model` application naming.
-- [ ] Keep trivial request mapping in its request file; retain actual product orchestration services.
-- [ ] Move roles such as background workers and extensions to their agreed folders.
-- [ ] Reconcile the old naming/documentation rows against current source rather than replaying the historical counts.
+- [x] Apply domain-first API placement and settled `*Dto` edge / `*Model` application naming.
+- [x] Keep trivial request mapping in its request file; retain actual product orchestration services.
+- [x] Move roles such as background workers and extensions to their agreed folders.
+- [x] Reconcile the old naming/documentation rows against current source rather than replaying the historical counts.
 - These are product changes in the coordinated upgrade, not reasons to grow new SDK wrappers.
 
 ---
@@ -244,9 +249,9 @@ above, and they are not deferred merely because their implementation is long.
 
 | ID | Decision / existing owner | Safe boundary for this cut |
 |---|---|---|
-| D01 | Full `IDataSession` / EF+Dapper unit of work and hooks; SDK data-pipeline architecture | Correct current EF transactions and errors without a parallel abstraction. |
+| D01 | SDK `IDataSession` source is implemented in the later, unpublished data-pipeline cut | Product invariants use its existing shared EF context and transactions; no second session abstraction is needed for this adoption. |
 | D02 | Cache invalidation across management and redirect hosts; freshness and deployment topology | Keep the active uncached DB path; SDK cache availability alone does not justify wiring stale reads. |
-| D03 | Dynamic non-HTTP delivery, resolve-page host, geo behavior and calendar timezone meaning; product v0.9 | Fix already-defined URL routing; preserve/defer the remaining delivery choices. |
+| D03 | Dynamic non-HTTP delivery, resolve-page host, geo behavior and calendar timezone meaning; product delivery policy | Fix already-defined URL routing; preserve/defer the remaining delivery choices. |
 | D04 | Full payments adapter and webhook state/replay/order model; Stripe target is currently LATER | Keep product plans local; map provider failures safely; no speculative generic billing framework. |
 | D05 | IP geolocation provider, database licensing/update process and proxy trust boundary | Do not claim country routing works while `NoopGeoBroker` is registered. |
 | D06 | Complete translation catalogs, culture/fallback policy and error-code governance | Adopt existing field-error/message seams; retain current English contract. |
@@ -259,6 +264,26 @@ Further findings can extend these subjects; do not create a new discussion for a
 ---
 
 ## Verification and commit handoff
+
+### Product adoption candidate — 2026-09-26
+
+- SDK source base: `94b32a9fb71a703c52d82f5ab67e74b238159cfe`; HTTP/data/idempotency follow-up commits are local.
+- Adoption corrections committed: `f84aeba` makes `FloatingCalendarEventModel.End` optional;
+  `c40fd57` makes `WebApiTestHost` default to `Development` so dependency lifetime validation remains enabled.
+  Neither correction is in published `10.0.58-beta`.
+- Full SDK Release run before the test-host correction: 610 passed, one existing Kafka skip.
+  The affected Web suite was rerun after that correction: 103 passed, zero skipped.
+- All seven `10.0.59-beta.local.20260926.2` package/symbol pairs passed artifact verification under
+  `/tmp/foreverpin-sdk-candidate-20260926-2`. Their repository metadata identifies the base revision;
+  these working-tree artifacts do not claim a committed or published snapshot.
+- ForeverPin's complete final candidate run passed: 81 HTTP, 30 PostgreSQL integration, one product migration
+  and 119 unit tests; 231 passed, zero skipped. Evidence: `/tmp/foreverpin-adoption-tests-final.log`.
+  The run includes deep JSON tracking, owner-transfer races, field-path validation and both host environments.
+- Both runtime and test package references use `BackendSdkVersion`. The temporary checked-in default is
+  `10.0.58-beta`; local tests explicitly override it. The product must not be committed with that temporary pin.
+- Publish the SDK through the normal developer-owned main push, verify all seven resulting packages,
+  replace the product pin with that actual version, and run the backend verifier without local overrides.
+- Frontend/browser acceptance and provider-backed production verification remain separate.
 
 ### CI batch — published
 
@@ -321,8 +346,8 @@ Color injected a new SVG attribute: True
 Unsigned caller-selected ID accepted as guest: True
 ```
 
-These baseline observations now have passing SDK regressions. Product-only findings remain source evidence until adoption;
-the product suite has not been rerun and no product source or package pins were changed by this SDK cut.
+These baseline observations received passing SDK regressions in the original cut. The later product adoption
+and its verification are recorded in the 2026-09-26 candidate section above.
 
 ### Source pointers
 
@@ -332,10 +357,10 @@ the product suite has not been rerun and no product source or package pins were 
 - Guest trust: [current-user service](../../codebase/wow-two-back-beta-sdk/src/Identity/CurrentUser/CookieCurrentUserService.cs).
 - Stored profiles: [profile registration](../../codebase/wow-two-back-beta-sdk/src/Foundation/Serialization/StoredJsonOptionsProfileExtensions.cs).
 - Product JSON tracking: [code mapping](../../../../../ventures/10x-venture-forever-pin/engineering/codebase/forever-pin.backend-services/ForeverPin.Persistence/Configurations/CodeEntityConfiguration.cs).
-- Update validation: [update validator](../../../../../ventures/10x-venture-forever-pin/engineering/codebase/forever-pin.backend-services/ForeverPin.Application/Codes/Core/Validators/CodeUpdateCommandValidator.cs).
-- Preview bypass: [codes controller](../../../../../ventures/10x-venture-forever-pin/engineering/codebase/forever-pin.backend-services/ForeverPin.Api/Controllers/CodesController.cs).
+- Update validation: [update validator](../../../../../ventures/10x-venture-forever-pin/engineering/codebase/forever-pin.backend-services/ForeverPin.Application/Codes/Core/Validators/CodeUpdateModelValidator.cs).
+- Preview bypass: [codes controller](../../../../../ventures/10x-venture-forever-pin/engineering/codebase/forever-pin.backend-services/ForeverPin.Api/Codes/Core/Controllers/CodesController.cs).
 - URL destination: [routing service](../../../../../ventures/10x-venture-forever-pin/engineering/codebase/forever-pin.backend-services/ForeverPin.Redirect.Api/Infrastructure/Routing/RoutingService.cs).
-- Analytics atomicity: [scan flusher](../../../../../ventures/10x-venture-forever-pin/engineering/codebase/forever-pin.backend-services/ForeverPin.Redirect.Api/Infrastructure/Analytics/ScanFlushBackgroundService.cs).
+- Analytics atomicity: [scan flusher](../../../../../ventures/10x-venture-forever-pin/engineering/codebase/forever-pin.backend-services/ForeverPin.Redirect.Api/Infrastructure/Analytics/BackgroundServices/ScanFlushBackgroundService.cs).
 - Provider/billing boundary: [Stripe broker](../../../../../ventures/10x-venture-forever-pin/engineering/codebase/forever-pin.backend-services/ForeverPin.Infrastructure/Billing/Services/StripeBillingBroker.cs).
 - Test isolation: [product fixture](../../../../../ventures/10x-venture-forever-pin/engineering/codebase/forever-pin.backend-services/ForeverPin.Tests.E2E/Harness/AppFixture.cs).
 
@@ -344,8 +369,9 @@ the product suite has not been rerun and no product source or package pins were 
 1. Completed: autonomous SDK corrections and regression tests; CI correction already published.
 2. Completed: full SDK Release solution tested; seven package/symbol pairs verified from one revision.
 3. Completed: `10.0.58-beta` published; seven packages available and the tag peels to `546466e`.
-4. Repin all ForeverPin SDK references once, apply adoption changes and run all backend suites on PostgreSQL.
-5. Run the product's full verifier for frontend wire compatibility; browser/manual QA remains developer-owned.
+4. Implemented locally: ForeverPin host, payload, validation, identity, data and convention adoption.
+5. Publish the adoption-discovered SDK corrections; pin the resulting family and run the backend verifier.
+6. Complete frontend integration and browser/manual acceptance in the product's separate frontend lane.
 
 ### Coverage ledger
 
