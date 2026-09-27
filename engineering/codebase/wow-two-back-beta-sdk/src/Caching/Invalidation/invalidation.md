@@ -5,7 +5,7 @@
 ```csharp
 // Every host that caches: listen and evict through ICacheRepository.
 builder.Services.AddHybridCaching();
-builder.Services.AddPostgresCacheInvalidation(options => options.ConnectionString = connectionString);
+builder.Services.AddPostgresCacheInvalidation();   // listens on the AddPostgresPersistence database by default
 
 // The writer: queue the invalidation inside the write's transaction.
 await using var transaction = await db.Database.BeginTransactionAsync(ct);

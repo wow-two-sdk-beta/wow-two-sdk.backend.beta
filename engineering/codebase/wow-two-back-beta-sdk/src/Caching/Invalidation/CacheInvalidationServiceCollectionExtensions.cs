@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Caching.Invalidation.BackgroundServices;
+using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Caching.Invalidation;
@@ -12,22 +13,28 @@ public static class CacheInvalidationServiceCollectionExtensions
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configure">Sets the connection string, channel and reconnect delay.</param>
     /// <remarks>
+    ///   - without a connection string, it listens on the database registered by <c>AddPostgresPersistence</c>
     ///   - the default handler evicts through <c>ICacheRepository</c>; register another <see cref="ICacheInvalidationHandler"/> first to replace it
     ///   - give cached entries a lifetime: it bounds staleness if a notification is ever missed
     /// </remarks>
     public static IServiceCollection AddPostgresCacheInvalidation(
         this IServiceCollection services,
-        Action<PostgresCacheInvalidationOptions> configure)
+        Action<PostgresCacheInvalidationOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configure);
 
         services.AddValidatedOptions(
             configure,
             static builder => builder
-                .Validate(static options => !string.IsNullOrWhiteSpace(options.ConnectionString), "CacheInvalidation: ConnectionString is required.")
+                .Validate(static options => !string.IsNullOrWhiteSpace(options.ConnectionString), "CacheInvalidation: ConnectionString is required without registered persistence.")
                 .Validate(static options => !string.IsNullOrWhiteSpace(options.Channel), "CacheInvalidation: Channel is required.")
                 .Validate(static options => options.ReconnectDelay > TimeSpan.Zero, "CacheInvalidation: ReconnectDelay must be positive."));
+        services.AddOptions<PostgresCacheInvalidationOptions>()
+            .PostConfigure<IServiceProvider>(static (options, provider) =>
+            {
+                if (string.IsNullOrWhiteSpace(options.ConnectionString) && provider.GetService<DatabaseSettings>() is { } database)
+                    options.ConnectionString = database.ConnectionString;
+            });
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<ICacheInvalidationHandler, CacheRepositoryInvalidationHandler>();
         services.AddHostedService<PostgresCacheInvalidationBackgroundService>();

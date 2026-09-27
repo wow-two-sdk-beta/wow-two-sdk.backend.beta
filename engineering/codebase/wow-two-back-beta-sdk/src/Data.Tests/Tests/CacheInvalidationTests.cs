@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using WoW.Two.Sdk.Backend.Beta.Caching.Invalidation;
 using WoW.Two.Sdk.Backend.Beta.Caching.Invalidation.Extensions;
+using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
 using WoW.Two.Sdk.Backend.Beta.Data.Tests.Harness;
 using WoW.Two.Sdk.Backend.Beta.Testing.Data.EntityFrameworkCore;
 
@@ -92,6 +93,17 @@ public sealed class CacheInvalidationTests(DataTestDb testDb)
         Assert.True(cache.TryGetValue("code:keep", out _));
         Assert.IsType<MemoryCacheInvalidationHandler>(host.Services.GetRequiredService<ICacheInvalidationHandler>());
         await StopAsync(host);
+    }
+
+    [Fact]
+    public void Registration_ListensOnThePersistenceDatabase_WhenNoConnectionIsSet()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(new DatabaseSettings { ConnectionString = TestDb.ConnectionString });
+        services.AddPostgresCacheInvalidation();
+        using var provider = services.BuildServiceProvider();
+
+        Assert.Equal(TestDb.ConnectionString, provider.GetRequiredService<PostgresCacheInvalidationOptions>().ConnectionString);
     }
 
     private async Task<IHost> StartAsync(RecordingHandler handler, string application)
