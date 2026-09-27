@@ -22,7 +22,7 @@
 - [x] E5 — queued batch background work: bounded pipeline, scoped handler, shutdown drain; 5 host tests
 - [x] E6 — unique key allocation under a savepoint: SQLite and PostgreSQL conflict tests
 - [x] E7 — commit-aware cache invalidation across hosts: PostgreSQL commit, rollback and reconnect tests
-- [ ] E8 — inbound webhook deduplication and ordering
+- [x] E8 — inbound webhook deduplication and ordering: inbox redelivery and watermark tests on PostgreSQL
 - [ ] E9 — SPA antiforgery
 
 ---
