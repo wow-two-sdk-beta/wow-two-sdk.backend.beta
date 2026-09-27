@@ -23,6 +23,15 @@ app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready", new() { Predicate = c => c.Tags.Contains("ready") });
 ```
 
+## Database readiness
+
+```csharp
+builder.Services.AddHealthChecks().AddDatabaseReadinessCheck<AppDbContext>();   // name "database", tag "ready"
+```
+
+The check resolves a context per probe and reports `Unhealthy` while `CanConnectAsync` fails, so a rollout
+waits for the database instead of routing traffic to a host that cannot serve it.
+
 ## See also
 
 - [Xabaril AspNetCore.Diagnostics.HealthChecks](https://github.com/Xabaril/AspNetCore.Diagnostics.HealthChecks)
