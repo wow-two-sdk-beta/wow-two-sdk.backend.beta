@@ -11,11 +11,33 @@ dotnet add package WoW.Two.Sdk.Backend.Beta.Web.Hosting
 ## Usage
 
 ```csharp
-builder.Services.AddProxyAwareHosting();
+builder.Services.AddProxyAwareHosting(options =>
+{
+    options.AllowedHosts.Add("app.example.com");
+    options.TrustedNetworks.Add("172.16.0.0/12");   // the ingress network, when it is not loopback
+});
 
 var app = builder.Build();
 app.UseProxyAwareHosting();   // adds forwarded headers + request decompression — call early
 ```
+
+## Proxy trust
+
+- `X-Forwarded-For`, `-Proto` and `-Host` apply only from loopback, `TrustedProxies` and `TrustedNetworks`.
+- Any other sender keeps its socket address, so a client cannot spoof its IP, scheme or host.
+- `ForwardLimit` (default 1) unwinds one proxy hop; raise it only for a known proxy chain.
+- `AddApiDefaults` passes `TrustedProxies` and `TrustedNetworks` through from `ApiDefaultsOptions`.
+
+## Probe hosts
+
+- `ProbeHosts` (default `localhost`) join any restricted host allowlist, from options or the `AllowedHosts` setting.
+- A container health check can call `http://localhost:8080/health` without the public host header.
+- A wildcard allowlist is left unchanged; clear `ProbeHosts` to admit only the listed hosts.
+
+## Related
+
+- Persistent Data Protection keys: [data protection](../DataProtection/data-protection.md).
+- Database readiness: `AddDatabaseReadinessCheck<TContext>()` in [health checks](../../Observability/HealthChecks/health-checks.md).
 
 ## SPA single-host serving
 

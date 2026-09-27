@@ -60,6 +60,10 @@ public static class ApiDefaultsExtensions
             {
                 foreach (var host in options.AllowedHosts)
                     hosting.AllowedHosts.Add(host);
+                foreach (var proxy in options.TrustedProxies)
+                    hosting.TrustedProxies.Add(proxy);
+                foreach (var network in options.TrustedNetworks)
+                    hosting.TrustedNetworks.Add(network);
             })
             .AddOpenApiDefaults()
             .AddTraceAwareProblemDetails()

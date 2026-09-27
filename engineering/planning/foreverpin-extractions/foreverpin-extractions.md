@@ -18,7 +18,7 @@
 - [x] E1 — per-key transaction locks: PostgreSQL contention, ordering and cancellation tests pass
 - [x] E2 — warning-state validation and redirect target checks: interceptor, tracker, envelope and 18 target cases
 - [x] E3 — free IP geolocation: MMDB broker, hot reload and monthly DB-IP Lite refresh; 16 tests
-- [ ] E4 — deployment hosting: trusted proxies, probe hosts, persistent keys, database readiness
+- [x] E4 — deployment hosting: trusted proxies, probe hosts, persistent keys, database readiness; 12 tests
 - [ ] E5 — queued batch background work
 - [ ] E6 — unique key allocation under a savepoint
 - [ ] E7 — commit-aware cache invalidation across hosts

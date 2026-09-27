@@ -35,6 +35,12 @@ public sealed record ApiDefaultsOptions
     /// <summary>Host-header allowlist (host filtering). Empty (default) = allow any host; set to lock the app to known hostnames.</summary>
     public IList<string> AllowedHosts { get; } = [];
 
+    /// <summary>Gets the proxy IP addresses whose forwarded headers are trusted, besides loopback.</summary>
+    public IList<string> TrustedProxies { get; } = [];
+
+    /// <summary>Gets the proxy networks, in CIDR notation, whose forwarded headers are trusted.</summary>
+    public IList<string> TrustedNetworks { get; } = [];
+
     /// <summary>Gets or sets whether a response carries <c>Cross-Origin-Opener-Policy: same-origin</c>, which severs the <c>window.opener</c> handle of a cross-origin popup. Default on.</summary>
     public bool EnableCrossOriginOpenerPolicy { get; set; } = true;
 
