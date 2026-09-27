@@ -24,4 +24,4 @@ await fetch("/api/codes", { method: "POST", headers: { "X-XSRF-TOKEN": decodeURI
 - Requests without cookies pass: a browser cannot forge them, so bearer and server calls are unaffected.
 - Exempt only callbacks that prove themselves another way, such as a signed payment webhook.
 - Tokens rotate with sign-in; refresh the page state with a `GET` after authentication changes.
-- Tests: `host.CreateDefaultClient(new SpaAntiforgeryHandler("/health"))` echoes tokens as a browser client would.
+- Tests: `host.CreateSpaClient("/health")` keeps cookies and echoes tokens as the browser client does.
