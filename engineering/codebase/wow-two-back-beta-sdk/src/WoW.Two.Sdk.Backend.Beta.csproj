@@ -245,6 +245,12 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
   </ItemGroup>
 
+  <!-- Geo IP location (src/Geo/IpLocation/) — MaxMind.Db (Apache-2.0) reads MMDB files: free DB-IP Lite (CC BY 4.0)
+       today, GeoLite2 or paid GeoIP2 later. The database file is never packaged; products provision or download it. -->
+  <ItemGroup Label="Geo — IP location">
+    <PackageReference Include="MaxMind.Db" />
+  </ItemGroup>
+
   <ItemGroup Label="Health checks">
     <PackageReference Include="AspNetCore.HealthChecks.Aws.S3" />
     <PackageReference Include="AspNetCore.HealthChecks.Aws.Sqs" />

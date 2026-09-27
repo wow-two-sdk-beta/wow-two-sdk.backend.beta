@@ -12,6 +12,7 @@ Namespace root: `WoW.Two.Sdk.Backend.Beta.Geo`. This is the dependency-free foun
 | `Distance/` | `IGeoDistanceCalculator` / `GeoDistanceCalculator`, `DistanceUnit` | Haversine distance, initial bearing, destination point; unit conversion |
 | `GeohashEncoder/` | `GeohashEncoder` (static), `GeohashDirection` | Encode/decode + adjacent/neighbours for spatial-index keys & proximity |
 | `GeoJson/` | `GeoJsonSerializer`, `GeoJson*` types, `GeoPosition` | RFC 7946 Point/LineString/Polygon/Feature(Collection) read+write |
+| `IpLocation/` | `IIpLocationBroker`, `MmdbIpLocationBroker`, `AddDbIpLiteIpLocation` | IP → country/city from MMDB files; free DB-IP Lite refresh ([ip-location.md](IpLocation/ip-location.md)) |
 
 ## Quickstart
 
@@ -40,7 +41,6 @@ GeoJsonFeatureCollection fc = GeoJsonSerializer.ParseFeatureCollection(body);
 ## Roadmap (adapters, not yet built)
 
 - `Geo.Nts` — NetTopologySuite geometry (intersections, buffers, spatial predicates) + EF Core spatial columns.
-- `Geo.MaxMind` — `IIpGeolocationProvider` over MaxMind GeoIP2 (IP → coordinate/country).
 
 ## See also
 

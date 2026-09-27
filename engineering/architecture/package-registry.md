@@ -312,7 +312,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | OIDC server | `…Identity.Server.OpenIddict`, `…Identity.Server.Duende` (commercial-aware companion) |
 | GraphQL / OData | `…GraphQL.HotChocolate`, `…GraphQL.GraphQLDotNet`, `…OData` |
 | Payment | `…Payments`, `…Payments.Stripe`, `…Payments.Paddle`, `…Payments.Adyen`, `…Payments.Braintree`, `…Payments.Square` |
-| Geo | `…Geo.Nts`, `…Geo.Geocoding`, `…Geo.MaxMind`, `…Geo.H3` |
+| Geo | **`…Geo.IpLocation` — implemented** (`IIpLocationBroker` over MMDB via `MaxMind.Db`, `AddDbIpLiteIpLocation` monthly free refresh, `src/Geo/IpLocation/`) · planned: `…Geo.Nts`, `…Geo.Geocoding`, `…Geo.H3` |
 | Documents | `…Documents.OCR.Tesseract`, `…Documents.OCR.AzureDocumentIntelligence`, `…Documents.PdfSharp`, `…Documents.iText` |
 | Tooling | `…Tools.Cli`, `…Tools.Build.Nuke`, `…Tools.SourceGen.Common` |
 

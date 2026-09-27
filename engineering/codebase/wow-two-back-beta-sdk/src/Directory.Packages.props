@@ -273,6 +273,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Codes — QR / barcode / SVG raster">
+    <PackageVersion Include="MaxMind.Db" Version="5.2.0" />
     <PackageVersion Include="QRCoder" Version="1.8.0" />
     <PackageVersion Include="ZXing.Net" Version="0.16.11" />
     <PackageVersion Include="Svg.Skia" Version="5.1.1" />
