@@ -98,6 +98,13 @@ warnings and suggestions go to the scoped `IValidationAdvisoryTracker` and the h
 returns them beside the payload as `warnings`. A request with no advisories omits the member.
 Reusable advisory rules: [redirect targets](../../Web/Redirects/redirects.md).
 
+A handler that validates loaded state, such as a persisted mode, records advisories through the same tracker:
+
+```csharp
+if (validator.Validate(new CodeUpdateModel(code.Mode, request), advisories) is { } error)
+    return AppResult<Updated>.Fail(error);   // errors block; a passing instance's advisories are tracked
+```
+
 ## Localize the field messages
 
 `IErrorMessageMapper` resolves the top-level `detail`; `IFieldErrorMessageMapper` resolves each
