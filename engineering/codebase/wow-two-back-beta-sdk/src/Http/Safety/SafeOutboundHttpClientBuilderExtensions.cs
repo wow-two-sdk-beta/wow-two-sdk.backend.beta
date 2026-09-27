@@ -57,7 +57,11 @@ public static class SafeOutboundHttpClientBuilderExtensions
         return builder.AddHttpMessageHandler(() => new OutboundDestinationHandler(snapshot));
     }
 
-    private static async ValueTask<Stream> ConnectAsync(
+    /// <summary>Resolves the target and connects only to addresses the outbound policy permits.</summary>
+    /// <remarks>Shared by every guarded client, including webhook delivery, so one address policy applies.</remarks>
+    /// <param name="context">The connection target.</param>
+    /// <param name="cancellationToken">Cancels resolution and connection.</param>
+    internal static async ValueTask<Stream> ConnectAsync(
         SocketsHttpConnectionContext context,
         CancellationToken cancellationToken)
     {

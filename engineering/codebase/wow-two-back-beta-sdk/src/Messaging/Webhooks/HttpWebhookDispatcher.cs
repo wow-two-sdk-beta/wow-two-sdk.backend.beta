@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using WoW.Two.Sdk.Backend.Beta.Http.Safety;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
@@ -124,7 +125,8 @@ internal sealed partial class HttpWebhookDispatcher(
         {
             return (SendOutcome.Transient, null); // per-attempt timeout
         }
-        catch (HttpRequestException ex) when (ex.InnerException is WebhookAddressBlockedException)
+        catch (HttpRequestException ex) when (ex is OutboundAddressBlockedException
+            || ex.InnerException is OutboundAddressBlockedException)
         {
             return (SendOutcome.Permanent, null); // target resolved to a blocked (private) address — never retry
         }

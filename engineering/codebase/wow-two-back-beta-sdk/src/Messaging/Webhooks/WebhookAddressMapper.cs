@@ -1,13 +1,10 @@
-using System.Net;
-using WoW.Two.Sdk.Backend.Beta.Http.Safety.Validators;
-
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 
 /// <summary>
-/// SSRF guard for outbound webhook delivery: rejects targets that resolve to private, loopback, link-local, unique-local,
-/// CGNAT, or multicast ranges (e.g. the cloud metadata endpoint <c>169.254.169.254</c>), and enforces scheme / host-allowlist
-/// policy. <see cref="WebhookSsrfGuard.GuardedConnectAsync"/> validates the <em>actual</em> address being connected to — not just the pre-DNS
-/// hostname — so it also defeats DNS-rebinding (a public name that resolves to a private IP).
+/// Pre-flight scheme and host-allowlist policy for outbound webhook delivery. Connect-time address blocking — private,
+/// loopback, link-local, unique-local, CGNAT, multicast and transition ranges, including the cloud metadata endpoint
+/// <c>169.254.169.254</c> — comes from the shared outbound HTTP safety callback, which validates the address actually
+/// dialled rather than the pre-DNS hostname, so it also defeats DNS rebinding.
 /// </summary>
 internal static class WebhookAddressMapper
 {
@@ -21,10 +18,4 @@ internal static class WebhookAddressMapper
     /// <summary>True if <paramref name="url"/>'s host is permitted by <paramref name="allowlist"/> (empty allowlist = any host).</summary>
     public static bool IsHostAllowed(Uri url, ICollection<string> allowlist)
         => allowlist.Count == 0 || allowlist.Contains(url.Host);
-
-    /// <summary>True if <paramref name="address"/> falls in a range a webhook must never reach (private / loopback / link-local / ULA / CGNAT / multicast / unspecified).</summary>
-    public static bool IsBlocked(IPAddress address)
-    {
-        return !new OutboundAddressValidator().IsAllowed(address);
-    }
 }

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using WoW.Two.Sdk.Backend.Beta.Http.Safety;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
@@ -28,7 +29,7 @@ public static class WebhooksServiceCollectionExtensions
                 .Validate(static o => o.RequestTimeout > TimeSpan.Zero, "Webhooks: RequestTimeout must be positive.")
                 .Validate(static o => o.Subscriptions.All(s => !string.IsNullOrEmpty(s.Secret)), "Webhooks: every subscription must have a secret."));
 
-        // Block unsafe resolved target addresses at connect time unless explicitly allowed.
+        // Block unsafe resolved target addresses at connect time through the shared outbound policy.
         services.AddHttpClient(WebhookDefaultConstants.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(static sp =>
             {
@@ -37,10 +38,11 @@ public static class WebhooksServiceCollectionExtensions
                 {
                     AllowAutoRedirect = false,
                     UseProxy = false,
-                    UseCookies = false
+                    UseCookies = false,
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(5)
                 };
                 if (!webhookOptions.AllowPrivateNetworkTargets)
-                    handler.ConnectCallback = new WebhookSsrfGuard().GuardedConnectAsync;
+                    handler.ConnectCallback = SafeOutboundHttpClientBuilderExtensions.ConnectAsync;
                 return handler;
             });
 
