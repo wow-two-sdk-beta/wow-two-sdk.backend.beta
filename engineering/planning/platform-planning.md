@@ -22,8 +22,11 @@
 2. Completed: publication-verifier correction released in `10.0.57-beta`; the workflow passed.
 3. Completed SDK side: [ForeverPin adoption](foreverpin-adoption/foreverpin-adoption.md) pins `10.0.59-beta` and passes
    its backend verifier; the product adoption is committed as `0ac30af`. Policy/architecture decisions remain deferred.
-4. Repin other direct consumers without putting them ahead of the requested ForeverPin cut.
-5. Complete background work and cache invalidation, followed by EF-model-driven full-row reads/write guards and translation. The full data-session architecture remains a roadmap; the implemented session contract governs the current subset.
+4. Implemented, awaiting release: [ForeverPin extractions](foreverpin-extractions/foreverpin-extractions.md) E1–E9 —
+   transaction locks, validation warnings, free IP location, hosting, batch pipelines, unique saves, cache invalidation,
+   inbound event ordering and SPA antiforgery. ForeverPin adopts them in one cut after publication.
+5. Repin other direct consumers without putting them ahead of the requested ForeverPin cut.
+6. Complete EF-model-driven full-row reads/write guards and translation. The full data-session architecture remains a roadmap; the implemented session contract governs the current subset.
 
 Request validation, aggregated validation failures and RFC 9457 ProblemDetails rendering already ship. They are inputs to translated error rendering, not a separate unfinished validation rebuild.
 

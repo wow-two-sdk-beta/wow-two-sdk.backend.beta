@@ -103,3 +103,21 @@ Source: cookie-authenticated mutations without a CSRF token.
 - A readable token cookie and a request header protect unsafe methods that carry cookies.
 - Explicit exemptions cover signed provider callbacks such as webhooks.
 - Frontend adoption needs the frontend lane to send the header.
+
+---
+
+## ForeverPin adoption — after the next published release
+
+One product cut consumes all nine iterations; both hosts ship from one release.
+
+| Iteration | Product change |
+|---|---|
+| E1 | `AcquireOwnerLocksAsync` → `Database.AcquireTransactionLocksAsync("owner", ids)`; the key hash changes, so every writer upgrades together. |
+| E2 | `RuleFor(c => c.Url).AdviseOnRedirectTarget()` in its own rule; create/update return `ApiResponse<T>.Ok(dto, advisories.Map(HttpContext))`; the frontend renders `warnings`. |
+| E3 | Redirect host: `AddDbIpLiteIpLocation` on a writable volume; `IGeoBroker` delegates to `IIpLocationBroker`; the frontend shows the DB-IP attribution. |
+| E4 | Both `DeploymentHosting` copies → `AddPersistentDataProtection`, `TrustedProxies`/`TrustedNetworks`, `AddDatabaseReadinessCheck<AppDbContext>()`. |
+| E5 | `ChannelScanRecorder` + `ScanFlushBackgroundService` → `AddBatchPipeline<ScanRecordModel, ScanBatchHandler>()`. |
+| E6 | Slug insert savepoint → `SaveWithGeneratedKeyAsync(..., "ix_codes_slug")`. |
+| E7 | Redirect host wires the cached repository with `AddPostgresCacheInvalidation`; code writes publish `code:{slug}` inside their transaction. |
+| E8 | `AddEfInbox<AppDbContext>()` + `inbox_messages` and `last_event_at` migrations; the Stripe broker surfaces event id and time. |
+| E9 | `AddSpaAntiforgery` exempting the webhook; the frontend sends `X-XSRF-TOKEN` in the same release, or cookie writes fail. |
