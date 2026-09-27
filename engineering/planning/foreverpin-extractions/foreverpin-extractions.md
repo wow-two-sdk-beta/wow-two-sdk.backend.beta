@@ -15,7 +15,7 @@
 
 ## Status
 
-- [ ] E1 — per-key transaction locks
+- [x] E1 — per-key transaction locks: PostgreSQL contention, ordering and cancellation tests pass
 - [ ] E2 — warning-state validation and redirect target checks
 - [ ] E3 — free IP geolocation
 - [ ] E4 — deployment hosting: trusted proxies, probe hosts, persistent keys, database readiness
