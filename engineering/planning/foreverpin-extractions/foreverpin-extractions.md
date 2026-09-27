@@ -23,7 +23,7 @@
 - [x] E6 — unique key allocation under a savepoint: SQLite and PostgreSQL conflict tests
 - [x] E7 — commit-aware cache invalidation across hosts: PostgreSQL commit, rollback and reconnect tests
 - [x] E8 — inbound webhook deduplication and ordering: inbox redelivery and watermark tests on PostgreSQL
-- [ ] E9 — SPA antiforgery
+- [x] E9 — SPA antiforgery: token issue, rejection, echo and exemption tests
 
 ---
 
