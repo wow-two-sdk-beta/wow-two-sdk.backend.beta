@@ -50,6 +50,7 @@ public static class MigrationServiceCollectionExtensions
         services.AddSingleton<IMigrationHistoryRepository, MigrationHistoryRepository>();
         services.TryAddSingleton<IMigrationChecksumHasher, MigrationChecksumHasher>();
         services.TryAddSingleton<ISqlStatementParser, SqlStatementParser>();
+        services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IMigrationRunnerService, MigrationRunnerService>();
 
         return services;

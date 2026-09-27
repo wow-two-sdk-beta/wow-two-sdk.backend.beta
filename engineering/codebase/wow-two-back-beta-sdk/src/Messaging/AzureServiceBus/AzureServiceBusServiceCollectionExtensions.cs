@@ -71,6 +71,7 @@ public static class AzureServiceBusServiceCollectionExtensions
             topology.SharedEndpointName ??= serviceBus.Subscription;
         });
 
+        services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<AzureServiceBusConnection>();
         services.TryAddSingleton<AzureServiceBusTopology>();
         services.TryAddSingleton<ITransportCapabilities, AzureServiceBusCapabilities>();

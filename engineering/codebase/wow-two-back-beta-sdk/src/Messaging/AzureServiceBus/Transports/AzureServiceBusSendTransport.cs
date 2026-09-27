@@ -27,7 +27,8 @@ internal sealed class AzureServiceBusSendTransport(
     AzureServiceBusOptions options,
     IMessageSerializer serializer,
     IMessageTypeMapper typeResolver,
-    ITopologyService topology) : ISendTransport, IAsyncDisposable
+    ITopologyService topology,
+    TimeProvider clock) : ISendTransport, IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private ServiceBusSender? _sender;
@@ -71,7 +72,7 @@ internal sealed class AzureServiceBusSendTransport(
             message.TimeToLive = timeToLive;
 
         // Native scheduled delivery: the broker holds the message until NotBeforeUtc; a time already past is dropped.
-        if (envelope.NotBeforeUtc is { } notBefore && notBefore > DateTimeOffset.UtcNow)
+        if (envelope.NotBeforeUtc is { } notBefore && notBefore > clock.GetUtcNow())
             message.ScheduledEnqueueTime = notBefore;
 
         // The client retries transient faults internally; a resend after an ambiguous failure duplicates the message.

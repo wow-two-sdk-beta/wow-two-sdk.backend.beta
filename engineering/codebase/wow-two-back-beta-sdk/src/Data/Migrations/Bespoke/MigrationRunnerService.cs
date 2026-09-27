@@ -23,7 +23,8 @@ public sealed partial class MigrationRunnerService(
     MigrationOptions options,
     ILogger<MigrationRunnerService> logger,
     IMigrationChecksumHasher checksumHasher,
-    ISqlStatementParser statementParser) : IMigrationRunnerService
+    ISqlStatementParser statementParser,
+    TimeProvider clock) : IMigrationRunnerService
 {
     /// <inheritdoc />
     /// <remarks>
@@ -364,7 +365,7 @@ public sealed partial class MigrationRunnerService(
         Version = options.Version,
         Name = migration.Name,
         Checksum = migration.Checksum,
-        AppliedAt = DateTimeOffset.UtcNow,
+        AppliedAt = clock.GetUtcNow(),
         AppliedBy = appliedBy,
         ExecutionMs = (int)elapsedMs,
     };
