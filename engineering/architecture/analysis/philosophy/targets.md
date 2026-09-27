@@ -152,6 +152,7 @@ Mirrors §4 of `ideas.md`. Each subsection states the verdict + concrete chosen 
 | Item | Verdict | Note |
 |---|---|---|
 | JWT bearer + cookie + OIDC schemes | DONE | First-party; lib wires sane defaults |
+| API keys for outside programs — marked secrets, hash-only storage, a local-or-key gate | DONE | Shipped `src/Identity/ApiKeys/` — extracted from TranscriptForge v0.7 (public API and MCP access); the product owns `IApiKeyStore` |
 | ASP.NET Core Identity + Identity API endpoints | DONE | First-party |
 | Microsoft.Identity.Web for Entra ID | NEXT | Companion adapter |
 | OpenIddict for OSS OIDC server | NEXT | Optional adapter (Apache-2.0) |
