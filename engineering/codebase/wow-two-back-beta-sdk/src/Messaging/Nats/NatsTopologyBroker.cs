@@ -78,7 +78,7 @@ internal sealed class NatsTopologyBroker
     }
 
     /// <summary>The subjects the stream must claim: the root, its wildcard when routing, and the dead-letter subject unless the wildcard already covers it.</summary>
-    private List<string> StreamSubjects(NatsOptions options)
+    private static List<string> StreamSubjects(NatsOptions options)
     {
         var subjects = new List<string>(3) { options.Subject };
 
@@ -93,7 +93,7 @@ internal sealed class NatsTopologyBroker
     }
 
     /// <summary>The stream's subjects widened with <paramref name="required"/>, or null when it already covers them.</summary>
-    private List<string>? MergeSubjects(ICollection<string>? current, List<string> required, string root)
+    private static List<string>? MergeSubjects(ICollection<string>? current, List<string> required, string root)
     {
         // Test `required` first, or the rooted wildcard is dropped and re-added and reports a change on every start.
         var merged = new List<string>();
@@ -124,7 +124,7 @@ internal sealed class NatsTopologyBroker
         return changed ? merged : null;
     }
 
-    private async ValueTask TryCreateStreamAsync(NatsJSContext js, string stream, ICollection<string> subjects, CancellationToken cancellationToken)
+    private static async ValueTask TryCreateStreamAsync(NatsJSContext js, string stream, ICollection<string> subjects, CancellationToken cancellationToken)
     {
         try
         {

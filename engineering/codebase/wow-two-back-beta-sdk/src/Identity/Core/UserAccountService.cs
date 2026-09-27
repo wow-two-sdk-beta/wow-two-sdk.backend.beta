@@ -78,7 +78,7 @@ public sealed class UserAccountService<TUser, TKey>(IUserRepository<TUser, TKey>
     public Task<TUser?> FindByEmailAsync(string email, CancellationToken cancellationToken = default)
         => repository.FindByNormalizedEmailAsync(email.ToCanonical() ?? string.Empty, cancellationToken);
 
-    private void ApplyNormalization(TUser user)
+    private static void ApplyNormalization(TUser user)
     {
         user.NormalizedUserName = user.UserName.ToCanonical();
         user.NormalizedEmail = user.Email.ToCanonical();

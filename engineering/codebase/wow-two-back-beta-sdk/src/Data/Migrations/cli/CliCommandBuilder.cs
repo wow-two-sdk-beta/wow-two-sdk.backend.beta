@@ -45,7 +45,7 @@ internal sealed class CliCommandBuilder
     /// <param name="runner">The runner carrying every command body.</param>
     /// <param name="connection">The global connection option to read in the action.</param>
     /// <param name="sqlDir">The global sql-dir option to read in the action.</param>
-    private Command BuildStatus(CliRunnerService runner, Option<string?> connection, Option<string?> sqlDir)
+    private static Command BuildStatus(CliRunnerService runner, Option<string?> connection, Option<string?> sqlDir)
     {
         var command = new Command("status", "Show applied / pending / drift / orphaned.");
         command.SetAction((parseResult, ct) =>
@@ -57,7 +57,7 @@ internal sealed class CliCommandBuilder
     /// <param name="runner">The runner carrying every command body.</param>
     /// <param name="connection">The global connection option to read in the action.</param>
     /// <param name="sqlDir">The global sql-dir option to read in the action.</param>
-    private Command BuildApply(CliRunnerService runner, Option<string?> connection, Option<string?> sqlDir)
+    private static Command BuildApply(CliRunnerService runner, Option<string?> connection, Option<string?> sqlDir)
     {
         var command = new Command("apply", "Ensure the DB exists, then apply pending migrations.");
         command.SetAction((parseResult, ct) =>
@@ -69,7 +69,7 @@ internal sealed class CliCommandBuilder
     /// <param name="runner">The runner carrying every command body.</param>
     /// <param name="connection">The global connection option to read in the action.</param>
     /// <param name="sqlDir">The global sql-dir option to read in the action.</param>
-    private Command BuildRollback(CliRunnerService runner, Option<string?> connection, Option<string?> sqlDir)
+    private static Command BuildRollback(CliRunnerService runner, Option<string?> connection, Option<string?> sqlDir)
     {
         var toOption = new Option<int?>("--to")
         {
@@ -103,7 +103,7 @@ internal sealed class CliCommandBuilder
     /// <param name="runner">The runner carrying every command body.</param>
     /// <param name="connection">The global connection option to read in the action.</param>
     /// <param name="sqlDir">The global sql-dir option to read in the action.</param>
-    private Command BuildVerify(CliRunnerService runner, Option<string?> connection, Option<string?> sqlDir)
+    private static Command BuildVerify(CliRunnerService runner, Option<string?> connection, Option<string?> sqlDir)
     {
         var repairOption = new Option<bool>("--repair")
         {
@@ -136,7 +136,7 @@ internal sealed class CliCommandBuilder
     /// <summary>Builds the <c>new</c> verb — scaffold a <c>Dev/&lt;name&gt;.sql</c> draft.</summary>
     /// <param name="runner">The runner carrying every command body.</param>
     /// <param name="sqlDir">The global sql-dir option to read in the action.</param>
-    private Command BuildNew(CliRunnerService runner, Option<string?> sqlDir)
+    private static Command BuildNew(CliRunnerService runner, Option<string?> sqlDir)
     {
         var nameArgument = new Argument<string>("name")
         {
@@ -155,7 +155,7 @@ internal sealed class CliCommandBuilder
     /// <summary>Builds the <c>promote</c> verb — promote <c>Dev/*.sql</c> drafts into numbered migrations.</summary>
     /// <param name="runner">The runner carrying every command body.</param>
     /// <param name="sqlDir">The global sql-dir option to read in the action.</param>
-    private Command BuildPromote(CliRunnerService runner, Option<string?> sqlDir)
+    private static Command BuildPromote(CliRunnerService runner, Option<string?> sqlDir)
     {
         var command = new Command("promote", "Promote Dev/*.sql → numbered NNN-name/{Apply,Rollback}.sql.");
         command.SetAction((parseResult, _) =>
