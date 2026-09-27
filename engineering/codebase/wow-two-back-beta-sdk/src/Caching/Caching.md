@@ -12,6 +12,7 @@ Namespace root: `WoW.Two.Sdk.Backend.Beta.Caching`.
 | `Hybrid/` | `AddHybridCaching(configure?)`, `HybridCacheRepository`, `HybridCacheConventionOptions` | HybridCache default (the `ICacheRepository` impl) |
 | `Redis/` | `AddRedisDistributedCache(connStr, instanceName?)` | Redis L2 backend (auto-used by HybridCache) |
 | `Memory/` | `AddInMemoryCaching()` | Plain `IMemoryCache` for trivial cases |
+| `Invalidation/` | `AddPostgresCacheInvalidation(...)`, `PublishCacheKeyInvalidationAsync` | Commit-aware eviction across hosts over PostgreSQL notifications ([invalidation.md](Invalidation/invalidation.md)) |
 
 ## Quickstart
 

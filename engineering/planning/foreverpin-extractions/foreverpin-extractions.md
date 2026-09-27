@@ -21,7 +21,7 @@
 - [x] E4 — deployment hosting: trusted proxies, probe hosts, persistent keys, database readiness; 12 tests
 - [x] E5 — queued batch background work: bounded pipeline, scoped handler, shutdown drain; 5 host tests
 - [x] E6 — unique key allocation under a savepoint: SQLite and PostgreSQL conflict tests
-- [ ] E7 — commit-aware cache invalidation across hosts
+- [x] E7 — commit-aware cache invalidation across hosts: PostgreSQL commit, rollback and reconnect tests
 - [ ] E8 — inbound webhook deduplication and ordering
 - [ ] E9 — SPA antiforgery
 
