@@ -1,5 +1,5 @@
-using Microsoft.Extensions.DependencyInjection;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Validation.Trackers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Validation;
 
@@ -7,7 +7,14 @@ namespace WoW.Two.Sdk.Backend.Beta.Mediator.Validation;
 /// <typeparam name="TRequest">The request type.</typeparam>
 /// <typeparam name="TResponse">The response type.</typeparam>
 /// <param name="validators">The validators applied to each request.</param>
-public sealed class ValidatingInterceptor<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
+/// <param name="advisories">The optional scope tracker that receives warnings and suggestions.</param>
+/// <remarks>
+///   - each validator is inspected once; errors block the request, advisories travel with its success
+///   - without a registered tracker, advisories are dropped as before
+/// </remarks>
+public sealed class ValidatingInterceptor<TRequest, TResponse>(
+    IEnumerable<IValidator<TRequest>> validators,
+    IValidationAdvisoryTracker? advisories = null)
     : IRequestInterceptor<TRequest, TResponse>
     where TRequest : notnull
 {
@@ -19,23 +26,19 @@ public sealed class ValidatingInterceptor<TRequest, TResponse>(IEnumerable<IVali
     {
         ArgumentNullException.ThrowIfNull(nextStep);
 
-        var errors = validators
-            .Select(validator => validator.Validate(request))
-            .Where(error => error is not null)
-            .Cast<ValidationError>()
+        FieldError[] failures = validators
+            .SelectMany(validator => validator.Inspect(request))
+            .ToArray();
+        FieldError[] errors = failures
+            .Where(failure => failure.Severity == ValidationSeverity.Error)
             .ToArray();
 
-        if (errors.Length == 1)
+        if (errors.Length > 0)
         {
-            throw new ValidationException(errors[0]);
+            throw new ValidationException(ValidationError.From(errors));
         }
 
-        if (errors.Length > 1)
-        {
-            throw new ValidationException(ValidationError.From(
-                errors.SelectMany(error => error.Failures).ToArray()));
-        }
-
+        advisories?.Record(failures);
         return await nextStep().ConfigureAwait(false);
     }
 }

@@ -1,4 +1,6 @@
 using System.Net;
+using System.Text.Json.Serialization;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.Contracts;
 
@@ -20,9 +22,10 @@ public abstract record ApiResponse<T> : ApiResponse
 
     /// <summary>Wraps <paramref name="data"/> in a success envelope — the only way to build a success body.</summary>
     /// <param name="data">The payload to wrap.</param>
-    public static Success Ok(T data)
+    /// <param name="warnings">Advisory validation findings that travel with the success; omitted when empty.</param>
+    public static Success Ok(T data, IReadOnlyList<FieldError>? warnings = null)
     {
-        return new Success { Data = data };
+        return new Success { Data = data, Warnings = warnings is { Count: > 0 } ? warnings : null };
     }
 
     /// <summary>Represents a successful response carrying the typed payload.</summary>
@@ -30,6 +33,11 @@ public abstract record ApiResponse<T> : ApiResponse
     {
         /// <summary>Gets the response payload, serialized under <c>.data</c>.</summary>
         public required T Data { get; init; }
+
+        /// <summary>Gets the warnings and suggestions raised by a request that still succeeded, or <see langword="null"/>.</summary>
+        /// <remarks>Each item has the <c>errors[]</c> shape of a validation problem, with its severity.</remarks>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IReadOnlyList<FieldError>? Warnings { get; init; }
     }
 
     /// <summary>Represents a failed response — the client-side shape for deserializing a non-2xx response.</summary>

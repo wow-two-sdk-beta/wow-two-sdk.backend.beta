@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
+using WoW.Two.Sdk.Backend.Beta.Foundation.Validation.Trackers;
 using WoW.Two.Sdk.Backend.Beta.Mediator;
 using WoW.Two.Sdk.Backend.Beta.Mediator.Validation;
 using Xunit;
@@ -95,5 +96,67 @@ public sealed class ValidationBehaviorTests
         var result = await behavior.HandleAsync(new Req(-99), () => ValueTask.FromResult("ok"), CancellationToken.None);
 
         result.Should().Be("ok"); // nothing to validate → handler runs
+    }
+
+    // Test-double validator reporting fixed failures at their declared severities.
+    private sealed class FixedValidator(params FieldError[] failures) : IValidator<Req>
+    {
+        public ValidationError? Validate(Req instance)
+        {
+            var errors = failures.Where(failure => failure.Severity == ValidationSeverity.Error).ToArray();
+            return errors.Length == 0 ? null : ValidationError.From(errors);
+        }
+
+        public void ValidateAndThrow(Req instance)
+        {
+            var error = Validate(instance);
+            if (error is not null)
+                throw new ValidationException(error);
+        }
+
+        public IReadOnlyList<FieldError> Inspect(Req instance) => failures;
+    }
+
+    private static FieldError Finding(string code, ValidationSeverity severity) =>
+        new() { Property = nameof(Req.Age), Message = code, Code = code, Severity = severity };
+
+    [Fact]
+    public async Task HandleAsync_ShouldRunHandlerAndTrackAdvisories_WhenOnlyWarningsFire()
+    {
+        var tracker = new ValidationAdvisoryTracker();
+        var behavior = new ValidatingInterceptor<Req, string>(
+            [new FixedValidator(Finding("warn", ValidationSeverity.Warning), Finding("hint", ValidationSeverity.Info))],
+            tracker);
+
+        var result = await behavior.HandleAsync(new Req(1), () => ValueTask.FromResult("ok"), CancellationToken.None);
+
+        result.Should().Be("ok");
+        tracker.Advisories.Select(advisory => advisory.Code).Should().Equal("warn", "hint");
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldThrowOnlyErrorsAndTrackNothing_WhenAnErrorFires()
+    {
+        var tracker = new ValidationAdvisoryTracker();
+        var behavior = new ValidatingInterceptor<Req, string>(
+            [new FixedValidator(Finding("warn", ValidationSeverity.Warning), Finding("block", ValidationSeverity.Error))],
+            tracker);
+
+        var act = async () => await behavior.HandleAsync(new Req(1), () => ValueTask.FromResult("ok"), CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<ValidationException>();
+        exception.Which.ValidationError.Failures.Select(failure => failure.Code).Should().Equal("block");
+        tracker.Advisories.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldPassWarningsThrough_WhenNoTrackerIsRegistered()
+    {
+        var behavior = new ValidatingInterceptor<Req, string>(
+            [new FixedValidator(Finding("warn", ValidationSeverity.Warning))]);
+
+        var result = await behavior.HandleAsync(new Req(1), () => ValueTask.FromResult("ok"), CancellationToken.None);
+
+        result.Should().Be("ok");
     }
 }
