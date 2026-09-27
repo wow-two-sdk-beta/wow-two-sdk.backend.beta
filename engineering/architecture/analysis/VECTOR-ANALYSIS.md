@@ -20,7 +20,7 @@
 | **Mediator** | 4–5 | improve | MediatR-free facade; **result-absorption resolved** (`AppResult<T>`); all 5 behaviors real; docs stale; streaming a non-goal |
 | **Messaging** | 4 | improve | Real bus + 3 live brokers + outbox/inbox/saga/webhooks; **saga not durable**, 7 scaffold brokers, no metrics/health |
 | **Data** | 4 | improve | Contracts/audit/soft-delete/**migrator (5, standout)** solid; PG floor **drops pooling+retry**; no UoW, no bulk, Postgres-biased |
-| **Integrations** | 4 | improve | GitHub + GHCR read-only deploy probes over `IAccessTokenProvider`; product-pulled (drydock) |
+| **Integrations** | 4 | improve | GitHub + GHCR read-only deploy probes over `IAccessTokenProvider`; product-pulled (wheelhouse) |
 | **Meta** | 4 | improve | P1 boot floor composes foundation+obs+web; **does not fold** caching/http/messaging/ai/flags; web-only (no worker entrypoint) |
 | **Testing** (×3) | 4 | improve | Real host + 6 container fixtures + migrator/EF harness; **Verify `traceId` scrubber is a no-op bug**; no SqlServer fixture |
 | **Observability** | 3 | improve | Tracing/metrics/logging solid; **health-checks = bare passthrough**; **logs not bridged to OTLP**; no redaction |

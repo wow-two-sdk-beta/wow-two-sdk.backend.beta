@@ -4,7 +4,7 @@
 
 > SDK error / validation / exception layer. Builds on `engineering/architecture/analysis/validation-and-result-pattern.md`; pairs with `engineering/planning/mediator-cqrs/mediator-cqrs-result-absorption.md`. Conventions still to rewrite to this model: `foundation/result-pattern.md`, `foundation/validation.md`, `presentation/problem-details.md`.
 >
-> **Investigation scope (how this was derived):** scanned the SDK + apps (drydock, secrets-vault, smart-qr, haven, your-pocket-doctor, prism) + UI lib + conventions; external = MS docs, ErrorOr / FluentResults / Ardalis, RFC 9457 (§8). Web claim-verification was rate-limited → validated by hand vs primary sources.
+> **Investigation scope (how this was derived):** scanned the SDK + apps (wheelhouse, secrets-vault, smart-qr, haven, your-pocket-doctor, prism) + UI lib + conventions; external = MS docs, ErrorOr / FluentResults / Ardalis, RFC 9457 (§8). Web claim-verification was rate-limited → validated by hand vs primary sources.
 
 ---
 
@@ -134,7 +134,7 @@ Cancellation ✅ · infra-classification ✅ · logging/observability ✅ · hea
 ## 5. Status by component
 
 **DONE (shipped, tested):** `AppError`/`AppErrorType`/`AppException`/catalog · `Result`/`Result<T>` · `AppResult<TSuccess>` · bridge · validation reshape · `IErrorHttpStatusCodeMapper` · PD factory + handlers (+`code`/`errors[]`) · `ErrorNature`+classifier · **`IExceptionMapper`/`IExceptionMappingRule` seam + `DbExceptionMappingRule`** · `ExceptionToResultBehavior` · `AppErrorObserver` · auth→403 · deletes · **`AddApiDefaults` wiring + end-to-end exception→ProblemDetails pipeline (Web.Tests E2E)**.
-**NEXT:** product migration (drydock/smart-qr → `AppResult<TSuccess>`+`AppError`) · app error catalogs (`OrderErrors.*`) + drydock reference adoption.
+**NEXT:** product migration (wheelhouse/smart-qr → `AppResult<TSuccess>`+`AppError`) · app error catalogs (`OrderErrors.*`) + wheelhouse reference adoption.
 **LATER:** `HttpClientError` (http-layer) · result combinators (`Map`/`Bind`/`Tap`/`Ensure`) · i18n fill (`IStringLocalizer`+`MessageKey`, FE label-map) · frontend (`ApiError`/per-field/`ErrorBoundary`) · error-code analyzer · `FieldError`→`ValidationFailure` rename.
 
 ---
@@ -149,7 +149,7 @@ Cancellation ✅ · infra-classification ✅ · logging/observability ✅ · hea
 - **Carriers:** two — `AppResult<TSuccess>` (mediator, context) + `Result<T>` (everywhere); both carry `AppError`.
 - **Equality:** skipped (record `==` footgun) — use `error.Is(AppErrorType)`.
 
-**`AppErrorType` set — resolved (18):** added `BusinessRule`/422, `PaymentRequired`/402, `Gone`/410 from the drydock ∪ smart-qr ∪ secrets-vault ∪ pocket-doctor scan; folded `DecryptionFailed`→`DataIntegrity`, `DbConcurrency`→`Conflict`, sealed-503→`ExternalUnavailable`.
+**`AppErrorType` set — resolved (18):** added `BusinessRule`/422, `PaymentRequired`/402, `Gone`/410 from the wheelhouse ∪ smart-qr ∪ secrets-vault ∪ pocket-doctor scan; folded `DecryptionFailed`→`DataIntegrity`, `DbConcurrency`→`Conflict`, sealed-503→`ExternalUnavailable`.
 **Open (small):** `D-type-uri` (URN now) · `D-conventions-distill` (rewrite the 3 docs).
 
 ---
@@ -158,7 +158,7 @@ Cancellation ✅ · infra-classification ✅ · logging/observability ✅ · hea
 
 - **`HelpLink`** on `AppError` → docs page for complex errors (maps to ProblemDetails `type`).
 - **Remediation / guidance** ("fix a,b,c" / "retry") beside `Message`.
-- **User report / flag-for-priority** → ops dashboard priority bump (likely `drydock`).
+- **User report / flag-for-priority** → ops dashboard priority bump (likely `wheelhouse`).
 
 ---
 

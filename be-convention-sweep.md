@@ -59,7 +59,7 @@ formatters exist; complete translation/i18n remains a later vector in `targets.m
   Exact files/imports: [parser verification](../../../system/sessions/backend-beta-build/parser-conformance-verification.md#reference-inventory-and-adoption).
   This adoption task is separate from the 27 SDK implementation rows; it depends on the published version.
 - [ ] Repin the other direct consumers to the published sweep version and repair only the APIs each uses:
-  ForeverPin (`10.0.45-beta`), TransportBrain (`10.0.45-beta`), Tnis (`10.0.45-beta`), Drydock (`10.0.40-beta`),
+  ForeverPin (`10.0.45-beta`), TransportBrain (`10.0.45-beta`), Tnis (`10.0.45-beta`), Wheelhouse (`10.0.40-beta`),
   SecretsVault (`10.0.56-beta`), ListingShelf (`10.0.56-beta`), Sift (`10.0.21-beta`), Arcade (`10.0.21-beta`),
   MuseumsGallery (`10.0.21-beta`) and TnisMintrans (`10.0.21-beta`). Pins rechecked 2026-09-24; SecretsVault
   already consumes `IValueCipher`. Repin the product template (`10.0.21-beta`) separately so new ventures start current.

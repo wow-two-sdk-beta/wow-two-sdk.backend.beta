@@ -58,7 +58,7 @@ AddTenancy(...) + AddTenantRowStamping() + AddPostgresPersistence<AppDbContext>(
   -> tenant stamping is registered, resolvable, and never invoked
 ```
 
-Three green calls in the composition root, zero effect, no log line, no exception. Rows insert with a null tenant. **5 consumer apps call `AddPostgresPersistence`** (smart-qr ×2, drydock, secrets-vault, transcript-forge); none yet calls `AddTenantRowStamping`, so this is latent, not burning. It is latent only because nobody has turned tenancy on.
+Three green calls in the composition root, zero effect, no log line, no exception. Rows insert with a null tenant. **5 consumer apps call `AddPostgresPersistence`** (smart-qr ×2, wheelhouse, secrets-vault, transcript-forge); none yet calls `AddTenantRowStamping`, so this is latent, not burning. It is latent only because nobody has turned tenancy on.
 
 Note what the third defect says about the alternative: the header-stripping bug was killed by `Messaging.Tests/AdapterOwnedHeaderContract.cs`, a contract test asserted against every broker. **A test caught it. A registry would only have described it.** That constrains how much credit this idea can claim — see §9.
 
