@@ -142,14 +142,18 @@ public sealed class HttpReplaySafetyTests
     public async Task Hedging_ShouldRaceGet_AndDisposeLosingResponse()
     {
         var losingContent = new TrackingContent("loser");
+        var winnerReturned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var handler = new RecordingHandler(async (attempt, _, _) =>
         {
             if (attempt == 1)
             {
-                await Task.Delay(100, CancellationToken.None);
+                // Finish only after the other attempt, whatever the scheduler does to the hedging delay.
+                await winnerReturned.Task.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken.None);
+                await Task.Delay(20, CancellationToken.None);
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = losingContent };
             }
 
+            winnerReturned.TrySetResult();
             return new HttpResponseMessage(HttpStatusCode.OK);
         });
         await using var provider = BuildHedgingProvider(handler, options =>
