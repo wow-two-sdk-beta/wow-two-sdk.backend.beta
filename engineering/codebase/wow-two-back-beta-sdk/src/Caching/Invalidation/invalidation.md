@@ -20,4 +20,5 @@ await transaction.CommitAsync(ct);   // the notification leaves now; a rollback 
 - Each (re)subscription evicts everything first: notifications sent while a host was disconnected are lost.
 - Keep a lifetime on cached entries; it bounds staleness if a host misses a notification.
 - Replace `CacheRepositoryInvalidationHandler` by registering another `ICacheInvalidationHandler` first.
+- A host that caches live objects in `IMemoryCache` calls `AddMemoryCacheInvalidationHandler()`; tags there evict everything.
 - PostgreSQL only; payloads stay under 8,000 bytes.

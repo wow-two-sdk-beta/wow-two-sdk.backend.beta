@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using WoW.Two.Sdk.Backend.Beta.Caching.Invalidation;
@@ -63,6 +64,33 @@ public sealed class CacheInvalidationTests(DataTestDb testDb)
 
         await context.Database.PublishCacheKeyInvalidationAsync("code:after-reconnect", _channel);
         await WaitUntilAsync(() => handler.Keys.Contains("code:after-reconnect"));
+        await StopAsync(host);
+    }
+
+    [Fact]
+    public async Task MemoryCacheHandler_EvictsOnlyTheCommittedKey()
+    {
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        builder.Services.AddPostgresCacheInvalidation(options =>
+        {
+            options.ConnectionString = TestDb.ConnectionString;
+            options.Channel = _channel;
+        });
+        builder.Services.AddMemoryCacheInvalidationHandler();
+        using IHost host = builder.Build();
+        var cache = host.Services.GetRequiredService<IMemoryCache>();
+        cache.Set("code:sentinel", 1);
+        await host.StartAsync();
+        await WaitUntilAsync(() => !cache.TryGetValue("code:sentinel", out _));   // subscribing evicts everything
+
+        cache.Set("code:abc", 1);
+        cache.Set("code:keep", 1);
+        await using var context = TestDb.NewContext();
+        await context.Database.PublishCacheKeyInvalidationAsync("code:abc", _channel);
+
+        await WaitUntilAsync(() => !cache.TryGetValue("code:abc", out _));
+        Assert.True(cache.TryGetValue("code:keep", out _));
+        Assert.IsType<MemoryCacheInvalidationHandler>(host.Services.GetRequiredService<ICacheInvalidationHandler>());
         await StopAsync(host);
     }
 

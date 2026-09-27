@@ -33,4 +33,18 @@ public static class CacheInvalidationServiceCollectionExtensions
         services.AddHostedService<PostgresCacheInvalidationBackgroundService>();
         return services;
     }
+
+    /// <summary>Evicts invalidated entries from the host's <c>IMemoryCache</c> instead of <c>ICacheRepository</c>.</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <remarks>
+    ///   - for hosts that cache live objects in memory, where serializing through HybridCache costs more than it saves
+    ///   - call before or after <see cref="AddPostgresCacheInvalidation"/>; it replaces the default handler either way
+    /// </remarks>
+    public static IServiceCollection AddMemoryCacheInvalidationHandler(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddMemoryCache();
+        services.Replace(ServiceDescriptor.Singleton<ICacheInvalidationHandler, MemoryCacheInvalidationHandler>());
+        return services;
+    }
 }
