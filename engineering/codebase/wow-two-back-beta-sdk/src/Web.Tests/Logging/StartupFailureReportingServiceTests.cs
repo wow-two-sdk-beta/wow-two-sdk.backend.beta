@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -41,7 +42,7 @@ public sealed class StartupFailureReportingServiceTests
             return Task.CompletedTask;
         }, startupLog);
 
-        sink.Events.Should().ContainSingle(logEvent => logEvent.RenderMessage() == "application probe");
+        sink.Events.Should().ContainSingle(logEvent => logEvent.RenderMessage(CultureInfo.InvariantCulture) == "application probe");
         if (File.Exists(startupLog))
             (await File.ReadAllTextAsync(startupLog)).Should().NotContain("application probe");
     }

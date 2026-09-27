@@ -21,10 +21,10 @@ public sealed class TransactionalRequestTests(DataTestDb testDb)
     public async Task CommittedRequestReplaysAcrossScopesWithoutRepeatingWrites()
     {
         await using var provider = Build();
-        await Send(provider, new CreateWidget("same"));
+        await Send(provider, new CreateWidget { IdempotencyKey = "same" });
         await using var observer = TestDb.NewContext();
         Assert.Single(await observer.Widgets.ToListAsync());
-        await Send(provider, new CreateWidget("same"));
+        await Send(provider, new CreateWidget { IdempotencyKey = "same" });
         Assert.Single(await observer.Widgets.ToListAsync());
     }
 
@@ -34,11 +34,11 @@ public sealed class TransactionalRequestTests(DataTestDb testDb)
     public async Task FailedRequestRollsBackAndAllowsRetry(bool throws)
     {
         await using var provider = Build();
-        var failed = await Send(provider, new CreateWidget("retry") { Fail = true, Throw = throws });
+        var failed = await Send(provider, new CreateWidget { IdempotencyKey = "retry", Fail = true, Throw = throws });
         Assert.False(failed.IsSuccess);
         await using var observer = TestDb.NewContext();
         Assert.Empty(await observer.Widgets.ToListAsync());
-        Assert.True((await Send(provider, new CreateWidget("retry"))).IsSuccess);
+        Assert.True((await Send(provider, new CreateWidget { IdempotencyKey = "retry" })).IsSuccess);
         Assert.Single(await observer.Widgets.ToListAsync());
     }
 
@@ -52,12 +52,12 @@ public sealed class TransactionalRequestTests(DataTestDb testDb)
             await using (await session.BeginAsync())
             {
                 var sender = scope.ServiceProvider.GetRequiredService<ISender>();
-                Assert.True((await sender.SendAsync(new CreateWidget("nested"))).IsSuccess);
+                Assert.True((await sender.SendAsync(new CreateWidget { IdempotencyKey = "nested" })).IsSuccess);
                 await using var observer = TestDb.NewContext();
                 Assert.Empty(await observer.Widgets.ToListAsync());
             }
         }
-        Assert.True((await Send(provider, new CreateWidget("nested"))).IsSuccess);
+        Assert.True((await Send(provider, new CreateWidget { IdempotencyKey = "nested" })).IsSuccess);
         await using var check = TestDb.NewContext();
         Assert.Single(await check.Widgets.ToListAsync());
     }
@@ -72,10 +72,10 @@ public sealed class TransactionalRequestTests(DataTestDb testDb)
             await using var outer = await session.BeginAsync();
             await session.OnCommittedAsync(token => new ValueTask(Task.Delay(Timeout.Infinite, token)));
             var sender = scope.ServiceProvider.GetRequiredService<ISender>();
-            Assert.True((await sender.SendAsync(new CreateWidget("hook"))).IsSuccess);
+            Assert.True((await sender.SendAsync(new CreateWidget { IdempotencyKey = "hook" })).IsSuccess);
             await outer.CompleteAsync();
         }
-        Assert.True((await Send(provider, new CreateWidget("hook"))).IsSuccess);
+        Assert.True((await Send(provider, new CreateWidget { IdempotencyKey = "hook" })).IsSuccess);
         await using var observer = TestDb.NewContext();
         Assert.Single(await observer.Widgets.ToListAsync());
     }
@@ -114,7 +114,7 @@ public sealed class TransactionalRequestTests(DataTestDb testDb)
             await using (var unit = await session.BeginAsync())
             {
                 session.OnRolledBack(_ => { rolledBack = true; return ValueTask.CompletedTask; });
-                await behavior.HandleAsync(new CreateWidget("uncertain"), () =>
+                await behavior.HandleAsync(new CreateWidget { IdempotencyKey = "uncertain" }, () =>
                 {
                     context.Widgets.Add(new Widget
                     {
@@ -133,7 +133,7 @@ public sealed class TransactionalRequestTests(DataTestDb testDb)
         Assert.Single(await observer.Widgets.ToListAsync());
         var retry = new DeduplicatingInterceptor<CreateWidget, int>(store);
         await Assert.ThrowsAsync<AppException>(() =>
-            retry.HandleAsync(new CreateWidget("uncertain"), () => ValueTask.FromResult(2), CancellationToken.None).AsTask());
+            retry.HandleAsync(new CreateWidget { IdempotencyKey = "uncertain" }, () => ValueTask.FromResult(2), CancellationToken.None).AsTask());
     }
 
     private sealed class LostCommitAcknowledgmentInterceptor : DbTransactionInterceptor
@@ -153,9 +153,9 @@ public sealed class TransactionalRequestTests(DataTestDb testDb)
         return await scope.ServiceProvider.GetRequiredService<ISender>().SendAsync(request);
     }
 
-    public sealed record CreateWidget(string IdempotencyKey)
-        : IRequest<AppResult<Guid>>, ITransactionalRequest, IIdempotent
+    public sealed record CreateWidget : IRequest<AppResult<Guid>>, ITransactionalRequest, IIdempotent
     {
+        public required string IdempotencyKey { get; init; }
         public bool Fail { get; init; }
         public bool Throw { get; init; }
     }
