@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using WoW.Two.Sdk.Backend.Beta.Testing.Web;
 using WoW.Two.Sdk.Backend.Beta.Web.Antiforgery;
 using Xunit;
 
@@ -64,6 +65,22 @@ public sealed class SpaAntiforgeryTests
         if (sendCookies)
             request.Headers.Add("Cookie", cookieHeader);
         using var response = await app.GetTestClient().SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task UnsafeRequest_ThroughTheTestingHandler_Passes()
+    {
+        await using var app = await StartAsync();
+        var server = app.GetTestServer();
+        using var client = new HttpClient(new SpaAntiforgeryHandler("/api/codes") { InnerHandler = server.CreateHandler() })
+        {
+            BaseAddress = server.BaseAddress,
+        };
+        client.DefaultRequestHeaders.Add("Cookie", "session=signed-in");
+
+        using var response = await client.PostAsync("/api/codes", content: null);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
