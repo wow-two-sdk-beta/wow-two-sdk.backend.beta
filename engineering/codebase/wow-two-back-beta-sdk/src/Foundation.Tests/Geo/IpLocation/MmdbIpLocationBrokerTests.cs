@@ -11,7 +11,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Tests.Geo.IpLocation;
 public sealed class MmdbIpLocationBrokerTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "wow2-ip-location", Guid.NewGuid().ToString("N"));
-    private readonly ManualTimeProvider _clock = new(new DateTimeOffset(2026, 9, 27, 12, 0, 0, TimeSpan.Zero));
+    private readonly ManualClock _clock = new(new DateTimeOffset(2026, 9, 27, 12, 0, 0, TimeSpan.Zero));
 
     public MmdbIpLocationBrokerTests() => Directory.CreateDirectory(_directory);
 

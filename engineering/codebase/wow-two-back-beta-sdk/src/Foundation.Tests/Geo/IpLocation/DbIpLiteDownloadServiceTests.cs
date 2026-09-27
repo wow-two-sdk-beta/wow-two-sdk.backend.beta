@@ -12,7 +12,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Foundation.Tests.Geo.IpLocation;
 public sealed class DbIpLiteDownloadServiceTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "wow2-dbip-lite", Guid.NewGuid().ToString("N"));
-    private readonly ManualTimeProvider _clock = new(new DateTimeOffset(2026, 9, 27, 12, 0, 0, TimeSpan.Zero));
+    private readonly ManualClock _clock = new(new DateTimeOffset(2026, 9, 27, 12, 0, 0, TimeSpan.Zero));
     private readonly Dictionary<string, Func<HttpResponseMessage>> _releases = new(StringComparer.Ordinal);
     private readonly List<string> _requests = [];
 
