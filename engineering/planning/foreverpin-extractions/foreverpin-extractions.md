@@ -1,6 +1,6 @@
 # ForeverPin extractions
 
-*Last updated: 2026-09-27*
+*Last updated: 2026-09-28*
 
 > SDK vectors triggered by ForeverPin's local infrastructure after the `10.0.59-beta` adoption.
 > Each iteration builds the reusable mechanism in the SDK; product adoption follows the published package.
@@ -106,9 +106,29 @@ Source: cookie-authenticated mutations without a CSRF token.
 
 ---
 
-## ForeverPin adoption — after the next published release
+## ForeverPin adoption — adopted, awaiting publication
 
-One product cut consumes all nine iterations; both hosts ship from one release.
+One product cut consumed all nine iterations against local candidate `10.0.60-beta.local.20260927.3`.
+ForeverPin's commits pin `10.0.60-beta`: push this repository first, then re-run ForeverPin's backend verifier.
+
+- [x] E1–E9 adopted in ForeverPin commits `f8ad3eb`–`b9b2397`; 238 backend and 7 frontend tests pass
+- [ ] Publish `10.0.60-beta` and verify ForeverPin against it without the candidate feed
+
+Adoption follow-ups added to the SDK in the same release:
+
+- `validator.Validate(instance, advisories)` records advisories from handler-side validation, such as a loaded mode.
+- `AddMemoryCacheInvalidationHandler()` evicts `IMemoryCache` entries; ForeverPin caches live code objects.
+- `AddPostgresCacheInvalidation()` defaults its connection to the `AddPostgresPersistence` database.
+- `DbIpLiteOptions.EnableDownload = false` serves a provisioned file, so test hosts never download.
+- Testing: `SpaAntiforgeryHandler` and `CreateSpaClient(tokenPath)` echo tokens as the browser client does.
+
+Deviations from the plan below, both deliberate:
+
+- E6: the repository keeps one insert attempt per call through `TrySaveChangesUniqueAsync`; the handler's bounded
+  retry stays beside its plan checks, so `SaveWithGeneratedKeyAsync` is unused.
+- E8: subscription writes already hold the owner lock, so a tracked watermark check keeps audit stamps;
+  `ExecuteUpdateIfNewerAsync` would bypass the audit interceptor. Same-second events apply in arrival order.
+
 
 | Iteration | Product change |
 |---|---|

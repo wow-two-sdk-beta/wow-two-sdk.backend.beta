@@ -1,6 +1,6 @@
 # Backend Beta — Platform Planning
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-28*
 
 > Standing **roadmap + backlog** for the backend SDK. Format follows
 > `conventions/planning/platform-planning/`. This is the durable home for everything we intend to
@@ -22,9 +22,10 @@
 2. Completed: publication-verifier correction released in `10.0.57-beta`; the workflow passed.
 3. Completed SDK side: [ForeverPin adoption](foreverpin-adoption/foreverpin-adoption.md) pins `10.0.59-beta` and passes
    its backend verifier; the product adoption is committed as `0ac30af`. Policy/architecture decisions remain deferred.
-4. Implemented, awaiting release: [ForeverPin extractions](foreverpin-extractions/foreverpin-extractions.md) E1–E9 —
+4. Implemented and adopted, awaiting release: [ForeverPin extractions](foreverpin-extractions/foreverpin-extractions.md) E1–E9 —
    transaction locks, validation warnings, free IP location, hosting, batch pipelines, unique saves, cache invalidation,
-   inbound event ordering and SPA antiforgery. ForeverPin adopts them in one cut after publication.
+   inbound event ordering and SPA antiforgery. ForeverPin adopted all nine against local candidate `.3` (238 tests);
+   its commits pin `10.0.60-beta`, so this repository publishes before ForeverPin pushes.
 5. Repin other direct consumers without putting them ahead of the requested ForeverPin cut.
 6. Complete EF-model-driven full-row reads/write guards and translation. The full data-session architecture remains a roadmap; the implemented session contract governs the current subset.
 
