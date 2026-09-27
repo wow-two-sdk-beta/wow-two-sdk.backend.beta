@@ -67,7 +67,7 @@ public static class PostgresPersistenceServiceCollectionExtensions
                 typeof(TContext)));
 
         // The bespoke SQL migrator owns the schema; EF is a pure mapper over it.
-        services.AddDatabaseBespokeMigrations(typeof(TContext).Assembly);
+        services.AddDatabaseBespokeMigrations(typeof(TContext).Assembly, options.ConfigureMigrations);
 
         return services;
     }

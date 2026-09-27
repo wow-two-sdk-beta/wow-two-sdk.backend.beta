@@ -1,6 +1,6 @@
 # Media
 
-*Media & document processing — caption parsing and tabular (CSV/Excel) export. Own domain logic + thin wraps over permissive libs.*
+*Media & document processing — caption parsing, YouTube links and tabular (CSV/Excel) export. Own domain logic + thin wraps over permissive libs.*
 
 Namespace root: `WoW.Two.Sdk.Backend.Beta.Media`.
 
@@ -11,7 +11,8 @@ Parser types live under `Captions/Parsers/` and `Csv/Parsers/`, with matching na
 
 | Folder | Surface | Role |
 |---|---|---|
-| `Captions/` | `AddCaptionParsing()`, `ICaptionParser` (+ VTT/SRT/TTML/json3) | Parse/convert caption formats (see `Captions/captions.md`) |
+| `Captions/` | `AddCaptionParsing()`, `ICaptionParser` (+ VTT/SRT/TTML/json3), `ITimedText` helpers | Parse/convert caption formats; slice parts and render text (see `Captions/captions.md`) |
+| `YouTube/` | `YouTubeUrlMapper`, `YouTubeLinkExtractor` | Video and playlist links in any published form, and links in pasted text (see `YouTube/youtube.md`) |
 | `Tabular/` | `ITabularExporter`, `TabularFormat` | Shared row-export abstraction (CSV / XLSX) |
 | `Csv/` | `AddCsvExport()`, `CsvTabularExporter`, `ICsvParser` | CSV read + write via CsvHelper |
 | `Excel/` | `AddExcelExport()`, `ExcelTabularExporter` | XLSX write via ClosedXML |

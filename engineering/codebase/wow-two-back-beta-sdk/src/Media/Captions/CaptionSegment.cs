@@ -1,7 +1,7 @@
 namespace WoW.Two.Sdk.Backend.Beta.Media.Captions;
 
 /// <summary>Represents a single timed line of caption text within a <see cref="CaptionTrack"/>.</summary>
-public sealed record CaptionSegment
+public sealed record CaptionSegment : ITimedText
 {
     /// <summary>Gets the start offset of the segment from the media start.</summary>
     public required TimeSpan Start { get; init; }

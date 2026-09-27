@@ -235,8 +235,8 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Mqtt` | MQTTnet direct use | planned |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks` | `AddWebhooks` — outbound HMAC-signed delivery + SSRF guard + retry | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Jobs` | Meta — Hangfire defaults | planned |
-| `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire` | `AddHangfireJobs(storage, opts)` + `AddInMemoryHangfireJobs()` (dev) + `UseHangfireJobsDashboard()` (local-only default). SDK serializer conventions, worker/queue tuning. **Hangfire is LGPL-3.0 — sole exception to permissive-only, per targets.md P4** | shipped |
-| `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.Postgres` | `AddPostgresHangfireJobs(connStr, opts)` — PostgreSQL storage preset | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire` | `AddHangfireJobs(storage, opts)` (plus a provider-aware `(provider, config)` storage overload) + `AddInMemoryHangfireJobs()` (dev) + `UseHangfireJobsDashboard()` (local-only default). SDK serializer conventions, worker/queue/schedule-polling tuning. **Hangfire is LGPL-3.0 — sole exception to permissive-only, per targets.md P4** | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.Postgres` | `AddPostgresHangfireJobs(connStr, opts, storage)` — PostgreSQL storage preset; `AddPostgresHangfireJobs(opts, storage)` / `UsePostgresPersistenceStorage(provider)` reuse the persistence floor's `DatabaseSettings` | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.SqlServer` | Hangfire on SQL Server | planned |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.Redis` | Hangfire on Redis | planned |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Batches` | `AddBatchPipeline<TItem, THandler>()` — bounded in-memory pipeline, scoped batch handler, shutdown drain, drop/processed/failed metrics | implemented |
@@ -306,7 +306,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 |---|---|
 | Realtime | `…Realtime.SignalR`, `…Realtime.SignalR.Redis`, `…Realtime.SignalR.AzureSignalR`, `…Realtime.Sse`, `…Realtime.WebSockets`, `…Realtime.MagicOnion` |
 | Storage | `…Storage`, `…Storage.FluentStorage`, `…Storage.Azure`, `…Storage.S3`, `…Storage.Gcs`, `…Storage.Minio`, `…Storage.Local` |
-| Media | **`…Media.Captions` — shipped** (`VttCaptionParser` + `CaptionSegment`/`CaptionTrack` + `AddVttCaptionParser()`, `src/Media/Captions/`, extracted from the TranscriptForge POC) · planned: `…Media.ImageSharp`, `…Media.Skia`, `…Media.Magick`, `…Media.FFmpeg`, `…Media.QuestPdf`, `…Media.ClosedXml`, `…Media.OpenXml`, `…Media.CsvHelper`, `…Media.Markdig` |
+| Media | **`…Media.Captions` — shipped** (`VttCaptionParser` + `CaptionSegment`/`CaptionTrack` + `AddVttCaptionParser()`, `src/Media/Captions/`, extracted from the TranscriptForge POC; `ITimedText` slicing, `TimedTextRenderer` and `CaptionClockMapper` from TranscriptForge v0.5) · **`…Media.YouTube` — shipped** (`YouTubeUrlMapper`, `YouTubeLinkExtractor`, `src/Media/YouTube/`, TranscriptForge v0.5) · planned: `…Media.ImageSharp`, `…Media.Skia`, `…Media.Magick`, `…Media.FFmpeg`, `…Media.QuestPdf`, `…Media.ClosedXml`, `…Media.OpenXml`, `…Media.CsvHelper`, `…Media.Markdig` |
 | Search | `…Search.PostgresFts`, `…Search.Elasticsearch`, `…Search.OpenSearch`, `…Search.Meilisearch`, `…Search.Algolia`, `…Search.Typesense`, `…Search.Lucene` |
 | Workflow | `…Workflow.Stateless`, `…Workflow.Elsa`, `…Workflow.WorkflowCore`, `…Workflow.DurableTask`, `…Workflow.Temporal` |
 | Aspire | `…Aspire.AppHost`, `…Aspire.ServiceDefaults`, `…Aspire.Integrations.Redis`, … (40+ Aspire integrations) |

@@ -8,4 +8,10 @@ public sealed record HangfireJobsOptions
 
     /// <summary>Queues this server processes, in priority order. Empty = the <c>default</c> queue.</summary>
     public IList<string> Queues { get; } = [];
+
+    /// <summary>
+    /// How often scheduled and retried jobs move onto their queue. Null = Hangfire default (15 seconds), which also
+    /// bounds how late a short retry delay may start.
+    /// </summary>
+    public TimeSpan? SchedulePollingInterval { get; set; }
 }

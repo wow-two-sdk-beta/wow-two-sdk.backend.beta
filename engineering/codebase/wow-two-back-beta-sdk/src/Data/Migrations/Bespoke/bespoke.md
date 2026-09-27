@@ -649,3 +649,8 @@ The CLI lives **outside** the mono-lib in a sibling web-free package (`Migration
 - `…Data.EntityFrameworkCore` — EF as pure mapper over the SQL-owned schema.
 - `conventions/development/backend/persistence/database.md` — schema-first rule + EF waste-rule (§5.1, §6 step 7).
 - [Npgsql](https://www.npgsql.org/) · [Dapper](https://github.com/DapperLib/Dapper) · [System.CommandLine](https://learn.microsoft.com/dotnet/standard/commandline/)
+
+## Product version stamps
+
+- `AddPostgresPersistence<T>(config, o => o.ConfigureMigrations = m => m.Version = MigrationVersionMapper.ToVersion(typeof(Program).Assembly))`
+  stamps applied rows `vX.Y` from the product's `<Version>` — one declaration, traceable history.

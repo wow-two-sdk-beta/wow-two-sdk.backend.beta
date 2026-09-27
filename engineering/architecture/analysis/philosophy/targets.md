@@ -528,7 +528,8 @@ Subpath: `wow-two-sdk.backend.beta.storage` + `.media`.
 | Tesseract / Aspose.OCR | LATER | OCR companion |
 | **`Media.Captions`** — WebVTT parse (own logic, pure, zero-dep) | **NOW** | Shipped `src/Media/Captions/` — extracted from the TranscriptForge POC (1st proven consumer). VTT-only; SRT/TTML/JSON3 + a multi-format `ICaptionParser` facade when a 2nd format is needed. Own logic, not a lib wrapper — the SDK holds domain logic too |
 | `Media.Audio` — yt-dlp / ffmpeg extraction | LATER | Thin process wrapper; extract alongside STT when a 2nd consumer/impl appears (TranscriptForge-inline now) |
-| `Media.Transcripts` — caption→STT orchestrator | LATER | Composite crown-jewel; gated on Captions + Audio + STT all extracting (TranscriptForge-inline now) |
+| **`Media.YouTube`** — URL forms ↔ ids, links in pasted text (pure, zero-dep) | **NOW** | Shipped `src/Media/YouTube/` — extracted from TranscriptForge v0.5 (link capture and playlist pasting). Playlist *expansion* stays with the consumer's fetcher (yt-dlp) until a YouTube client extracts |
+| `Media.Transcripts` — caption→STT orchestrator | LATER | Composite crown-jewel; gated on Captions + Audio + STT all extracting (TranscriptForge-inline now). `ITimedText` slicing and text rendering already live in `Media.Captions` |
 
 ### 3.8 AI / ML / LLM / vector — NEXT (P2)
 
