@@ -19,7 +19,7 @@
 - [x] E2 — warning-state validation and redirect target checks: interceptor, tracker, envelope and 18 target cases
 - [x] E3 — free IP geolocation: MMDB broker, hot reload and monthly DB-IP Lite refresh; 16 tests
 - [x] E4 — deployment hosting: trusted proxies, probe hosts, persistent keys, database readiness; 12 tests
-- [ ] E5 — queued batch background work
+- [x] E5 — queued batch background work: bounded pipeline, scoped handler, shutdown drain; 5 host tests
 - [ ] E6 — unique key allocation under a savepoint
 - [ ] E7 — commit-aware cache invalidation across hosts
 - [ ] E8 — inbound webhook deduplication and ordering

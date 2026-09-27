@@ -239,6 +239,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.Postgres` | `AddPostgresHangfireJobs(connStr, opts)` — PostgreSQL storage preset | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.SqlServer` | Hangfire on SQL Server | planned |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.Redis` | Hangfire on Redis | planned |
+| `WoW.Two.Sdk.Backend.Beta.Jobs.Batches` | `AddBatchPipeline<TItem, THandler>()` — bounded in-memory pipeline, scoped batch handler, shutdown drain, drop/processed/failed metrics | implemented |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Coravel` | Coravel alt | planned |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.NCronJob` | NCronJob alt | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms` | Meta — email + SMS + push abstractions | planned |
