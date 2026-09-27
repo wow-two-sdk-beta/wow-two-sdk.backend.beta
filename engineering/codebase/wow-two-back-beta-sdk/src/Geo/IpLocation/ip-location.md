@@ -28,6 +28,7 @@ string? country = location?.CountryCode;
 - Before the current month is published, the previous month's release fills the gap.
 - A release replaces the local file only after it opens as a valid database, within `MaxDatabaseBytes`.
 - `Edition = City` adds subdivision, city and coordinates; the download is far larger.
+- `EnableDownload = false` serves only a file already in the directory, such as a test fixture's.
 
 ## Licensing
 

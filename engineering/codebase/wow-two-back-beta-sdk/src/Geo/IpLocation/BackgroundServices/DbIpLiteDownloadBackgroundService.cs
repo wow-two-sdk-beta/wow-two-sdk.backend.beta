@@ -37,6 +37,12 @@ public sealed partial class DbIpLiteDownloadBackgroundService : BackgroundServic
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (!_options.EnableDownload)
+        {
+            LogDownloadDisabled(_options.DatabaseDirectory);
+            return;
+        }
+
         using var timer = new PeriodicTimer(_options.RefreshInterval, _clock);
         try
         {
@@ -63,6 +69,9 @@ public sealed partial class DbIpLiteDownloadBackgroundService : BackgroundServic
             LogRefreshFaulted(exception);
         }
     }
+
+    [LoggerMessage(EventId = 7109, Level = LogLevel.Information, Message = "DB-IP Lite download disabled; serving the database provisioned in {Directory}")]
+    private partial void LogDownloadDisabled(string directory);
 
     [LoggerMessage(EventId = 7108, Level = LogLevel.Error, Message = "DB-IP Lite refresh faulted; retrying at the next interval")]
     private partial void LogRefreshFaulted(Exception exception);

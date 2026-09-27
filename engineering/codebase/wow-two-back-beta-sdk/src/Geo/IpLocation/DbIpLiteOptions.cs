@@ -18,4 +18,8 @@ public sealed record DbIpLiteOptions
 
     /// <summary>Gets or sets the largest decompressed database accepted. Defaults to 512 MiB.</summary>
     public long MaxDatabaseBytes { get; set; } = 512L * 1024 * 1024;
+
+    /// <summary>Gets or sets whether the host downloads releases. Defaults to <see langword="true"/>.</summary>
+    /// <remarks>Disable to serve only a file already in <see cref="DatabaseDirectory"/>, such as one a test or an image provides.</remarks>
+    public bool EnableDownload { get; set; } = true;
 }

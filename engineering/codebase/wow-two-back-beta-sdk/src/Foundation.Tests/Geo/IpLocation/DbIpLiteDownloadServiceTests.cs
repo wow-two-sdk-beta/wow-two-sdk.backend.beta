@@ -3,6 +3,7 @@ using System.Net;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using WoW.Two.Sdk.Backend.Beta.Geo.IpLocation;
+using WoW.Two.Sdk.Backend.Beta.Geo.IpLocation.BackgroundServices;
 using WoW.Two.Sdk.Backend.Beta.Geo.IpLocation.Services;
 using Xunit;
 
@@ -58,6 +59,28 @@ public sealed class DbIpLiteDownloadServiceTests : IDisposable
 
         (await service.RefreshAsync(CancellationToken.None)).Should().BeFalse();
         File.Exists(service.DatabasePath).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task BackgroundRefresh_RequestsNothing_WhenDownloadIsDisabled()
+    {
+        _releases["2026-09"] = () => Gzip(ValidDatabase("AU"));
+        var options = new DbIpLiteOptions
+        {
+            DatabaseDirectory = _directory,
+            DownloadUrlFormat = "https://releases.test/dbip-{0}-lite-{1:yyyy-MM}.mmdb.gz",
+            EnableDownload = false,
+        };
+        var downloads = new DbIpLiteDownloadService(
+            new SingleClientFactory(new ReleaseHandler(this)), options, _clock, NullLogger<DbIpLiteDownloadService>.Instance);
+        using var worker = new DbIpLiteDownloadBackgroundService(
+            downloads, options, _clock, NullLogger<DbIpLiteDownloadBackgroundService>.Instance);
+
+        await worker.StartAsync(CancellationToken.None);
+        await worker.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(5));
+
+        _requests.Should().BeEmpty();
+        File.Exists(downloads.DatabasePath).Should().BeFalse();
     }
 
     public void Dispose()
