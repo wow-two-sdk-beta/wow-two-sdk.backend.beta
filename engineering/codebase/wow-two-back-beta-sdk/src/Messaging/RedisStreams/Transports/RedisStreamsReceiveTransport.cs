@@ -57,7 +57,7 @@ internal sealed partial class RedisStreamsReceiveTransport(
 
         var database = await connection.GetDatabaseAsync(cancellationToken);
         var streams = ResolveConsumeStreams();
-        LogConsumeStreams(string.Join(", ", streams), _consumerName);
+        LogConsumeStreams(streams, _consumerName);
 
         await _topology.EnsureGroupsAsync(database, streams, options.ConsumerGroup);
 
@@ -339,7 +339,7 @@ internal sealed partial class RedisStreamsReceiveTransport(
                     continue;
                 }
 
-                LogClaimed(entry.Id.ToString(), stream, deliveryCount);
+                LogClaimed(entry.Id, stream, deliveryCount);
                 await HandleAsync(database, stream, entry, deliveryCount, onMessage, cancellationToken);
                 handled++;
             }
@@ -528,10 +528,10 @@ internal sealed partial class RedisStreamsReceiveTransport(
     private partial void LogProcessingError(Exception exception);
 
     [LoggerMessage(EventId = 6603, Level = LogLevel.Information, Message = "Reading Redis streams {Streams} as consumer {Consumer}")]
-    private partial void LogConsumeStreams(string streams, string consumer);
+    private partial void LogConsumeStreams(IReadOnlyList<string> streams, string consumer);
 
     [LoggerMessage(EventId = 6604, Level = LogLevel.Information, Message = "Claimed stale Redis stream entry {EntryId} on {Stream} (delivery {DeliveryCount})")]
-    private partial void LogClaimed(string entryId, string stream, int deliveryCount);
+    private partial void LogClaimed(RedisValue entryId, string stream, int deliveryCount);
 
     [LoggerMessage(EventId = 6605, Level = LogLevel.Warning, Message = "Redis stream entry {EntryId} on {Stream} exhausted its delivery attempts at {DeliveryCount}; dead-lettering")]
     private partial void LogPoisonEntry(string entryId, string stream, int deliveryCount);

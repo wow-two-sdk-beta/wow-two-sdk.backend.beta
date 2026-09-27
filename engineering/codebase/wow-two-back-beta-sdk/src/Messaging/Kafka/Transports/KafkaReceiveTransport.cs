@@ -48,7 +48,7 @@ internal sealed partial class KafkaReceiveTransport(
         }).Build();
 
         var topics = ResolveSubscription();
-        LogSubscribed(string.Join(", ", topics));
+        LogSubscribed(topics);
         _consumer.Subscribe(topics);
 
         await Task.Run(() => ConsumeLoop(onMessage, cancellationToken), cancellationToken);
@@ -219,5 +219,5 @@ internal sealed partial class KafkaReceiveTransport(
     private partial void LogProcessingError(Exception exception);
 
     [LoggerMessage(EventId = 6404, Level = LogLevel.Information, Message = "Subscribing to Kafka topics {Topics}")]
-    private partial void LogSubscribed(string topics);
+    private partial void LogSubscribed(IReadOnlyList<string> topics);
 }

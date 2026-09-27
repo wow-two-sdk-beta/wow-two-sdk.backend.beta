@@ -327,7 +327,7 @@ internal sealed class EfDataSession<TContext> : IDataSession where TContext : Db
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Data-session transaction cleanup failed in state {State}", State);
+            _logger.TransactionCleanupFailed(exception, State);
         }
     }
 
@@ -343,7 +343,7 @@ internal sealed class EfDataSession<TContext> : IDataSession where TContext : Db
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Cleanup could not confirm rollback after an uncertain commit; reconcile before retrying");
+            _logger.UncertainCommitCleanupFailed(exception);
         }
         finally
         {
@@ -370,12 +370,7 @@ internal sealed class EfDataSession<TContext> : IDataSession where TContext : Db
             catch (Exception exception)
             {
                 FailedHooks.Add(1);
-                _logger.LogError(
-                    exception,
-                    "Data-session callback failed; completed {Completed} of {Total}, state {State}",
-                    index,
-                    actions.Count,
-                    State);
+                _logger.CallbackFailed(exception, index, actions.Count, State);
             }
         }
     }

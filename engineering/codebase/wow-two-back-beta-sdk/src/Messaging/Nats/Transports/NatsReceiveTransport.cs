@@ -43,7 +43,7 @@ internal sealed partial class NatsReceiveTransport(
         _js = new NatsJSContext(_connection);
 
         var subjects = ResolveConsumeSubjects();
-        LogConsumeSubjects(string.Join(", ", subjects));
+        LogConsumeSubjects(subjects);
 
         await _topology.EnsureStreamAsync(_js, options, cancellationToken);
         await _topology.EnsureConsumerAsync(_js, options, subjects, cancellationToken);
@@ -201,5 +201,5 @@ internal sealed partial class NatsReceiveTransport(
     private partial void LogProcessingError(Exception exception);
 
     [LoggerMessage(EventId = 6503, Level = LogLevel.Information, Message = "Consuming NATS subjects {Subjects}")]
-    private partial void LogConsumeSubjects(string subjects);
+    private partial void LogConsumeSubjects(IReadOnlyList<string> subjects);
 }

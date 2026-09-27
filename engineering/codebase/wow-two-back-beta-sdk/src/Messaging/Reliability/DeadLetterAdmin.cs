@@ -238,7 +238,7 @@ internal sealed partial class DeadLetterAdmin : IDeadLetterAdmin
                 changed++;
         }
 
-        LogStateChanged(changed, state.ToString());
+        LogStateChanged(changed, state);
         return changed;
     }
 
@@ -274,7 +274,7 @@ internal sealed partial class DeadLetterAdmin : IDeadLetterAdmin
     private partial void LogBulkRedrive(int redriven, int matched);
 
     [LoggerMessage(EventId = 6075, Level = LogLevel.Information, Message = "Moved {Changed} dead-letter records to state {State}")]
-    private partial void LogStateChanged(int changed, string state);
+    private partial void LogStateChanged(int changed, DeadLetterState state);
 
     [LoggerMessage(EventId = 6076, Level = LogLevel.Information, Message = "Purged {Purged} of {Matched} matched dead-letter records")]
     private partial void LogPurged(int purged, int matched);
