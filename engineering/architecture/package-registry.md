@@ -23,13 +23,14 @@ not additional package outputs.
 
 ## Capability status
 
-### Implemented locally, publication pending
+### Published in 10.0.59-beta
 
 The [September 26 sweep](../planning/sdk-completion/sweep-2026-09-26.md) adds `Data.Sessions`
 (`AddDataSession<TContext>`, nested units, borrowed connections, completion hooks),
 `Mediator.DataUnits` (`ITransactionalRequest`, `AddMediatorDataUnitInterceptor`), and `Http.Safety`
 (`AddSafeOutboundHttp`). Dapper reads gain soft-delete/xmin policies; idempotency gains atomic
-ownership, release and commit-aware replay. These changes are not included in `10.0.58-beta`.
+ownership, release and commit-aware replay. Release `6924fa6` (tag `v10.0.59-beta`) also carries the
+optional calendar end and test-host dependency validation found during ForeverPin adoption.
 
 ### Published in 10.0.58-beta
 
@@ -129,7 +130,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Mediator.Validation` | `AddMediatorValidationBehavior()` — FluentValidation pipeline behavior | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Mediator.Logging` | `AddMediatorLoggingBehavior()` — source-gen `[LoggerMessage]` request/response logging | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Mediator.Authorization` | `AddMediatorAuthorizationBehavior()` + `IRequireAuthorization` marker | shipped |
-| `WoW.Two.Sdk.Backend.Beta.Mediator.Idempotency` | `AddMediatorDeduplicatingInterceptor()` + `IIdempotent` + `IIdempotencyRepository`; ownership-token contract implemented locally | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Mediator.Idempotency` | `AddMediatorDeduplicatingInterceptor()` + `IIdempotent` + `IIdempotencyRepository`; ownership-token contract since `10.0.59-beta` | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity` | Meta — JWT + cookies + Identity API endpoints | planned |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Core` | `AddUserAccounts<TUser>()` — own sliced-lego user model: 7 entities + `ApplyIdentitySchema` + `IUserStore`/`EfUserStore` + `UserAccountService` facade (step 1 of the identity rebuild) | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Jwt` | `AddJwtBearerAuthentication()` — JWT bearer (symmetric or JWKS) | shipped |

@@ -16,13 +16,14 @@
 - [x] Publish the candidate: `ba2a87e` released as `10.0.58-beta`; all seven packages verified on NuGet.
 - [x] Apply the authorized product adoption cut across both hosts and all 12 backend projects.
 - [x] Complete final product regressions against the local SDK candidate: 231 passed, zero skipped.
-- [ ] Publish the adoption-discovered SDK corrections and repin ForeverPin to the verified release.
-- [ ] Run the published-package backend verifier; frontend acceptance belongs to its separate lane.
+- [x] Publish the adoption-discovered SDK corrections: `10.0.59-beta`, run `36233039580`; ForeverPin pins it centrally.
+- [x] Run the published-package backend verifier: 231 passed, zero skipped; frontend acceptance stays separate.
+- [x] Commit the ForeverPin adoption: `0ac30af`, with the .NET SDK pin `36dc3a0`.
 
 The user authorized deep implementation where the answer follows from current contracts.
 Work requiring new product or platform policy is deferred explicitly below.
-The original `10.0.58-beta` cut is published. Adoption exposed two additional SDK corrections, now locally packaged;
-publication and the final consumer pin remain open. Commit permission is enforced by each repository's native switch.
+The original `10.0.58-beta` cut is published. Adoption exposed two additional SDK corrections, published in `10.0.59-beta`.
+ForeverPin pins that version and passes its backend verifier. Commit permission is enforced by each repository's native switch.
 Product evidence: [backend adoption](../../../../../ventures/10x-venture-forever-pin/engineering/architecture/backend-adoption.md).
 
 ---
@@ -106,7 +107,7 @@ not a request for confirmation. Apply SDK corrections first and consume them thr
 - [x] Configure persistent/shared Data Protection keys for intended guest-sharing hosts; legacy raw guest cookies are rejected.
 
 - [x] Centralize runtime and testing references under one version property.
-- [ ] Set that property to the verified published version containing the adoption-discovered corrections.
+- [x] Set that property to `10.0.59-beta`, the published version containing the adoption-discovered corrections.
 - [x] Migrate `ConfigurationLoader` to `ConfigurationMapper`.
 - [x] Migrate `IGoogleIdTokenVerifier` / registration / fake to the authenticator contract.
 - [x] Migrate `ICurrentUser` and `IGuestSession` to `ICurrentUserService` and `IGuestSessionService`.
@@ -249,7 +250,7 @@ above, and they are not deferred merely because their implementation is long.
 
 | ID | Decision / existing owner | Safe boundary for this cut |
 |---|---|---|
-| D01 | SDK `IDataSession` source is implemented in the later, unpublished data-pipeline cut | Product invariants use its existing shared EF context and transactions; no second session abstraction is needed for this adoption. |
+| D01 | SDK `IDataSession` ships opt-in since `10.0.59-beta`; product adoption is not required for this cut | Product invariants use its existing shared EF context and transactions; no second session abstraction is needed for this adoption. |
 | D02 | Cache invalidation across management and redirect hosts; freshness and deployment topology | Keep the active uncached DB path; SDK cache availability alone does not justify wiring stale reads. |
 | D03 | Dynamic non-HTTP delivery, resolve-page host, geo behavior and calendar timezone meaning; product delivery policy | Fix already-defined URL routing; preserve/defer the remaining delivery choices. |
 | D04 | Full payments adapter and webhook state/replay/order model; Stripe target is currently LATER | Keep product plans local; map provider failures safely; no speculative generic billing framework. |
@@ -279,10 +280,9 @@ Further findings can extend these subjects; do not create a new discussion for a
 - ForeverPin's complete final candidate run passed: 81 HTTP, 30 PostgreSQL integration, one product migration
   and 119 unit tests; 231 passed, zero skipped. Evidence: `/tmp/foreverpin-adoption-tests-final.log`.
   The run includes deep JSON tracking, owner-transfer races, field-path validation and both host environments.
-- Both runtime and test package references use `BackendSdkVersion`. The temporary checked-in default is
-  `10.0.58-beta`; local tests explicitly override it. The product must not be committed with that temporary pin.
-- Publish the SDK through the normal developer-owned main push, verify all seven resulting packages,
-  replace the product pin with that actual version, and run the backend verifier without local overrides.
+- Both runtime and test package references use `BackendSdkVersion`, now `10.0.59-beta` from nuget.org.
+- Published-package verification, 2026-09-26: all 12 projects restore `10.0.59-beta`; the backend verifier passed
+  81 HTTP, 30 PostgreSQL integration, one migration and 119 unit tests with no local override.
 - Frontend/browser acceptance and provider-backed production verification remain separate.
 
 ### CI batch — published
@@ -370,7 +370,7 @@ and its verification are recorded in the 2026-09-26 candidate section above.
 2. Completed: full SDK Release solution tested; seven package/symbol pairs verified from one revision.
 3. Completed: `10.0.58-beta` published; seven packages available and the tag peels to `546466e`.
 4. Implemented locally: ForeverPin host, payload, validation, identity, data and convention adoption.
-5. Publish the adoption-discovered SDK corrections; pin the resulting family and run the backend verifier.
+5. Completed: `10.0.59-beta` published and pinned; the backend verifier passes on published packages.
 6. Complete frontend integration and browser/manual acceptance in the product's separate frontend lane.
 
 ### Coverage ledger

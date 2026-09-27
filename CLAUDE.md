@@ -28,7 +28,7 @@ See [`targets.md` §6](./engineering/architecture/analysis/philosophy/targets.md
 | P0 | testing helpers and seven regression suites | implemented; four published testing companions |
 | P1 | boot floor — foundation + observability + web basics | shipped within the mono library |
 | P2 | request pipeline + auth | ✅ shipped (mediator + identity, incl. otp/otp.telegram/jwt.issuance/policies + 16 OAuth providers) |
-| P3 | persistence + outbound | data/HTTP/cache adapters ship; session/safety completion is local, unpublished |
+| P3 | persistence + outbound | data/HTTP/cache adapters ship; opt-in sessions and outbound safety since `10.0.59-beta` |
 | P4 | distributed essentials | comms/email, Hangfire, messaging and webhooks ship; scoped workers remain |
 | meta | `AddApiDefaults()` / `UseApiDefaults()` one-import boot floor (`src/Meta/`) | ✅ shipped |
 | P5 | SaaS-shaped (tenancy + AI + flags) | planned |
@@ -65,7 +65,7 @@ wow-two-sdk.backend.beta/
                 ├── Realtime/ Storage/          ← P6
                 ├── Codes/ Geo/ Localization/ Media/ Integrations/
                 ├── Testing/ Testing.Data/ Testing.Integrations/ Testing.Messaging/   ← P0 (parallel track)
-                └── *.Tests/                    ← Foundation · Identity · Mediator · Messaging · Migrations · Web
+                └── *.Tests/                    ← Data · Foundation · Identity · Mediator · Messaging · Migrations · Web
 ```
 
 > **Path convention**: a bare `src/…` in any doc is **code-dir-relative** (`engineering/codebase/wow-two-back-beta-sdk/src/…`), matching the frontend SDK.

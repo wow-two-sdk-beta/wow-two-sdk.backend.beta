@@ -17,10 +17,11 @@
 
 ## Active sequence
 
-1. Active: [September 26 implementation sweep](sdk-completion/sweep-2026-09-26.md). The owner authorized autonomous SDK completion; consumer adoption no longer blocks SDK work. Opt-in data sessions, Dapper read corrections, outbound safety and idempotency ownership are implemented locally, awaiting release.
+1. Completed: [September 26 implementation sweep](sdk-completion/sweep-2026-09-26.md) released in `10.0.59-beta`:
+   opt-in data sessions, Dapper read corrections, outbound safety and idempotency ownership.
 2. Completed: publication-verifier correction released in `10.0.57-beta`; the workflow passed.
-3. [SDK adoption cut](foreverpin-adoption/foreverpin-adoption.md) published as `10.0.58-beta`. Apply one coordinated
-   ForeverPin upgrade to it. Policy/architecture decisions remain explicitly deferred.
+3. Completed SDK side: [ForeverPin adoption](foreverpin-adoption/foreverpin-adoption.md) pins `10.0.59-beta` and passes
+   its backend verifier; the product adoption is committed as `0ac30af`. Policy/architecture decisions remain deferred.
 4. Repin other direct consumers without putting them ahead of the requested ForeverPin cut.
 5. Complete background work and cache invalidation, followed by EF-model-driven full-row reads/write guards and translation. The full data-session architecture remains a roadmap; the implemented session contract governs the current subset.
 
