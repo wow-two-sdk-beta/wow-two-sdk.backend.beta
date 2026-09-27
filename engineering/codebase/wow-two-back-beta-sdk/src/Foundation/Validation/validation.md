@@ -90,6 +90,14 @@ discloses the secret's length. `Code` and `Message` are unaffected, so the failu
 sub-resource (`POST /codes/validate`), not a new HTTP verb; none of the registered verbs means "check this".
 Debounce on the client and render `Severity.Warning` entries as hints the user may ignore.
 
+### Advisories on a successful write
+
+The mediator's `ValidatingInterceptor` inspects each validator once. Errors still throw `ValidationException`;
+warnings and suggestions go to the scoped `IValidationAdvisoryTracker` and the handler runs.
+`IValidationAdvisoryMapper` resolves them through `IFieldErrorMessageMapper`, and `ApiResponse<T>.Ok(data, warnings)`
+returns them beside the payload as `warnings`. A request with no advisories omits the member.
+Reusable advisory rules: [redirect targets](../../Web/Redirects/redirects.md).
+
 ## Localize the field messages
 
 `IErrorMessageMapper` resolves the top-level `detail`; `IFieldErrorMessageMapper` resolves each

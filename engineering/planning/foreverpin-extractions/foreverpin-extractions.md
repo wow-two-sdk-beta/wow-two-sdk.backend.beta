@@ -16,7 +16,7 @@
 ## Status
 
 - [x] E1 — per-key transaction locks: PostgreSQL contention, ordering and cancellation tests pass
-- [ ] E2 — warning-state validation and redirect target checks
+- [x] E2 — warning-state validation and redirect target checks: interceptor, tracker, envelope and 18 target cases
 - [ ] E3 — free IP geolocation
 - [ ] E4 — deployment hosting: trusted proxies, probe hosts, persistent keys, database readiness
 - [ ] E5 — queued batch background work
