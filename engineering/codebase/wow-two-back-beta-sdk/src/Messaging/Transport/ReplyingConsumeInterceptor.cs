@@ -30,6 +30,6 @@ internal sealed partial class ReplyingConsumeInterceptor(PendingRequestRegistry 
         return next(context, cancellationToken);
     }
 
-    [LoggerMessage(EventId = 6061, Level = LogLevel.Debug, Message = "Matched response message {MessageId} to pending request {ConversationId}")]
+    [LoggerMessage(EventId = 6091, Level = LogLevel.Debug, Message = "Matched response message {MessageId} to pending request {ConversationId}")]
     private partial void LogResponseMatched(string messageId, string? conversationId);
 }
