@@ -27,8 +27,10 @@
    inbound event ordering, SPA antiforgery, environment aliases, configured proxy trust and popup-safe opener headers.
    ForeverPin adopted all twelve against local candidate `.4` (238 tests); its commits pin `10.0.60-beta`, so this
    repository publishes before ForeverPin pushes.
-5. Repin other direct consumers without putting them ahead of the requested ForeverPin cut.
-6. Complete EF-model-driven full-row reads/write guards and translation. The full data-session architecture remains a roadmap; the implemented session contract governs the current subset.
+5. Implemented, awaiting release: [September 28 sweep](sdk-completion/sweep-2026-09-28.md) — identity steps 2–9 +
+   refresh tokens, SMS and push channels, durable idempotency, S3 blob storage and feature gates; 806 tests pass.
+6. Repin other direct consumers without putting them ahead of the requested ForeverPin cut.
+7. Complete EF-model-driven full-row reads/write guards and translation. The full data-session architecture remains a roadmap; the implemented session contract governs the current subset.
 
 Request validation, aggregated validation failures and RFC 9457 ProblemDetails rendering already ship. They are inputs to translated error rendering, not a separate unfinished validation rebuild.
 
@@ -68,7 +70,7 @@ Request validation, aggregated validation failures and RFC 9457 ProblemDetails r
 | localization/translation completion | feature | P4 | Request culture, `.resx` loading and formatter bases ship. Add SDK `IErrorMessageMapper`/`IFieldErrorMessageMapper` resx implementations, fallback rules, plural/message formatting and pseudo-localization tests. |
 | error completion | feature | P2/P4 | Core `AppError`, exception mapping, aggregated validation and ProblemDetails ship. Remaining SDK work: `HttpClientError`, result combinators, translated message keys and an error-code analyzer. Product error-catalog adoption belongs to the consumer pass. |
 | **data session** (`IDataSession` + hooks + Dapper hardening + write guards) | feature | P3 | Researched + designed. Sweep fixed interceptor wiring, options mutability, tracked-instance replacement, generated Dapper tenant scope and test-provider interceptor preservation. Implemented locally: shared EF/Dapper transaction (D1), generated soft-delete/xmin reads (D2/D3), nested units/hooks (D6) and transactional mediator/idempotency. Remaining: EF-model-driven full-row materialization, converters/owned graphs, strict write guards and manual flush. [Current contract](../codebase/wow-two-back-beta-sdk/src/Data/Sessions/sessions.spec.md) defines rollback tracker clearing and uncertain-commit handling. |
-| scoped background workers | feature | P4 | Bounded channel queue, per-item DI scope, cancellation, overload policy, shutdown drain and deterministic host tests; durable claims/schedules remain separate. |
+| scoped background workers | feature | P4 | **Covered by E5** — `AddBatchPipeline<TItem, THandler>()` gives a bounded queue, scoped handler and shutdown drain; batch size 1 serves per-item work. A blocking (backpressure) admission mode remains open. |
 | sweep consumer adoption | check | Release | After the new beta publishes, repin all direct ventures and the product template; repair only the APIs each consumer uses. ForeverPin's 31 product rows stay in its own track. |
 | **component registry** (TryAdd-skip / Replace-displacement ledger) | feature | Quality | Idea 2026-07-19 → **build narrower**. 175 `Add*` · 184 `TryAdd` sites; a skipped `TryAdd` leaves *no trace anywhere*. The BCL already dumps the positive space (`DependencyInjectionEventSource` event 8); only the **negative space** is unsolved — and it's the class D5/D7 belong to. See deep-dive. |
 | Roslyn analyzer: foundation-can't-import-domain | check | Quality | Decision 9.14 open. |
