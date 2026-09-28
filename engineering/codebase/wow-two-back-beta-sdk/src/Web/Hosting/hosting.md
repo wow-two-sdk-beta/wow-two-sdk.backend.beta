@@ -58,3 +58,7 @@ app.MapSpaFallback();     // /api/* → JSON 404; everything else → index.html
 `SpaHostingOptions`: `ApiPathPrefix` (default `/api`), `FallbackFile` (default `index.html`),
 `ServeDefaultFiles` (default `true`). Configure via the optional callback on either call:
 `app.MapSpaFallback(o => o.ApiPathPrefix = "/v1");`.
+
+A route that ships its own document gets it instead of the shell: `/pricing` and `/pricing/` both serve
+`pricing/index.html` when the bundle contains one. A build can prerender each public route's title,
+description and social tags this way while its router keeps the slashless canonical address.

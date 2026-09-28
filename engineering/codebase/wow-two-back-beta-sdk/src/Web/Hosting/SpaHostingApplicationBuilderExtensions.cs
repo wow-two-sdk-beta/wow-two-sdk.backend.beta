@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.FileProviders;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.Hosting;
 
@@ -36,9 +38,10 @@ public static class SpaHostingApplicationBuilderExtensions
 
     /// <summary>
     /// Maps the SPA fallback terminal endpoints: a JSON 404 for unmatched routes under
-    /// <see cref="SpaHostingOptions.ApiPathPrefix"/>, then <see cref="SpaHostingOptions.FallbackFile"/> for every other
-    /// unmatched route. Call after the application's own endpoints are mapped so real routes win; both fallbacks allow
-    /// anonymous access so the shell and 404 surface under a default-deny authorization policy.
+    /// <see cref="SpaHostingOptions.ApiPathPrefix"/>, then the route's own document for every other unmatched route —
+    /// <c>pricing/index.html</c> for <c>/pricing</c> when the bundle ships one — else
+    /// <see cref="SpaHostingOptions.FallbackFile"/>. Call after the application's own endpoints are mapped so real routes
+    /// win; both fallbacks allow anonymous access so the shell and 404 surface under a default-deny authorization policy.
     /// </summary>
     /// <param name="app">The built application to map endpoints onto.</param>
     /// <param name="configure">Optional configuration for the API prefix and fallback file.</param>
@@ -55,10 +58,36 @@ public static class SpaHostingApplicationBuilderExtensions
         app.MapFallback(apiPattern, () => Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Not Found"))
             .AllowAnonymous();
 
-        app.MapFallbackToFile(options.FallbackFile)
+        // Routing claims extensionless paths before static files run, so the fallback itself picks the document.
+        var webRoot = app.Environment.WebRootFileProvider;
+        var shellPath = $"/{options.FallbackFile.TrimStart('/')}";
+        var serveDocument = ((IEndpointRouteBuilder)app).CreateApplicationBuilder()
+            .Use(next => context =>
+            {
+                context.Request.Path = RouteDocumentPath(webRoot, context.Request.Path) ?? shellPath;
+                context.SetEndpoint(null);
+                return next(context);
+            })
+            .UseStaticFiles()
+            .Build();
+        app.MapFallback(serveDocument)
             .AllowAnonymous();
 
         return app;
+    }
+
+    /// <summary>Returns the path of the route's prerendered <c>index.html</c>, or null when the bundle has none.</summary>
+    /// <param name="webRoot">The web root the bundle is served from.</param>
+    /// <param name="path">The request path.</param>
+    private static string? RouteDocumentPath(IFileProvider webRoot, PathString path)
+    {
+        var route = path.Value?.Trim('/');
+        if (string.IsNullOrEmpty(route))
+            return null;
+
+        // The provider refuses paths that climb out of the web root, so a crafted path finds nothing.
+        var document = $"/{route}/index.html";
+        return webRoot.GetFileInfo(document) is { Exists: true, IsDirectory: false } ? document : null;
     }
 
     /// <summary>Builds an <see cref="SpaHostingOptions"/> instance, applying the optional caller configuration.</summary>
