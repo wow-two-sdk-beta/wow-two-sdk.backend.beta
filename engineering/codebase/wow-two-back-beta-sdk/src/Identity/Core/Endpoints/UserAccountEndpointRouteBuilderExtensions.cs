@@ -11,6 +11,7 @@ using WoW.Two.Sdk.Backend.Beta.Identity.Core.Emails;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passwords;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.RefreshTokens;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.SignIn;
+using WoW.Two.Sdk.Backend.Beta.Identity.Core.TwoFactor;
 using WoW.Two.Sdk.Backend.Beta.Identity.Jwt.Issuance;
 using WoW.Two.Sdk.Backend.Beta.Web.Contracts;
 
@@ -21,7 +22,8 @@ public static class UserAccountEndpointRouteBuilderExtensions
 {
     /// <summary>
     /// Maps <c>register</c>, <c>login</c>, <c>refresh</c>, <c>logout</c>, <c>confirm-email</c>,
-    /// <c>resend-confirmation-email</c>, <c>forgot-password</c>, <c>reset-password</c> and <c>manage/info</c> under
+    /// <c>resend-confirmation-email</c>, <c>forgot-password</c>, <c>reset-password</c>, <c>manage/info</c> and, with the
+    /// two-factor slice registered, <c>manage/2fa</c> (status, authenticator, enable, disable, recovery-codes) under
     /// <paramref name="endpoints"/> — mount it on a group such as <c>app.MapGroup("/account")</c>. Sign-in returns a bearer
     /// session (JWT via <see cref="ITokenIssuer"/>, plus a refresh token when registered) or, with <c>?useCookies=true</c>,
     /// a cookie. Failures surface as problem details, translated when error translation is enabled.
@@ -44,6 +46,16 @@ public static class UserAccountEndpointRouteBuilderExtensions
         endpoints.MapPost("/forgot-password", ForgotPasswordAsync<TUser, TKey>);
         endpoints.MapPost("/reset-password", ResetPasswordAsync<TUser, TKey>);
         endpoints.MapGet("/manage/info", InfoAsync<TUser, TKey>).RequireAuthorization();
+
+        if (endpoints.ServiceProvider.GetService<IServiceProviderIsService>()?.IsService(typeof(UserTwoFactorService<TUser, TKey>)) == true)
+        {
+            endpoints.MapGet("/manage/2fa", TwoFactorStatusAsync<TUser, TKey>).RequireAuthorization();
+            endpoints.MapPost("/manage/2fa/authenticator", ResetAuthenticatorAsync<TUser, TKey>).RequireAuthorization();
+            endpoints.MapPost("/manage/2fa/enable", EnableTwoFactorAsync<TUser, TKey>).RequireAuthorization();
+            endpoints.MapPost("/manage/2fa/disable", DisableTwoFactorAsync<TUser, TKey>).RequireAuthorization();
+            endpoints.MapPost("/manage/2fa/recovery-codes", RegenerateRecoveryCodesAsync<TUser, TKey>).RequireAuthorization();
+        }
+
         return endpoints;
     }
 
@@ -204,6 +216,74 @@ public static class UserAccountEndpointRouteBuilderExtensions
             EmailConfirmed = user.EmailConfirmed,
             TwoFactorEnabled = user.TwoFactorEnabled,
         }));
+    }
+
+    private static async Task<IResult> TwoFactorStatusAsync<TUser, TKey>(ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var (user, twoFactor) = await TwoFactorOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        return Results.Ok(ApiResponse<TwoFactorStatusDto>.Ok(new TwoFactorStatusDto
+        {
+            Enabled = user.TwoFactorEnabled,
+            HasAuthenticator = await twoFactor.GetAuthenticatorKeyAsync(user, cancellationToken) is not null,
+            RecoveryCodesLeft = await twoFactor.CountRecoveryCodesAsync(user, cancellationToken),
+        }));
+    }
+
+    private static async Task<IResult> ResetAuthenticatorAsync<TUser, TKey>(ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var (user, twoFactor) = await TwoFactorOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        var key = await twoFactor.ResetAuthenticatorKeyAsync(user, cancellationToken);
+        var uri = await twoFactor.GetAuthenticatorUriAsync(user, cancellationToken);
+        return Results.Ok(ApiResponse<AuthenticatorSetupDto>.Ok(new AuthenticatorSetupDto { SharedKey = key, AuthenticatorUri = uri!.ToString() }));
+    }
+
+    private static async Task<IResult> EnableTwoFactorAsync<TUser, TKey>(TwoFactorCodeApiRequest request, ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var (user, twoFactor) = await TwoFactorOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        var enabled = await twoFactor.EnableAsync(user, request.Code, cancellationToken);
+        if (!enabled.Succeeded)
+            throw enabled.ToValidationError().ToException();
+
+        var codes = await twoFactor.GenerateRecoveryCodesAsync(user, cancellationToken);
+        return Results.Ok(ApiResponse<RecoveryCodesDto>.Ok(new RecoveryCodesDto { RecoveryCodes = codes }));
+    }
+
+    private static async Task<IResult> DisableTwoFactorAsync<TUser, TKey>(ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var (user, twoFactor) = await TwoFactorOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        await twoFactor.DisableAsync(user, cancellationToken);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> RegenerateRecoveryCodesAsync<TUser, TKey>(ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var (user, twoFactor) = await TwoFactorOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        if (!user.TwoFactorEnabled)
+            throw AppError.Of(AppErrorType.Conflict, "Enable two-factor before generating recovery codes.", MessageKey(IdentityErrorCodeConstants.AuthenticatorNotConfigured)).ToException();
+
+        var codes = await twoFactor.GenerateRecoveryCodesAsync(user, cancellationToken);
+        return Results.Ok(ApiResponse<RecoveryCodesDto>.Ok(new RecoveryCodesDto { RecoveryCodes = codes }));
+    }
+
+    private static async Task<(TUser User, UserTwoFactorService<TUser, TKey> TwoFactor)> TwoFactorOfAsync<TUser, TKey>(ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var services = http.RequestServices;
+        var claimType = services.GetRequiredService<IdentityCoreOptions>().Claims.UserIdClaimType;
+        var user = await FindAsync<TUser, TKey>(services, principal.FindFirst(claimType)?.Value, cancellationToken)
+            ?? throw AppErrorFactory.Unauthorized("The account no longer exists.").ToException();
+        return (user, services.GetRequiredService<UserTwoFactorService<TUser, TKey>>());
     }
 
     private static async Task<AccessTokenDto> IssueAsync<TUser, TKey>(IServiceProvider services, ClaimsPrincipal principal, TUser? user, string? refreshToken, CancellationToken cancellationToken)

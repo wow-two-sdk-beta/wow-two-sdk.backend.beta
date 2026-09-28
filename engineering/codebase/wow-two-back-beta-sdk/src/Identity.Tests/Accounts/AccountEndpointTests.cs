@@ -21,6 +21,8 @@ using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passwords;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.RefreshTokens;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.SignIn;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Tokens;
+using WoW.Two.Sdk.Backend.Beta.Identity.Core.TwoFactor;
+using WoW.Two.Sdk.Backend.Beta.Identity.Mfa.Totp;
 using WoW.Two.Sdk.Backend.Beta.Identity.Jwt;
 using WoW.Two.Sdk.Backend.Beta.Identity.Jwt.Issuance;
 using WoW.Two.Sdk.Backend.Beta.Meta;
@@ -93,6 +95,37 @@ public sealed partial class AccountEndpointTests
         (await client.GetAsync("/account/manage/info")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task TwoFactor_IsManagedAndThenRequiredAtSignIn()
+    {
+        await using var app = await StartAsync();
+        var client = app.Server.CreateClient();
+        await client.PostAsJsonAsync("/account/register", new { email = "xia@example.test", password = Password });
+        var access = (await Data(await client.PostAsJsonAsync("/account/login", new { login = "xia@example.test", password = Password })))
+            .GetProperty("accessToken").GetString();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", access);
+
+        var setup = await Data(await client.PostAsync("/account/manage/2fa/authenticator", null));
+        setup.GetProperty("authenticatorUri").GetString().Should().StartWith("otpauth://totp/");
+        var totp = app.Services.GetRequiredService<ITotpService>();
+        var key = OtpNet.Base32Encoding.ToBytes(setup.GetProperty("sharedKey").GetString());
+
+        var enabled = await Data(await client.PostAsJsonAsync("/account/manage/2fa/enable", new { code = totp.ComputeCode(key) }));
+        enabled.GetProperty("recoveryCodes").GetArrayLength().Should().Be(10);
+        var status = await Data(await client.GetAsync("/account/manage/2fa"));
+        status.GetProperty("enabled").GetBoolean().Should().BeTrue();
+
+        client.DefaultRequestHeaders.Authorization = null;
+        using var withoutCode = await client.PostAsJsonAsync("/account/login", new { login = "xia@example.test", password = Password });
+        withoutCode.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await Problem(withoutCode)).GetProperty("detail").GetString().Should().Be("Enter your two-factor code.");
+
+        using var withCode = await client.PostAsJsonAsync("/account/login", new { login = "xia@example.test", password = Password, twoFactorCode = totp.ComputeCode(key) });
+        withCode.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var withRecovery = await client.PostAsJsonAsync("/account/login", new { login = "xia@example.test", password = Password, recoveryCode = enabled.GetProperty("recoveryCodes")[0].GetString() });
+        withRecovery.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     [GeneratedRegex(@"https://app\.test/\S+")]
     private static partial Regex LinkPattern();
 
@@ -137,6 +170,7 @@ public sealed partial class AccountEndpointTests
             .AddEmailConfirmation()
             .AddLockout()
             .AddRefreshTokens()
+            .AddTwoFactor(o => o.Issuer = "Tests")
             .AddSignIn()
             .AddAccountEndpoints();
         builder.Services.AddJwtBearerAuthentication(o => { o.Issuer = "tests"; o.Audience = "tests"; o.SymmetricKey = JwtKey; });
@@ -163,6 +197,8 @@ public sealed partial class AccountEndpointTests
         public TestServer Server => web.GetTestServer();
 
         public CapturingEmailBroker Mail { get; } = mail;
+
+        public IServiceProvider Services => web.Services;
 
         public async ValueTask DisposeAsync()
         {

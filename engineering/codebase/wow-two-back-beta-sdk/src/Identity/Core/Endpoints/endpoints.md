@@ -31,6 +31,7 @@ app.MapGroup("/account").MapUserAccountEndpoints<AppUser>();
 | `POST resend-confirmation-email` · `POST forgot-password` | always `204`, so they reveal no accounts |
 | `POST reset-password` | sets a new password with the emailed token |
 | `GET manage/info` | the signed-in account (authorized) |
+| `GET manage/2fa` · `POST manage/2fa/authenticator` · `enable` · `disable` · `recovery-codes` | two-factor setup; mapped only with `.AddTwoFactor()` |
 
 - Success bodies use the `ApiResponse<T>` envelope (`{ data }`); failures are problem details with identity codes,
   translated when error translation is enabled.
