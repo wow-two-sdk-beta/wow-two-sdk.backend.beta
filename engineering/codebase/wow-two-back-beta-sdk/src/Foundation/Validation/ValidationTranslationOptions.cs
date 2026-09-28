@@ -1,15 +1,12 @@
-namespace WoW.Two.Sdk.Backend.Beta.Web.ErrorTranslation;
+namespace WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 
 /// <summary>
-/// Holds the <c>ErrorTranslation</c> configuration section: whether error messages are translated, for which cultures,
-/// and the host's own message catalog. A missing section leaves every message as authored.
+/// Holds how validation and error messages are translated into the request's culture. Off by default: every message
+/// renders as authored until <see cref="Enabled"/> is set in code or in the host section <c>Validation:Translation</c>.
 /// </summary>
-public sealed record ErrorTranslationSettings
+public sealed record ValidationTranslationOptions
 {
-    /// <summary>The configuration section the settings bind from.</summary>
-    public const string SectionName = "ErrorTranslation";
-
-    /// <summary>Translate error messages. Default false.</summary>
+    /// <summary>Translate messages. Default false.</summary>
     public bool Enabled { get; set; }
 
     /// <summary>The culture messages are authored in; requests for it keep the authored text. Default <c>en</c>.</summary>
@@ -24,9 +21,9 @@ public sealed record ErrorTranslationSettings
     /// <summary>Use FluentValidation's language packs for validator codes the catalog lacks. Default true.</summary>
     public bool UseValidatorTranslations { get; set; } = true;
 
-    /// <summary>Pseudo-localize every error message (accented, bracketed) to spot untranslated text; development only. Default false.</summary>
+    /// <summary>Pseudo-localize every message (accented, bracketed) to spot untranslated text; development only. Default false.</summary>
     public bool PseudoLocalization { get; set; }
 
-    /// <summary>The host's catalog: culture → key (error type, field-error code or <c>messageKey</c>) → template with <c>{Name}</c> placeholders.</summary>
+    /// <summary>The catalog: culture → key (error type, field-error code or <c>messageKey</c>) → template.</summary>
     public Dictionary<string, Dictionary<string, string>> Messages { get; } = new(StringComparer.OrdinalIgnoreCase);
 }

@@ -1,23 +1,32 @@
 # Web.ErrorTranslation
 
-Translated error messages, switched on by configuration alone. Off by default: without the `ErrorTranslation`
-section every message renders as authored. The default error mappers apply it to problem details, field errors and
-validation advisories; no code change is needed.
+Translated error messages, a part of the validation module. Off by default: every message renders as authored until
+`Validation:Translation:Enabled` is set. The default error mappers apply it to problem details, field errors and
+validation advisories.
 
 ## Enable
 
+Code sets the application's defaults; the host section has the last word and reloads live.
+
+```csharp
+builder.Services.ConfigureValidation(o => o.Translation.Enabled = true);            // any host
+builder.AddApiDefaults(o => o.Validation = v => v.Translation.SupportedCultures.Add("ru"));  // AddApiDefaults hosts
+```
+
 ```jsonc
-// appsettings.json — nothing else changes in the host
-"ErrorTranslation": {
-  "Enabled": true,
-  "DefaultCulture": "en",                  // requests for it keep the authored text
-  "SupportedCultures": [ "en", "ru", "uz" ],
-  "Messages": {
-    "ru": {
-      "NotFound": "Не найдено.",             // error type → top-level message
-      "OrderMissing": "Заказ {orderId} не найден.",  // AppError metadata "messageKey"
-      "NotEmptyValidator": "Заполните поле «{PropertyName}».",  // field-error code
-      "DuplicateEmail": "Этот email уже занят."        // identity code
+// appsettings.json — switches it on with no code change
+"Validation": {
+  "Translation": {
+    "Enabled": true,
+    "DefaultCulture": "en",                  // requests for it keep the authored text
+    "SupportedCultures": [ "en", "ru", "uz" ],
+    "Messages": {
+      "ru": {
+        "NotFound": "Не найдено.",                       // error type → top-level message
+        "OrderMissing": "Заказ {orderId} не найден.",    // AppError metadata "messageKey"
+        "NotEmptyValidator": "Заполните поле «{PropertyName}».",  // field-error code
+        "DuplicateEmail": "Этот email уже занят."        // identity code
+      }
     }
   }
 }
@@ -38,7 +47,7 @@ validation advisories; no code change is needed.
   `"{Count, plural, =0 {нет заказов} one {# заказ} few {# заказа} many {# заказов} other {# заказа}}"`.
 - `PseudoLocalization: true` accents and brackets every error message (`[!! Ñöţ ƒöûñđ !!]`) to spot untranslated text.
 - `TranslateByErrorType: false` keeps specific authored messages unless a `messageKey` matches.
-- The section reloads live with the configuration.
+- The `Validation:Translation` section reloads live with the configuration.
 - Products translate their own strings with `IErrorTranslationService.TryTranslate(context, key, arguments, out message)`.
 
 ## Response models

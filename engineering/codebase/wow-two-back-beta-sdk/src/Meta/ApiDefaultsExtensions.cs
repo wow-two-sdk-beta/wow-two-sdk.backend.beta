@@ -53,6 +53,8 @@ public static class ApiDefaultsExtensions
 
         builder.Services.AddHealthChecksBuilder();
 
+        builder.Services.ConfigureValidation(options.Validation);
+
         if (options.ValidatorAssemblies.Count > 0)
         {
             builder.Services.AddFluentValidatorsFromAssemblies([.. options.ValidatorAssemblies]);

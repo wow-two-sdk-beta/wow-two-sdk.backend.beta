@@ -57,10 +57,10 @@ public sealed class ErrorTranslationTests
     public void Catalog_OverridesBuiltInsAndFillsPlaceholders()
     {
         var settings = Enabled("en", "ru");
-        settings["ErrorTranslation:Messages:ru:OrderMissing"] = "Заказ {orderId} не найден.";
-        settings["ErrorTranslation:Messages:ru:NotEmptyValidator"] = "Заполните поле «{PropertyName}».";
-        settings["ErrorTranslation:Messages:ru:OrderLimit"] = "Не больше {Max} заказов, у вас {Count}.";
-        settings["ErrorTranslation:Messages:ru:Broken"] = "Нет значения {Unknown}.";
+        settings["Validation:Translation:Messages:ru:OrderMissing"] = "Заказ {orderId} не найден.";
+        settings["Validation:Translation:Messages:ru:NotEmptyValidator"] = "Заполните поле «{PropertyName}».";
+        settings["Validation:Translation:Messages:ru:OrderLimit"] = "Не больше {Max} заказов, у вас {Count}.";
+        settings["Validation:Translation:Messages:ru:Broken"] = "Нет значения {Unknown}.";
         using var provider = Build(settings);
 
         var keyed = AppError.Of(AppErrorType.NotFound, "Order 42 was not found.", new Dictionary<string, object?> { ["messageKey"] = "OrderMissing", ["orderId"] = 42 });
@@ -87,6 +87,20 @@ public sealed class ErrorTranslationTests
     }
 
     [Fact]
+    public void CodeEnablesTranslation_AndHostConfigurationHasTheLastWord()
+    {
+        var notFound = AppErrorFactory.NotFound("Order 42 was not found.");
+
+        using (var coded = Build(new Dictionary<string, string?>(), options => options.Translation.Enabled = true))
+            Render(coded, notFound, "ru").Detail.Should().Be("Запрошенный ресурс не найден.");
+
+        using var overridden = Build(
+            new Dictionary<string, string?> { ["Validation:Translation:Enabled"] = "false" },
+            options => options.Translation.Enabled = true);
+        Render(overridden, notFound, "ru").Detail.Should().Be("Order 42 was not found.");
+    }
+
+    [Fact]
     public void ConfigurationReload_SwitchesTranslationLive()
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
@@ -94,7 +108,7 @@ public sealed class ErrorTranslationTests
         var notFound = AppErrorFactory.NotFound("Order 42 was not found.");
         Render(provider, notFound, "ru").Detail.Should().Be("Order 42 was not found.");
 
-        configuration["ErrorTranslation:Enabled"] = "true";
+        configuration["Validation:Translation:Enabled"] = "true";
         configuration.Reload();
 
         Render(provider, notFound, "ru").Detail.Should().Be("Запрошенный ресурс не найден.");
@@ -104,7 +118,7 @@ public sealed class ErrorTranslationTests
     public void PseudoLocalization_MarksEveryMessageIncludingAuthoredOnes()
     {
         var settings = Enabled("en", "ru");
-        settings["ErrorTranslation:PseudoLocalization"] = "true";
+        settings["Validation:Translation:PseudoLocalization"] = "true";
         using var provider = Build(settings);
 
         Render(provider, AppErrorFactory.NotFound("Order 42 was not found."), "en").Detail.Should().Be("[!! Öŕđéŕ 42 ŵåš ñöţ ƒöûñđ. !!]");
@@ -150,19 +164,20 @@ public sealed class ErrorTranslationTests
 
     private static Dictionary<string, string?> Enabled(params string[] cultures)
     {
-        var settings = new Dictionary<string, string?> { ["ErrorTranslation:Enabled"] = "true" };
+        var settings = new Dictionary<string, string?> { ["Validation:Translation:Enabled"] = "true" };
         for (var index = 0; index < cultures.Length; index++)
-            settings[$"ErrorTranslation:SupportedCultures:{index}"] = cultures[index];
+            settings[$"Validation:Translation:SupportedCultures:{index}"] = cultures[index];
         return settings;
     }
 
-    private static ServiceProvider Build(Dictionary<string, string?> settings)
-        => Build(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+    private static ServiceProvider Build(Dictionary<string, string?> settings, Action<ValidationOptions>? configure = null)
+        => Build(new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), configure);
 
-    private static ServiceProvider Build(IConfigurationRoot configuration)
+    private static ServiceProvider Build(IConfigurationRoot configuration, Action<ValidationOptions>? configure = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
+        services.ConfigureValidation(configure);
         services.AddErrorHttpStatusMapping();
         services.AddSingleton<IAppErrorProblemDetailsFactory, AppErrorProblemDetailsFactory>();
         return services.BuildServiceProvider();

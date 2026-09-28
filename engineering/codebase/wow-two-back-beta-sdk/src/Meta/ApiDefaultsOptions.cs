@@ -52,4 +52,10 @@ public sealed record ApiDefaultsOptions
 
     /// <summary>Liveness endpoint path. Default <c>/health</c>.</summary>
     public string HealthEndpointPath { get; set; } = "/health";
+
+    /// <summary>
+    /// Code configuration for the validation module (translation and friends); the host section <c>Validation</c> is
+    /// applied after it.
+    /// </summary>
+    public Action<WoW.Two.Sdk.Backend.Beta.Foundation.Validation.ValidationOptions>? Validation { get; set; }
 }

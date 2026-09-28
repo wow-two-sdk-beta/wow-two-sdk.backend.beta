@@ -249,7 +249,7 @@ Mirrors §4 of `ideas.md`. Each subsection states the verdict + concrete chosen 
 | ICU MessageFormat for plurals | DONE | ICU-style `plural` with CLDR rules in `MessageTemplateMapper` |
 | Humanizer for date/number phrases | NEXT | Lightweight; add early |
 | RTL forwarding (UI concern) | SKIP | Out of scope here |
-| Pseudo-localization | DONE | `ErrorTranslation:PseudoLocalization` |
+| Pseudo-localization | DONE | `Validation:Translation:PseudoLocalization` |
 
 ### 2.16 Time / clock / culture — NOW (P1)
 

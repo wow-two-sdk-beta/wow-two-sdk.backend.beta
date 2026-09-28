@@ -25,8 +25,8 @@ public sealed class ApiDefaultsErrorTranslationTests
         builder.Logging.ClearProviders();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["ErrorTranslation:Enabled"] = enabled ? "true" : "false",
-            ["ErrorTranslation:SupportedCultures:0"] = "ru",
+            ["Validation:Translation:Enabled"] = enabled ? "true" : "false",
+            ["Validation:Translation:SupportedCultures:0"] = "ru",
         });
         builder.AddApiDefaults(options =>
         {

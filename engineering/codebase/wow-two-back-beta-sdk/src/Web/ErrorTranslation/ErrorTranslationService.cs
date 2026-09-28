@@ -12,15 +12,15 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 namespace WoW.Two.Sdk.Backend.Beta.Web.ErrorTranslation;
 
 /// <summary>
-/// Provides error-message translation per <see cref="ErrorTranslationSettings"/>, re-read on every call so a
+/// Provides error-message translation per <see cref="ValidationOptions.Translation"/>, re-read on every call so a
 /// configuration reload switches it live. Culture comes from the request-localization feature when that middleware ran,
 /// otherwise from <c>Accept-Language</c>. Field errors try the host catalog, the built-in identity texts, then
 /// FluentValidation's language pack;
 /// top-level errors try their <c>messageKey</c>, then their error type in the catalog and the built-in texts.
 /// A template whose placeholder has no argument yields the authored message instead.
 /// </summary>
-/// <param name="settings">The live <c>ErrorTranslation</c> settings.</param>
-public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSettings> settings) : IErrorTranslationService
+/// <param name="options">The live validation options carrying the translation settings.</param>
+public sealed class ErrorTranslationService(IOptionsMonitor<ValidationOptions> options) : IErrorTranslationService
 {
     /// <summary>The <see cref="AppError.Metadata"/> entry naming a catalog key for a top-level message.</summary>
     public const string MessageKeyMetadata = "messageKey";
@@ -33,7 +33,7 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
     public CultureInfo? ResolveCulture(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        var current = settings.CurrentValue;
+        var current = options.CurrentValue.Translation;
         if (!current.Enabled)
             return null;
 
@@ -52,7 +52,7 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
         var culture = ResolveCulture(context);
         return culture is not null
             && !string.IsNullOrEmpty(key)
-            && TryCatalog(settings.CurrentValue, culture, key, out var template)
+            && TryCatalog(options.CurrentValue.Translation, culture, key, out var template)
             && MessageTemplateMapper.TryFormat(template, arguments, culture, out message);
     }
 
@@ -76,7 +76,7 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
         if (culture is null)
             return error.Message;
 
-        var current = settings.CurrentValue;
+        var current = options.CurrentValue.Translation;
         if (error.Metadata?.TryGetValue(MessageKeyMetadata, out var key) == true
             && key is string messageKey
             && (TryCatalog(current, culture, messageKey, out var keyed) || TryBuiltIn(FieldCodeMessageConstants.Messages, culture, messageKey, out keyed))
@@ -99,7 +99,7 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
         if (culture is null || string.IsNullOrEmpty(error.Code))
             return error.Message;
 
-        var current = settings.CurrentValue;
+        var current = options.CurrentValue.Translation;
         var arguments = error.Params?.ToDictionary(pair => pair.Key, pair => (object?)pair.Value, StringComparer.Ordinal);
         return (TryCatalog(current, culture, error.Code, out var template)
                 || TryBuiltIn(FieldCodeMessageConstants.Messages, culture, error.Code, out template)
@@ -112,11 +112,11 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
     /// <summary>Pseudo-localizes <paramref name="message"/> while both translation and pseudo-localization are on.</summary>
     private string Pseudo(string message)
     {
-        var current = settings.CurrentValue;
+        var current = options.CurrentValue.Translation;
         return current.Enabled && current.PseudoLocalization ? MessageTemplateMapper.Pseudo(message) : message;
     }
 
-    private static CultureInfo? Resolve(HttpContext context, ErrorTranslationSettings current)
+    private static CultureInfo? Resolve(HttpContext context, ValidationTranslationOptions current)
     {
         foreach (var requested in Requested(context))
         {
@@ -169,7 +169,7 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
         return false;
     }
 
-    private static bool TryCatalog(ErrorTranslationSettings current, CultureInfo culture, string key, [NotNullWhen(true)] out string? template)
+    private static bool TryCatalog(ValidationTranslationOptions current, CultureInfo culture, string key, [NotNullWhen(true)] out string? template)
     {
         for (var candidate = culture; !Equals(candidate, CultureInfo.InvariantCulture); candidate = candidate.Parent)
         {

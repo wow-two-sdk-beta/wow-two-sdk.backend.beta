@@ -33,6 +33,23 @@ public class CreateUserValidator : AbstractValidator<CreateUserRequest>
 
 Use external validation for request, entity, and value-object data by default. Validate a copied or deserialized candidate at the boundary that accepts it for use or persistence. Constructor guards remain for programmer preconditions; constructor data checks require an exceptional type contract that documents how copies and deserialization preserve the invariant.
 
+## Module options
+
+`ValidationOptions` configures the module: from code with `ConfigureValidation(o => …)`, and from the host section
+`Validation`. The host section is applied last, so an environment can change a setting without a rebuild.
+
+```csharp
+builder.Services.ConfigureValidation(o => o.Translation.Enabled = true);
+```
+
+```jsonc
+"Validation": { "Translation": { "Enabled": true, "SupportedCultures": [ "en", "ru" ] } }
+```
+
+- `Translation` — translated field and error messages, off by default; the lookup lives in the
+  [error-translation](../../Web/ErrorTranslation/error-translation.md) folder doc.
+- `AddFluentValidatorsFromAssemblies` and `AddApiDefaults` register the module, so the section works in both hosts.
+
 ## What a failure carries
 
 `ValidationError.Failures` is a list of `FieldError`:
