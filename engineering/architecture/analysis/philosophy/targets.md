@@ -530,7 +530,7 @@ Subpath: `wow-two-sdk.backend.beta.storage` + `.media`.
 | OpenXML SDK | DONE | First-party |
 | CsvHelper | NEXT | Default CSV |
 | Sep / Sylvan.Data.Csv | LATER | Hot-path perf alts |
-| Markdig (Markdown) | NEXT | Default markdown |
+| Markdig (Markdown) | DONE | `Media.Markdown` — safe HTML, headings, front matter, 2026-09-28 |
 | HtmlAgilityPack / AngleSharp | LATER | HTML parsing adapters |
 | MimeKit / MailKit | NEXT | Email |
 | Xabe.FFmpeg / FFMpegCore | LATER | Optional |

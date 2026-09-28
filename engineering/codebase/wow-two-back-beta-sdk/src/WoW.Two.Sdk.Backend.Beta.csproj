@@ -128,6 +128,11 @@
     <PackageReference Include="PdfPig" />
   </ItemGroup>
 
+  <!-- Media — Markdown (src/Media/Markdown). Markdig (BSD-2-Clause) parses and renders; no natives. -->
+  <ItemGroup Label="Media — Markdown">
+    <PackageReference Include="Markdig" />
+  </ItemGroup>
+
   <ItemGroup Label="Http / outbound — Refit + Polly v8 resilience + header propagation">
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.AspNetCore.HeaderPropagation" />
