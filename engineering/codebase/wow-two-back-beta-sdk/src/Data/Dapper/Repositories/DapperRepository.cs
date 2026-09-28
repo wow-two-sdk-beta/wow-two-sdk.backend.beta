@@ -1,8 +1,10 @@
 using System.Data;
-using System.Reflection;
+using System.Globalization;
 using Dapper;
+using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 using WoW.Two.Sdk.Backend.Beta.Data.Sessions;
+using WoW.Two.Sdk.Backend.Beta.Data.Specs;
 using WoW.Two.Sdk.Backend.Beta.Tenancy.Core;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper.Repositories;
@@ -12,11 +14,13 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper.Repositories;
 ///   - column set defaults to every public instance property with both a getter and a setter
 ///   - override <see cref="ExcludedOnInsert"/> / <see cref="ExcludedOnUpdate"/> to omit generated columns
 ///   - id column comes from the <c>Id</c> property name
-///   - concurrency tokens guard <see cref="UpdateAsync"/> and <see cref="DeleteAsync"/>: an <see cref="IVersioned"/>
-///     counter is checked and incremented, PostgreSQL <c>xmin</c> and SQL Server <see cref="IRowVersioned">rowversion</see>
-///     are checked and read back; a stale token raises <see cref="ConcurrencyConflictException"/>
-///   - when an <see cref="ITenantContext"/> is available, <see cref="IHasTenant{TTenantId}">IHasTenant&lt;string&gt;</see>
-///     rows are stamped and restricted to the current tenant; no tenant means an explicit unscoped system operation
+///   - a registered <see cref="EntitySpec"/> renames the table and columns, ignores properties, leaves store-generated
+///     columns out of writes, and declares the token, soft-delete and tenant properties; reads then alias every column
+///   - concurrency tokens guard <see cref="UpdateAsync"/> and <see cref="DeleteAsync"/>: a counter is checked and
+///     incremented, a stamp checked and replaced, PostgreSQL <c>xmin</c> and SQL Server rowversion checked and read back;
+///     a stale token raises <see cref="ConcurrencyConflictException"/>
+///   - when an <see cref="ITenantContext"/> is available, tenant-owned rows (a string tenant property) are stamped and
+///     restricted to the current tenant; no tenant means an explicit unscoped system operation
 /// </remarks>
 /// <typeparam name="TEntity">The entity type — must declare <see cref="IHasTableName"/>.</typeparam>
 /// <typeparam name="TId">The primary-key type.</typeparam>
@@ -24,27 +28,13 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
     where TEntity : class, IKeyedEntity<TId>, IHasTableName
     where TId : notnull, IEquatable<TId>
 {
-    private static readonly PropertyInfo[] ColumnProperties =
-        typeof(TEntity)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p is { CanRead: true, CanWrite: true } && p.GetIndexParameters().Length == 0)
-            .ToArray();
-
-    private static readonly IReadOnlyList<string> AllProperties = ColumnProperties.Select(p => p.Name).ToArray();
-
-    /// <summary>Whether any column is unsigned, which Npgsql and SqlClient reject as a parameter type.</summary>
-    private static readonly bool HasUnsignedColumns = ColumnProperties.Any(p => IsUnsigned(p.PropertyType));
-
-    private static readonly bool HasXmin = typeof(IHasXmin).IsAssignableFrom(typeof(TEntity));
-    private static readonly bool IsVersioned = typeof(IVersioned).IsAssignableFrom(typeof(TEntity));
-    private static readonly bool IsRowVersioned = typeof(IRowVersioned).IsAssignableFrom(typeof(TEntity));
-    private static readonly bool HasConcurrencyToken = HasXmin || IsVersioned || IsRowVersioned;
-    private static readonly bool IsSoftDeletable = typeof(ISoftDeletable).IsAssignableFrom(typeof(TEntity));
-    private readonly IDataSession? _session;
-
     private const string IdProperty = nameof(IKeyedEntity<TId>.Id);
-    private const string TenantIdProperty = nameof(IHasTenant<string>.TenantId);
-    private static readonly bool IsTenantEntity = typeof(IHasTenant<string>).IsAssignableFrom(typeof(TEntity));
+
+    /// <summary>The spec the marker interfaces imply, used when none is registered.</summary>
+    private static readonly EntitySpec Conventional = new EntitySpecBuilder<TEntity>().Build();
+
+    private readonly IDataSession? _session;
+    private readonly DapperEntityMap _map;
 
     /// <summary>The connection factory used for every operation.</summary>
     protected IDbConnectionFactory ConnectionFactory { get; }
@@ -79,16 +69,21 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
     {
     }
 
-    /// <summary>Initializes the repository with explicit naming and an ambient tenant scope.</summary>
+    /// <summary>Initializes the repository with explicit naming, an ambient tenant scope and the registered entity specs.</summary>
     /// <param name="connectionFactory">The connection factory used for every operation.</param>
     /// <param name="naming">The casing applied to every generated identifier.</param>
     /// <param name="tenantContext">The ambient tenant scope; pass it for tenant-owned rows.</param>
     /// <param name="session">The optional transaction owner; registered repositories join its active unit.</param>
+    /// <param name="specs">The entity specs; the one for <typeparamref name="TEntity"/> shapes the SQL when registered.</param>
+    /// <param name="specOptions">What to do with spec features the repository cannot honour; the default throws.</param>
+    /// <exception cref="UnsupportedSpecException">The spec asks for what the repository cannot do and the mode is Throw.</exception>
     public DapperRepository(
         IDbConnectionFactory connectionFactory,
         SqlNamingOptions naming,
         ITenantContext? tenantContext = null,
-        IDataSession? session = null)
+        IDataSession? session = null,
+        EntitySpecRegistry? specs = null,
+        IOptions<EntitySpecOptions>? specOptions = null)
     {
         ArgumentNullException.ThrowIfNull(connectionFactory);
         ArgumentNullException.ThrowIfNull(naming);
@@ -96,6 +91,12 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
         Naming = naming;
         TenantContext = tenantContext;
         _session = session;
+        _map = DapperEntityMapMapper.Map(
+            typeof(TEntity),
+            Conventional,
+            specs?.Find(typeof(TEntity)),
+            naming,
+            specOptions?.Value.Unsupported ?? UnsupportedSpecMode.Throw);
     }
 
     /// <summary>Property names omitted from <c>INSERT</c> column lists (identity / store-generated columns). Default: none.</summary>
@@ -107,16 +108,23 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
     /// <summary>Gets whether generated reads include logically deleted rows. Defaults to false.</summary>
     protected virtual bool IncludeSoftDeleted => false;
 
-    private static string ReadColumns => HasXmin ? "*, xmin AS \"Xmin\"" : "*";
-    private string SoftDeletePredicate => IsSoftDeletable && !IncludeSoftDeleted
-        ? $" AND {SqlNamingMapper.Col(nameof(ISoftDeletable.IsDeleted), Naming.ColumnCase)} = FALSE"
+    /// <summary>
+    /// The select list: every mapped column aliased to its property under a registered spec, else <c>*</c>, which the
+    /// snake_case convention maps; PostgreSQL's <c>xmin</c> is selected explicitly either way.
+    /// </summary>
+    private string ReadColumns => _map.ExplicitReads
+        ? string.Join(", ", _map.Columns.Select(column => $"{column.Column} AS \"{column.Property.Name}\""))
+        : _map.Token is { Kind: ConcurrencyTokenKind.Xmin } xmin ? $"*, xmin AS \"{xmin.Column.Property.Name}\"" : "*";
+
+    private string SoftDeletePredicate => _map.SoftDelete is { } softDelete && !IncludeSoftDeleted
+        ? $" AND {softDelete.Column} = FALSE"
         : string.Empty;
 
-    private static string Table => TEntity.TableName;
-    private string IdColumn => SqlNamingMapper.Col(IdProperty, Naming.ColumnCase);
-    private string TenantIdColumn => SqlNamingMapper.Col(TenantIdProperty, Naming.ColumnCase);
-    private string TenantIdParameter => SqlNamingMapper.Par(TenantIdProperty, Naming.ParameterCase);
-    private string TenantIdParameterReference => SqlNamingMapper.ParRef(TenantIdProperty, Naming.ParameterCase);
+    private string Table => _map.Table;
+    private string IdColumn => _map.Key.Column;
+    private string TenantIdColumn => _map.Tenant!.Column;
+    private string TenantIdParameter => SqlNamingMapper.Par(_map.Tenant!.Property.Name, Naming.ParameterCase);
+    private string TenantIdParameterReference => SqlNamingMapper.ParRef(_map.Tenant!.Property.Name, Naming.ParameterCase);
 
     /// <inheritdoc />
     public virtual async Task<TEntity?> GetByIdAsync(TId id, CancellationToken cancellationToken = default)
@@ -173,7 +181,7 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
     public virtual async Task<TEntity> CreateAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
-        StampCurrentTenant(entity);
+        PrepareInsert(entity);
         await using var lease = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         await lease.Connection.ExecuteAsync(
             new CommandDefinition(InsertSql, WriteParameters(entity), transaction: lease.Transaction, cancellationToken: cancellationToken)).ConfigureAwait(false);
@@ -189,7 +197,7 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
             return;
 
         foreach (var entity in list)
-            StampCurrentTenant(entity);
+            PrepareInsert(entity);
 
         await using var lease = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         // Dapper executes the command once per element when passed an enumerable.
@@ -203,34 +211,34 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
         ArgumentNullException.ThrowIfNull(entity);
         var tenantId = CurrentTenantId;
         if (tenantId is not null)
-            ((IHasTenant<string>)entity).TenantId = tenantId;
+            _map.Tenant!.Property.SetValue(entity, tenantId);
 
-        var tenantPredicate = tenantId is null ? string.Empty : $" AND {TenantIdColumn} = @{TenantIdProperty}";
+        var tenantPredicate = tenantId is null ? string.Empty : $" AND {TenantIdColumn} = @{_map.Tenant!.Property.Name}";
         var sql = $"UPDATE {Table} SET {UpdateAssignments}{RowVersionOutput} WHERE {IdColumn} = @{IdProperty}{TokenPredicates}{tenantPredicate}{XminReturning}";
+        var stamp = _map.Token is { Kind: ConcurrencyTokenKind.Stamp } ? Guid.NewGuid().ToString("N") : null;
         await using var lease = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
-        var command = new CommandDefinition(sql, TokenParameters(entity), transaction: lease.Transaction, cancellationToken: cancellationToken);
-        if (!HasConcurrencyToken)
+        var command = new CommandDefinition(sql, TokenParameters(entity, stamp), transaction: lease.Transaction, cancellationToken: cancellationToken);
+        if (_map.Token is not { } token)
         {
             await lease.Connection.ExecuteAsync(command).ConfigureAwait(false);
             return;
         }
 
-        if (HasXmin)
+        switch (token.Kind)
         {
-            var xmin = await lease.Connection.ExecuteScalarAsync<long?>(command).ConfigureAwait(false) ?? throw Conflict(entity);
-            ((IHasXmin)entity).Xmin = (uint)xmin;
+            case ConcurrencyTokenKind.Xmin:
+                var xmin = await lease.Connection.ExecuteScalarAsync<long?>(command).ConfigureAwait(false) ?? throw Conflict(entity);
+                token.Column.Property.SetValue(entity, (uint)xmin);
+                break;
+            case ConcurrencyTokenKind.RowVersion:
+                token.Column.Property.SetValue(entity, await lease.Connection.ExecuteScalarAsync<byte[]?>(command).ConfigureAwait(false) ?? throw Conflict(entity));
+                break;
+            default:
+                if (await lease.Connection.ExecuteAsync(command).ConfigureAwait(false) == 0)
+                    throw Conflict(entity);
+                token.Column.Property.SetValue(entity, token.Kind == ConcurrencyTokenKind.Stamp ? stamp : Increment(token.Column.Property.GetValue(entity), token.Column.Property.PropertyType));
+                break;
         }
-        else if (IsRowVersioned)
-        {
-            ((IRowVersioned)entity).RowVersion = await lease.Connection.ExecuteScalarAsync<byte[]?>(command).ConfigureAwait(false) ?? throw Conflict(entity);
-        }
-        else if (await lease.Connection.ExecuteAsync(command).ConfigureAwait(false) == 0)
-        {
-            throw Conflict(entity);
-        }
-
-        if (IsVersioned)
-            ((IVersioned)entity).Version++;
     }
 
     /// <inheritdoc />
@@ -238,7 +246,7 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
     public virtual async Task DeleteAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
-        if (!HasConcurrencyToken)
+        if (_map.Token is null)
         {
             await DeleteByIdAsync(entity.Id, cancellationToken).ConfigureAwait(false);
             return;
@@ -246,8 +254,7 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
 
         var tenantId = CurrentTenantId;
         var parameters = ColumnParameters(entity);
-        if (HasXmin)
-            parameters.Add("XminToken", (long)((IHasXmin)entity).Xmin);
+        AddXminToken(parameters, entity);
         var tenantPredicate = string.Empty;
         if (tenantId is not null)
         {
@@ -289,7 +296,7 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
             null);
     }
 
-    private string? CurrentTenantId => IsTenantEntity ? TenantContext?.TenantId : null;
+    private string? CurrentTenantId => _map.Tenant is null ? null : TenantContext?.TenantId;
 
     private DynamicParameters ParamsForId(TId id, string? tenantId)
     {
@@ -315,74 +322,87 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
             parameters.Add(TenantIdParameter, tenantId);
     }
 
-    private void StampCurrentTenant(TEntity entity)
+    /// <summary>Stamps the current tenant and, for a stamp token, a first stamp before an insert.</summary>
+    private void PrepareInsert(TEntity entity)
     {
         var tenantId = CurrentTenantId;
         if (tenantId is not null)
-            ((IHasTenant<string>)entity).TenantId = tenantId;
+            _map.Tenant!.Property.SetValue(entity, tenantId);
+
+        if (_map.Token is { Kind: ConcurrencyTokenKind.Stamp } token && string.IsNullOrEmpty(token.Column.Property.GetValue(entity) as string))
+            token.Column.Property.SetValue(entity, Guid.NewGuid().ToString("N"));
     }
 
     private string InsertSql
     {
         get
         {
-            var columns = AllProperties.Where(p => !ExcludedOnInsert.Contains(p) && !IsStoreGeneratedToken(p)).ToArray();
-            var columnList = string.Join(", ", columns.Select(column => SqlNamingMapper.Col(column, Naming.ColumnCase)));
-            var valueList = string.Join(", ", columns.Select(p => "@" + p)); // Dapper binds @PropertyName from the entity
+            var columns = _map.Columns.Where(column => !column.InsertExcluded && !ExcludedOnInsert.Contains(column.Property.Name)).ToArray();
+            var columnList = string.Join(", ", columns.Select(column => column.Column));
+            var valueList = string.Join(", ", columns.Select(column => "@" + column.Property.Name)); // Dapper binds @PropertyName from the entity
             return $"INSERT INTO {Table} ({columnList}) VALUES ({valueList})";
         }
     }
 
-    /// <summary>The <c>SET</c> list: every updatable column, with an <see cref="IVersioned"/> counter incremented in place.</summary>
+    /// <summary>The <c>SET</c> list: every updatable column, with a counter incremented in place and a stamp replaced.</summary>
     private string UpdateAssignments
     {
         get
         {
-            var columns = AllProperties.Where(p => !ExcludedOnUpdate.Contains(p) && p != IdProperty && !IsStoreGeneratedToken(p) && !(IsVersioned && p == nameof(IVersioned.Version)));
-            var assignments = columns.Select(p => $"{SqlNamingMapper.Col(p, Naming.ColumnCase)} = @{p}");
-            if (IsVersioned)
-                assignments = assignments.Append($"{VersionColumn} = {VersionColumn} + 1");
-            return string.Join(", ", assignments);
+            var token = _map.Token;
+            var assignments = _map.Columns
+                .Where(column => !column.UpdateExcluded
+                    && !ExcludedOnUpdate.Contains(column.Property.Name)
+                    && column.Property.Name != IdProperty
+                    && column != token?.Column)
+                .Select(column => $"{column.Column} = @{column.Property.Name}");
+            return string.Join(", ", token switch
+            {
+                { Kind: ConcurrencyTokenKind.Counter } counter => assignments.Append($"{counter.Column.Column} = {counter.Column.Column} + 1"),
+                { Kind: ConcurrencyTokenKind.Stamp } stamp => assignments.Append($"{stamp.Column.Column} = @NewStamp"),
+                _ => assignments,
+            });
         }
     }
 
-    /// <summary>The <c>WHERE</c> conditions each token adds: the row still carries the token the entity was read with.</summary>
-    private string TokenPredicates
-        => (IsVersioned ? $" AND {VersionColumn} = @{nameof(IVersioned.Version)}" : string.Empty)
-            + (HasXmin ? " AND xmin::text::bigint = @XminToken" : string.Empty)
-            + (IsRowVersioned ? $" AND {SqlNamingMapper.Col(nameof(IRowVersioned.RowVersion), Naming.ColumnCase)} = @{nameof(IRowVersioned.RowVersion)}" : string.Empty);
+    /// <summary>The <c>WHERE</c> condition the token adds: the row still carries the token the entity was read with.</summary>
+    private string TokenPredicates => _map.Token switch
+    {
+        { Kind: ConcurrencyTokenKind.Xmin } => " AND xmin::text::bigint = @XminToken",
+        { } token => $" AND {token.Column.Column} = @{token.Column.Property.Name}",
+        null => string.Empty,
+    };
 
     /// <summary>PostgreSQL reads the new <c>xmin</c> back; a stale token returns no row.</summary>
-    private static string XminReturning => HasXmin ? " RETURNING xmin::text::bigint" : string.Empty;
+    private string XminReturning => _map.Token is { Kind: ConcurrencyTokenKind.Xmin } ? " RETURNING xmin::text::bigint" : string.Empty;
 
     /// <summary>SQL Server reads the new rowversion back; a stale token outputs no row.</summary>
-    private string RowVersionOutput => IsRowVersioned && !HasXmin
-        ? $" OUTPUT INSERTED.{SqlNamingMapper.Col(nameof(IRowVersioned.RowVersion), Naming.ColumnCase)}"
+    private string RowVersionOutput => _map.Token is { Kind: ConcurrencyTokenKind.RowVersion } token
+        ? $" OUTPUT INSERTED.{token.Column.Column}"
         : string.Empty;
 
-    private string VersionColumn => SqlNamingMapper.Col(nameof(IVersioned.Version), Naming.ColumnCase);
-
-    /// <summary>The entity's values, plus the <c>xmin</c> token as a number PostgreSQL compares without a cast.</summary>
-    private static object TokenParameters(TEntity entity)
+    /// <summary>The entity itself, or its values when a token or an unsigned column needs parameters of its own.</summary>
+    private object TokenParameters(TEntity entity, string? newStamp)
     {
-        if (!HasXmin && !HasUnsignedColumns)
+        if (newStamp is null && _map.Token is not { Kind: ConcurrencyTokenKind.Xmin } && !_map.HasUnsignedColumns)
             return entity;
 
         var parameters = ColumnParameters(entity);
-        if (HasXmin)
-            parameters.Add("XminToken", (long)((IHasXmin)entity).Xmin);
+        AddXminToken(parameters, entity);
+        if (newStamp is not null)
+            parameters.Add("NewStamp", newStamp);
         return parameters;
     }
 
     /// <summary>The entity itself, or its values with unsigned numbers widened, which every provider accepts.</summary>
-    private static object WriteParameters(TEntity entity) => HasUnsignedColumns ? ColumnParameters(entity) : entity;
+    private object WriteParameters(TEntity entity) => _map.HasUnsignedColumns ? ColumnParameters(entity) : entity;
 
-    private static DynamicParameters ColumnParameters(TEntity entity)
+    private DynamicParameters ColumnParameters(TEntity entity)
     {
         var parameters = new DynamicParameters();
-        foreach (var property in ColumnProperties)
+        foreach (var column in _map.Columns)
         {
-            parameters.Add(property.Name, property.GetValue(entity) switch
+            parameters.Add(column.Property.Name, column.Property.GetValue(entity) switch
             {
                 uint value => (long)value,
                 ushort value => (int)value,
@@ -394,15 +414,15 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
         return parameters;
     }
 
-    private static bool IsUnsigned(Type type)
+    private void AddXminToken(DynamicParameters parameters, TEntity entity)
     {
-        type = Nullable.GetUnderlyingType(type) ?? type;
-        return type == typeof(uint) || type == typeof(ushort) || type == typeof(ulong);
+        if (_map.Token is { Kind: ConcurrencyTokenKind.Xmin } xmin)
+            parameters.Add("XminToken", (long)(uint)xmin.Column.Property.GetValue(entity)!);
     }
 
-    /// <summary>Whether the store writes <paramref name="property"/> itself, so no statement may set it.</summary>
-    private static bool IsStoreGeneratedToken(string property)
-        => (HasXmin && property == nameof(IHasXmin.Xmin)) || (IsRowVersioned && property == nameof(IRowVersioned.RowVersion));
+    /// <summary>The counter plus one, in the counter's own type (uint, int or long).</summary>
+    private static object Increment(object? counter, Type type)
+        => Convert.ChangeType(Convert.ToInt64(counter, CultureInfo.InvariantCulture) + 1, type, CultureInfo.InvariantCulture);
 
     private static ConcurrencyConflictException Conflict(TEntity entity) => new(typeof(TEntity), entity.Id);
 }

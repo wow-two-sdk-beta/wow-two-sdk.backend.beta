@@ -1,7 +1,8 @@
 # Data.Specs
 
 One provider-neutral description of an entity's storage — table, key, columns, indexes, concurrency, soft delete,
-tenant — written once and translated by each data-access mapper. EF Core maps it today (`EntityFrameworkCore/Specs`).
+tenant — written once and translated by each data-access mapper: EF Core (`EntityFrameworkCore/Specs`) and the Dapper
+repository (`Dapper/Repositories`).
 
 ```csharp
 public sealed class OrderSpec : IEntitySpecConfiguration<Order>
@@ -26,3 +27,13 @@ builder.Services.AddEntitySpecs(typeof(OrderSpec).Assembly);                // o
   (SQL Server), `Xmin` (PostgreSQL).
 - A mapper that cannot express a feature follows `Data:Specs:Unsupported`: `Throw` (default) names every feature while
   building the mapping; `Skip` leaves them out and logs each.
+
+| Spec facet | EF Core | Dapper repository |
+|---|---|---|
+| table, schema, column names | mapped | used in every statement; reads alias columns to properties |
+| ignored property | ignored | never selected or written |
+| default / computed / generated | configured | left out of inserts (default, on add) or of both writes (computed) |
+| `Counter` · `Stamp` · `RowVersion` · `Xmin` | per provider | checked on update and delete; counter incremented, stamp replaced |
+| soft delete · tenant | query filter · — | read predicate · tenant scoping (string property) |
+| lengths, precision, Unicode, indexes | mapped | ignored — they shape DDL, not statements |
+| a key other than `Id`, a non-string tenant | — | unsupported → `Data:Specs:Unsupported` |

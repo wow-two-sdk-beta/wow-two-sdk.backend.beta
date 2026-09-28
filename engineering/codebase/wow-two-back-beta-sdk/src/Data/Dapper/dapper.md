@@ -48,6 +48,11 @@ Generated `UpdateAsync` and `DeleteAsync(entity)` check the entity's concurrency
 `DeleteByIdAsync(id)` carries no token and stays unchecked. Unsigned columns (`uint` tokens) bind as
 `long`, since neither Npgsql nor SqlClient accepts unsigned parameters.
 
+A registered `EntitySpec` (`AddEntitySpecs`) shapes the generated SQL: table and column names, ignored properties,
+store-written columns, token, soft-delete and tenant properties; reads then list every column with an alias, so no naming
+convention is needed. Without one, the marker interfaces and the snake_case convention apply as before. See
+[specs](../Specs/specs.md).
+
 This remains a reflection-based single-table repository. EF value converters, owned graphs,
 partial projections, row locking and full-row provenance are not inferred from the EF model.
 Use bespoke SQL or EF for those contracts.

@@ -31,4 +31,5 @@
 - [x] C2 — spec model + builder + registry + `UnsupportedSpecMode` (`Data:Specs:Unsupported`, default Throw)
 - [x] C3 — EF mapper: tables, keys, columns, indexes, concurrency kinds by provider, stamps rotated on save,
   soft-delete filter; applied by `AppDbContextBase` to mapped entities only; 4 tests
-- [ ] C4 — Dapper mapper: table and column names, key, concurrency and soft-delete metadata for generated SQL
+- [x] C4 — Dapper mapper: renamed table/columns with aliased reads, ignored and store-written properties, stamp
+  tokens, spec soft delete and tenant; unsupported keys follow the mode; no-spec behaviour unchanged; 2 PostgreSQL tests
