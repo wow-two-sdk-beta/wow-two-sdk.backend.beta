@@ -30,6 +30,8 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="AwesomeAssertions" />
+    <!-- Quota counters shared by two hosts through a real Redis. -->
+    <PackageReference Include="Testcontainers.Redis" />
   </ItemGroup>
 
   <ItemGroup>

@@ -27,7 +27,7 @@
 ## Status
 
 - [x] S1 — captcha: `ICaptchaBroker` (Turnstile, hCaptcha, reCAPTCHA v2/v3), `RequireCaptcha()`, `Web:Captcha`; 9 tests
-- [ ] S2 — usage quotas: `IQuotaService`, in-memory and Redis counters, `RequireQuota(name)`, usage read-out
+- [x] S2 — usage quotas: `IQuotaService`, in-memory and Redis counters, `RequireQuota(name)`, usage read-out; 5 tests
 - [ ] S3 — signed blob URLs: read and write URLs for S3, Azure and local storage; local transfer endpoints
 - [ ] S4 — email templates: Markdown templates per culture, layout, text twin, `SendTemplateAsync`
 - [ ] S5 — passwordless email: magic link and email code sign-in in `SignInService` and the account API
