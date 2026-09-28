@@ -9,7 +9,10 @@ namespace WoW.Two.Sdk.Backend.Beta.Storage.Azure;
 /// <summary>Azure Blob Storage registration.</summary>
 public static class AzureBlobStorageServiceCollectionExtensions
 {
-    /// <summary>Registers <see cref="IBlobRepository"/> over one Azure Blob Storage container.</summary>
+    /// <summary>
+    /// Registers <see cref="IBlobRepository"/> over one Azure Blob Storage container, and <see cref="IBlobUrlIssuer"/>
+    /// issuing SAS URLs for direct uploads and downloads.
+    /// </summary>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configure">Container plus a connection string, or a service URI with a credential.</param>
     public static IServiceCollection AddAzureBlobStorage(this IServiceCollection services, Action<AzureBlobStorageOptions> configure)
@@ -33,6 +36,8 @@ public static class AzureBlobStorageServiceCollectionExtensions
             return service.GetBlobContainerClient(options.ContainerName);
         });
         services.TryAddSingleton<IBlobRepository, AzureBlobRepository>();
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<IBlobUrlIssuer, AzureBlobUrlIssuer>();
         return services;
     }
 }

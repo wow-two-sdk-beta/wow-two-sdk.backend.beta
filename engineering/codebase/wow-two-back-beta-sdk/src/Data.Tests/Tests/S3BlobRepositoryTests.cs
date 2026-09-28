@@ -79,6 +79,28 @@ public sealed class S3BlobRepositoryTests : IAsyncLifetime
         Assert.All(keys.S3Objects, entry => Assert.StartsWith("app-a/", entry.Key, StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task PresignedUrls_ShouldUploadAndDownloadWithoutTheApi()
+    {
+        var urls = _provider!.GetRequiredService<IBlobUrlIssuer>();
+        var upload = await urls.IssueWriteUrlAsync("direct/upload.txt", TimeSpan.FromMinutes(5), "text/plain");
+        Assert.Equal("PUT", upload.Method);
+        Assert.True(upload.Url.Query.Contains("X-Amz-Signature=", StringComparison.Ordinal), upload.Url.ToString());
+        Assert.Contains("X-Amz-Expires=300", upload.Url.Query, StringComparison.Ordinal);
+        Assert.Contains("/blobs/app-a/direct/upload.txt", upload.Url.AbsolutePath, StringComparison.Ordinal);
+
+        using var http = new HttpClient();
+        using var put = new HttpRequestMessage(HttpMethod.Put, upload.Url) { Content = new StringContent("straight to the bucket", Encoding.UTF8) };
+        put.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/plain");
+        Assert.True((await http.SendAsync(put)).IsSuccessStatusCode);
+        await using (var stored = await _provider!.GetRequiredService<IBlobRepository>().OpenReadAsync("direct/upload.txt"))
+            Assert.Equal("straight to the bucket", await new StreamReader(stored!).ReadToEndAsync());
+
+        var download = await urls.IssueReadUrlAsync("direct/upload.txt", TimeSpan.FromMinutes(5), "notes.txt");
+        Assert.Contains("response-content-disposition=", download.Url.Query, StringComparison.Ordinal);
+        Assert.Equal("straight to the bucket", await http.GetStringAsync(download.Url));
+    }
+
     /// <summary>A read-only stream that hides its length, as a request body does.</summary>
     private sealed class NonSeekableStream(byte[] content) : Stream
     {

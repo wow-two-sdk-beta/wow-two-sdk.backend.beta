@@ -12,6 +12,8 @@ Namespace root: `WoW.Two.Sdk.Backend.Beta.Storage`. The core + local impl are pu
 | `FileSystem/` | `AddLocalBlobStorage(rootPath)`, `LocalFileBlobRepository` | Filesystem-backed store (dev / single-node) |
 | `S3/` | `AddS3BlobStorage(o => …)`, `S3BlobRepository` | S3-compatible bucket (AWS, R2, MinIO, …) via `AWSSDK.S3` |
 | `Azure/` | `AddAzureBlobStorage(o => …)`, `AzureBlobRepository` | Azure Blob Storage container via `Azure.Storage.Blobs` |
+| `Core/` | `IBlobUrlIssuer`, `BlobUrlResult` | Signed read/write URLs for direct uploads and downloads (S3 presign, Azure SAS) |
+| `Transfer/` | `AddBlobTransferUrls(o => …)`, `MapBlobTransferEndpoints()` | HMAC-signed SDK routes that serve signed URLs over any repository, the local disk included |
 
 ## Quickstart
 
@@ -30,6 +32,20 @@ public sealed class Avatars(IBlobRepository storage)
         storage.ListAsync("avatars/", ct);
 }
 ```
+
+## Direct uploads and downloads
+
+```csharp
+var upload = await urls.IssueWriteUrlAsync($"uploads/{id}.pdf", TimeSpan.FromMinutes(15), "application/pdf");
+// the client PUTs to upload.Url with upload.Headers; the API never carries the bytes
+var download = await urls.IssueReadUrlAsync($"uploads/{id}.pdf", TimeSpan.FromMinutes(5), "report.pdf");
+```
+
+- S3 presigns SigV4 locally (the registration forces SigV4, as AWS and R2 reject SigV2); Azure signs a SAS with
+  the account key, or a user delegation key under a token credential.
+- The local store, or any store without native signing, uses `AddBlobTransferUrls` + `MapBlobTransferEndpoints()`:
+  URLs signed with HMAC over method, path, expiry and file name or media type; 403 when altered or expired.
+- URLs live up to 7 days; an upload URL issued with a media type only accepts that type.
 
 ## Notes
 

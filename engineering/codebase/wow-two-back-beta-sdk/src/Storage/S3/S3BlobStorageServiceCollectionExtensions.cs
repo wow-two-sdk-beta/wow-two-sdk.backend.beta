@@ -11,7 +11,10 @@ namespace WoW.Two.Sdk.Backend.Beta.Storage.S3;
 /// <summary>S3-compatible blob storage registration.</summary>
 public static class S3BlobStorageServiceCollectionExtensions
 {
-    /// <summary>Registers <see cref="IBlobRepository"/> over one S3-compatible bucket, with its own <see cref="IAmazonS3"/> client.</summary>
+    /// <summary>
+    /// Registers <see cref="IBlobRepository"/> over one S3-compatible bucket, with its own <see cref="IAmazonS3"/> client,
+    /// and <see cref="IBlobUrlIssuer"/> presigning URLs for direct uploads and downloads.
+    /// </summary>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configure">Bucket, endpoint or region, and optional static credentials.</param>
     public static IServiceCollection AddS3BlobStorage(this IServiceCollection services, Action<S3BlobStorageOptions> configure)
@@ -25,8 +28,12 @@ public static class S3BlobStorageServiceCollectionExtensions
                 .Validate(o => !string.IsNullOrWhiteSpace(o.BucketName), "S3BlobStorageOptions.BucketName must not be empty.")
                 .Validate(o => o.ServiceUrl is not null || !string.IsNullOrWhiteSpace(o.Region), "S3BlobStorageOptions needs a Region or a ServiceUrl.")
                 .Validate(o => string.IsNullOrWhiteSpace(o.AccessKey) == string.IsNullOrWhiteSpace(o.SecretKey), "S3BlobStorageOptions.AccessKey and SecretKey go together."));
+        // Presigned URLs otherwise fall back to SigV2 for us-east-1 and custom endpoints, which new buckets and R2 reject.
+        AWSConfigsS3.UseSignatureVersion4 = true;
         services.TryAddSingleton<IAmazonS3>(serviceProvider => CreateClient(serviceProvider.GetRequiredService<S3BlobStorageOptions>()));
         services.TryAddSingleton<IBlobRepository, S3BlobRepository>();
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<IBlobUrlIssuer, S3BlobUrlIssuer>();
         return services;
     }
 

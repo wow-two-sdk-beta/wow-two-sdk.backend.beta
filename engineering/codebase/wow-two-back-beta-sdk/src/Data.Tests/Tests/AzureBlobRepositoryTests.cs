@@ -36,6 +36,32 @@ public sealed class AzureBlobRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SasUrls_ShouldUploadAndDownloadWithoutTheApi()
+    {
+        var blobs = _provider!.GetRequiredService<IBlobRepository>();
+        await blobs.SaveAsync("seed.txt", new MemoryStream(Encoding.UTF8.GetBytes("seed")));
+        var urls = _provider!.GetRequiredService<IBlobUrlIssuer>();
+        var upload = await urls.IssueWriteUrlAsync("direct/upload.txt", TimeSpan.FromMinutes(5), "text/plain");
+        Assert.Equal("BlockBlob", upload.Headers["x-ms-blob-type"]);
+        Assert.Contains("sp=cw", upload.Url.Query, StringComparison.Ordinal);
+
+        using var http = new HttpClient();
+        using var put = new HttpRequestMessage(HttpMethod.Put, upload.Url) { Content = new StringContent("straight to the container", Encoding.UTF8) };
+        foreach (var (name, value) in upload.Headers.Where(header => header.Key != "Content-Type"))
+            put.Headers.TryAddWithoutValidation(name, value);
+        put.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/plain");
+        Assert.True((await http.SendAsync(put)).IsSuccessStatusCode);
+
+        var download = await urls.IssueReadUrlAsync("direct/upload.txt", TimeSpan.FromMinutes(5), "notes.txt");
+        using var response = await http.GetAsync(download.Url);
+        Assert.Equal("straight to the container", await response.Content.ReadAsStringAsync());
+        Assert.Equal("notes.txt", response.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+
+        var forged = new Uri(download.Url.ToString().Replace("sp=r", "sp=rw", StringComparison.Ordinal));
+        Assert.False((await http.GetAsync(forged)).IsSuccessStatusCode);
+    }
+
+    [Fact]
     public async Task RoundTripsBlobsUnderTheKeyPrefix()
     {
         var blobs = _provider!.GetRequiredService<IBlobRepository>();
