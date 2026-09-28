@@ -21,6 +21,13 @@
 - Limits guard decompression bombs: `Media:Images:MaxPixels` and `MaxInputBytes`; a refusal is a 400.
 - Fonts: family through the Skia font manager, configured files by family, per-text glyph fallback (Cyrillic, Uzbek).
 - Options: `Media:Images` and `Media:Pdf` through the module-options recipe; code first, host section last.
+- PDFsharp 6.2 (net10, AES-256, clean decryption) replaces the venture's 6.1 copy-pages decryption.
+- Fonts reach PDFsharp as its fallback resolver: an app's own resolver wins; bold is never simulated.
+
+## Venture adoption (`ventures/pdf-editor`)
+
+- Covered: merge, split, extract, remove, reorder, rotate, watermark, page numbers, metadata, encrypt, decrypt, text.
+- Still inline there: header/footer, Bates numbering, forms, redaction, OCR, DOCX export, DjVu, bulk CSV jobs.
 
 ## Status
 
@@ -28,6 +35,6 @@
 - [x] I2 — overlays: text (anchor, wrap, box, shadow, rotation, tiling) and image watermarks; font resolution
 - [x] I3 — collage: row, column, grid; gap, padding, background, rounded corners, cover or contain cells
 - [x] I4 — analysis: BlurHash placeholder, dominant colors, perceptual hash for duplicates; 22 image tests
-- [ ] P1 — PDF core: info, merge, split, extract, remove, rotate, reorder, images → PDF, metadata, encrypt, text
-- [ ] P2 — PDF stamps: text watermark and page numbers with Skia-resolved fonts
+- [x] P1 — PDF core: info, merge, split, extract/reorder, remove, rotate, images → PDF, metadata, AES-256, text
+- [x] P2 — PDF stamps: text watermark and page numbers with Skia-resolved fonts (TTC faces extracted); 7 tests
 - [ ] P3 — PDF → images companion over PDFium [parked: native size]

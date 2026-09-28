@@ -1,6 +1,6 @@
 # Media
 
-*Media & document processing — images, caption parsing, YouTube links and tabular (CSV/Excel) export. Own domain logic + thin wraps over permissive libs.*
+*Media & document processing — images, PDF, caption parsing, YouTube links and tabular (CSV/Excel) export. Own domain logic + thin wraps over permissive libs.*
 
 Namespace root: `WoW.Two.Sdk.Backend.Beta.Media`.
 
@@ -12,6 +12,7 @@ Parser types live under `Captions/Parsers/` and `Csv/Parsers/`, with matching na
 | Folder | Surface | Role |
 |---|---|---|
 | `Images/` | `AddImageProcessing()`, `IImageService` (probe, edit, collage, analyze) | Resize, compress, caption, watermark, collage, BlurHash over SkiaSharp (see `Images/images.md`) |
+| `Pdf/` | `AddPdfProcessing()`, `IPdfService` (info, merge, split, pages, images → PDF, metadata, AES-256, text, stamps) | PDF tools over PDFsharp + PdfPig (see `Pdf/pdf.md`) |
 | `Captions/` | `AddCaptionParsing()`, `ICaptionParser` (+ VTT/SRT/TTML/json3), `ITimedText` helpers | Parse/convert caption formats; slice parts and render text (see `Captions/captions.md`) |
 | `YouTube/` | `YouTubeUrlMapper`, `YouTubeLinkExtractor` | Video and playlist links in any published form, and links in pasted text (see `YouTube/youtube.md`) |
 | `Tabular/` | `ITabularExporter`, `TabularFormat` | Shared row-export abstraction (CSV / XLSX) |
@@ -49,8 +50,8 @@ public sealed class Reports(IEnumerable<ITabularExporter> exporters, ICsvParser 
 - CSV parsing reads lazily from the current stream position without seeking; enumeration requires the stream to stay open.
 - Empty CSV input yields no rows. CsvHelper mapping or data errors propagate during enumeration, possibly after earlier rows were yielded.
 - CSV parsing forwards cancellation to CsvHelper. Its reader uses UTF-8 by default with byte-order-mark detection.
-- Licenses: CsvHelper (MS-PL/Apache-2.0), ClosedXML (MIT), SkiaSharp (MIT).
+- Licenses: CsvHelper (MS-PL/Apache-2.0), ClosedXML (MIT), SkiaSharp (MIT), PDFsharp (MIT), PdfPig (Apache-2.0).
 
 ## Roadmap (not yet built)
 
-`Media.Pdf` (PDFsharp + PdfPig) · `Media.Markdig` (Markdown) · `Media.Audio`/`Media.Transcripts` (from the TranscriptForge line). ImageSharp and QuestPDF stay out: their licenses carry revenue thresholds.
+`Media.Pdf.Rendering` (PDF → images over PDFium) · `Media.Markdig` (Markdown) · `Media.Audio`/`Media.Transcripts` (from the TranscriptForge line). ImageSharp and QuestPDF stay out: their licenses carry revenue thresholds.

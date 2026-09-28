@@ -522,6 +522,8 @@ Subpath: `wow-two-sdk.backend.beta.storage` + `.media`.
 | SkiaSharp | DONE | `Media.Images` — edit, compress, text, watermark, collage, BlurHash, 2026-09-28 |
 | Magick.NET | LATER | Format-specific (RAW, TIFF, PSD) companion |
 | **QuestPDF** for PDF generation | SKIP (core) | Community license has a revenue threshold; PDFsharp (MIT) covers PDF |
+| PDFsharp + PdfPig | DONE | `Media.Pdf` — pages, images → PDF, metadata, AES-256, text, stamps, 2026-09-28 |
+| PDFtoImage (PDFium) | LATER | PDF → images companion; natives are ~10 MB per platform |
 | iText7 / Aspose / Spire | SKIP | License |
 | ClosedXML for Excel | NEXT | MIT; default xlsx |
 | EPPlus | SKIP | Polyform commercial |

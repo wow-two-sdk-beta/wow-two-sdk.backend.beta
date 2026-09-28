@@ -285,6 +285,8 @@
   <ItemGroup Label="Documents / tabular (Media)">
     <PackageVersion Include="CsvHelper" Version="33.0.1" />
     <PackageVersion Include="ClosedXML" Version="0.104.2" />
+    <PackageVersion Include="PDFsharp" Version="6.2.4" />
+    <PackageVersion Include="PdfPig" Version="0.1.16" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">

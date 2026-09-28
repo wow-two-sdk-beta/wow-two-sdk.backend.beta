@@ -122,6 +122,12 @@
     <PackageReference Include="ClosedXML" />
   </ItemGroup>
 
+  <!-- Media — PDF (src/Media/Pdf). PDFsharp (MIT) edits and writes; PdfPig (Apache-2.0) reads text. No natives. -->
+  <ItemGroup Label="Media — PDF">
+    <PackageReference Include="PDFsharp" />
+    <PackageReference Include="PdfPig" />
+  </ItemGroup>
+
   <ItemGroup Label="Http / outbound — Refit + Polly v8 resilience + header propagation">
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.AspNetCore.HeaderPropagation" />

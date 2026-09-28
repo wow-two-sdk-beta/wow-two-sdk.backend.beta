@@ -1,5 +1,6 @@
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Media.Images;
+using WoW.Two.Sdk.Backend.Beta.Media.Pdf;
 
 namespace WoW.Two.Sdk.Backend.Beta.Media.Errors;
 
@@ -13,6 +14,7 @@ public sealed class MediaExceptionMappingRule : IExceptionMappingRule
         return exception switch
         {
             ImageRejectedException rejected => AppError.Of(AppErrorType.Validation, rejected.Message, MessageKey(rejected.Reason)),
+            PdfRejectedException rejected => AppError.Of(AppErrorType.Validation, rejected.Message, MessageKey(rejected.Reason)),
             _ => null,
         };
     }
