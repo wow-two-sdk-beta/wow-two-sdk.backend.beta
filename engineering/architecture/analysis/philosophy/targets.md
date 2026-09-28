@@ -154,17 +154,19 @@ Mirrors §4 of `ideas.md`. Each subsection states the verdict + concrete chosen 
 | JWT bearer + cookie + OIDC schemes | DONE | First-party; lib wires sane defaults |
 | API keys for outside programs — marked secrets, hash-only storage, a local-or-key gate | DONE | Shipped `src/Identity/ApiKeys/` — extracted from TranscriptForge v0.7 (public API and MCP access); the product owns `IApiKeyRepository` |
 | ASP.NET Core Identity + Identity API endpoints | DONE | First-party |
+| Own sliced identity (passwords, tokens, email, lockout, stamp revocation, roles, claims, logins, 2FA, phone, sign-in, refresh tokens) | DONE | `src/Identity/Core/` slices, 2026-09-28 — `planning/identity/identity-slices.md` |
+| Breached-password check (Pwned Passwords k-anonymity) | DONE | `AddBreachedPasswordCheck()`, fail-open by default |
 | Microsoft.Identity.Web for Entra ID | NEXT | Companion adapter |
 | OpenIddict for OSS OIDC server | NEXT | Optional adapter (Apache-2.0) |
 | Duende IdentityServer | SKIP | Commercial license; not in core |
 | WebAuthn/FIDO2 via Fido2.AspNetCore | LATER | Passkeys |
-| Otp.NET for TOTP | NEXT | 2FA foundation |
+| Otp.NET for TOTP | DONE | `TotpService`; two-factor slice uses it |
 | ABAC / Permission-based via custom `IAuthorizationHandler` | NEXT | Convention helpers |
 | OPA / Casbin / SpiceDB integration | LATER | Heavy clients |
 | BFF pattern via Microsoft.Identity.Web.Bff | NEXT | OSS path |
 | Duende.BFF | SKIP | Commercial |
 | Anti-forgery + DataProtection + KeyVault key wrapping | NOW | Sane defaults |
-| Argon2 password hashing via Konscious.Security.Cryptography | NEXT | Replace PBKDF2 default |
+| Argon2 password hashing via Konscious.Security.Cryptography | DONE | Default hasher of the password slice; verifies recorded cost, flags rehash |
 | Post-quantum (`MLKem`/`MLDsa`) | LATER | Wait for .NET 10 GA |
 | OWASP secure-headers middleware (CSP, HSTS, X-Content-Type, etc.) | NOW | Opt-in pre-built |
 
@@ -179,7 +181,7 @@ Mirrors §4 of `ideas.md`. Each subsection states the verdict + concrete chosen 
 | OutputCaching middleware | NOW | Default opt-in for read-heavy endpoints |
 | ResponseCaching | SKIP | OutputCaching supersedes |
 | EF Core L2 (EFCore.SecondLevelCache.Core) | LATER | Per-app opt-in |
-| CDN / browser cache header conventions | NOW | ETag + Cache-Control helpers |
+| CDN / browser cache header conventions | DONE | Config-activated ETag + 304 (`src/Web/ConditionalRequests/`); Cache-Control stays per endpoint |
 
 ### 2.10 Rate limiting — NOW (P1)
 
@@ -241,12 +243,13 @@ Mirrors §4 of `ideas.md`. Each subsection states the verdict + concrete chosen 
 
 | Item | Verdict | Note |
 |---|---|---|
-| `Microsoft.Extensions.Localization` (`IStringLocalizer<T>`) | LATER | First-party; defer |
+| `Microsoft.Extensions.Localization` (`IStringLocalizer<T>`) | LATER | First-party; error texts use config catalogs instead |
 | `.resx` resource files | LATER | Defer until consumer demand |
-| ICU MessageFormat for plurals | LATER | Plug-in once needed |
+| Config-activated error translation (catalogs, FluentValidation packs, built-in `ru`/`uz`) | DONE | `src/Web/ErrorTranslation/`, 2026-09-28 |
+| ICU MessageFormat for plurals | DONE | ICU-style `plural` with CLDR rules in `MessageTemplateMapper` |
 | Humanizer for date/number phrases | NEXT | Lightweight; add early |
 | RTL forwarding (UI concern) | SKIP | Out of scope here |
-| Pseudo-localization | LATER | QA-only |
+| Pseudo-localization | DONE | `ErrorTranslation:PseudoLocalization` |
 
 ### 2.16 Time / clock / culture — NOW (P1)
 
@@ -272,6 +275,8 @@ Mirrors §4 of `ideas.md`. Each subsection states the verdict + concrete chosen 
 | FluentResults | SKIP | Pick one — ErrorOr wins |
 | LanguageExt.Core | SKIP | Too FP-heavy for default surface; leave to consumers |
 | HTTP status mapping convention (400/401/403/404/409/422/429/500) | NOW | Opinionated mapper |
+| Result combinators (`Bind`/`Tap`/`Ensure`/`Combine`) | DONE | `ResultCombinatorExtensions`, 2026-09-28 |
+| Outbound HTTP failures as `AppError` | DONE | `src/Http/Errors/`, 2026-09-28 |
 
 ### 2.18 Serialization — DONE (STJ default) + NEXT for binary
 
@@ -321,7 +326,7 @@ Mirrors §4 of `ideas.md`. Each subsection states the verdict + concrete chosen 
 
 | Item | Verdict | Note |
 |---|---|---|
-| `Idempotency-Key` header convention + Redis-backed store | NEXT | First-class for write endpoints |
+| `Idempotency-Key` header convention + Redis-backed store | NEXT | SQL-backed durable store DONE (`AddSqlIdempotencyRepository`); Redis remains |
 | Inbox dedupe table (per-message-id) | NEXT | Wired with Outbox |
 | Outbox row uniqueness | NEXT | Send-once guarantee |
 
@@ -509,9 +514,9 @@ Subpath: `wow-two-sdk.backend.beta.storage` + `.media`.
 
 | Item | Verdict | Note |
 |---|---|---|
-| Azure.Storage.Blobs | LATER | Adapter |
-| AWSSDK.S3 | LATER | Adapter |
-| MinIO.SDK | LATER | Adapter |
+| Azure.Storage.Blobs | DONE | `AddAzureBlobStorage`, 2026-09-28 |
+| AWSSDK.S3 | DONE | `AddS3BlobStorage` (AWS, R2, MinIO endpoints), 2026-09-28 |
+| MinIO.SDK | SKIP | Covered by the S3 adapter with a `ServiceUrl` |
 | FluentStorage abstraction over multi-cloud | NEXT | Single API across S3/Azure/GCS/MinIO |
 | ImageSharp (+`.Web`) | NEXT | Default image processing — note >1M$ commercial threshold; document it |
 | SkiaSharp / Magick.NET | LATER | Format-specific |
@@ -579,6 +584,9 @@ Subpath: `wow-two-sdk.backend.beta.ai`.
 | BAMCIS.GeoJSON / GeoJSON.Net | NEXT | (de)serialization |
 
 ### 3.13 Email / SMS / push — NEXT (P2)
+
+**Status 2026-09-28:** email DONE (MailKit, SendGrid, SES); SMS DONE (`ISmsBroker`: Twilio, Vonage, Eskiz over HttpClient);
+push DONE (`IPushBroker`: APNs ES256, FCM HTTP v1, Web Push VAPID) — no vendor SDKs.
 
 Abstractions: `IEmailBroker`, `ISmsSender`, `IPushSender`. Default impls: **MailKit** + **MimeKit** (SMTP), **Twilio** (SMS), **FirebaseAdmin** (FCM), **dotAPNS** (Apple). Optional adapters: SendGrid, Mailgun, Postmark, AWS SES, Azure Communication Email/SMS, Vonage, Plivo, MessageBird, OneSignal. **FluentEmail** as the templating layer (Razor-friendly).
 
