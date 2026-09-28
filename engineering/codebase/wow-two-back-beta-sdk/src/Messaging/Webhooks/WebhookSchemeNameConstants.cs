@@ -1,6 +1,6 @@
-namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks.Inbound;
+namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 
-/// <summary>Holds the names of the built-in signature schemes, the keys their validators are registered under.</summary>
+/// <summary>Holds the names of the built-in signature schemes: inbound validators are keyed by them, outbound issuers carry them.</summary>
 public static class WebhookSchemeNameConstants
 {
     /// <summary>Holds <c>wow2</c> — this SDK's outbound scheme: <c>X-Webhook-Signature: sha256=…</c> over <c>{timestamp}.{body}</c>.</summary>

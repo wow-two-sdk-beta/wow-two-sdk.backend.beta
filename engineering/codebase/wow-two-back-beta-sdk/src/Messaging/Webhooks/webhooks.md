@@ -56,6 +56,14 @@ Each matching subscription receives a `POST` carrying:
 Receiver verifies: recompute `HMAC(secret, "{X-Webhook-Timestamp}.{rawBody}")`, constant-time compare to the header —
 or, on a host using this SDK, `.RequireWebhookSignature(...)` with the `wow2` scheme.
 
+## Signature schemes
+
+- `wow2` (default) sends the headers above; `standard` sends Standard Webhooks headers (`webhook-id`,
+  `webhook-timestamp`, `webhook-signature: v1,…`) that any Standard Webhooks or Svix library verifies.
+- Pick per subscription (`SignatureScheme = "standard"`) or for all (`WebhookOptions.SignatureScheme`); give Standard
+  subscribers `whsec_` base64 secrets.
+- Another scheme: register an `IWebhookSignatureIssuer` with `TryAddEnumerable`; an unknown scheme drops with an error log.
+
 ## Delivery & retry
 
 - **Fan-out**: every subscription whose `EventTypeFilter` glob matches the event type gets its own signed POST.

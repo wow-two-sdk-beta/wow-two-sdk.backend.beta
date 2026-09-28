@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using WoW.Two.Sdk.Backend.Beta.Http.Safety;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks.Issuers;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
@@ -17,11 +18,14 @@ internal sealed partial class HttpWebhookDispatcher(
     WebhookOptions options,
     IRetryPolicy retryPolicy,
     IWebhookDeliveryLoggingService deliveryLogging,
-    IWebhookSignatureHasher signatureHasher,
+    IEnumerable<IWebhookSignatureIssuer> signatureIssuers,
     TimeProvider timeProvider,
     ILogger<HttpWebhookDispatcher> logger)
 {
     private const int HttpRequestTimeout = 408;
+    private readonly Dictionary<string, IWebhookSignatureIssuer> _issuers = signatureIssuers
+        .GroupBy(issuer => issuer.Scheme, StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(group => group.Key, group => group.Last(), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Deliver <paramref name="payload"/> to one subscription, signing and retrying per the configured budget.</summary>
     /// <param name="subscription">The target subscription.</param>
@@ -35,6 +39,12 @@ internal sealed partial class HttpWebhookDispatcher(
         var delivery = new Delivery { Id = deliveryId ?? Guid.NewGuid().ToString("N"), Subscription = subscription, EventType = eventType, Payload = payload };
 
         // Validate scheme and host here; the guarded handler blocks unsafe resolved addresses at connect time.
+        if (!_issuers.ContainsKey(subscription.SignatureScheme ?? opt.SignatureScheme))
+        {
+            LogUnknownScheme(subscription.Url, subscription.SignatureScheme ?? opt.SignatureScheme);
+            return await RecordAsync(delivery, WebhookDeliveryOutcome.Dropped, 0, null, cancellationToken);
+        }
+
         if (!WebhookAddressMapper.IsSchemeAllowed(subscription.Url, opt.RequireHttps)
             || !WebhookAddressMapper.IsHostAllowed(subscription.Url, opt.AllowedHosts))
         {
@@ -85,18 +95,24 @@ internal sealed partial class HttpWebhookDispatcher(
         CancellationToken cancellationToken)
     {
         var (subscription, eventType, payload) = (delivery.Subscription, delivery.EventType, delivery.Payload);
-        var timestamp = timeProvider.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
-        var signature = signatureHasher.Create(subscription.Secret, timestamp, payload.Span);
+        var headers = _issuers[subscription.SignatureScheme ?? options.SignatureScheme].Issue(new WebhookSigningModel
+        {
+            Secret = subscription.Secret,
+            DeliveryId = delivery.Id,
+            EventType = eventType,
+            Timestamp = timeProvider.GetUtcNow(),
+            Payload = payload,
+        });
 
         using var request = new HttpRequestMessage(HttpMethod.Post, subscription.Url)
         {
             Content = new ReadOnlyMemoryContent(payload),
         };
         request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-        request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Signature, signature);
-        request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Timestamp, timestamp);
+        foreach (var (name, value) in headers)
+            request.Headers.TryAddWithoutValidation(name, value);
+
         request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Event, eventType);
-        request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Id, delivery.Id);
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(timeout);
@@ -170,6 +186,9 @@ internal sealed partial class HttpWebhookDispatcher(
 
     [LoggerMessage(EventId = 6902, Level = LogLevel.Warning, Message = "Webhook delivery to {Url} for {EventType} rejected with status {StatusCode}; not retrying")]
     private partial void LogRejected(Uri url, string eventType, int? statusCode);
+
+    [LoggerMessage(EventId = 6906, Level = LogLevel.Error, Message = "Webhook delivery to {Url} dropped: no signature issuer is registered for the scheme {Scheme}")]
+    private partial void LogUnknownScheme(Uri url, string scheme);
 
     [LoggerMessage(EventId = 6903, Level = LogLevel.Warning, Message = "Webhook delivery to {Url} for {EventType} exhausted after {Attempts} attempts; dropping")]
     private partial void LogExhausted(Uri url, string eventType, int attempts);

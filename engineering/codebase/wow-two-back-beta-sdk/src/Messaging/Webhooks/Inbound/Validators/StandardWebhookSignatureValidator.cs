@@ -9,7 +9,6 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks.Inbound.Validators;
 /// </remarks>
 public sealed class StandardWebhookSignatureValidator : IWebhookSignatureValidator
 {
-    private const string SecretPrefix = "whsec_";
     private const string VersionPrefix = "v1,";
 
     /// <inheritdoc />
@@ -33,7 +32,7 @@ public sealed class StandardWebhookSignatureValidator : IWebhookSignatureValidat
             return WebhookSignatureResult.Failed(WebhookSignatureFailure.Malformed);
 
         var content = body.Around($"{id}.{timestamp}.");
-        if (!receiver.Secrets.Select(KeyOf).Any(key => candidates.Any(key.HmacSha256(content).MatchesBase64)))
+        if (!receiver.Secrets.Select(StandardWebhookKeyMapper.KeyOf).Any(key => candidates.Any(key.HmacSha256(content).MatchesBase64)))
             return WebhookSignatureResult.Failed(WebhookSignatureFailure.Mismatch);
         if (!signedAt.IsWithin(now, receiver.Tolerance))
             return WebhookSignatureResult.Failed(WebhookSignatureFailure.Stale);
@@ -46,13 +45,5 @@ public sealed class StandardWebhookSignatureValidator : IWebhookSignatureValidat
     {
         string? standard = headers["webhook-" + name];
         return string.IsNullOrEmpty(standard) ? headers["svix-" + name] : standard;
-    }
-
-    /// <summary>The base64 key after <c>whsec_</c>; a secret that is not base64 signs with its UTF-8 bytes.</summary>
-    private static byte[] KeyOf(string secret)
-    {
-        var encoded = secret.StartsWith(SecretPrefix, StringComparison.Ordinal) ? secret[SecretPrefix.Length..] : secret;
-        var key = new byte[encoded.Length];
-        return Convert.TryFromBase64String(encoded, key, out var written) ? key[..written] : secret.Utf8();
     }
 }

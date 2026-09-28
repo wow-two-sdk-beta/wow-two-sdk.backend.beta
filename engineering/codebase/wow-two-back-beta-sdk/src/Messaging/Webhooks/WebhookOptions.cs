@@ -6,6 +6,9 @@ public sealed record WebhookOptions
     /// <summary>Subscriptions seeded into the store at startup. Add to this list inside the configure delegate.</summary>
     public IList<WebhookSubscription> Subscriptions { get; } = new List<WebhookSubscription>();
 
+    /// <summary>The signature scheme of subscriptions that name none: <c>wow2</c> (default) or <c>standard</c>.</summary>
+    public string SignatureScheme { get; set; } = WebhookSchemeNameConstants.Wow2;
+
     /// <summary>Total delivery attempts per subscription before the delivery is dropped. Default 3.</summary>
     public int MaxAttempts { get; set; } = 3;
 

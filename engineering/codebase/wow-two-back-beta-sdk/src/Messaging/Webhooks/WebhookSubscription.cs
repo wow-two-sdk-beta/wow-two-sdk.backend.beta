@@ -15,6 +15,9 @@ public sealed record WebhookSubscription
     /// <summary>Whether deliveries go out; a disabled subscription is kept but skipped. Default true.</summary>
     public bool Enabled { get; init; } = true;
 
+    /// <summary>The signature scheme the subscriber verifies, such as <c>standard</c>; null takes <see cref="WebhookOptions.SignatureScheme"/>.</summary>
+    public string? SignatureScheme { get; init; }
+
     /// <summary>A note for the subscriber's own records, such as what the endpoint is for.</summary>
     public string? Description { get; init; }
 

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Http.Safety;
 using WoW.Two.Sdk.Backend.Beta.Messaging.Reliability;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
+using WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks.Issuers;
 
 namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 
@@ -50,8 +51,10 @@ public static class WebhooksServiceCollectionExtensions
         services.TryAddSingleton<IRetryPolicy, RetryPolicy>();
         services.TryAddSingleton<IWebhookDeliveryLoggingService, NoopWebhookDeliveryLoggingService>();
         services.TryAddSingleton<IWebhookSubscriptionRepository, InMemoryWebhookSubscriptionRepository>();
-        // The signature scheme is a registration choice; a subscriber requiring another one swaps this line.
+        // The wow2 scheme's hasher stays swappable; other schemes are issuers a subscription names.
         services.TryAddSingleton<IWebhookSignatureHasher, WebhookSignatureHasher>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IWebhookSignatureIssuer, Wow2WebhookSignatureIssuer>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IWebhookSignatureIssuer, StandardWebhookSignatureIssuer>());
         services.TryAddSingleton<HttpWebhookDispatcher>();
         services.TryAddSingleton<IWebhookPublisher, WebhookPublisher>();
         return services;

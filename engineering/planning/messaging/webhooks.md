@@ -22,7 +22,8 @@
 - [x] W3 — delivery log: `EfWebhookDeliveryRepository` over `webhook_deliveries` with kept bodies, history, purge and
   `WebhookRedeliveryService`; `X-Webhook-Id` now stays the same across retries
 - [ ] W4 — management API: map subscription CRUD, secret rotation and delivery history for a subscription owner
-- [ ] W5 — outbound Standard Webhooks signing as a selectable scheme beside `sha256=`
+- [x] W5 — outbound signature issuers: `wow2` and Standard Webhooks, per subscription or host-wide; the published
+  Standard example reproduces and round-trips through the inbound validator
 
 ---
 
