@@ -22,18 +22,18 @@ public sealed class UserAccountService<TUser, TKey>(IUserRepository<TUser, TKey>
     {
         ArgumentNullException.ThrowIfNull(user);
         if (string.IsNullOrWhiteSpace(user.UserName))
-            return IdentityResult.Failed(new IdentityError { Code = "UserNameRequired", Description = "A user name is required." });
+            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.UserNameRequired, "A user name is required.");
 
         ApplyNormalization(user);
         user.SecurityStamp ??= NewStamp();
         user.ConcurrencyStamp ??= NewStamp();
+        user.LockoutEnabled = options.Lockout.EnabledForNewUsers;
 
         if (await repository.FindByNormalizedUserNameAsync(user.NormalizedUserName!, cancellationToken) is not null)
-            return IdentityResult.Failed(new IdentityError { Code = "DuplicateUserName", Description = $"User name '{user.UserName}' is already taken." });
+            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.DuplicateUserName, $"User name '{user.UserName}' is already taken.");
 
-        if (options.User.RequireUniqueEmail && !string.IsNullOrEmpty(user.NormalizedEmail)
-            && await repository.FindByNormalizedEmailAsync(user.NormalizedEmail, cancellationToken) is not null)
-            return IdentityResult.Failed(new IdentityError { Code = "DuplicateEmail", Description = $"Email '{user.Email}' is already taken." });
+        if (await IsEmailTakenAsync(user.NormalizedEmail, cancellationToken: cancellationToken))
+            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.DuplicateEmail, $"Email '{user.Email}' is already taken.");
 
         await repository.CreateAsync(user, cancellationToken);
         return IdentityResult.Success;
@@ -48,6 +48,30 @@ public sealed class UserAccountService<TUser, TKey>(IUserRepository<TUser, TKey>
         ApplyNormalization(user);
         await repository.UpdateAsync(user, cancellationToken);
         return IdentityResult.Success;
+    }
+
+    /// <summary>Rotate the security stamp and persist it, voiding every cookie, token and purpose token bound to the old stamp.</summary>
+    /// <param name="user">The user to sign out everywhere.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<IdentityResult> RotateSecurityStampAsync(TUser user, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        user.RotateSecurityStamp();
+        await repository.UpdateAsync(user, cancellationToken);
+        return IdentityResult.Success;
+    }
+
+    /// <summary>Whether another account holds <paramref name="normalizedEmail"/> while unique emails are required.</summary>
+    /// <param name="normalizedEmail">The normalized email to test; null or empty is never taken.</param>
+    /// <param name="owner">The account allowed to hold it already, when re-confirming its own address.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<bool> IsEmailTakenAsync(string? normalizedEmail, TUser? owner = null, CancellationToken cancellationToken = default)
+    {
+        if (!options.User.RequireUniqueEmail || string.IsNullOrEmpty(normalizedEmail))
+            return false;
+
+        var holder = await repository.FindByNormalizedEmailAsync(normalizedEmail, cancellationToken);
+        return holder is not null && (owner is null || !holder.Id.Equals(owner.Id));
     }
 
     /// <summary>Delete a user.</summary>

@@ -28,6 +28,10 @@ public sealed class Argon2PasswordHasher<TUser> : IPasswordHasher<TUser> where T
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Verifies with the parameters recorded in the hash, so raising the cost never locks out existing users; a match
+    /// recorded with other parameters returns <see cref="PasswordVerificationResult.SuccessRehashNeeded"/>.
+    /// </remarks>
     public PasswordVerificationResult VerifyHashedPassword(TUser user, string hashedPassword, string providedPassword)
     {
         ArgumentNullException.ThrowIfNull(user);
@@ -35,17 +39,23 @@ public sealed class Argon2PasswordHasher<TUser> : IPasswordHasher<TUser> where T
         ArgumentNullException.ThrowIfNull(providedPassword);
 
         var parts = hashedPassword.Split('$', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 5 || parts[0] != "argon2id")
+        if (parts.Length < 5 || parts[0] != "argon2id" || !TryReadCost(parts[2], out var memoryKb, out var iterations, out var parallelism))
             return PasswordVerificationResult.Failed;
 
         try
         {
             var salt = Convert.FromBase64String(parts[3]);
             var expected = Convert.FromBase64String(parts[4]);
-            var actual = HashCore(providedPassword, salt);
-            return CryptographicOperations.FixedTimeEquals(expected, actual)
+            if (expected.Length is < 16 or > 64)
+                return PasswordVerificationResult.Failed;
+
+            var actual = HashCore(providedPassword, salt, memoryKb, iterations, parallelism, expected.Length);
+            if (!CryptographicOperations.FixedTimeEquals(expected, actual))
+                return PasswordVerificationResult.Failed;
+
+            return memoryKb == MemoryKb && iterations == Iterations && parallelism == Parallelism && expected.Length == HashSize
                 ? PasswordVerificationResult.Success
-                : PasswordVerificationResult.Failed;
+                : PasswordVerificationResult.SuccessRehashNeeded;
         }
         catch (FormatException)
         {
@@ -54,14 +64,40 @@ public sealed class Argon2PasswordHasher<TUser> : IPasswordHasher<TUser> where T
     }
 
     private static byte[] HashCore(string password, byte[] salt)
+        => HashCore(password, salt, MemoryKb, Iterations, Parallelism, HashSize);
+
+    private static byte[] HashCore(string password, byte[] salt, int memoryKb, int iterations, int parallelism, int hashSize)
     {
         using var argon = new Argon2id(System.Text.Encoding.UTF8.GetBytes(password))
         {
             Salt = salt,
-            DegreeOfParallelism = Parallelism,
-            MemorySize = MemoryKb,
-            Iterations = Iterations,
+            DegreeOfParallelism = parallelism,
+            MemorySize = memoryKb,
+            Iterations = iterations,
         };
-        return argon.GetBytes(HashSize);
+        return argon.GetBytes(hashSize);
+    }
+
+    /// <summary>Reads <c>m=…,t=…,p=…</c>, bounding each value so a stored hash cannot demand unbounded work.</summary>
+    private static bool TryReadCost(string segment, out int memoryKb, out int iterations, out int parallelism)
+    {
+        memoryKb = iterations = parallelism = 0;
+        foreach (var pair in segment.Split(','))
+        {
+            var separator = pair.IndexOf('=', StringComparison.Ordinal);
+            if (separator <= 0
+                || !int.TryParse(pair.AsSpan(separator + 1), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var value))
+                return false;
+
+            switch (pair[..separator])
+            {
+                case "m" when value is > 0 and <= 1_048_576: memoryKb = value; break;
+                case "t" when value is > 0 and <= 64: iterations = value; break;
+                case "p" when value is > 0 and <= 64: parallelism = value; break;
+                default: return false;
+            }
+        }
+
+        return memoryKb > 0 && iterations > 0 && parallelism > 0;
     }
 }

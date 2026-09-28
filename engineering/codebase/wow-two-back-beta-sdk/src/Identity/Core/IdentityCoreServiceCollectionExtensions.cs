@@ -31,8 +31,15 @@ public static class IdentityCoreServiceCollectionExtensions
             configure,
             builder => builder
                 .Validate(options => options.Password.MinLength > 0, "IdentityCoreOptions.Password.MinLength must be positive.")
+                .Validate(
+                    options => options.Password.MaxLength >= options.Password.MinLength,
+                    "IdentityCoreOptions.Password.MaxLength must not be below MinLength.")
+                .Validate(
+                    options => options.Password.RequiredUniqueChars >= 0 && options.Password.RequiredUniqueChars <= options.Password.MaxLength,
+                    "IdentityCoreOptions.Password.RequiredUniqueChars must lie between 0 and MaxLength.")
                 .Validate(options => options.Lockout.MaxFailedAttempts > 0, "IdentityCoreOptions.Lockout.MaxFailedAttempts must be positive.")
                 .Validate(options => options.Lockout.DefaultLockout > TimeSpan.Zero, "IdentityCoreOptions.Lockout.DefaultLockout must be positive."));
+        services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<UserAccountService<TUser, TKey>>();
 
         return new IdentityBuilder<TUser, TKey>(services);

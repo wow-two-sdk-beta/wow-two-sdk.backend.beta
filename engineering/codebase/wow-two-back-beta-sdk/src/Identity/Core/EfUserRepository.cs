@@ -35,7 +35,6 @@ public sealed class EfUserRepository<TUser, TKey, TContext> : IUserRepository<TU
     public async Task UpdateAsync(TUser user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
-        user.ConcurrencyStamp = Guid.NewGuid().ToString();
 
         var entry = _context.Entry(user);
         if (entry.State == EntityState.Detached)
@@ -56,6 +55,8 @@ public sealed class EfUserRepository<TUser, TKey, TContext> : IUserRepository<TU
             Users.Update(user);
         }
 
+        // Attach first: a detached user's loaded stamp becomes the original value the concurrency check compares.
+        user.ConcurrencyStamp = Guid.NewGuid().ToString();
         await _context.SaveChangesAsync(cancellationToken);
     }
 

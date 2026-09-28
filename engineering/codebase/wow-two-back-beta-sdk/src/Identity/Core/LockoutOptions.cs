@@ -8,4 +8,7 @@ public sealed record LockoutOptions
 
     /// <summary>How long an account stays locked out. Default 5 minutes.</summary>
     public TimeSpan DefaultLockout { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>Whether a newly created account starts with lockout enabled. Default true.</summary>
+    public bool EnabledForNewUsers { get; set; } = true;
 }
