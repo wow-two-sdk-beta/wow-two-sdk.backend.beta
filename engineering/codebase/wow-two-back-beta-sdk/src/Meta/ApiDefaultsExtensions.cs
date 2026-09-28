@@ -114,6 +114,7 @@ public static class ApiDefaultsExtensions
         app.UseOwaspSecureHeaders(headers =>
         {
             headers.EnableCrossOriginOpenerPolicy = options.EnableCrossOriginOpenerPolicy;
+            headers.AllowOpenerPopups = options.AllowCrossOriginOpenerPopups;
             headers.EnableCrossOriginEmbedderPolicy = options.EnableCrossOriginEmbedderPolicy;
         });
 

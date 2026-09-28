@@ -68,6 +68,17 @@ public sealed class SecureHeadersTests
     }
 
     [Fact]
+    public async Task UseOwaspSecureHeaders_ShouldAllowOpenerPopups_WhenPopupsAreAllowed()
+    {
+        await using var app = await StartHeaderHostAsync(options => options.AllowOpenerPopups = true);
+
+        using var response = await GetRootAsync(app);
+
+        response.Headers.GetValues(OpenerPolicyHeader).Should().ContainSingle().Which.Should().Be("same-origin-allow-popups");
+        response.Headers.GetValues(EmbedderPolicyHeader).Should().ContainSingle().Which.Should().Be("require-corp");
+    }
+
+    [Fact]
     public async Task UseOwaspSecureHeaders_ShouldDropEmbedderPolicyOnly_WhenEmbedderOptedOut()
     {
         await using var app = await StartHeaderHostAsync(options => options.EnableCrossOriginEmbedderPolicy = false);

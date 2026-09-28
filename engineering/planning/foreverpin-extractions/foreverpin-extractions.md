@@ -24,6 +24,9 @@
 - [x] E7 — commit-aware cache invalidation across hosts: PostgreSQL commit, rollback and reconnect tests
 - [x] E8 — inbound webhook deduplication and ordering: inbox redelivery and watermark tests on PostgreSQL
 - [x] E9 — SPA antiforgery: token issue, rejection, echo and exemption tests
+- [x] E10 — explicit environment contract: `UseEnvironmentAliases`; mapping, empty, hosting-key and precedence tests
+- [x] E11 — configuration-bound proxy trust: `ApiDefaultsOptions.TrustProxiesFrom(section)`; binding tests
+- [x] E12 — OAuth popups under the opener policy: `AllowOpenerPopups` → `same-origin-allow-popups`; header test
 
 ---
 
@@ -141,3 +144,6 @@ Deviations from the plan below, both deliberate:
 | E7 | Redirect host wires the cached repository with `AddPostgresCacheInvalidation`; code writes publish `code:{slug}` inside their transaction. |
 | E8 | `AddEfInbox<AppDbContext>()` + `inbox_messages` and `last_event_at` migrations; the Stripe broker surfaces event id and time. |
 | E9 | `AddSpaAntiforgery` exempting the webhook; the frontend sends `X-XSRF-TOKEN` in the same release, or cookie writes fail. |
+| E10 | Both hosts' alias blocks → `builder.Configuration.UseEnvironmentAliases(aliases)`; an empty variable no longer overrides. |
+| E11 | Both hosts' `TrustDeploymentProxies` → `o.TrustProxiesFrom(configuration.GetSection("Deployment"))`. |
+| E12 | The management host's HTML header rewrite → `AllowCrossOriginOpenerPopups` with the embedder policy off; also adopt `UseSpaHosting`/`MapSpaFallback`. |

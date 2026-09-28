@@ -25,6 +25,14 @@ Headers applied: HSTS · X-Content-Type-Options · X-Frame-Options: DENY · Refe
 app.UseOwaspSecureHeaders(headers => headers.EnableCrossOriginEmbedderPolicy = false);
 ```
 
+A host whose pages open OAuth popups, such as Google Identity Services, keeps the opener policy but relaxes it to
+`same-origin-allow-popups`:
+
+```csharp
+app.UseOwaspSecureHeaders(headers => headers.AllowOpenerPopups = true);
+builder.AddApiDefaults(o => o.AllowCrossOriginOpenerPopups = true);   // the boot-floor equivalent
+```
+
 Under the `AddApiDefaults` boot floor the same two flags sit on `ApiDefaultsOptions` and are forwarded:
 
 ```csharp

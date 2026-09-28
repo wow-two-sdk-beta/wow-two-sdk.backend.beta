@@ -35,3 +35,20 @@ builder.Services.AddEnvironmentOverlaidOptions<DatabaseConnectionSettings>(build
 - An empty or whitespace-only env var is treated as null and does not override.
 - A property marked `required: true` with no value after binding and overlay throws `InvalidOperationException`.
 - The environment-variable name is the consumer's choice — the SDK bakes in none.
+
+## Explicit environment contract
+
+`UseEnvironmentAliases` replaces the environment-variable sources with a listed contract: each supported variable
+maps to one configuration key, so an unrelated variable in the deployment can never override a setting.
+
+```csharp
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true);
+builder.Configuration.UseEnvironmentAliases(new Dictionary<string, string>
+{
+    ["DB_CONNECTION"] = "DB_CONNECTION",
+    ["GOOGLE_CLIENT_ID"] = "Auth:Google:ClientId",
+});
+```
+
+- Only set, non-empty variables override; `urls`, `http_ports` and `https_ports` keep their hosting values.
+- Sources added afterwards, such as test-host overrides, still win.

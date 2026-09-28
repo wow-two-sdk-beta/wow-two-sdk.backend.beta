@@ -44,6 +44,9 @@ public sealed record ApiDefaultsOptions
     /// <summary>Gets or sets whether a response carries <c>Cross-Origin-Opener-Policy: same-origin</c>, which severs the <c>window.opener</c> handle of a cross-origin popup. Default on.</summary>
     public bool EnableCrossOriginOpenerPolicy { get; set; } = true;
 
+    /// <summary>Gets or sets whether the opener policy is <c>same-origin-allow-popups</c>, which OAuth popups such as Google Identity Services need. Default off.</summary>
+    public bool AllowCrossOriginOpenerPopups { get; set; }
+
     /// <summary>Gets or sets whether a response carries <c>Cross-Origin-Embedder-Policy: require-corp</c>, which blocks a cross-origin subresource that ships no CORP opt-in. Default on.</summary>
     public bool EnableCrossOriginEmbedderPolicy { get; set; } = true;
 

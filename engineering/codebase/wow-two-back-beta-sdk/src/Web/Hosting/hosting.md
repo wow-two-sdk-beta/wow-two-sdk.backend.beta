@@ -27,6 +27,7 @@ app.UseProxyAwareHosting();   // adds forwarded headers + request decompression 
 - Any other sender keeps its socket address, so a client cannot spoof its IP, scheme or host.
 - `ForwardLimit` (default 1) unwinds one proxy hop; raise it only for a known proxy chain.
 - `AddApiDefaults` passes `TrustedProxies` and `TrustedNetworks` through from `ApiDefaultsOptions`.
+- `o.TrustProxiesFrom(builder.Configuration.GetSection("Deployment"))` reads both lists from configuration.
 
 ## Probe hosts
 
