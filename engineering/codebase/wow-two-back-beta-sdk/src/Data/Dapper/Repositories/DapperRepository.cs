@@ -34,7 +34,7 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
     private static readonly EntitySpec Conventional = new EntitySpecBuilder<TEntity>().Build();
 
     private readonly IDataSession? _session;
-    private readonly DapperEntityMap _map;
+    private readonly DapperTableModel _map;
 
     /// <summary>The connection factory used for every operation.</summary>
     protected IDbConnectionFactory ConnectionFactory { get; }
@@ -91,7 +91,7 @@ public class DapperRepository<TEntity, TId> : IRepository<TEntity, TId>
         Naming = naming;
         TenantContext = tenantContext;
         _session = session;
-        _map = DapperEntityMapMapper.Map(
+        _map = DapperTableMapper.Map(
             typeof(TEntity),
             Conventional,
             specs?.Find(typeof(TEntity)),

@@ -10,19 +10,19 @@ namespace WoW.Two.Sdk.Backend.Beta.Data.Dapper.Repositories;
 /// shape the Dapper repository generates. DDL facets (lengths, precision, indexes) do not shape DML and are left out;
 /// what the repository cannot honour — a key other than <c>Id</c>, a non-string tenant — follows <see cref="UnsupportedSpecMode"/>.
 /// </summary>
-internal static class DapperEntityMapMapper
+internal static class DapperTableMapper
 {
     private const string MapperName = "Dapper";
-    private static readonly ConcurrentDictionary<(Type Entity, EntitySpec? Spec, SqlNamingOptions Naming), DapperEntityMap> Cache = new(new KeyComparer());
+    private static readonly ConcurrentDictionary<(Type Entity, EntitySpec? Spec, SqlNamingOptions Naming), DapperTableModel> Cache = new(new KeyComparer());
 
-    public static DapperEntityMap Map(Type entityType, EntitySpec conventional, EntitySpec? registered, SqlNamingOptions naming, UnsupportedSpecMode mode)
+    public static DapperTableModel Map(Type entityType, EntitySpec conventional, EntitySpec? registered, SqlNamingOptions naming, UnsupportedSpecMode mode)
         => Cache.GetOrAdd((entityType, registered, naming), key => Build(key.Entity, registered ?? conventional, registered is not null, key.Naming, mode));
 
-    private static DapperEntityMap Build(Type entityType, EntitySpec spec, bool registered, SqlNamingOptions naming, UnsupportedSpecMode mode)
+    private static DapperTableModel Build(Type entityType, EntitySpec spec, bool registered, SqlNamingOptions naming, UnsupportedSpecMode mode)
     {
         var unsupported = new List<string>();
         var token = spec.Concurrency;
-        var columns = new List<DapperColumnMap>();
+        var columns = new List<DapperColumnModel>();
         foreach (var property in entityType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
             if (property is not { CanRead: true, CanWrite: true } || property.GetIndexParameters().Length > 0)
@@ -33,7 +33,7 @@ internal static class DapperEntityMapMapper
                 continue;
 
             var storeGeneratedToken = token is { Kind: ConcurrencyTokenKind.Xmin or ConcurrencyTokenKind.RowVersion } && token.Property == property.Name;
-            columns.Add(new DapperColumnMap
+            columns.Add(new DapperColumnModel
             {
                 Property = property,
                 Column = token is { Kind: ConcurrencyTokenKind.Xmin } && token.Property == property.Name
@@ -49,7 +49,7 @@ internal static class DapperEntityMapMapper
         if (spec.Key.Count > 0 && (spec.Key.Count != 1 || spec.Key[0] != "Id"))
             unsupported.Add($"{entityType.Name} key ({string.Join(", ", spec.Key)}): the repository keys on Id");
 
-        (ConcurrencyTokenKind, DapperColumnMap)? tokenMap = null;
+        (ConcurrencyTokenKind, DapperColumnModel)? tokenMap = null;
         if (token is not null)
         {
             var column = columns.FirstOrDefault(candidate => candidate.Property.Name == token.Property);
@@ -65,7 +65,7 @@ internal static class DapperEntityMapMapper
         if (unsupported.Count > 0 && mode == UnsupportedSpecMode.Throw)
             throw new UnsupportedSpecException(MapperName, unsupported);
 
-        return new DapperEntityMap
+        return new DapperTableModel
         {
             Table = spec.Schema is { Length: > 0 } schema && spec.Table is not null ? $"{schema}.{spec.Table}" : spec.Table ?? entityType.Name,
             Columns = columns,
@@ -78,7 +78,7 @@ internal static class DapperEntityMapMapper
     }
 
     /// <summary>The column of an optional role, or null — reported as unsupported only when a registered spec declared it.</summary>
-    private static DapperColumnMap? Optional(string? property, Type required, string role, Type entityType, List<DapperColumnMap> columns, List<string> unsupported, bool registered)
+    private static DapperColumnModel? Optional(string? property, Type required, string role, Type entityType, List<DapperColumnModel> columns, List<string> unsupported, bool registered)
     {
         if (property is null)
             return null;
