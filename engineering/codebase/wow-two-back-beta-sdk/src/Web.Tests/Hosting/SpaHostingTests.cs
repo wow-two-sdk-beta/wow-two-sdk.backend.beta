@@ -21,18 +21,33 @@ public sealed class SpaHostingTests : IDisposable
     }
 
     [Theory]
-    [InlineData("/pricing", "pricing")]
-    [InlineData("/pricing/", "pricing")]
-    [InlineData("/", "shell")]
-    [InlineData("/app/codes", "shell")]
-    public async Task Route_ShouldServeItsOwnDocument_OrTheShell(string path, string expected)
+    [InlineData("/pricing", "pricing", false)]
+    [InlineData("/pricing/", "pricing", false)]
+    [InlineData("/", "shell", false)]
+    [InlineData("/app/codes", "shell", false)]
+    [InlineData("/pricing", "pricing", true)]
+    [InlineData("/pricing/", "pricing", true)]
+    [InlineData("/", "shell", true)]
+    [InlineData("/app/codes", "shell", true)]
+    public async Task Route_ShouldServeItsOwnDocument_OrTheShell(string path, string expected, bool routingFirst)
     {
-        await using var app = await StartAsync(_ => { });
+        await using var app = await StartAsync(_ => { }, routingFirst);
 
         using var response = await app.GetTestClient().GetAsync(path);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync()).Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task RouteFolder_ShouldRedirectToTheSlashedPath_WhenAsked()
+    {
+        await using var app = await StartAsync(options => options.RedirectToTrailingSlash = true, routingFirst: false);
+
+        using var response = await app.GetTestClient().GetAsync("/pricing");
+
+        response.StatusCode.Should().Be(HttpStatusCode.MovedPermanently);
+        response.Headers.Location!.ToString().Should().EndWith("/pricing/");
     }
 
     [Theory]
@@ -60,12 +75,15 @@ public sealed class SpaHostingTests : IDisposable
 
     public void Dispose() => Directory.Delete(_webRoot, recursive: true);
 
-    private async Task<WebApplication> StartAsync(Action<SpaHostingOptions> configure)
+    // Routing first is the pipeline WebApplication builds itself; after is an app calling UseRouting behind the SPA.
+    private async Task<WebApplication> StartAsync(Action<SpaHostingOptions> configure, bool routingFirst = true)
     {
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { WebRootPath = _webRoot });
         builder.WebHost.UseTestServer();
         var app = builder.Build();
         app.UseSpaHosting(configure);
+        if (!routingFirst)
+            app.UseRouting();
         app.MapSpaFallback(configure);
         await app.StartAsync();
         return app;

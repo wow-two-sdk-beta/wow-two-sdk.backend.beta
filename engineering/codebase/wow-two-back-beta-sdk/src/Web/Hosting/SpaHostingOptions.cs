@@ -17,4 +17,12 @@ public sealed record SpaHostingOptions
     /// the default file before static-file resolution. Default <see langword="true"/>.
     /// </summary>
     public bool ServeDefaultFiles { get; set; } = true;
+
+    /// <summary>
+    /// Redirect a route folder requested without its trailing slash (<c>/pricing</c>) to the slashed path
+    /// (<c>/pricing/</c>) before serving its default document. Default <see langword="false"/>: a SPA bundle references
+    /// assets from the root, and a prerendered route keeps the slashless address its router and canonical links use.
+    /// Set it for a folder whose document loads assets relative to itself.
+    /// </summary>
+    public bool RedirectToTrailingSlash { get; set; }
 }

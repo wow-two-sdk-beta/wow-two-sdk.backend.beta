@@ -18,7 +18,10 @@ public static class SpaHostingApplicationBuilderExtensions
     /// <see cref="MapSpaFallback(WebApplication, Action{SpaHostingOptions}?)"/> after endpoints are mapped.
     /// </summary>
     /// <param name="app">The application request pipeline.</param>
-    /// <param name="configure">Optional configuration; only <see cref="SpaHostingOptions.ServeDefaultFiles"/> is read here.</param>
+    /// <param name="configure">
+    /// Optional configuration; <see cref="SpaHostingOptions.ServeDefaultFiles"/> and
+    /// <see cref="SpaHostingOptions.RedirectToTrailingSlash"/> are read here.
+    /// </param>
     /// <returns>The same <paramref name="app"/> for chaining.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="app"/> is <see langword="null"/>.</exception>
     public static IApplicationBuilder UseSpaHosting(this IApplicationBuilder app, Action<SpaHostingOptions>? configure = null)
@@ -29,7 +32,8 @@ public static class SpaHostingApplicationBuilderExtensions
 
         if (options.ServeDefaultFiles)
         {
-            app.UseDefaultFiles();
+            // Before routing, a route folder (pricing/index.html) answers /pricing itself; the fallback covers the rest.
+            app.UseDefaultFiles(new DefaultFilesOptions { RedirectToAppendTrailingSlash = options.RedirectToTrailingSlash });
         }
 
         app.UseStaticFiles();
