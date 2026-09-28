@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Validation.Trackers;
+using WoW.Two.Sdk.Backend.Beta.Web.ErrorTranslation;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
 
@@ -16,6 +17,7 @@ public static class ErrorMappingServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        services.AddErrorTranslation();
         services.TryAddSingleton<IErrorHttpStatusCodeMapper, ErrorHttpStatusCodeMapper>();
         services.TryAddSingleton<IErrorMessageMapper, ErrorMessageMapper>();
         services.TryAddSingleton<IFieldErrorMessageMapper, FieldErrorMessageMapper>();

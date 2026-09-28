@@ -7,8 +7,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
 /// <summary>Defines behavior that maps a <see cref="FieldError"/> to the display message shown for the current request.</summary>
 /// <remarks>
 ///   - the field-level counterpart to <see cref="IErrorMessageMapper"/>, which resolves the top-level message only
-///   - to localize, register a resolver that formats the <c>IStringLocalizer</c> entry for <see cref="FieldError.Code"/> with <see cref="FieldError.Params"/>
-///   - the request culture is already on <c>CultureInfo.CurrentUICulture</c> under <c>UseRequestLocalizationConventions</c>
+///   - the default implementation translates by <see cref="FieldError.Code"/> once the <c>ErrorTranslation</c> configuration enables it
+///   - a product's own implementation replaces that behavior; it may call <c>IErrorTranslationService</c> itself
 /// </remarks>
 public interface IFieldErrorMessageMapper
 {
