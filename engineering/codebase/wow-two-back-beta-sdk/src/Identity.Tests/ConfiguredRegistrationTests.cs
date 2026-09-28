@@ -69,6 +69,6 @@ public sealed class ConfiguredRegistrationTests
         using var provider = new ServiceCollection().AddOtpService(_ => { }).BuildServiceProvider();
 
         provider.GetRequiredService<OtpOptions>().Should().NotBeNull();
-        provider.GetRequiredService<IOtpCodeGenerator>().Should().BeOfType<NumericOtpCodeGenerator>();
+        provider.GetRequiredService<IOtpCodeGenerator>().Should().BeOfType<OtpCodeGenerator>();
     }
 }

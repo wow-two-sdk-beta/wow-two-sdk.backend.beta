@@ -14,4 +14,19 @@ public sealed record OtpDeliveryEnvelopeModel
 
     /// <summary>Optional channel-specific extras.</summary>
     public IReadOnlyDictionary<string, string>? Metadata { get; init; }
+
+    /// <summary>The worded message, usually from <see cref="IOtpMessageFormatter"/>; null lets the handler word it.</summary>
+    public string? Text { get; init; }
+
+    /// <summary>The subject line for channels that carry one (email); null lets the handler word it.</summary>
+    public string? Subject { get; init; }
+
+    /// <summary>The broker of the channel to send through, such as <c>eskiz</c>; null takes the channel's default.</summary>
+    public string? Broker { get; init; }
+
+    /// <summary>How long the code stays valid; null takes <see cref="OtpOptions.CodeLifetime"/>.</summary>
+    public TimeSpan? Lifetime { get; init; }
+
+    /// <summary>The recipient's culture name, such as <c>ru</c>, for channels with per-language templates (WhatsApp).</summary>
+    public string? Culture { get; init; }
 }

@@ -1,10 +1,17 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp.Sms;
 
-/// <summary>Holds message shaping for SMS OTP delivery.</summary>
+/// <summary>Holds the broker choice and fallback wording for SMS OTP delivery.</summary>
 public sealed record SmsOtpOptions
 {
+    /// <summary>The host configuration section.</summary>
+    public const string SectionName = "Identity:Otp:Sms";
+
+    /// <summary>Gets or sets the SMS broker codes go through, such as <c>eskiz</c>; null takes the default broker.</summary>
+    public string? Broker { get; set; }
+
     /// <summary>
-    /// Gets or sets the message template: <c>{0}</c> = scope display name, <c>{1}</c> = code, <c>{2}</c> = lifetime minutes.
+    /// Gets or sets the wording used when the envelope carries no <c>Text</c>: <c>{0}</c> = scope display name,
+    /// <c>{1}</c> = code, <c>{2}</c> = lifetime minutes.
     /// Providers that moderate templates (Eskiz) accept only the approved wording.
     /// </summary>
     public string MessageTemplate { get; set; } = "{1} is your {0} code. It expires in {2} minutes. Do not share it.";

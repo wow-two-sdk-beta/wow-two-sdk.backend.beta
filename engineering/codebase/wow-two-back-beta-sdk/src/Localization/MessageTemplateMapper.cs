@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 
-namespace WoW.Two.Sdk.Backend.Beta.Web.ErrorTranslation;
+namespace WoW.Two.Sdk.Backend.Beta.Localization;
 
 /// <summary>
 /// Maps a message template and its arguments to text: <c>{Name}</c>, <c>{Name:format}</c> and the ICU-style

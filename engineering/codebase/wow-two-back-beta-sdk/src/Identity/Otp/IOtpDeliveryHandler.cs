@@ -2,7 +2,7 @@ using WoW.Two.Sdk.Backend.Beta.Identity.Otp.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 
-/// <summary>Defines delivery-channel seam — one implementation per channel; <see cref="IOtpService.CreateAsync"/> does not deliver, the caller picks the handler and forwards the envelope.</summary>
+/// <summary>Defines delivery-channel seam — one implementation per channel; <see cref="IOtpService.CreateAsync(string, string, CancellationToken)"/> does not deliver, the caller picks the handler and forwards the envelope.</summary>
 public interface IOtpDeliveryHandler
 {
     /// <summary>Sends the code to the channel-specific address in the envelope.</summary>

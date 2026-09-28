@@ -9,6 +9,13 @@ public interface IOtpService
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     Task<OtpCreationResult> CreateAsync(string subject, string scope, CancellationToken cancellationToken = default);
 
+    /// <summary>Generates and stores a new code shaped by <paramref name="spec"/>; otherwise as <see cref="CreateAsync(string, string, CancellationToken)"/>.</summary>
+    /// <param name="subject">Consumer-defined identity key (phone, email, user id).</param>
+    /// <param name="scope">Consumer-defined scope the code is valid for.</param>
+    /// <param name="spec">The code's characters, length and lifetime; a null lifetime takes the configured one.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    Task<OtpCreationResult> CreateAsync(string subject, string scope, OtpCodeSpec spec, CancellationToken cancellationToken = default);
+
     /// <summary>Verifies <paramref name="code"/> against the latest pending code for <c>(subject, scope)</c>; consumes it on success, counts an attempt on mismatch.</summary>
     /// <param name="subject">Consumer-defined identity key used at creation.</param>
     /// <param name="code">The code the user entered.</param>

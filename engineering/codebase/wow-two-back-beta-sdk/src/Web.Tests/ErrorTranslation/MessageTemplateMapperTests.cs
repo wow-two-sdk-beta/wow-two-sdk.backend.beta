@@ -1,6 +1,6 @@
 using System.Globalization;
 using AwesomeAssertions;
-using WoW.Two.Sdk.Backend.Beta.Web.ErrorTranslation;
+using WoW.Two.Sdk.Backend.Beta.Localization;
 using Xunit;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.Tests.ErrorTranslation;

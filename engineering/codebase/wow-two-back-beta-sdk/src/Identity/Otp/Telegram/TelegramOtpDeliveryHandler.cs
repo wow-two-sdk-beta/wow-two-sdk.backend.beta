@@ -6,7 +6,7 @@ using WoW.Two.Sdk.Backend.Beta.Identity.Otp.Models;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp.Telegram;
 
-/// <summary>Handles one-time-code delivery through Telegram.</summary>
+/// <summary>Handles <see cref="OtpDeliveryEnvelopeModel"/> deliveries as Telegram bot messages; the delivery address is the chat id.</summary>
 public sealed class TelegramOtpDeliveryHandler : IOtpDeliveryHandler
 {
     private readonly ITelegramBotClient _botClient;
@@ -40,11 +40,7 @@ public sealed class TelegramOtpDeliveryHandler : IOtpDeliveryHandler
             return new OtpDeliveryResult { Success = false, FailureReason = "invalid_chat_id" };
         }
 
-        var scopeName = _telegramOptions.ScopeDisplayNames.TryGetValue(envelope.Scope, out var display)
-            ? display
-            : envelope.Scope;
-        var minutes = (int)Math.Ceiling(_otpOptions.CodeLifetime.TotalMinutes);
-        var text = string.Format(CultureInfo.InvariantCulture, _telegramOptions.MessageTemplate, scopeName, envelope.Code, minutes);
+        var text = envelope.Text ?? FallbackText(envelope);
 
         try
         {
@@ -55,5 +51,14 @@ public sealed class TelegramOtpDeliveryHandler : IOtpDeliveryHandler
         {
             return new OtpDeliveryResult { Success = false, FailureReason = exception.Message };
         }
+    }
+
+    private string FallbackText(OtpDeliveryEnvelopeModel envelope)
+    {
+        var scopeName = _telegramOptions.ScopeDisplayNames.TryGetValue(envelope.Scope, out var display)
+            ? display
+            : envelope.Scope;
+        var minutes = (int)Math.Ceiling((envelope.Lifetime ?? _otpOptions.CodeLifetime).TotalMinutes);
+        return string.Format(CultureInfo.InvariantCulture, _telegramOptions.MessageTemplate, scopeName, envelope.Code, minutes);
     }
 }

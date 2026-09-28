@@ -163,8 +163,11 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Identity.PasswordHashing.Argon2` | `UseArgon2PasswordHasher<TUser>()` — OWASP 2024 baseline | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Policies` | `AddRolePolicy()` — `IRolePolicy` + `DictionaryRolePolicy` default (scope → allowed roles) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Jwt.Issuance` | `AddJwtTokenIssuance()` — `ITokenIssuer` HMAC issuance (HS256/384/512), per-call lifetime/audience overrides; pure lib, no ASP.NET dependency | shipped |
-| `WoW.Two.Sdk.Backend.Beta.Identity.Otp` | `AddOtpService()` — `IOtpService` create/verify keyed by (subject, scope); `IOtpStore` (memory default) + `IOtpCodeGenerator` (crypto-random numeric) + `IOtpDeliveryHandler` seam; fixed-time compare, rate limit, max attempts | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.Otp` | `AddOtpService()` (`Identity:Otp`) — `IOtpService` keyed by (subject, scope) with per-call `OtpCodeSpec` (numeric · alphanumeric · letters); `IOtpMessageFormatter` per-culture ICU templates (built-in en/ru/uz); `IOtpDeliveryHandlerFactory` keyed channels | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Otp.Telegram` | `AddTelegramOtpDelivery()` — chat-id delivery via consumer-registered `ITelegramBotClient` (Telegram.Bot, MIT) | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.Otp.WhatsApp` | `AddWhatsAppOtpDelivery()` — `whatsapp` channel: authentication template per culture, free-text fallback | implemented (mono-lib, unreleased) |
+| `WoW.Two.Sdk.Backend.Beta.Identity.Otp.TelegramGateway` | `AddTelegramGatewayOtpDelivery()` — `telegram-gateway` channel: codes to a phone number via the Telegram Gateway API | implemented (mono-lib, unreleased) |
+| `WoW.Two.Sdk.Backend.Beta.Identity.Otp.Email` | `AddEmailOtpDelivery()` — `email` channel over `IEmailBroker` | implemented (mono-lib, unreleased) |
 
 ## P3 — Persistence + outbound
 
@@ -256,12 +259,15 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.Ses` | `AddSesEmailBroker()` — SES v2 simple send (no attachments; raw-MIME future) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.Acs` | Azure Communication Services email impl | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.FluentEmail` | FluentEmail templating | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Sms` | `ISmsBroker` + `SmsMessage` + `AddSmsDefaults`; OTP delivery via `AddSmsOtpDelivery` (`Identity/Otp/Sms`) | implemented (mono-lib, unreleased) |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Sms` | `ISmsBroker` + `SmsMessage` + `AddSmsDefaults`; brokers keyed by name, `ISmsBrokerFactory`, `AddSmsBrokers(configuration)`; OTP delivery via `AddSmsOtpDelivery` (`Identity/Otp/Sms`) | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Twilio` | `AddTwilioSmsBroker` — Messages API over HttpClient | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Vonage` | `AddVonageSmsBroker` — SMS API over HttpClient | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Eskiz` | `AddEskizSmsBroker` — Uzbekistan gateway, cached bearer token | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Plivo` | Plivo impl | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Acs` | Azure Comm Services SMS impl | planned |
+| `WoW.Two.Sdk.Backend.Beta.Comms.WhatsApp` | `IWhatsAppBroker` + `WhatsAppTemplate` + `IWhatsAppBrokerFactory`; `AddWhatsAppBrokers(configuration)` registers each configured provider | implemented (mono-lib, unreleased) |
+| `WoW.Two.Sdk.Backend.Beta.Comms.WhatsApp.Meta` | `AddMetaWhatsAppBroker` — WhatsApp Cloud API over HttpClient | implemented (mono-lib, unreleased) |
+| `WoW.Two.Sdk.Backend.Beta.Comms.WhatsApp.Twilio` | `AddTwilioWhatsAppBroker` — Twilio WhatsApp sender, content-SID templates | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Push` | `IPushBroker` + `PushMessage` + `PushSendResult.TokenInvalid` | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Push.Fcm` | `AddFcmPushBroker` — HTTP v1, service-account RS256 assertion, cached OAuth token | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Push.Apns` | `AddApnsPushBroker` — HTTP/2, `.p8` ES256 provider token (no dotAPNS) | implemented (mono-lib, unreleased) |

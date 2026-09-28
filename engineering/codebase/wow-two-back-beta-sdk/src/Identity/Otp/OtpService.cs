@@ -34,10 +34,15 @@ public sealed class OtpService : IOtpService
     }
 
     /// <inheritdoc />
-    public async Task<OtpCreationResult> CreateAsync(string subject, string scope, CancellationToken cancellationToken = default)
+    public Task<OtpCreationResult> CreateAsync(string subject, string scope, CancellationToken cancellationToken = default)
+        => CreateAsync(subject, scope, _options.DefaultSpec, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<OtpCreationResult> CreateAsync(string subject, string scope, OtpCodeSpec spec, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(subject);
         ArgumentException.ThrowIfNullOrWhiteSpace(scope);
+        ArgumentNullException.ThrowIfNull(spec);
 
         var rateLimited = await _store
             .HasRecentPendingAsync(subject, scope, _options.RateLimitWindow, cancellationToken)
@@ -47,7 +52,7 @@ public sealed class OtpService : IOtpService
             return OtpCreationResult.Failed(OtpFailureReason.RateLimited);
         }
 
-        var code = _codeGenerator.Generate();
+        var code = _codeGenerator.Generate(spec);
         var now = _timeProvider.GetUtcNow();
         var record = new OtpRecord
         {
@@ -56,13 +61,13 @@ public sealed class OtpService : IOtpService
             Code = code,
             Scope = scope,
             CreatedAt = now,
-            ExpiresAt = now + _options.CodeLifetime,
+            ExpiresAt = now + (spec.Lifetime ?? _options.CodeLifetime),
             Attempts = 0,
             Consumed = false,
         };
 
         await _store.SaveAsync(record, cancellationToken).ConfigureAwait(false);
-        return OtpCreationResult.Succeeded(code);
+        return OtpCreationResult.Succeeded(code, record.ExpiresAt);
     }
 
     /// <inheritdoc />
@@ -101,6 +106,10 @@ public sealed class OtpService : IOtpService
         return OtpVerificationResult.Succeeded();
     }
 
+    /// <summary>Compares in constant time, ignoring case, spaces and dashes, so <c>ab3-k9q</c> matches <c>AB3K9Q</c>.</summary>
     private static bool CodesMatch(string expected, string provided)
-        => CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(provided));
+        => CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(Canonical(expected)), Encoding.UTF8.GetBytes(Canonical(provided)));
+
+    private static string Canonical(string code)
+        => code.Replace(" ", string.Empty, StringComparison.Ordinal).Replace("-", string.Empty, StringComparison.Ordinal).ToUpperInvariant();
 }

@@ -16,7 +16,9 @@ builder.Services
 ```
 
 - The SDK never takes the bot token — register `ITelegramBotClient` yourself (env var, vault, …).
-- Template placeholders: `{0}` scope display name · `{1}` code · `{2}` lifetime minutes.
+- The envelope's `Text` is sent as is; without it the fallback template applies: `{0}` scope display name · `{1}` code ·
+  `{2}` lifetime minutes. Options also bind from `Identity:Otp:Telegram`.
 - Failures return `OtpDeliveryResult(false, reason)` — `invalid_chat_id` for malformed addresses,
   Telegram API errors pass through as the reason message.
-- Handlers are additive (`TryAddEnumerable`) — register SMS/email channels alongside later.
+- Registered keyed as the `telegram` channel and additively (`TryAddEnumerable`) beside the other channels.
+- Codes to a phone number without a bot chat: the `telegram-gateway` channel (`Otp/TelegramGateway`).

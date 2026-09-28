@@ -1,8 +1,9 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 
-/// <summary>Defines the OTP code-generation strategy; defaults to <see cref="NumericOtpCodeGenerator"/>, register your own for alphanumeric or custom formats.</summary>
+/// <summary>Defines behavior that generates one-time codes to an <see cref="OtpCodeSpec"/>; the default is <see cref="OtpCodeGenerator"/>.</summary>
 public interface IOtpCodeGenerator
 {
     /// <summary>Generates one fresh code.</summary>
-    string Generate();
+    /// <param name="spec">The characters and length of the code.</param>
+    string Generate(OtpCodeSpec spec);
 }

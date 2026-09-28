@@ -1,6 +1,6 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Otp;
 
-/// <summary>Represents outcome of <see cref="IOtpService.CreateAsync"/>.</summary>
+/// <summary>Represents outcome of <see cref="IOtpService.CreateAsync(string, string, CancellationToken)"/>.</summary>
 public sealed record OtpCreationResult
 {
     /// <summary>Whether a code was created.</summary>
@@ -12,9 +12,14 @@ public sealed record OtpCreationResult
     /// <summary>Why creation failed (present on failure).</summary>
     public required OtpFailureReason? FailureReason { get; init; }
 
+    /// <summary>When the code stops verifying (present on success).</summary>
+    public DateTimeOffset? ExpiresAt { get; init; }
+
     /// <summary>Successful creation carrying the generated <paramref name="code"/>.</summary>
     /// <param name="code">The generated code.</param>
-    public static OtpCreationResult Succeeded(string code) => new() { Success = true, Code = code, FailureReason = null };
+    /// <param name="expiresAt">When the code stops verifying.</param>
+    public static OtpCreationResult Succeeded(string code, DateTimeOffset? expiresAt = null)
+        => new() { Success = true, Code = code, FailureReason = null, ExpiresAt = expiresAt };
 
     /// <summary>Failed creation with a <paramref name="reason"/>.</summary>
     /// <param name="reason">The failure reason.</param>

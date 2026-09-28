@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using AwesomeAssertions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using WoW.Two.Sdk.Backend.Beta.Comms.Sms;
 using WoW.Two.Sdk.Backend.Beta.Comms.Sms.Eskiz;
@@ -98,6 +99,50 @@ public sealed class SmsBrokerTests
 
         result.Success.Should().BeTrue();
         provider.Requests.Single().Body.Should().Contain(Uri.EscapeDataString("123456 is your Acme code. It expires in 5 minutes.").Replace("%20", "+", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task HostConfiguration_ShouldDecideTheBrokers_AndOtpDeliveryShouldFollowTheNamedOne()
+    {
+        var provider = new ScriptedProvider(request => request.Path switch
+        {
+            "/api/auth/login" => Json(HttpStatusCode.OK, """{"data":{"token":"t1"}}"""),
+            "/api/message/sms/send" => Json(HttpStatusCode.OK, """{"id":"E-1","status":"waiting"}"""),
+            _ => Json(HttpStatusCode.Created, """{"sid":"SM1"}"""),
+        });
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Comms:Sms:DefaultFrom"] = "Acme",
+            ["Comms:Sms:DefaultBroker"] = "eskiz",
+            ["Comms:Sms:Twilio:AccountSid"] = "AC1",
+            ["Comms:Sms:Twilio:AuthToken"] = "secret",
+            ["Comms:Sms:Eskiz:Email"] = "a@b.uz",
+            ["Comms:Sms:Eskiz:Password"] = "p",
+            ["Identity:Otp:Sms:Broker"] = "twilio",
+        }).Build();
+        var services = new ServiceCollection().AddSingleton<IConfiguration>(configuration);
+        services.AddSmsBrokers(configuration);
+        services.AddSmsOtpDelivery();
+        foreach (var name in new[] { TwilioSmsBroker.HttpClientName, EskizSmsBroker.HttpClientName })
+            services.AddHttpClient(name).ConfigurePrimaryHttpMessageHandler(() => provider);
+        await using var serviceProvider = services.BuildServiceProvider();
+        var factory = serviceProvider.GetRequiredService<ISmsBrokerFactory>();
+
+        factory.Create().Should().BeOfType<EskizSmsBroker>();
+        factory.Create("twilio").Should().BeOfType<TwilioSmsBroker>();
+        factory.Create("vonage").Should().BeNull();
+
+        await using var scope = serviceProvider.CreateAsyncScope();
+        var handler = scope.ServiceProvider.GetRequiredKeyedService<IOtpDeliveryHandler>(OtpChannelNameConstants.Sms);
+        var envelope = new OtpDeliveryEnvelopeModel { DeliveryAddress = "+998901234567", Code = "123456", Scope = "login", Text = "Code 123456" };
+        (await handler.SendAsync(envelope)).Success.Should().BeTrue();
+        (await handler.SendAsync(envelope with { Broker = "eskiz" })).Success.Should().BeTrue();
+        (await handler.SendAsync(envelope with { Broker = "vonage" })).FailureReason.Should().Be("sms_broker_not_registered: vonage");
+
+        provider.Requests.Should().HaveCount(3);
+        provider.Requests[0].Path.Should().Be("/2010-04-01/Accounts/AC1/Messages.json");
+        provider.Requests[0].Body.Should().Contain("Body=Code+123456").And.Contain("From=Acme");
+        provider.Requests[2].Path.Should().Be("/api/message/sms/send");
     }
 
     private static ISmsBroker Build(Action<IServiceCollection> register, ScriptedProvider provider, string? from = null)
