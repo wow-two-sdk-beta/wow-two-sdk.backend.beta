@@ -45,6 +45,7 @@ internal static class FieldCodeMessageConstants
                 ["InvalidRefreshToken"] = "Сеанс истёк. Войдите снова.",
                 ["TwoFactorMethodUnavailable"] = "Этот способ двухфакторной аутентификации недоступен.",
                 ["InvalidTwoFactorCode"] = "Код неверен или устарел.",
+                ["InvalidPasskey"] = "Ключ доступа не подтверждён. Попробуйте ещё раз.",
             }.ToFrozenDictionary(StringComparer.Ordinal),
             ["uz"] = new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -82,6 +83,7 @@ internal static class FieldCodeMessageConstants
                 ["InvalidRefreshToken"] = "Seans muddati tugadi. Qaytadan kiring.",
                 ["TwoFactorMethodUnavailable"] = "Ikki bosqichli autentifikatsiyaning bu usuli mavjud emas.",
                 ["InvalidTwoFactorCode"] = "Kod notoʻgʻri yoki muddati oʻtgan.",
+                ["InvalidPasskey"] = "Kirish kaliti tasdiqlanmadi. Qaytadan urinib koʻring.",
             }.ToFrozenDictionary(StringComparer.Ordinal),
         }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 }

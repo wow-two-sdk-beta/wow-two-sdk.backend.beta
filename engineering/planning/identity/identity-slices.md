@@ -30,6 +30,8 @@
 - [x] I8 — refresh tokens: rotation, reuse detection revoking the family, stamp binding, purge; 61 identity tests pass
 - [x] I9 — account HTTP API: `MapUserAccountEndpoints` (register, login bearer/cookie, refresh, logout, email confirm,
   forgot/reset password, info); emails from `UserAccounts:Emails` configuration; end-to-end tests
+- [x] I10 — passkeys: `identity_passkeys`, `UserPasskeyService`, usernameless `PasskeySignInAsync`, account routes;
+  software ES256 authenticator tests incl. replay, forgery, phishing origin and expiry
 
 ---
 
@@ -79,3 +81,12 @@
 
 - `.AddPhoneNumbers()` registers `UserPhoneService`: set (unconfirmed), send and verify OTP codes, sign in by phone.
 - Acceptance: a verified code confirms the number; a phone sign-in code resolves the user for `SignInAsync`.
+
+## I10 — Passkeys
+
+- `.AddPasskeys(o => …)` over the module-options recipe (`Identity:Passkeys`); Fido2 verifies, the slice stores.
+- Ceremony state: Data Protection seal of kind, subject, start (whole milliseconds) and the options JSON.
+- Single use without a store: `RecordUseAsync` updates only while `LastUsedAt < ceremony start`, atomically.
+- Sign-in is usernameless (empty allow-list); the credential id finds the passkey, the user handle must match.
+- Acceptance: register → list → sign in; a replayed or older ceremony, a forged signature, a foreign origin, an
+  unknown credential, another user's or an expired state all fail; lockout still applies; owners alone remove.

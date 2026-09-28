@@ -16,7 +16,7 @@ public sealed class AppDbContext(DbContextOptions options) : AppDbContextBase(op
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.ApplyIdentitySchema<IdentityUser, IdentityRole, Guid>();   // 7 tables + normalized-name unique indexes
+        modelBuilder.ApplyIdentitySchema<IdentityUser, IdentityRole, Guid>();   // 9 tables + normalized-name unique indexes
     }
 }
 
@@ -46,10 +46,11 @@ var alice   = await service.FindByNameAsync("ALICE");   // case-insensitive via 
 | `AddTwoFactor()` | `UserTwoFactorService` | `TwoFactor/` |
 | `AddPhoneNumbers()` | `UserPhoneService` | `Phones/` |
 | `AddRefreshTokens()` | `RefreshTokenService` | `RefreshTokens/` |
+| `AddPasskeys(o => …)` | `UserPasskeyService`, `SignInService.PasskeySignInAsync` | `Passkeys/` |
 | `AddAccountEndpoints()` + `MapUserAccountEndpoints<TUser>()` | account HTTP API | `Endpoints/` |
 | `AddSignIn()` | `SignInService` | `SignIn/` |
 
-Table-backed slices (`AddRoles`, `AddUserClaims`, `AddExternalLogins`, `AddTwoFactor`, `AddRefreshTokens`) register their EF repositories
+Table-backed slices (`AddRoles`, `AddUserClaims`, `AddExternalLogins`, `AddTwoFactor`, `AddRefreshTokens`, `AddPasskeys`) register their EF repositories
 only when called after `AddEntityFrameworkStores`; otherwise the host registers its own repositories.
 
 ## Notes

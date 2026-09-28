@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Identity;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Lockout;
+using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passkeys;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passwords;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Tokens;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.TwoFactor;
@@ -30,6 +31,7 @@ public sealed class SignInService<TUser, TKey>
     private readonly UserTokenIssuer<TUser, TKey>? _tokens;
     private readonly UserTwoFactorService<TUser, TKey>? _twoFactor;
     private readonly UserTwoFactorMethodService<TUser, TKey>? _twoFactorMethods;
+    private readonly UserPasskeyService<TUser, TKey>? _passkeys;
     private static string? s_decoyHash;
 
     /// <summary>Create the service over the registered slices.</summary>
@@ -42,6 +44,7 @@ public sealed class SignInService<TUser, TKey>
     /// <param name="tokens">The purpose-token issuer; null omits two-factor tickets.</param>
     /// <param name="twoFactor">The two-factor slice; null disables the second-factor methods.</param>
     /// <param name="twoFactorMethods">The delivered-code methods of the two-factor slice; null leaves only the authenticator.</param>
+    /// <param name="passkeys">The passkey slice; null disables passkey sign-in.</param>
     public SignInService(
         UserAccountService<TUser, TKey> accounts,
         UserClaimsPrincipalFactory<TUser, TKey> principals,
@@ -51,7 +54,8 @@ public sealed class SignInService<TUser, TKey>
         UserLockoutService<TUser, TKey>? lockout = null,
         UserTokenIssuer<TUser, TKey>? tokens = null,
         UserTwoFactorService<TUser, TKey>? twoFactor = null,
-        UserTwoFactorMethodService<TUser, TKey>? twoFactorMethods = null)
+        UserTwoFactorMethodService<TUser, TKey>? twoFactorMethods = null,
+        UserPasskeyService<TUser, TKey>? passkeys = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         _accounts = accounts;
@@ -63,6 +67,7 @@ public sealed class SignInService<TUser, TKey>
         _tokens = tokens;
         _twoFactor = twoFactor;
         _twoFactorMethods = twoFactorMethods;
+        _passkeys = passkeys;
     }
 
     /// <summary>Sign in with a user name (or email, when allowed) and password.</summary>
@@ -118,6 +123,28 @@ public sealed class SignInService<TUser, TKey>
         return _lockout?.IsLockedOut(user) == true
             ? LockedOutResult
             : await CompleteFirstFactorAsync(user, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sign in with a passkey: the assertion is verified, then lockout and preconditions apply. A passkey is
+    /// phishing-resistant and user-verified, so no second factor follows.
+    /// </summary>
+    /// <param name="state">The state from <c>UserPasskeyService.BeginSignIn</c>.</param>
+    /// <param name="credentialJson">The <c>PublicKeyCredential</c> JSON from <c>navigator.credentials.get</c>.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="NotSupportedException">The passkey slice is not registered.</exception>
+    public async Task<SignInResult> PasskeySignInAsync(string state, string credentialJson, CancellationToken cancellationToken = default)
+    {
+        var passkeys = _passkeys ?? throw new NotSupportedException("Passkey sign-in needs the passkey slice; call .AddPasskeys(...).");
+        var user = await passkeys.VerifySignInAsync(state, credentialJson, cancellationToken);
+        if (user is null)
+            return FailedResult;
+        if (_lockout?.IsLockedOut(user) == true)
+            return LockedOutResult;
+        if ((_options.RequireConfirmedEmail && !user.EmailConfirmed) || (_options.RequireConfirmedPhoneNumber && !user.PhoneNumberConfirmed))
+            return new SignInResult { Status = SignInStatus.NotAllowed, UserId = IdOf(user) };
+
+        return await SucceedAsync(user, cancellationToken);
     }
 
     /// <summary>

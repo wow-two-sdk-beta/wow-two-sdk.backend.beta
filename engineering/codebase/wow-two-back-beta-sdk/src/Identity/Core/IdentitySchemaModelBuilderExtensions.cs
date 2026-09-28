@@ -93,6 +93,16 @@ public static class IdentitySchemaModelBuilderExtensions
             refresh.Property(r => r.SecurityStamp).HasMaxLength(64);
         });
 
+        modelBuilder.Entity<IdentityPasskey<TKey>>(passkey =>
+        {
+            passkey.ToTable("identity_passkeys");
+            passkey.HasKey(p => p.Id);
+            passkey.HasIndex(p => p.CredentialId).IsUnique();
+            passkey.HasIndex(p => p.UserId);
+            passkey.Property(p => p.CredentialId).HasMaxLength(1023);
+            passkey.Property(p => p.Name).HasMaxLength(100);
+        });
+
         return modelBuilder;
     }
 }

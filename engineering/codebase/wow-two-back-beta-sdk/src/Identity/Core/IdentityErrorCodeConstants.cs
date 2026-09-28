@@ -104,4 +104,7 @@ public static class IdentityErrorCodeConstants
 
     /// <summary>The delivered two-factor code is wrong, spent or expired.</summary>
     public const string InvalidTwoFactorCode = "InvalidTwoFactorCode";
+
+    /// <summary>The passkey ceremony failed: expired state, a foreign or reused credential, or a signature that does not verify.</summary>
+    public const string InvalidPasskey = "InvalidPasskey";
 }

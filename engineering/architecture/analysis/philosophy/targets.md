@@ -159,7 +159,7 @@ Mirrors §4 of `ideas.md`. Each subsection states the verdict + concrete chosen 
 | Microsoft.Identity.Web for Entra ID | NEXT | Companion adapter |
 | OpenIddict for OSS OIDC server | NEXT | Optional adapter (Apache-2.0) |
 | Duende IdentityServer | SKIP | Commercial license; not in core |
-| WebAuthn/FIDO2 via Fido2.AspNetCore | LATER | Passkeys |
+| WebAuthn/FIDO2 via Fido2.AspNetCore | DONE | Passkeys slice `src/Identity/Core/Passkeys/` over Fido2 (MIT), 2026-09-28 |
 | Otp.NET for TOTP | DONE | `TotpService`; two-factor slice uses it |
 | ABAC / Permission-based via custom `IAuthorizationHandler` | NEXT | Convention helpers |
 | OPA / Casbin / SpiceDB integration | LATER | Heavy clients |

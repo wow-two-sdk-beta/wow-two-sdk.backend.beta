@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Emails;
+using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passkeys;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passwords;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.RefreshTokens;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.SignIn;
@@ -25,7 +27,8 @@ public static class UserAccountEndpointRouteBuilderExtensions
     /// Maps <c>register</c>, <c>login</c>, <c>refresh</c>, <c>logout</c>, <c>confirm-email</c>,
     /// <c>resend-confirmation-email</c>, <c>forgot-password</c>, <c>reset-password</c>, <c>manage/info</c> and, with the
     /// two-factor slice registered, <c>manage/2fa</c> (status, authenticator, enable, disable, recovery-codes, preferred,
-    /// methods/{method}/send, methods/{method}/enable) under
+    /// methods/{method}/send, methods/{method}/enable) and, with the passkey slice registered, <c>passkeys/login/options</c>,
+    /// <c>passkeys/login</c> and <c>manage/passkeys</c> (list, options, register, remove) under
     /// <paramref name="endpoints"/> — mount it on a group such as <c>app.MapGroup("/account")</c>. Sign-in returns a bearer
     /// session (JWT via <see cref="ITokenIssuer"/>, plus a refresh token when registered) or, with <c>?useCookies=true</c>,
     /// a cookie. Failures surface as problem details, translated when error translation is enabled.
@@ -59,6 +62,16 @@ public static class UserAccountEndpointRouteBuilderExtensions
             endpoints.MapPost("/manage/2fa/preferred", SetPreferredMethodAsync<TUser, TKey>).RequireAuthorization();
             endpoints.MapPost("/manage/2fa/methods/{method}/send", SendMethodCodeAsync<TUser, TKey>).RequireAuthorization();
             endpoints.MapPost("/manage/2fa/methods/{method}/enable", EnableMethodAsync<TUser, TKey>).RequireAuthorization();
+        }
+
+        if (endpoints.ServiceProvider.GetService<IServiceProviderIsService>()?.IsService(typeof(UserPasskeyService<TUser, TKey>)) == true)
+        {
+            endpoints.MapPost("/passkeys/login/options", PasskeySignInOptions<TUser, TKey>);
+            endpoints.MapPost("/passkeys/login", PasskeySignInAsync<TUser, TKey>);
+            endpoints.MapGet("/manage/passkeys", ListPasskeysAsync<TUser, TKey>).RequireAuthorization();
+            endpoints.MapPost("/manage/passkeys/options", PasskeyRegistrationOptionsAsync<TUser, TKey>).RequireAuthorization();
+            endpoints.MapPost("/manage/passkeys", RegisterPasskeyAsync<TUser, TKey>).RequireAuthorization();
+            endpoints.MapDelete("/manage/passkeys/{id:guid}", RemovePasskeyAsync<TUser, TKey>).RequireAuthorization();
         }
 
         return endpoints;
@@ -105,6 +118,32 @@ public static class UserAccountEndpointRouteBuilderExtensions
 
         if (!result.Succeeded)
             throw FailureOf(result.Status).ToException();
+
+        if (useCookies == true)
+        {
+            await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, result.Principal!);
+            return Results.NoContent();
+        }
+
+        var user = await FindAsync<TUser, TKey>(services, result.UserId, cancellationToken);
+        return Results.Ok(ApiResponse<AccessTokenDto>.Ok(await IssueAsync<TUser, TKey>(services, result.Principal!, user, null, cancellationToken)));
+    }
+
+    private static IResult PasskeySignInOptions<TUser, TKey>(HttpContext http)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+        => Results.Ok(ApiResponse<PasskeyCeremonyDto>.Ok(CeremonyOf(http.RequestServices.GetRequiredService<UserPasskeyService<TUser, TKey>>().BeginSignIn())));
+
+    private static async Task<IResult> PasskeySignInAsync<TUser, TKey>(PasskeySignInApiRequest request, bool? useCookies, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var services = http.RequestServices;
+        var result = await services.GetRequiredService<SignInService<TUser, TKey>>().PasskeySignInAsync(request.State, request.Credential.GetRawText(), cancellationToken);
+        if (!result.Succeeded)
+            throw (result.Status == SignInStatus.Failed
+                ? Unauthorized(IdentityErrorCodeConstants.InvalidPasskey, "The passkey could not be verified; try again.")
+                : FailureOf(result.Status)).ToException();
 
         if (useCookies == true)
         {
@@ -321,6 +360,65 @@ public static class UserAccountEndpointRouteBuilderExtensions
         var codes = await twoFactor.GenerateRecoveryCodesAsync(user, cancellationToken);
         return Results.Ok(ApiResponse<RecoveryCodesDto>.Ok(new RecoveryCodesDto { RecoveryCodes = codes }));
     }
+
+    private static async Task<IResult> ListPasskeysAsync<TUser, TKey>(ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var (user, passkeys) = await PasskeysOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        var listed = await passkeys.ListAsync(user, cancellationToken);
+        return Results.Ok(ApiResponse<IReadOnlyList<PasskeyDto>>.Ok([.. listed.Select(passkey => new PasskeyDto
+        {
+            Id = passkey.Id,
+            Name = passkey.Name,
+            CreatedAt = passkey.CreatedAt,
+            LastUsedAt = passkey.LastUsedAt,
+        })]));
+    }
+
+    private static async Task<IResult> PasskeyRegistrationOptionsAsync<TUser, TKey>(ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var (user, passkeys) = await PasskeysOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        return Results.Ok(ApiResponse<PasskeyCeremonyDto>.Ok(CeremonyOf(await passkeys.BeginRegistrationAsync(user, cancellationToken))));
+    }
+
+    private static async Task<IResult> RegisterPasskeyAsync<TUser, TKey>(PasskeyRegistrationApiRequest request, ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var (user, passkeys) = await PasskeysOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        var registered = await passkeys.CompleteRegistrationAsync(user, request.State, request.Credential.GetRawText(), request.Name, cancellationToken);
+        if (!registered.Succeeded)
+            throw registered.ToValidationError().ToException();
+
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> RemovePasskeyAsync<TUser, TKey>(Guid id, ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var (user, passkeys) = await PasskeysOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        return await passkeys.RemoveAsync(user, id, cancellationToken)
+            ? Results.NoContent()
+            : throw AppErrorFactory.NotFound("The account has no such passkey.").ToException();
+    }
+
+    private static async Task<(TUser User, UserPasskeyService<TUser, TKey> Passkeys)> PasskeysOfAsync<TUser, TKey>(ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var services = http.RequestServices;
+        var claimType = services.GetRequiredService<IdentityCoreOptions>().Claims.UserIdClaimType;
+        var user = await FindAsync<TUser, TKey>(services, principal.FindFirst(claimType)?.Value, cancellationToken)
+            ?? throw AppErrorFactory.Unauthorized("The account no longer exists.").ToException();
+        return (user, services.GetRequiredService<UserPasskeyService<TUser, TKey>>());
+    }
+
+    private static PasskeyCeremonyDto CeremonyOf(PasskeyCeremonyModel ceremony)
+        => new() { Options = JsonSerializer.Deserialize<JsonElement>(ceremony.OptionsJson), State = ceremony.State };
 
     /// <summary>
     /// The 401 a second-factor step answers with: names the method asked for and the available ones, and sends a

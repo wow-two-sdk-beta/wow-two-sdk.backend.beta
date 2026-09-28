@@ -17,6 +17,7 @@ using WoW.Two.Sdk.Backend.Beta.Identity.Core;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Emails;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Endpoints;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Lockout;
+using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passkeys;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passwords;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.RefreshTokens;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.SignIn;
@@ -175,6 +176,45 @@ public sealed partial class AccountEndpointTests
         (await Problem(unknown)).GetProperty("detail").GetString().Should().Contain("'sms'");
     }
 
+    [Fact]
+    public async Task Passkeys_AreManagedAndSignInThroughTheApi()
+    {
+        await using var app = await StartAsync();
+        var client = app.Server.CreateClient();
+        using var authenticator = new SoftwareAuthenticator();
+        await client.PostAsJsonAsync("/account/register", new { email = "kai@example.test", password = Password });
+        var access = (await Data(await client.PostAsJsonAsync("/account/login", new { login = "kai@example.test", password = Password })))
+            .GetProperty("accessToken").GetString();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", access);
+
+        var creation = await Data(await client.PostAsync("/account/manage/passkeys/options", null));
+        creation.GetProperty("options").GetProperty("rp").GetProperty("id").GetString().Should().Be("app.test");
+        var credential = JsonDocument.Parse(authenticator.Create(creation.GetProperty("options").GetRawText())).RootElement;
+        using var registered = await client.PostAsJsonAsync("/account/manage/passkeys", new { state = creation.GetProperty("state").GetString(), credential, name = "Phone" });
+        registered.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var passkey = (await Data(await client.GetAsync("/account/manage/passkeys"))).EnumerateArray().Should().ContainSingle().Subject;
+        passkey.GetProperty("name").GetString().Should().Be("Phone");
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var request = await Data(await client.PostAsync("/account/passkeys/login/options", null));
+        var body = new
+        {
+            state = request.GetProperty("state").GetString(),
+            credential = JsonDocument.Parse(authenticator.Get(request.GetProperty("options").GetRawText())).RootElement,
+        };
+        var session = await Data(await client.PostAsJsonAsync("/account/passkeys/login", body));
+        session.GetProperty("refreshToken").GetString().Should().NotBeNullOrEmpty();
+
+        using var replayed = await client.PostAsJsonAsync("/account/passkeys/login", body);
+        replayed.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await Problem(replayed)).GetProperty("detail").GetString().Should().Be("The passkey could not be verified; try again.");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.GetProperty("accessToken").GetString());
+        var id = passkey.GetProperty("id").GetGuid();
+        (await client.DeleteAsync($"/account/manage/passkeys/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await client.DeleteAsync($"/account/manage/passkeys/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
     private static string CodeOf(EmailMessage message) => message.TextBody!.Split(' ')[0];
 
     [GeneratedRegex(@"https://app\.test/\S+")]
@@ -224,6 +264,11 @@ public sealed partial class AccountEndpointTests
             .AddLockout()
             .AddRefreshTokens()
             .AddTwoFactor(o => o.Issuer = "Tests")
+            .AddPasskeys(o =>
+            {
+                o.ServerDomain = "app.test";
+                o.Origins.Add("https://app.test");
+            })
             .AddSignIn()
             .AddAccountEndpoints();
         builder.Services.AddJwtBearerAuthentication(o => { o.Issuer = "tests"; o.Audience = "tests"; o.SymmetricKey = JwtKey; });

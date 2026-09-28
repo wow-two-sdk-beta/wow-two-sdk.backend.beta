@@ -29,4 +29,5 @@ await signIn.TwoFactorSignInAsync(userId, ticket, code);          // or Recovery
 - A user with `TwoFactorEnabled` always gets `RequiresTwoFactor`, even when the two-factor slice is absent.
 - The two-factor ticket is a purpose token (5 minutes by default) bound to the user and stamp.
 - `SignInAsync(user)` completes external-login and passwordless flows with the same lockout and precondition checks.
+- `PasskeySignInAsync(state, assertionJson)` verifies a passkey, then applies lockout and preconditions; no second factor.
 - Preconditions: `IdentityCoreOptions.SignIn` (`RequireConfirmedEmail`, `RequireConfirmedPhoneNumber`, `AllowEmailLogin`).

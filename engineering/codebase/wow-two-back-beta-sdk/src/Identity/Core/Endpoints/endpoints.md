@@ -33,6 +33,8 @@ app.MapGroup("/account").MapUserAccountEndpoints<AppUser>();
 | `GET manage/info` | the signed-in account (authorized) |
 | `GET manage/2fa` · `POST manage/2fa/authenticator` · `enable` · `disable` · `recovery-codes` | two-factor setup; mapped only with `.AddTwoFactor()` |
 | `POST manage/2fa/methods/{method}/send` · `…/{method}/enable` · `manage/2fa/preferred` | delivered-code methods: send, enable with the code, choose the first method |
+| `POST passkeys/login/options` · `POST passkeys/login[?useCookies=true]` | usernameless passkey sign-in; mapped only with `.AddPasskeys()` |
+| `GET manage/passkeys` · `POST manage/passkeys/options` · `POST manage/passkeys` · `DELETE manage/passkeys/{id}` | list, start, finish and remove registrations |
 
 - Success bodies use the `ApiResponse<T>` envelope (`{ data }`); failures are problem details with identity codes,
   translated when error translation is enabled.
@@ -45,3 +47,9 @@ app.MapGroup("/account").MapUserAccountEndpoints<AppUser>();
 - A login that needs the second factor answers `401` with `twoFactorMethod`, `twoFactorMethods` and, for a delivered
   method, `codeSent` / `codeExpiresAt` as problem extensions; `AutoSendCode` sends the preferred method's code then.
 - Resend or switch: repeat the login with `twoFactorMethod` and no code. Complete: repeat it with `twoFactorCode`.
+
+## Passkeys
+
+- `options` holds WebAuthn JSON for `PublicKeyCredential.parseCreationOptionsFromJSON` / `parseRequestOptionsFromJSON`.
+- Send back `{ state, credential: credential.toJSON() }`; registration also takes an optional `name`.
+- A failed or replayed passkey login answers `401`; lockout `429` and unconfirmed `403`, as for passwords.
