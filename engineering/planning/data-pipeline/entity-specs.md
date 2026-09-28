@@ -18,8 +18,8 @@
 
 - `EntitySpec` is data: built by `IEntitySpecConfiguration<TEntity>` classes (like `IEntityTypeConfiguration<T>`),
   collected in `EntitySpecRegistry`, never tied to a backend.
-- A mapper declares the features it supports; anything else follows `UnsupportedSpecBehavior` (`Skip` or `Throw`),
-  set per mapper in code or host configuration (`Data:Specs:Unsupported`).
+- A mapper declares the features it supports; anything else follows `UnsupportedSpecMode` (`Throw` or `Skip`),
+  set in code or host configuration (`Data:Specs:Unsupported`); the default throws, so a gap fails at startup.
 - Concurrency kinds: `Counter` (portable, incremented by the SDK), `RowVersion` (SQL Server), `Xmin` (PostgreSQL),
   `Stamp` (GUID string, replaced on every write — the identity `ConcurrencyStamp`).
 - A failed concurrency check raises `ConcurrencyConflictException`, mapped to `Conflict` (409).
@@ -28,6 +28,7 @@
 
 - [x] C1 — Dapper updates and deletes check xmin, row version and counters (`ConcurrencyConflictException` → 409);
   EF and Dapper agree on the counter; 3 PostgreSQL tests
-- [ ] C2 — spec model + builder + registry + `UnsupportedSpecBehavior`
-- [ ] C3 — EF mapper: tables, keys, columns, indexes, concurrency kinds, soft-delete filter, tenant column
+- [x] C2 — spec model + builder + registry + `UnsupportedSpecMode` (`Data:Specs:Unsupported`, default Throw)
+- [x] C3 — EF mapper: tables, keys, columns, indexes, concurrency kinds by provider, stamps rotated on save,
+  soft-delete filter; applied by `AppDbContextBase` to mapped entities only; 4 tests
 - [ ] C4 — Dapper mapper: table and column names, key, concurrency and soft-delete metadata for generated SQL
