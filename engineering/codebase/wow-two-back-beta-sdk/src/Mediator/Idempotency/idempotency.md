@@ -1,6 +1,6 @@
 # Mediator idempotency
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-28*
 
 Included in `WoW2.Sdk.Backend.Beta`. Opt in with `AddMediatorDeduplicatingInterceptor()`;
 requests implement `IIdempotent`. The default repository is one singleton per service provider.
@@ -36,7 +36,23 @@ Rollback releases ownership; nested completion waits for the root. A failed resu
 If commit outcome is uncertain, or storing a successful replay fails, retain the reservation.
 Automatically releasing it would permit repeating an effect that may already have happened.
 The caller receives a conflict on retry until the owner is reconciled or this process ends.
-There is no reservation expiry or administrative reconciliation API in this in-memory implementation.
+The in-memory implementation has no reservation expiry or administrative reconciliation API.
+
+## Durable repository
+
+```csharp
+services.AddPostgresPersistence(…);                 // or AddSqliteConnectionFactory: registers IDbConnectionFactory
+services.AddMediatorDeduplicatingInterceptor();
+services.AddSqlIdempotencyRepository(o => o.PendingLease = TimeSpan.FromMinutes(2));
+```
+
+- `SqlIdempotencyRepository` keeps records in one table on PostgreSQL or SQLite through the autonomous
+  `IDbConnectionFactory`, outside the request transaction: every host sees an acquisition at once.
+- Keys are stored as SHA-256 digests; responses as JSON of their runtime type, read back as the declared response type.
+- An in-progress key holds a lease (`PendingLease`, 5 minutes); after it lapses another host may take the key over,
+  and the late owner's store fails. Choose a lease longer than the slowest handler.
+- Schema: run `CreateTableSql` in a migration, or `EnsureTableAsync()` in development and tests.
+- `PurgeExpiredAsync()` deletes expired responses and lapsed leases; schedule it from a recurring job.
 
 ## Limits and replacement
 
