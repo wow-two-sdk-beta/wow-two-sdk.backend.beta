@@ -292,8 +292,8 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Ai.Vector.AzureSearch` | Azure AI Search vector store | planned |
 | `WoW.Two.Sdk.Backend.Beta.Ai.Tokenizers` | Microsoft.ML.Tokenizers preset | planned |
 | `WoW.Two.Sdk.Backend.Beta.Ai.Mcp` | Model Context Protocol integration | planned |
-| `WoW.Two.Sdk.Backend.Beta.FeatureFlags` | Meta — Microsoft.FeatureManagement defaults | planned |
-| `WoW.Two.Sdk.Backend.Beta.FeatureFlags.OpenFeature` | OpenFeature seam | planned |
+| `WoW.Two.Sdk.Backend.Beta.FeatureFlags` | `AddFeatureFlags()` + `IFeatureFlags`; gates: `RequireFeatures(...)` endpoint filter and `AddMediatorFeatureGatingInterceptor()` (`IFeatureGated`, gates implemented, unreleased) | shipped |
+| `WoW.Two.Sdk.Backend.Beta.FeatureFlags.OpenFeature` | `AddOpenFeatureClient()` — OpenFeature seam | shipped |
 | `WoW.Two.Sdk.Backend.Beta.FeatureFlags.LaunchDarkly` | LaunchDarkly provider | planned |
 | `WoW.Two.Sdk.Backend.Beta.FeatureFlags.ConfigCat` | ConfigCat provider | planned |
 | `WoW.Two.Sdk.Backend.Beta.FeatureFlags.Unleash` | Unleash provider | planned |

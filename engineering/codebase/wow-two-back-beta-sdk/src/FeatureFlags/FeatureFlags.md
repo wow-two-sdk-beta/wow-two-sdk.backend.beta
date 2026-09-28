@@ -30,7 +30,22 @@ public sealed class Checkout(IFeatureFlags flags)
 "FeatureManagement": { "NewPaymentFlow": true, "BetaBanner": { "EnabledFor": [ { "Name": "Percentage", "Parameters": { "Value": 25 } } ] } }
 ```
 
-`AddFeatureFlags()` returns the `IFeatureManagementBuilder`, so you can chain `.AddFeatureFilter<MyFilter>()`. `[FeatureGate("Name")]` gates MVC actions/controllers.
+`AddFeatureFlags()` returns the `IFeatureManagementBuilder`, so you can chain `.AddFeatureFilter<MyFilter>()` or
+`.WithTargeting()` (user = `User.Identity.Name`, groups = role claims). `[FeatureGate("Name")]` gates MVC actions/controllers.
+
+## Gates
+
+```csharp
+app.MapGroup("/pricing").RequireFeatures("NewPricing");          // minimal APIs: 404 while any flag is off
+
+services.AddMediatorFeatureGatingInterceptor();                    // mediator: IFeatureGated requests → NotFound
+public sealed record PreviewInvoiceQuery(Guid Id) : IQuery<InvoiceDto>, IFeatureGated
+{
+    public IReadOnlyList<string> RequiredFeatures => ["NewPricing"];
+}
+```
+
+A disabled feature answers as missing (`404` / `AppErrorType.NotFound`), so dark features reveal nothing.
 
 ## Quickstart — OpenFeature (vendor providers)
 
