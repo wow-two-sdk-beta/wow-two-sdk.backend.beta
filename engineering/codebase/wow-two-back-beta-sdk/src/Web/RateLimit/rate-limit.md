@@ -38,4 +38,3 @@ app.MapGroup("/api").RequireRateLimiting(RateLimitServiceCollectionExtensions.De
   (user and tenant fall back to the IP).
 - Rejections answer `429` with `Retry-After` and a problem-details body (`code: TooManyRequests`), translated when
   error translation is on. A `GlobalPolicy` naming no policy fails at startup; policies are read once.
-
