@@ -11,7 +11,7 @@ tools.MapPdfToolEndpoints();
 
 | Route | Form fields | Answer |
 |---|---|---|
-| `images/probe` · `images/analyze` | `file` | JSON (`ApiResponse`) |
+| `images/probe` · `images/metadata` · `images/analyze` | `file` | JSON (`ApiResponse`) |
 | `images/edit` | `file`, `spec` (`ImageEditSpec` JSON), optional `watermark` file | the image |
 | `images/collage` | `files`…, `spec` (`CollageSpec` JSON) | the collage |
 | `pdf/info` · `pdf/text` | `file`, optional `password`, `pages` (text) | JSON |

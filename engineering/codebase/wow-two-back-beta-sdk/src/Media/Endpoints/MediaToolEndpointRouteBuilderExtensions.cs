@@ -21,7 +21,7 @@ public static class MediaToolEndpointRouteBuilderExtensions
     private static readonly JsonSerializerOptions SpecJson = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };
 
     /// <summary>
-    /// Maps <c>images/probe</c>, <c>images/edit</c>, <c>images/collage</c> and <c>images/analyze</c> under
+    /// Maps <c>images/probe</c>, <c>images/edit</c>, <c>images/collage</c>, <c>images/metadata</c> and <c>images/analyze</c> under
     /// <paramref name="endpoints"/>; needs <c>AddImageProcessing</c>. Returns the group for authorization or rate limits.
     /// </summary>
     /// <param name="endpoints">The route builder or group.</param>
@@ -44,6 +44,8 @@ public static class MediaToolEndpointRouteBuilderExtensions
             var result = await images.CollageAsync([.. files.Select(part => part.OpenReadStream())], Spec<CollageSpec>(spec) ?? new CollageSpec(), ct);
             return Results.File(result.Content, result.ContentType, $"collage.{result.Extension}");
         });
+        group.MapPost("metadata", async (IFormFile file, IImageService images, CancellationToken ct)
+            => Results.Ok(ApiResponse<ImageMetadataResult>.Ok(await images.ReadMetadataAsync(file.OpenReadStream(), ct))));
         group.MapPost("analyze", async (IFormFile file, IImageService images, CancellationToken ct)
             => Results.Ok(ApiResponse<ImageAnalysisResult>.Ok(await images.AnalyzeAsync(file.OpenReadStream(), ct))));
         return group;

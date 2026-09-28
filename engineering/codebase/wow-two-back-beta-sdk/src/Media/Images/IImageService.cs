@@ -23,6 +23,11 @@ public interface IImageService
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     Task<ImageResult> CollageAsync(IReadOnlyList<Stream> sources, CollageSpec spec, CancellationToken cancellationToken = default);
 
+    /// <summary>Reads the EXIF block: when and where the photo was taken, and with what; fields are null when absent.</summary>
+    /// <param name="source">The encoded image — JPEG, PNG or WebP.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    Task<ImageMetadataResult> ReadMetadataAsync(Stream source, CancellationToken cancellationToken = default);
+
     /// <summary>Summarizes the image: BlurHash placeholder, average and dominant colors, perceptual hash.</summary>
     /// <param name="source">The encoded image.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>

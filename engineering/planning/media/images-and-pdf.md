@@ -19,6 +19,7 @@
 - One decode, one encode per call: declarative specs (`ImageEditSpec`, `CollageSpec`) drive a single pass.
 - Output formats JPEG, PNG, WebP; inputs anything Skia decodes. Re-encoding drops EXIF, so GPS never leaks.
 - Limits guard decompression bombs: `Media:Images:MaxPixels` and `MaxInputBytes`; a refusal is a 400.
+- EXIF is read in-house: MetadataExtractor pulls XmpCore under an Adobe EULA, outside core's permissive list.
 - Fonts: family through the Skia font manager, configured files by family, per-text glyph fallback (Cyrillic, Uzbek).
 - Options: `Media:Images` and `Media:Pdf` through the module-options recipe; code first, host section last.
 - PDFsharp 6.2 (net10, AES-256, clean decryption) replaces the venture's 6.1 copy-pages decryption.
@@ -36,6 +37,7 @@
 - [x] I2 — overlays: text (anchor, wrap, box, shadow, rotation, tiling) and image watermarks; font resolution
 - [x] I3 — collage: row, column, grid; gap, padding, background, rounded corners, cover or contain cells
 - [x] I4 — analysis: BlurHash placeholder, dominant colors, perceptual hash for duplicates; 22 image tests
+- [x] I5 — EXIF metadata: in-house reader (JPEG, PNG, WebP; both byte orders), no dependency; 3 tests
 - [x] P1 — PDF core: info, merge, split, extract/reorder, remove, rotate, images → PDF, metadata, AES-256, text
 - [x] P2 — PDF stamps: text watermark and page numbers with Skia-resolved fonts (TTC faces extracted); 7 tests
 - [x] P4 — compression: JPEG photos downscaled and re-encoded in place, never grown; streams deflated; 1 test

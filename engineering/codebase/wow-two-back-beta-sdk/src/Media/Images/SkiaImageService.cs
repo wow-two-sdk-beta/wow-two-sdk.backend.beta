@@ -136,6 +136,13 @@ public sealed class SkiaImageService(IOptionsMonitor<ImageOptions> options) : II
     }
 
     /// <inheritdoc />
+    public async Task<ImageMetadataResult> ReadMetadataAsync(Stream source, CancellationToken cancellationToken = default)
+    {
+        using var data = await ReadAsync(source, cancellationToken);
+        return ExifMetadataMapper.Map(data.AsSpan());
+    }
+
+    /// <inheritdoc />
     public async Task<ImageAnalysisResult> AnalyzeAsync(Stream source, CancellationToken cancellationToken = default)
     {
         using var data = await ReadAsync(source, cancellationToken);
