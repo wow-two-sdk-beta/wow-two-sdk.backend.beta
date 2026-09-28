@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using WoW.Two.Sdk.Backend.Beta.Data.Abstractions;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 
 namespace WoW.Two.Sdk.Backend.Beta.Data.Errors;
 
-/// <summary>Maps Npgsql and EF Core exceptions to an <see cref="AppError"/> — the SDK's built-in <see cref="IExceptionMappingRule"/> for the data layer.</summary>
+/// <summary>Maps Npgsql, EF Core and repository concurrency exceptions to an <see cref="AppError"/> — the SDK's built-in <see cref="IExceptionMappingRule"/> for the data layer.</summary>
 public sealed class DbExceptionMappingRule : IExceptionMappingRule
 {
     /// <inheritdoc/>
@@ -25,7 +26,7 @@ public sealed class DbExceptionMappingRule : IExceptionMappingRule
         return exception switch
         {
             TimeoutException => AppErrorType.DbTimeout,
-            DbUpdateConcurrencyException => AppErrorType.Conflict,
+            DbUpdateConcurrencyException or ConcurrencyConflictException => AppErrorType.Conflict,
             DbUpdateException { InnerException: { } cause } => Classify(cause),
             PostgresException { SqlState: "23505" } => AppErrorType.Conflict,
             PostgresException { SqlState: "57P03" or "53300" } => AppErrorType.ExternalUnavailable,

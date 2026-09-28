@@ -126,7 +126,7 @@ public sealed record Order : IKeyedEntity<OrderId>, IAuditable
 - **All traits derive from `IEntity`** — the marker propagates transitively; consumers rarely write `: IEntity` directly.
 - **Audit splits by lifecycle phase** — `ICreationAuditable` / `IModificationAuditable` (and the `…By` actor variants) compose into `IAuditable` / `IAuditableBy<TUserId>`. Append-only entities (outbox, events, logs, raw ingestion) implement only the creation half — no phantom `UpdatedAt`.
 - **`…By` user-id is a value type** — `IAuditableBy<TUserId>` / `ISoftDeletableBy<TUserId>` constrain `TUserId : struct` (Guid, int, long, Vogen struct).
-- **Concurrency markers** — `IRowVersioned` (SqlServer, `byte[]`), `IHasXmin` (Postgres, `uint`), and `IVersioned` (portable numeric, `uint`) are separate; pick the one matching your provider.
+- **Concurrency markers** — `IRowVersioned` (SqlServer, `byte[]`), `IHasXmin` (Postgres, `uint`), and `IVersioned` (portable numeric, `uint`) are separate; pick the one matching your provider. EF Core checks them (`AppDbContextBase` increments `IVersioned`); the Dapper repository checks them too and raises `ConcurrencyConflictException`.
 
 ## See also
 

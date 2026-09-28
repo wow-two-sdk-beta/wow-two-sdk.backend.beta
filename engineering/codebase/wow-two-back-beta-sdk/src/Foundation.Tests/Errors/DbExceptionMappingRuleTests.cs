@@ -53,6 +53,10 @@ public sealed class DbExceptionMappingRuleTests
     public void TryMap_ShouldReturnConflict_WhenDbUpdateConcurrency()
         => Rule.TryMap(new DbUpdateConcurrencyException())!.Type.Should().Be(AppErrorType.Conflict);
 
+    [Fact]
+    public void TryMap_ShouldReturnConflict_WhenARepositoryTokenIsStale()
+        => Rule.TryMap(new WoW.Two.Sdk.Backend.Beta.Data.Abstractions.ConcurrencyConflictException(typeof(object), 7))!.Type.Should().Be(AppErrorType.Conflict);
+
     [Theory]
     [InlineData("57P03")]
     [InlineData("53300")]

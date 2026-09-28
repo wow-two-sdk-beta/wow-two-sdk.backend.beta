@@ -39,6 +39,11 @@ public sealed class DataTestDbContext(DbContextOptions<DataTestDbContext> option
             entity.Property(widget => widget.Name).HasMaxLength(200);
         });
 
+        modelBuilder.Entity<VersionedWidget>(entity =>
+        {
+            entity.ToTable(VersionedWidget.TableName);
+            entity.HasKey(widget => widget.Id);
+        });
         modelBuilder.Entity<XminWidget>(entity =>
         {
             entity.ToTable(XminWidget.TableName);

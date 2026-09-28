@@ -35,7 +35,18 @@ Custom SQL owns equivalent tenant and soft-delete predicates.
 PostgreSQL `IHasXmin` reads explicitly select `xmin`. Insert/update property lists omit that
 store-generated column. Insert does not refresh its value: re-read before EF attachment.
 The scalar Dapper-read → attach unchanged → mutate → EF-save path is tested against PostgreSQL.
-Generic Dapper updates/deletes do not implement optimistic concurrency checks.
+
+Generated `UpdateAsync` and `DeleteAsync(entity)` check the entity's concurrency token and raise
+`ConcurrencyConflictException` (mapped to 409) when another writer got there first:
+
+| Token | Update | Delete |
+|---|---|---|
+| `IVersioned` | `WHERE version = @Version`, sets `version + 1`; the entity's `Version` follows | same check |
+| `IHasXmin` | `WHERE xmin = …`, `RETURNING xmin`; the entity's `Xmin` is refreshed | same check |
+| `IRowVersioned` | `WHERE row_version = @RowVersion`, `OUTPUT INSERTED.row_version` (SQL Server) | same check |
+
+`DeleteByIdAsync(id)` carries no token and stays unchecked. Unsigned columns (`uint` tokens) bind as
+`long`, since neither Npgsql nor SqlClient accepts unsigned parameters.
 
 This remains a reflection-based single-table repository. EF value converters, owned graphs,
 partial projections, row locking and full-row provenance are not inferred from the EF model.

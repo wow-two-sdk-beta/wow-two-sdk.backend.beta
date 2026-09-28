@@ -8,8 +8,9 @@
 ## Analysis
 
 - Concurrency today: `IHasXmin` (PostgreSQL), `IRowVersioned` (SQL Server) and `IVersioned` (portable counter) map in EF.
-- Defect: nothing increments `IVersioned.Version`, so two EF writers both pass the check.
-- Defect: Dapper `UpdateAsync` / `DeleteAsync` ignore every concurrency token; stale writes silently win.
+- `AppDbContextBase` increments `IVersioned.Version` on save; a context built on `ApplyConventions` alone does not.
+- Defect (fixed in C1): Dapper `UpdateAsync` / `DeleteAsync` ignored every concurrency token; stale writes won.
+- Defect (fixed in C1): Npgsql rejects `uint` parameters, so Dapper could not insert an `IVersioned` entity.
 - Mapping lives in three places — EF fluent code, EF conventions over marker interfaces, and Dapper reflection over
   `IHasTableName` — so a second backend repeats every decision.
 
@@ -25,7 +26,8 @@
 
 ## Status
 
-- [ ] C1 — `IVersioned` increments on EF writes; Dapper updates and deletes check xmin, row version and counters
+- [x] C1 — Dapper updates and deletes check xmin, row version and counters (`ConcurrencyConflictException` → 409);
+  EF and Dapper agree on the counter; 3 PostgreSQL tests
 - [ ] C2 — spec model + builder + registry + `UnsupportedSpecBehavior`
 - [ ] C3 — EF mapper: tables, keys, columns, indexes, concurrency kinds, soft-delete filter, tenant column
 - [ ] C4 — Dapper mapper: table and column names, key, concurrency and soft-delete metadata for generated SQL
