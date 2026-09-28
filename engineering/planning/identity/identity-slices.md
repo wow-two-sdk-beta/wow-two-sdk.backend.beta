@@ -22,7 +22,7 @@
 
 - [x] I1 — password slice: Argon2id via `IPasswordHasher<TUser>`, rules + breach validators, set/change/check; rehash upgrade
 - [x] I2 — purpose tokens + email slice: `UserTokenIssuer`, email confirmation and change, password reset; 13 tests
-- [ ] I3 — lockout + security stamps: failure counting, lockout window, stamp rotation, cookie and JWT validation hooks
+- [x] I3 — lockout + security stamps: failure counting, lockout window, rotation; cookie + JWT revocation end to end
 - [ ] I4 — roles + user claims + principal factory: repositories, services, `UserClaimsPrincipalFactory`
 - [ ] I5 — sign-in: `SignInService` orchestrating password → lockout → confirmation → two-factor → principal
 - [ ] I6 — external logins + stored tokens + two-factor: login repository, authenticator key, recovery codes

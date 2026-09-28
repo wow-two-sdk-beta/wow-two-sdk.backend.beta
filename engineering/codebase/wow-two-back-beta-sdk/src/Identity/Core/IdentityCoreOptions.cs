@@ -9,6 +9,9 @@ public sealed record IdentityCoreOptions
     /// <summary>Password rules (consumed by the password slice).</summary>
     public PasswordOptions Password { get; } = new();
 
+    /// <summary>Claim types written into principals and read back from them.</summary>
+    public IdentityClaimOptions Claims { get; } = new();
+
     /// <summary>Lockout rules (consumed by the lockout slice).</summary>
     public LockoutOptions Lockout { get; } = new();
 }
