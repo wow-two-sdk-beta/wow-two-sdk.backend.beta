@@ -3,6 +3,12 @@ namespace WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks;
 /// <summary>A completed (delivered or dropped) webhook delivery, handed to <see cref="IWebhookDeliveryLoggingService"/>.</summary>
 public sealed record WebhookDeliveryRecord
 {
+    /// <summary>The delivery id sent as <c>X-Webhook-Id</c>; retries and redeliveries keep it, so receivers deduplicate.</summary>
+    public string DeliveryId { get; init; } = string.Empty;
+
+    /// <summary>The body that was sent, for a store that keeps payloads to redeliver them.</summary>
+    public ReadOnlyMemory<byte> Payload { get; init; }
+
     /// <summary>The target subscription id.</summary>
     public required string SubscriptionId { get; init; }
 

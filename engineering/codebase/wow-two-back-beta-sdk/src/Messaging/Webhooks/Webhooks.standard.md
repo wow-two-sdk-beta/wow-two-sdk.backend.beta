@@ -30,8 +30,9 @@ signed so the receiver can verify origin and integrity. Outbound only; a thin si
 
 ## Signing
 
-- Every delivered request **MUST** carry `X-Webhook-Signature`, `X-Webhook-Timestamp`, and `X-Webhook-Event` headers, and
-  **SHOULD** carry a per-delivery `X-Webhook-Id`.
+- Every delivered request **MUST** carry `X-Webhook-Signature`, `X-Webhook-Timestamp`, `X-Webhook-Event` and
+  `X-Webhook-Id` headers. The id **MUST** stay the same across a delivery's retries and redeliveries, so a receiver
+  deduplicates; a new publish **MUST** get a new id.
 - The signature **MUST** be `sha256=` + lowercase hex of `HMACSHA256(secret, UTF8(timestamp + ".") + body)`, using the
   subscription's own secret and the built-in `System.Security.Cryptography.HMACSHA256`.
 - `X-Webhook-Timestamp` **MUST** be the same timestamp fed into the signature (unix seconds), so a receiver can bound replay.
@@ -59,9 +60,9 @@ signed so the receiver can verify origin and integrity. Outbound only; a thin si
 
 ## Non-goals
 
-- No inbound webhook receiving / verification middleware.
-- No durable subscription persistence, management HTTP API, or dashboard.
-- No delivery-persistence / guaranteed-once semantics — delivery is best-effort at-least-once within the retry budget.
+- Receiving lives in `Inbound/`; durable subscriptions and the delivery log live in `Persistence/`.
+- No management HTTP API or dashboard.
+- No guaranteed-once semantics — delivery is best-effort at-least-once within the retry budget.
 - No per-subscription ordering or delivery-parallelism guarantee.
 
 ## See also

@@ -23,7 +23,7 @@ public sealed class InMemoryWebhookSubscriptionRepository : IWebhookSubscription
     public ValueTask<IReadOnlyList<WebhookSubscription>> GetMatchingAsync(string eventType, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(eventType);
-        IReadOnlyList<WebhookSubscription> matches = _subscriptions.Values.Where(s => s.Matches(eventType)).ToList();
+        IReadOnlyList<WebhookSubscription> matches = _subscriptions.Values.Where(s => s.Enabled && s.Matches(eventType)).ToList();
         return ValueTask.FromResult(matches);
     }
 
@@ -34,4 +34,16 @@ public sealed class InMemoryWebhookSubscriptionRepository : IWebhookSubscription
         _subscriptions[subscription.Id] = subscription;
         return ValueTask.CompletedTask;
     }
+
+    /// <inheritdoc />
+    public ValueTask<WebhookSubscription?> FindAsync(string id, CancellationToken cancellationToken)
+        => ValueTask.FromResult(_subscriptions.GetValueOrDefault(id));
+
+    /// <inheritdoc />
+    public ValueTask<IReadOnlyList<WebhookSubscription>> ListAsync(CancellationToken cancellationToken)
+        => ValueTask.FromResult<IReadOnlyList<WebhookSubscription>>([.. _subscriptions.Values]);
+
+    /// <inheritdoc />
+    public ValueTask<bool> RemoveAsync(string id, CancellationToken cancellationToken)
+        => ValueTask.FromResult(_subscriptions.TryRemove(id, out _));
 }

@@ -34,6 +34,8 @@
     <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="Confluent.Kafka" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <!-- Webhook persistence tests run the EF store on in-memory SQLite. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="NATS.Client.JetStream" />
   </ItemGroup>
 

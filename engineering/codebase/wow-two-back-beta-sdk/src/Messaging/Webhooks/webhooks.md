@@ -6,9 +6,9 @@ in-process can be mirrored to external subscribers. The in-memory subscription s
 delivery rides `IHttpClientFactory` with a bounded retry budget on transient failures (5xx / 408 / timeout), reusing the
 messaging `IRetryPolicy`.
 
-> **Outbound here; receiving lives in [`Inbound/`](./Inbound/inbound.md).** No management API, no persistence —
-> subscriptions live in memory. Delivery is at-least-once per subscription within a bounded retry budget; on exhaustion
-> the attempt is logged and dropped.
+> **Outbound here; receiving lives in [`Inbound/`](./Inbound/inbound.md); durable subscriptions and the delivery log
+> in [`Persistence/`](./Persistence/persistence.md).** Subscriptions live in memory by default. Delivery is at-least-once
+> per subscription within a bounded retry budget; on exhaustion the attempt is logged and dropped.
 
 ## Layout
 
@@ -51,7 +51,7 @@ Each matching subscription receives a `POST` carrying:
 | `X-Webhook-Signature` | `sha256=<hex>` — HMAC-SHA256 over `timestamp + "." + body`, keyed by the subscription secret |
 | `X-Webhook-Timestamp` | unix seconds — also part of the signed string, so the receiver can reject stale replays |
 | `X-Webhook-Event` | the event type |
-| `X-Webhook-Id` | per-delivery id, for receiver-side dedupe |
+| `X-Webhook-Id` | delivery id, the same on every retry and redelivery — for receiver-side dedupe |
 
 Receiver verifies: recompute `HMAC(secret, "{X-Webhook-Timestamp}.{rawBody}")`, constant-time compare to the header —
 or, on a host using this SDK, `.RequireWebhookSignature(...)` with the `wow2` scheme.

@@ -12,6 +12,12 @@ public sealed record WebhookSubscription
     /// <summary>HMAC-SHA256 signing secret for this subscription.</summary>
     public required string Secret { get; init; }
 
+    /// <summary>Whether deliveries go out; a disabled subscription is kept but skipped. Default true.</summary>
+    public bool Enabled { get; init; } = true;
+
+    /// <summary>A note for the subscriber's own records, such as what the endpoint is for.</summary>
+    public string? Description { get; init; }
+
     /// <summary>Event-type glob filter — <c>*</c> matches any run, <c>?</c> one char; case-insensitive. Default <c>*</c> (all).</summary>
     public string EventTypeFilter { get; init; } = "*";
 

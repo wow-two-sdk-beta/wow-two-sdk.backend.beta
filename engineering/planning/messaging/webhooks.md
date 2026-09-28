@@ -17,8 +17,10 @@
 
 - [x] W1 — inbound: `AddInboundWebhooks`, `RequireWebhookSignature`, 8 schemes; published Standard, GitHub and Slack
   vectors pass; outbound-signed `wow2` deliveries validate; endpoint dedupe and retry proven
-- [ ] W2 — durable subscriptions: an EF `IWebhookSubscriptionRepository` over `webhook_subscriptions`, enable/disable
-- [ ] W3 — delivery log: an EF `IWebhookDeliveryLoggingService` over `webhook_deliveries`, with redelivery
+- [x] W2 — durable subscriptions: `EfWebhookSubscriptionRepository` over `webhook_subscriptions`, Data-Protection
+  secrets, enable/disable, find/list/remove on the repository contract
+- [x] W3 — delivery log: `EfWebhookDeliveryRepository` over `webhook_deliveries` with kept bodies, history, purge and
+  `WebhookRedeliveryService`; `X-Webhook-Id` now stays the same across retries
 - [ ] W4 — management API: map subscription CRUD, secret rotation and delivery history for a subscription owner
 - [ ] W5 — outbound Standard Webhooks signing as a selectable scheme beside `sha256=`
 
@@ -33,4 +35,7 @@
 ## W2–W4 — Durable outbound
 
 - Open questions for the owner before W4: who owns a subscription (user, tenant, API key) and how secrets are shown.
-- W2 and W3 need no owner decision: they persist today's in-memory shapes.
+
+## W2–W3 — Defect fixed
+
+- The dispatcher minted a new `X-Webhook-Id` per attempt, so a receiver could not drop a retried delivery.

@@ -28,17 +28,18 @@ internal sealed partial class HttpWebhookDispatcher(
     /// <param name="eventType">The event type (sent as <see cref="WebhookHeaderConstants.Event"/>).</param>
     /// <param name="payload">The request body.</param>
     /// <param name="cancellationToken">Cancellation token — cancellation propagates without retry or drop.</param>
-    public async ValueTask DeliverAsync(WebhookSubscription subscription, string eventType, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
+    /// <param name="deliveryId">The delivery id every attempt carries; null starts a new delivery.</param>
+    public async ValueTask<WebhookDeliveryOutcome> DeliverAsync(WebhookSubscription subscription, string eventType, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken, string? deliveryId = null)
     {
         var opt = options;
+        var delivery = new Delivery { Id = deliveryId ?? Guid.NewGuid().ToString("N"), Subscription = subscription, EventType = eventType, Payload = payload };
 
         // Validate scheme and host here; the guarded handler blocks unsafe resolved addresses at connect time.
         if (!WebhookAddressMapper.IsSchemeAllowed(subscription.Url, opt.RequireHttps)
             || !WebhookAddressMapper.IsHostAllowed(subscription.Url, opt.AllowedHosts))
         {
             LogRejected(subscription.Url, eventType, null);
-            await RecordAsync(subscription, eventType, WebhookDeliveryOutcome.Dropped, 0, null, cancellationToken);
-            return;
+            return await RecordAsync(delivery, WebhookDeliveryOutcome.Dropped, 0, null, cancellationToken);
         }
 
         var retryConfig = new RetryConfig { MaxAttempts = opt.MaxAttempts, Backoff = BackoffKind.ExponentialJitter, BaseDelay = opt.BaseRetryDelay, MaxDelay = opt.MaxRetryDelay };
@@ -49,28 +50,25 @@ internal sealed partial class HttpWebhookDispatcher(
         while (true)
         {
             attempts++;
-            var (outcome, status) = await TrySendAsync(client, subscription, eventType, payload, opt.RequestTimeout, cancellationToken);
+            var (outcome, status) = await TrySendAsync(client, delivery, opt.RequestTimeout, cancellationToken);
             if (status is not null)
                 lastStatus = status;
 
             switch (outcome)
             {
                 case SendOutcome.Success:
-                    await RecordAsync(subscription, eventType, WebhookDeliveryOutcome.Delivered, attempts, lastStatus, cancellationToken);
-                    return;
+                    return await RecordAsync(delivery, WebhookDeliveryOutcome.Delivered, attempts, lastStatus, cancellationToken);
 
                 case SendOutcome.Permanent:
                     LogRejected(subscription.Url, eventType, status);
-                    await RecordAsync(subscription, eventType, WebhookDeliveryOutcome.Dropped, attempts, lastStatus, cancellationToken);
-                    return;
+                    return await RecordAsync(delivery, WebhookDeliveryOutcome.Dropped, attempts, lastStatus, cancellationToken);
 
                 default:
                     var delay = retryPolicy.NextDelay(attempts, retryConfig);
                     if (delay is null)
                     {
                         LogExhausted(subscription.Url, eventType, attempts);
-                        await RecordAsync(subscription, eventType, WebhookDeliveryOutcome.Dropped, attempts, lastStatus, cancellationToken);
-                        return;
+                        return await RecordAsync(delivery, WebhookDeliveryOutcome.Dropped, attempts, lastStatus, cancellationToken);
                     }
 
                     LogRetrying(subscription.Url, eventType, attempts, status);
@@ -82,12 +80,11 @@ internal sealed partial class HttpWebhookDispatcher(
 
     private async ValueTask<(SendOutcome Outcome, int? StatusCode)> TrySendAsync(
         HttpClient client,
-        WebhookSubscription subscription,
-        string eventType,
-        ReadOnlyMemory<byte> payload,
+        Delivery delivery,
         TimeSpan timeout,
         CancellationToken cancellationToken)
     {
+        var (subscription, eventType, payload) = (delivery.Subscription, delivery.EventType, delivery.Payload);
         var timestamp = timeProvider.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
         var signature = signatureHasher.Create(subscription.Secret, timestamp, payload.Span);
 
@@ -99,7 +96,7 @@ internal sealed partial class HttpWebhookDispatcher(
         request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Signature, signature);
         request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Timestamp, timestamp);
         request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Event, eventType);
-        request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Id, Guid.NewGuid().ToString("N"));
+        request.Headers.TryAddWithoutValidation(WebhookHeaderConstants.Id, delivery.Id);
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(timeout);
@@ -136,19 +133,36 @@ internal sealed partial class HttpWebhookDispatcher(
         }
     }
 
-    private ValueTask RecordAsync(WebhookSubscription subscription, string eventType, WebhookDeliveryOutcome outcome, int attempts, int? statusCode, CancellationToken cancellationToken)
-        => deliveryLogging.RecordAsync(
+    private async ValueTask<WebhookDeliveryOutcome> RecordAsync(Delivery delivery, WebhookDeliveryOutcome outcome, int attempts, int? statusCode, CancellationToken cancellationToken)
+    {
+        await deliveryLogging.RecordAsync(
             new WebhookDeliveryRecord
             {
-                SubscriptionId = subscription.Id,
-                EventType = eventType,
-                Url = subscription.Url,
+                DeliveryId = delivery.Id,
+                Payload = delivery.Payload,
+                SubscriptionId = delivery.Subscription.Id,
+                EventType = delivery.EventType,
+                Url = delivery.Subscription.Url,
                 Outcome = outcome,
                 Attempts = attempts,
                 StatusCode = statusCode,
                 OccurredAtUtc = timeProvider.GetUtcNow(),
             },
             cancellationToken);
+        return outcome;
+    }
+
+    /// <summary>Represents one delivery: its stable id, target, event and body.</summary>
+    private sealed record Delivery
+    {
+        public required string Id { get; init; }
+
+        public required WebhookSubscription Subscription { get; init; }
+
+        public required string EventType { get; init; }
+
+        public required ReadOnlyMemory<byte> Payload { get; init; }
+    }
 
     // Reserve 6901–6999 for webhooks above broker adapters and below Foundation.Security.
     [LoggerMessage(EventId = 6901, Level = LogLevel.Debug, Message = "Webhook delivery to {Url} for {EventType} failed (attempt {Attempt}, status {StatusCode}); retrying")]
