@@ -1,14 +1,14 @@
-namespace WoW.Two.Sdk.Backend.Beta.Web.ConditionalRequests;
+namespace WoW.Two.Sdk.Backend.Beta.Web.Buffering;
 
 /// <summary>
-/// Buffers a response body up to a limit so it can be hashed; on overflow or a streaming content type it writes the
-/// buffer through and passes every later write straight to the real body.
+/// Buffers a response body up to a limit so a middleware can inspect it (hash, store) before sending; on overflow or a
+/// streaming content type it writes the buffer through and passes every later write straight to the real body.
 /// </summary>
-internal sealed class EntityTagBufferStream(Stream inner, int limit, Func<bool> isStreaming) : Stream
+internal sealed class BoundedResponseBufferStream(Stream inner, int limit, Func<bool> isStreaming) : Stream
 {
     private readonly MemoryStream _buffer = new();
 
-    /// <summary>Whether the body went straight to the client, so no tag can be computed.</summary>
+    /// <summary>Whether the body went straight to the client, so it can be neither hashed nor stored.</summary>
     public bool PassedThrough { get; private set; }
 
     /// <summary>The buffered body.</summary>
@@ -71,4 +71,12 @@ internal sealed class EntityTagBufferStream(Stream inner, int limit, Func<bool> 
         await _buffer.CopyToAsync(inner, cancellationToken);
         _buffer.SetLength(0);
     }
+
+    /// <summary>Content types that stream by design: server-sent events and newline-delimited JSON.</summary>
+    /// <param name="contentType">The response content type.</param>
+    internal static bool IsStreamingContentType(string? contentType)
+        => contentType is not null
+            && (contentType.StartsWith("text/event-stream", StringComparison.OrdinalIgnoreCase)
+                || contentType.StartsWith("application/x-ndjson", StringComparison.OrdinalIgnoreCase)
+                || contentType.StartsWith("application/stream+json", StringComparison.OrdinalIgnoreCase));
 }

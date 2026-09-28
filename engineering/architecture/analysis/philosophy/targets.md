@@ -326,7 +326,7 @@ Mirrors §4 of `ideas.md`. Each subsection states the verdict + concrete chosen 
 
 | Item | Verdict | Note |
 |---|---|---|
-| `Idempotency-Key` header convention + Redis-backed store | NEXT | SQL-backed durable store DONE (`AddSqlIdempotencyRepository`); Redis remains |
+| `Idempotency-Key` header convention + Redis-backed store | DONE (header) · NEXT (Redis) | Config-activated `Web/Idempotency` over SQL or in-memory stores; Redis store remains |
 | Inbox dedupe table (per-message-id) | NEXT | Wired with Outbox |
 | Outbox row uniqueness | NEXT | Send-once guarantee |
 

@@ -16,6 +16,7 @@ using WoW.Two.Sdk.Backend.Beta.Web.OpenApi;
 using WoW.Two.Sdk.Backend.Beta.Web.OutputCache;
 using WoW.Two.Sdk.Backend.Beta.Http.Errors;
 using WoW.Two.Sdk.Backend.Beta.Web.ConditionalRequests;
+using WoW.Two.Sdk.Backend.Beta.Web.Idempotency;
 using WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails;
 using WoW.Two.Sdk.Backend.Beta.Web.RateLimit;
 using WoW.Two.Sdk.Backend.Beta.Web.SecureHeaders;
@@ -71,7 +72,8 @@ public static class ApiDefaultsExtensions
             .AddTraceAwareProblemDetails()
             .AddAppExceptionHandling()
             .AddHttpExceptionMapping()
-            .AddConditionalRequests();
+            .AddConditionalRequests()
+            .AddHttpIdempotency();
 
         if (options.EnableRateLimiting)
         {
@@ -143,6 +145,9 @@ public static class ApiDefaultsExtensions
         {
             app.UseRateLimiter();
         }
+
+        // Inert until the HttpIdempotency section enables it; after authentication so keys are scoped per caller.
+        app.UseHttpIdempotency();
 
         if (options.EnableOutputCache)
         {

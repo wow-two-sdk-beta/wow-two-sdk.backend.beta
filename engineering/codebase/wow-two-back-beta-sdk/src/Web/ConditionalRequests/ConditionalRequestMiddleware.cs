@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
+using WoW.Two.Sdk.Backend.Beta.Web.Buffering;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ConditionalRequests;
 
@@ -27,10 +28,10 @@ public sealed class ConditionalRequestMiddleware(RequestDelegate next, IOptionsM
         }
 
         var body = context.Response.Body;
-        await using var buffer = new EntityTagBufferStream(
+        await using var buffer = new BoundedResponseBufferStream(
             body,
             current.MaxBufferBytes,
-            () => IsStreaming(context.Response.ContentType));
+            () => BoundedResponseBufferStream.IsStreamingContentType(context.Response.ContentType));
         context.Response.Body = buffer;
         try
         {
@@ -65,13 +66,6 @@ public sealed class ConditionalRequestMiddleware(RequestDelegate next, IOptionsM
         buffer.Buffer.Position = 0;
         await buffer.Buffer.CopyToAsync(body, context.RequestAborted);
     }
-
-    /// <summary>Content types that stream by design: server-sent events and newline-delimited JSON.</summary>
-    private static bool IsStreaming(string? contentType)
-        => contentType is not null
-            && (contentType.StartsWith("text/event-stream", StringComparison.OrdinalIgnoreCase)
-                || contentType.StartsWith("application/x-ndjson", StringComparison.OrdinalIgnoreCase)
-                || contentType.StartsWith("application/stream+json", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Weak comparison of <c>If-None-Match</c> against <paramref name="tag"/>; <c>*</c> matches any tag.</summary>
     private static bool Matches(HttpRequest request, string tag)
