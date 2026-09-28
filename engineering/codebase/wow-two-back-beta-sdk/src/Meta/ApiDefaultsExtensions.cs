@@ -137,6 +137,12 @@ public static class ApiDefaultsExtensions
         // Inert until the ConditionalRequests section enables it; inside compression so it hashes the plain body.
         app.UseConditionalRequests();
 
+        // The app bundle short-circuits before routing and authentication, yet still carries the headers and encoding.
+        if (options.SpaHosting is { } spaHosting)
+        {
+            app.UseSpaHosting(spaHosting);
+        }
+
         app.UseRouting();
 
         if (options.CorsOrigins.Count > 0)
@@ -164,6 +170,12 @@ public static class ApiDefaultsExtensions
 
         // Liveness must stay reachable by unauthenticated probes, even under a default-deny fallback policy.
         app.MapHealthChecks(options.HealthEndpointPath).AllowAnonymous();
+
+        // Fallback endpoints rank last, so the application's own endpoints still win whenever they are mapped.
+        if (options.SpaHosting is { } spaFallback)
+        {
+            app.MapSpaFallback(spaFallback);
+        }
 
         return app;
     }

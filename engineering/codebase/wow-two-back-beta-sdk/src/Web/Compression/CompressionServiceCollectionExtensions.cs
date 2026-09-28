@@ -17,6 +17,10 @@ public static class CompressionServiceCollectionExtensions
         services.AddResponseCompression(options =>
         {
             options.EnableForHttps = true;
+            // Static files type scripts as text/javascript, and rendered images may be SVG; neither is a framework default.
+            options.MimeTypes = ResponseCompressionDefaults.MimeTypes
+                .Concat(["text/javascript", "image/svg+xml", "application/manifest+json"])
+                .Distinct(StringComparer.OrdinalIgnoreCase);
             options.Providers.Add<BrotliCompressionProvider>();
             options.Providers.Add<GzipCompressionProvider>();
         });

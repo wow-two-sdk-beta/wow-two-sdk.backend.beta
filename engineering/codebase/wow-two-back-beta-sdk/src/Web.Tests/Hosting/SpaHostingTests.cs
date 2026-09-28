@@ -18,6 +18,9 @@ public sealed class SpaHostingTests : IDisposable
         File.WriteAllText(Path.Combine(_webRoot, "index.html"), "shell");
         Directory.CreateDirectory(Path.Combine(_webRoot, "pricing"));
         File.WriteAllText(Path.Combine(_webRoot, "pricing", "index.html"), "pricing");
+        Directory.CreateDirectory(Path.Combine(_webRoot, "assets"));
+        File.WriteAllText(Path.Combine(_webRoot, "assets", "app-3f9a.js"), "console.log('app');");
+        File.WriteAllText(Path.Combine(_webRoot, "robots.txt"), "User-agent: *");
     }
 
     [Theory]
@@ -37,6 +40,22 @@ public sealed class SpaHostingTests : IDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync()).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("/assets/app-3f9a.js", "public, max-age=31536000, immutable")]
+    [InlineData("/", "no-cache")]
+    [InlineData("/pricing", "no-cache")]
+    [InlineData("/app/codes", "no-cache")]
+    [InlineData("/robots.txt", null)]
+    public async Task Response_ShouldCacheHashedAssets_AndRevalidateDocuments(string path, string? cacheControl)
+    {
+        await using var app = await StartAsync(_ => { }, routingFirst: false);
+
+        using var response = await app.GetTestClient().GetAsync(path);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Headers.CacheControl?.ToString().Should().Be(cacheControl);
     }
 
     [Fact]

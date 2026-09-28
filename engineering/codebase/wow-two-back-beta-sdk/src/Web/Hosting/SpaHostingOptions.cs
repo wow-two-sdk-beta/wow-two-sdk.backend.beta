@@ -25,4 +25,11 @@ public sealed record SpaHostingOptions
     /// Set it for a folder whose document loads assets relative to itself.
     /// </summary>
     public bool RedirectToTrailingSlash { get; set; }
+
+    /// <summary>
+    /// Path whose files carry a content hash in their names, so they cache for a year as immutable. Every served
+    /// document (<c>.html</c>) revalidates instead, so a deploy reaches returning visitors. Default <c>/assets</c>, the
+    /// Vite output folder; empty disables the long cache.
+    /// </summary>
+    public string ImmutableAssetsPath { get; set; } = "/assets";
 }

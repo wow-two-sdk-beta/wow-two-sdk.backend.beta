@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.Hosting;
@@ -36,7 +37,7 @@ public static class SpaHostingApplicationBuilderExtensions
             app.UseDefaultFiles(new DefaultFilesOptions { RedirectToAppendTrailingSlash = options.RedirectToTrailingSlash });
         }
 
-        app.UseStaticFiles();
+        app.UseStaticFiles(StaticFiles(options));
         return app;
     }
 
@@ -72,12 +73,32 @@ public static class SpaHostingApplicationBuilderExtensions
                 context.SetEndpoint(null);
                 return next(context);
             })
-            .UseStaticFiles()
+            .UseStaticFiles(StaticFiles(options))
             .Build();
         app.MapFallback(serveDocument)
             .AllowAnonymous();
 
         return app;
+    }
+
+    /// <summary>Builds the static-file options that cache hashed assets for a year and make every document revalidate.</summary>
+    /// <param name="options">The SPA hosting options.</param>
+    private static StaticFileOptions StaticFiles(SpaHostingOptions options)
+    {
+        var immutable = string.IsNullOrWhiteSpace(options.ImmutableAssetsPath)
+            ? PathString.Empty
+            : new PathString($"/{options.ImmutableAssetsPath.Trim('/')}");
+        return new StaticFileOptions
+        {
+            OnPrepareResponse = context =>
+            {
+                var headers = context.Context.Response.Headers;
+                if (immutable.HasValue && context.Context.Request.Path.StartsWithSegments(immutable))
+                    headers.CacheControl = "public, max-age=31536000, immutable";
+                else if (context.File.Name.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+                    headers.CacheControl = "no-cache";
+            },
+        };
     }
 
     /// <summary>Returns the path of the route's prerendered <c>index.html</c>, or null when the bundle has none.</summary>
