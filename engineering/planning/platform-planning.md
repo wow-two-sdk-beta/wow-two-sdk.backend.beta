@@ -55,7 +55,7 @@ Request validation, aggregated validation failures and RFC 9457 ProblemDetails r
 | Env-gate OpenAPI in `UseApiDefaults` | issue | Security | **✅ shipped 2026-07-10** — `ExposeOpenApi` now `bool?`; defaults to Development-only. |
 | Wire real `AllowedHosts`/host-filtering in `AddProxyAwareHosting` | issue | Security | **✅ shipped 2026-07-10** — `ProxyAwareHostingOptions.AllowedHosts` → `HostFilteringOptions` + `UseHostFiltering`; doc corrected. |
 | HTTPS redirect into `UseApiDefaults` | feature | Security | **✅ shipped 2026-07-10** — `EnableHttpsRedirection` (default on) → `UseHttpsRedirection` after forwarded-headers. |
-| Token revocation + refresh | feature | Identity | Revocation **implemented 2026-09-28** — `AddSecurityStampValidation` rejects cookie + bearer principals after a stamp rotation. Refresh tokens remain. |
+| Token revocation + refresh | feature | Identity | **Implemented 2026-09-28** — `AddSecurityStampValidation` rejects cookie + bearer principals after a stamp rotation; `AddRefreshTokens` rotates with reuse detection. |
 | JWT validation hardening (alg allowlist, mandatory iss/aud/exp) | feature | Security | **✅ shipped** — `AddJwtBearerAuthentication` pins `ValidAlgorithms`, validates issuer, audience, signing key and lifetime. |
 | SSRF-safe outbound handler (deny-private-IP / allowlist) | feature | Security | Implemented locally: `AddSafeOutboundHttp`, shared IP policy, no automatic redirects/proxies/cookies; HTTP/3 rejected. Webhook transport hardened. Release pending. |
 | CSRF/antiforgery preset for cookie flows | feature | Security | Pairs with cookie sign-in. |

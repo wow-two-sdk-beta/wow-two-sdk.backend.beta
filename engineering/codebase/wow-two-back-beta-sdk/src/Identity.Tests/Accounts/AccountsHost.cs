@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore;
+using WoW.Two.Sdk.Backend.Beta.Data.EntityFrameworkCore.Sqlite;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Tests.Accounts;
@@ -84,5 +85,6 @@ internal sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> opti
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyIdentitySchema<IdentityUser, IdentityRole, Guid>();
+        modelBuilder.ApplyDateTimeOffsetToBinaryConversion();
     }
 }

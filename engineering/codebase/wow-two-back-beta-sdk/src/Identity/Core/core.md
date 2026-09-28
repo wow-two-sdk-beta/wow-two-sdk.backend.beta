@@ -45,9 +45,10 @@ var alice   = await service.FindByNameAsync("ALICE");   // case-insensitive via 
 | `AddExternalLogins()` | `UserLoginService` | `Logins/` |
 | `AddTwoFactor()` | `UserTwoFactorService` | `TwoFactor/` |
 | `AddPhoneNumbers()` | `UserPhoneService` | `Phones/` |
+| `AddRefreshTokens()` | `RefreshTokenService` | `RefreshTokens/` |
 | `AddSignIn()` | `SignInService` | `SignIn/` |
 
-Table-backed slices (`AddRoles`, `AddUserClaims`, `AddExternalLogins`, `AddTwoFactor`) register their EF repositories
+Table-backed slices (`AddRoles`, `AddUserClaims`, `AddExternalLogins`, `AddTwoFactor`, `AddRefreshTokens`) register their EF repositories
 only when called after `AddEntityFrameworkStores`; otherwise the host registers its own repositories.
 
 ## Notes

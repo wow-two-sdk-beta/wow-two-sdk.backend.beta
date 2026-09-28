@@ -71,6 +71,7 @@ public sealed class EfUserRepository<TUser, TKey, TContext> : IUserRepository<TU
         _context.RemoveRange(await _context.Set<IdentityUserClaim<TKey>>().Where(c => c.UserId.Equals(userId)).ToListAsync(cancellationToken));
         _context.RemoveRange(await _context.Set<IdentityUserLogin<TKey>>().Where(l => l.UserId.Equals(userId)).ToListAsync(cancellationToken));
         _context.RemoveRange(await _context.Set<IdentityUserToken<TKey>>().Where(t => t.UserId.Equals(userId)).ToListAsync(cancellationToken));
+        _context.RemoveRange(await _context.Set<IdentityRefreshToken<TKey>>().Where(t => t.UserId.Equals(userId)).ToListAsync(cancellationToken));
         Users.Remove(user);
         await _context.SaveChangesAsync(cancellationToken);
     }

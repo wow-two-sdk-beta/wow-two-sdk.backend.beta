@@ -26,7 +26,8 @@
 - [x] I4 — roles + user claims + principal factory: repositories, services, `UserClaimsPrincipalFactory`
 - [x] I5 — sign-in: `SignInService` orchestrating lockout → password → preconditions → two-factor → principal
 - [x] I6 — external logins + stored tokens + two-factor: login repository, authenticator key, hashed recovery codes
-- [x] I7 — phone slice: set, OTP confirmation and phone sign-in over the shipped `IOtpService`; 58 identity tests pass
+- [x] I7 — phone slice: set, OTP confirmation and phone sign-in over the shipped `IOtpService`
+- [x] I8 — refresh tokens: rotation, reuse detection revoking the family, stamp binding, purge; 61 identity tests pass
 
 ---
 
@@ -66,6 +67,11 @@
 - `.AddExternalLogins()` registers the login repository plus `UserLoginService`.
 - `.AddTwoFactor()` registers stored tokens, the TOTP authenticator key and hashed recovery codes.
 - Two-factor sign-in carries the password-verified user in a 5-minute purpose-token ticket plus the user id.
+
+## I8 — Refresh tokens
+
+- `.AddRefreshTokens()` registers `RefreshTokenService` over `identity_refresh_tokens` (digest-only storage).
+- Acceptance: rotation spends the token; a spent token revokes the family; expiry, tampering and stamp rotation fail.
 
 ## I7 — Phone slice
 

@@ -11,6 +11,9 @@ internal static partial class IdentityLogExtensions
     [LoggerMessage(EventId = 4111, Level = LogLevel.Information, Message = "A principal for user {UserId} carried a stale security stamp and was rejected.")]
     internal static partial void SecurityStampRejected(this ILogger logger, string userId);
 
+    [LoggerMessage(EventId = 4131, Level = LogLevel.Warning, Message = "A consumed refresh token was presented again; family {FamilyId} was revoked.")]
+    internal static partial void RefreshTokenReused(this ILogger logger, Guid familyId);
+
     [LoggerMessage(EventId = 4121, Level = LogLevel.Warning, Message = "User {UserId} was locked out until {LockoutEnd}.")]
     internal static partial void UserLockedOut(this ILogger logger, string userId, DateTimeOffset lockoutEnd);
 }

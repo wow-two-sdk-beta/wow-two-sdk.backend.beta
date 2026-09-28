@@ -6,8 +6,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.Core;
 public static class IdentitySchemaModelBuilderExtensions
 {
     /// <summary>
-    /// Map the seven identity tables (<c>identity_users</c>, <c>identity_roles</c>, and the user-role / claim / login /
-    /// token relations) with normalized-name unique indexes. Call from the app context's <c>OnModelCreating</c> after
+    /// Map the identity tables (<c>identity_users</c>, <c>identity_roles</c>, the user-role / claim / login / token
+    /// relations and <c>identity_refresh_tokens</c>) with normalized-name unique indexes. Call from the app context's <c>OnModelCreating</c> after
     /// <c>base.OnModelCreating(modelBuilder)</c>. Column/table casing comes from <c>UseSnakeCaseNamingConvention()</c>.
     /// </summary>
     /// <typeparam name="TUser">The user entity (derives <see cref="IdentityUser{TKey}"/>).</typeparam>
@@ -81,6 +81,16 @@ public static class IdentitySchemaModelBuilderExtensions
             token.HasKey(t => new { t.UserId, t.LoginProvider, t.Name });
             token.Property(t => t.LoginProvider).HasMaxLength(128);
             token.Property(t => t.Name).HasMaxLength(128);
+        });
+
+        modelBuilder.Entity<IdentityRefreshToken<TKey>>(refresh =>
+        {
+            refresh.ToTable("identity_refresh_tokens");
+            refresh.HasKey(r => r.Id);
+            refresh.HasIndex(r => r.UserId);
+            refresh.HasIndex(r => r.FamilyId);
+            refresh.Property(r => r.TokenHash).HasMaxLength(64);
+            refresh.Property(r => r.SecurityStamp).HasMaxLength(64);
         });
 
         return modelBuilder;
