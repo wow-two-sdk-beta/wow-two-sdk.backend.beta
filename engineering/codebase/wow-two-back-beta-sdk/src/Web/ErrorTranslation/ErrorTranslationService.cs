@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Text;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Localization;
@@ -54,13 +53,25 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
         return culture is not null
             && !string.IsNullOrEmpty(key)
             && TryCatalog(settings.CurrentValue, culture, key, out var template)
-            && TryFill(template, arguments, culture, out message);
+            && MessageTemplateMapper.TryFormat(template, arguments, culture, out message);
     }
 
     /// <inheritdoc />
     public string Translate(HttpContext context, AppError error)
     {
         ArgumentNullException.ThrowIfNull(error);
+        return Pseudo(TranslateCore(context, error));
+    }
+
+    /// <inheritdoc />
+    public string Translate(HttpContext context, FieldError error)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+        return Pseudo(TranslateCore(context, error));
+    }
+
+    private string TranslateCore(HttpContext context, AppError error)
+    {
         var culture = ResolveCulture(context);
         if (culture is null)
             return error.Message;
@@ -69,7 +80,7 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
         if (error.Metadata?.TryGetValue(MessageKeyMetadata, out var key) == true
             && key is string messageKey
             && TryCatalog(current, culture, messageKey, out var keyed)
-            && TryFill(keyed, error.Metadata, culture, out var keyedMessage))
+            && MessageTemplateMapper.TryFormat(keyed, error.Metadata, culture, out var keyedMessage))
             return keyedMessage;
 
         if (!current.TranslateByErrorType)
@@ -77,15 +88,13 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
 
         var type = error.Type.ToString();
         return (TryCatalog(current, culture, type, out var template) || TryBuiltIn(ErrorTypeMessageConstants.Messages, culture, type, out template))
-            && TryFill(template, error.Metadata, culture, out var message)
+            && MessageTemplateMapper.TryFormat(template, error.Metadata, culture, out var message)
                 ? message
                 : error.Message;
     }
 
-    /// <inheritdoc />
-    public string Translate(HttpContext context, FieldError error)
+    private string TranslateCore(HttpContext context, FieldError error)
     {
-        ArgumentNullException.ThrowIfNull(error);
         var culture = ResolveCulture(context);
         if (culture is null || string.IsNullOrEmpty(error.Code))
             return error.Message;
@@ -95,9 +104,16 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
         return (TryCatalog(current, culture, error.Code, out var template)
                 || TryBuiltIn(FieldCodeMessageConstants.Messages, culture, error.Code, out template)
                 || (current.UseValidatorTranslations && TryValidatorPack(culture, error.Code, out template)))
-            && TryFill(template, arguments, culture, out var message)
+            && MessageTemplateMapper.TryFormat(template, arguments, culture, out var message)
                 ? message
                 : error.Message;
+    }
+
+    /// <summary>Pseudo-localizes <paramref name="message"/> while both translation and pseudo-localization are on.</summary>
+    private string Pseudo(string message)
+    {
+        var current = settings.CurrentValue;
+        return current.Enabled && current.PseudoLocalization ? MessageTemplateMapper.Pseudo(message) : message;
     }
 
     private static CultureInfo? Resolve(HttpContext context, ErrorTranslationSettings current)
@@ -222,38 +238,4 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
                 .OrderByDescending(specific => specific.Name.Contains("-Latn", StringComparison.Ordinal))
                 .ThenBy(specific => specific.Name, StringComparer.Ordinal)]
             : [culture];
-
-    /// <summary>Fills <c>{Name}</c> and <c>{Name:format}</c> placeholders; fails when one has no argument.</summary>
-    private static bool TryFill(string template, IReadOnlyDictionary<string, object?>? arguments, CultureInfo culture, [NotNullWhen(true)] out string? message)
-    {
-        var builder = new StringBuilder(template.Length);
-        var index = 0;
-        while (index < template.Length)
-        {
-            var open = template.IndexOf('{', index);
-            var close = open < 0 ? -1 : template.IndexOf('}', open + 1);
-            if (open < 0 || close < 0)
-            {
-                builder.Append(template, index, template.Length - index);
-                break;
-            }
-
-            builder.Append(template, index, open - index);
-            var token = template.AsSpan(open + 1, close - open - 1);
-            var colon = token.IndexOf(':');
-            var name = (colon < 0 ? token : token[..colon]).ToString();
-            var format = colon < 0 ? null : token[(colon + 1)..].ToString();
-            if (arguments is null || !arguments.TryGetValue(name, out var value))
-            {
-                message = null;
-                return false;
-            }
-
-            builder.Append(value is IFormattable formattable ? formattable.ToString(format, culture) : Convert.ToString(value, culture));
-            index = close + 1;
-        }
-
-        message = builder.ToString();
-        return true;
-    }
 }

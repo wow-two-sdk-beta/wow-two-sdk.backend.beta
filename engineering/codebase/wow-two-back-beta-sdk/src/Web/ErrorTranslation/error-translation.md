@@ -34,6 +34,9 @@ validation advisories; no code change is needed.
 - `SupportedCultures` empty accepts any culture a translation exists for; `uz` picks FluentValidation's Latin pack.
 - Placeholders `{Name}` / `{Name:format}` fill from `FieldError.Params` or `AppError.Metadata`; a template naming a
   missing argument falls back to the authored message.
+- Plurals use ICU syntax with CLDR rules (`en`/`uz` one·other, `ru` one·few·many·other):
+  `"{Count, plural, =0 {нет заказов} one {# заказ} few {# заказа} many {# заказов} other {# заказа}}"`.
+- `PseudoLocalization: true` accents and brackets every error message (`[!! Ñöţ ƒöûñđ !!]`) to spot untranslated text.
 - `TranslateByErrorType: false` keeps specific authored messages unless a `messageKey` matches.
 - The section reloads live with the configuration.
 - Products translate their own strings with `IErrorTranslationService.TryTranslate(context, key, arguments, out message)`.

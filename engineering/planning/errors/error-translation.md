@@ -23,6 +23,7 @@
 - [x] I1 — settings, culture resolution, catalog + FluentValidation + built-in type messages, default mappers wired; 5 tests
 - [x] I2 — response models: `AppError.ToApiFailure<T>(HttpContext)`; identity errors carry values and become field errors
 - [x] I3 — `AddApiDefaults` hosts: config-only activation proven end to end through the exception handler
+- [x] I4 — ICU-style plurals with CLDR rules and pseudo-localization (`MessageTemplateMapper`); 27 translation tests
 
 ---
 

@@ -24,6 +24,9 @@ public sealed record ErrorTranslationSettings
     /// <summary>Use FluentValidation's language packs for validator codes the catalog lacks. Default true.</summary>
     public bool UseValidatorTranslations { get; set; } = true;
 
+    /// <summary>Pseudo-localize every error message (accented, bracketed) to spot untranslated text; development only. Default false.</summary>
+    public bool PseudoLocalization { get; set; }
+
     /// <summary>The host's catalog: culture → key (error type, field-error code or <c>messageKey</c>) → template with <c>{Name}</c> placeholders.</summary>
     public Dictionary<string, Dictionary<string, string>> Messages { get; } = new(StringComparer.OrdinalIgnoreCase);
 }

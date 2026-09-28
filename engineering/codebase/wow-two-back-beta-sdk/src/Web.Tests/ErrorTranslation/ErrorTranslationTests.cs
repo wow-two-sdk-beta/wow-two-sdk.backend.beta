@@ -101,6 +101,17 @@ public sealed class ErrorTranslationTests
     }
 
     [Fact]
+    public void PseudoLocalization_MarksEveryMessageIncludingAuthoredOnes()
+    {
+        var settings = Enabled("en", "ru");
+        settings["ErrorTranslation:PseudoLocalization"] = "true";
+        using var provider = Build(settings);
+
+        Render(provider, AppErrorFactory.NotFound("Order 42 was not found."), "en").Detail.Should().Be("[!! Öŕđéŕ 42 ŵåš ñöţ ƒöûñđ. !!]");
+        Render(provider, AppErrorFactory.NotFound("Order 42 was not found."), "ru").Detail.Should().StartWith("[!! Запрошенный");
+    }
+
+    [Fact]
     public void IdentityFailures_TranslateThroughBuiltInTextsWithTheirValues()
     {
         using var provider = Build(Enabled("en", "ru"));
