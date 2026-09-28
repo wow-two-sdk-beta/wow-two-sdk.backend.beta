@@ -518,9 +518,10 @@ Subpath: `wow-two-sdk.backend.beta.storage` + `.media`.
 | AWSSDK.S3 | DONE | `AddS3BlobStorage` (AWS, R2, MinIO endpoints), 2026-09-28 |
 | MinIO.SDK | SKIP | Covered by the S3 adapter with a `ServiceUrl` |
 | FluentStorage abstraction over multi-cloud | NEXT | Single API across S3/Azure/GCS/MinIO |
-| ImageSharp (+`.Web`) | NEXT | Default image processing — note >1M$ commercial threshold; document it |
-| SkiaSharp / Magick.NET | LATER | Format-specific |
-| **QuestPDF** for PDF generation | NEXT | MIT (commercial threshold matches ImageSharp) |
+| ImageSharp (+`.Web`) | SKIP (core) | Six Labors Split License has a revenue threshold; core takes permissive licenses only |
+| SkiaSharp | DONE | `Media.Images` — edit, compress, text, watermark, collage, BlurHash, 2026-09-28 |
+| Magick.NET | LATER | Format-specific (RAW, TIFF, PSD) companion |
+| **QuestPDF** for PDF generation | SKIP (core) | Community license has a revenue threshold; PDFsharp (MIT) covers PDF |
 | iText7 / Aspose / Spire | SKIP | License |
 | ClosedXML for Excel | NEXT | MIT; default xlsx |
 | EPPlus | SKIP | Polyform commercial |
