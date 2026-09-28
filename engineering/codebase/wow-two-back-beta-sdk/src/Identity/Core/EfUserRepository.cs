@@ -86,4 +86,8 @@ public sealed class EfUserRepository<TUser, TKey, TContext> : IUserRepository<TU
     /// <inheritdoc />
     public Task<TUser?> FindByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default)
         => Users.FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<TUser?> FindByConfirmedPhoneNumberAsync(string phoneNumber, CancellationToken cancellationToken = default)
+        => Users.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber && u.PhoneNumberConfirmed, cancellationToken);
 }

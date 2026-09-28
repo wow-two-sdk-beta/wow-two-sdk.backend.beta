@@ -27,6 +27,7 @@ public static class IdentitySchemaModelBuilderExtensions
             user.HasKey(u => u.Id);
             user.HasIndex(u => u.NormalizedUserName).IsUnique();
             user.HasIndex(u => u.NormalizedEmail);
+            user.HasIndex(u => u.PhoneNumber);
             user.Property(u => u.UserName).HasMaxLength(256);
             user.Property(u => u.NormalizedUserName).HasMaxLength(256);
             user.Property(u => u.Email).HasMaxLength(320);

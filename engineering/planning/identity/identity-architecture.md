@@ -1,6 +1,6 @@
 # Identity (own, sliced) — architecture
 
-*Last updated: 2026-06-10*
+*Last updated: 2026-09-28*
 
 > Build our **own** identity system that copies ASP.NET Core Identity's most important features but
 > exposes them as **orthogonal lego slices** — compose user store + password + OTP + Telegram +
@@ -192,12 +192,12 @@ The rebuild is mostly **glue + the user model + the stores** — ~60% of the sur
 - Default impls persist via the existing Data layer; no new Data abstractions.
 - Facade throws `NotSupportedException` (not silent no-op) when a slice is absent.
 
-**Open**
-- `identity/core` in the core meta vs a `WoW.Two.Sdk.Backend.Beta.Identity.Core` sub-area? (lean: sub-area folder, mono-lib for now.)
-- Token providers: ASP.NET DataProtection vs our own HMAC + `TimeProvider`? (lean: HMAC, fewer deps, AOT-friendly.)
-- Normalized-key uniqueness enforced in store vs DB index only? (lean: both.)
-- `UserAccountService` granularity — one facade vs per-slice managers (UserManager/RoleManager/SignInManager split)? (lean: one facade + `ISignInService`.)
-- Recovery-code storage shape (hashed list in `IUserToken` vs dedicated table).
+**Settled 2026-09-28** (see [identity-slices.md](identity-slices.md) § Rulings)
+- Sub-area folders under `Identity/Core/`, one namespace per slice, inside the mono-lib.
+- Purpose tokens: own HMAC-SHA256 + `TimeProvider`, bound to the security stamp; no Data Protection dependency.
+- Uniqueness: both the service check and the DB unique index.
+- Granularity: per-slice services beside the core `UserAccountService`; `SignInService` composes whichever exist.
+- Recovery codes: SHA-256 digests in one `identity_user_tokens` row under ASP.NET's provider name.
 
 ## 11. Security items this subsumes
 

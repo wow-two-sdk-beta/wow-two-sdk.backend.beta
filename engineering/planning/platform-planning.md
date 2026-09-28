@@ -40,7 +40,7 @@ Request validation, aggregated validation failures and RFC 9457 ProblemDetails r
 | P1 boot floor | foundation + observability + web + `AddApiDefaults` meta | ✅ shipped |
 | P2 pipeline + auth | mediator + identity (jwt/cookies/oidc/oauth×16/mfa/argon2/otp/issuance/policies) | ✅ shipped |
 | P3 persistence + outbound | data + HTTP adapters ship; sessions/safety implemented locally; Hybrid/Memory/Redis cache adapters ship; transactional invalidation remains | 🚧 |
-| **Identity rebuild** | own ASP.NET-Identity-compatible user model, sliced lego stores | 🚧 **step 1 `identity/core` ✅ (2026-07-10)** — entities + user store + `UserAccountService` + `ApplyIdentitySchema` + `AddUserAccounts`; steps 2-10 next. See [identity/](identity/identity-architecture.md) |
+| **Identity rebuild** | own ASP.NET-Identity-compatible user model, sliced lego stores | 🚧 steps 1–9 implemented (2026-09-28, unreleased): passwords, tokens, email, lockout, stamp revocation, roles, claims, logins, 2FA, phone, sign-in — [track](identity/identity-slices.md); step 10 dogfood remains |
 | Security batch | request-limits · token revocation · CSRF · HTTPS/HSTS · SSRF guard · lockout | ⏳ planned (partly subsumed by Identity rebuild) |
 | P4 distributed | comms/email ✅ · jobs/hangfire ✅ · **messaging ✅** (custom transport-port: in-mem/RabbitMQ/Kafka/NATS + EF outbox(+PG skip-locked) + EventSaga) · **webhooks ✅** (HMAC + SSRF guard) · CAP ⏳ · sms/push ⏳ | 🚧 |
 | P5 SaaS-shaped | tenancy · ai/core + vector · feature-flags | ⏳ planned |
@@ -55,11 +55,11 @@ Request validation, aggregated validation failures and RFC 9457 ProblemDetails r
 | Env-gate OpenAPI in `UseApiDefaults` | issue | Security | **✅ shipped 2026-07-10** — `ExposeOpenApi` now `bool?`; defaults to Development-only. |
 | Wire real `AllowedHosts`/host-filtering in `AddProxyAwareHosting` | issue | Security | **✅ shipped 2026-07-10** — `ProxyAwareHostingOptions.AllowedHosts` → `HostFilteringOptions` + `UseHostFiltering`; doc corrected. |
 | HTTPS redirect into `UseApiDefaults` | feature | Security | **✅ shipped 2026-07-10** — `EnableHttpsRedirection` (default on) → `UseHttpsRedirection` after forwarded-headers. |
-| Token revocation + refresh | feature | Identity | Folds into identity security-stamp; see deep-dive §11. |
-| JWT validation hardening (alg allowlist, mandatory iss/aud/exp) | feature | Security | Harden existing `AddJwtBearerAuthentication`. |
+| Token revocation + refresh | feature | Identity | Revocation **implemented 2026-09-28** — `AddSecurityStampValidation` rejects cookie + bearer principals after a stamp rotation. Refresh tokens remain. |
+| JWT validation hardening (alg allowlist, mandatory iss/aud/exp) | feature | Security | **✅ shipped** — `AddJwtBearerAuthentication` pins `ValidAlgorithms`, validates issuer, audience, signing key and lifetime. |
 | SSRF-safe outbound handler (deny-private-IP / allowlist) | feature | Security | Implemented locally: `AddSafeOutboundHttp`, shared IP policy, no automatic redirects/proxies/cookies; HTTP/3 rejected. Webhook transport hardened. Release pending. |
 | CSRF/antiforgery preset for cookie flows | feature | Security | Pairs with cookie sign-in. |
-| Breached-password check (HIBP k-anonymity) | feature | Identity | Optional password validator slice. |
+| Breached-password check (HIBP k-anonymity) | feature | Identity | **Implemented 2026-09-28** — `AddBreachedPasswordCheck()`: padded range query, fail-open by default. |
 | caching completion | feature | P3 | HybridCache + Memory + Redis adapters already ship. Remaining: commit-aware invalidation, cross-host invalidation evidence and optional FusionCache adapter. |
 | messaging transport-port + RabbitMQ/Kafka/NATS + EF outbox | feature | P4 | **✅ shipped 2026-07** — custom `Messaging/Transport` port (not CAP); RabbitMQ (native DLX) · Kafka + NATS (emulated DLQ) · EF outbox(+PG skip-locked) · EventSaga. CAP now positioned as one future adapter under the port (decision 9.2 superseded). |
 | webhooks (HMAC sign/verify + replay window + SSRF guard) | feature | P4 | **✅ shipped 2026-07-10** — `Messaging/Webhooks`: HMAC-SHA256 (`timestamp.body`) + SSRF guard (scheme/host pre-flight + connect-time private-IP block). Replay window is receiver-side (timestamp header shipped). Residual: durable store + mgmt API. |

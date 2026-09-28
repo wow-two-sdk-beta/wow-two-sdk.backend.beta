@@ -81,6 +81,9 @@ public static class IdentityErrorCodeConstants
     /// <summary>The recovery code is unknown or already redeemed.</summary>
     public const string InvalidRecoveryCode = "InvalidRecoveryCode";
 
+    /// <summary>A one-time code sent to the phone does not verify.</summary>
+    public const string InvalidPhoneCode = "InvalidPhoneCode";
+
     /// <summary>Two-factor was enabled before an authenticator key was verified.</summary>
     public const string AuthenticatorNotConfigured = "AuthenticatorNotConfigured";
 }

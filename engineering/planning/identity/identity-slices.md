@@ -26,7 +26,7 @@
 - [x] I4 — roles + user claims + principal factory: repositories, services, `UserClaimsPrincipalFactory`
 - [x] I5 — sign-in: `SignInService` orchestrating lockout → password → preconditions → two-factor → principal
 - [x] I6 — external logins + stored tokens + two-factor: login repository, authenticator key, hashed recovery codes
-- [ ] I7 — phone slice: set, OTP confirmation and phone sign-in over the shipped `IOtpService`
+- [x] I7 — phone slice: set, OTP confirmation and phone sign-in over the shipped `IOtpService`; 58 identity tests pass
 
 ---
 

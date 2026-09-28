@@ -40,4 +40,9 @@ public interface IUserRepository<TUser, in TKey>
     /// <param name="normalizedEmail">The normalized email.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task<TUser?> FindByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default);
+
+    /// <summary>Find the user holding a confirmed phone number, or null.</summary>
+    /// <param name="phoneNumber">The phone number, compared exactly (store E.164).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<TUser?> FindByConfirmedPhoneNumberAsync(string phoneNumber, CancellationToken cancellationToken = default);
 }
