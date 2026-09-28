@@ -12,6 +12,7 @@ builder.Services.AddBatchPipeline<ScanRecordModel, ScanBatchHandler>(options =>
 
 // Request path: never waits.
 if (!pipeline.TryWrite(scan)) { /* dropped and counted */ }
+await pipeline.WriteAsync(order, ct);   // waits for capacity instead; false only while stopping
 
 public sealed class ScanBatchHandler(AppDbContext db) : IBatchHandler<ScanRecordModel>
 {

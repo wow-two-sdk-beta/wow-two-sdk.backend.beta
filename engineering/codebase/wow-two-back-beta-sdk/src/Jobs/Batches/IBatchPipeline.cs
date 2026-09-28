@@ -9,4 +9,11 @@ public interface IBatchPipeline<in TItem>
     /// <param name="item">The work item.</param>
     /// <returns><see langword="false"/> when the pipeline is full or stopping; the item is dropped and counted.</returns>
     bool TryWrite(TItem item);
+
+    /// <summary>Accepts <paramref name="item"/>, waiting while the pipeline is full — backpressure instead of loss.</summary>
+    /// <param name="item">The work item.</param>
+    /// <param name="cancellationToken">Stops waiting for capacity.</param>
+    /// <returns><see langword="false"/> when the pipeline is stopping; the item is dropped and counted.</returns>
+    /// <exception cref="OperationCanceledException">The caller gave up waiting; the item was not accepted.</exception>
+    ValueTask<bool> WriteAsync(TItem item, CancellationToken cancellationToken = default);
 }

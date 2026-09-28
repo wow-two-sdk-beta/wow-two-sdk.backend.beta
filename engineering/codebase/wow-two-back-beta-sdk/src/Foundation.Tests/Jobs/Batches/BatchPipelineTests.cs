@@ -48,6 +48,45 @@ public sealed class BatchPipelineTests
     }
 
     [Fact]
+    public async Task WriteAsync_WaitsForCapacityInsteadOfDropping()
+    {
+        var probe = new HandlerProbe { Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously) };
+        using IHost host = await StartAsync(probe, options => options.Capacity = 1);
+        var pipeline = host.Services.GetRequiredService<IBatchPipeline<int>>();
+
+        (await pipeline.WriteAsync(1)).Should().BeTrue();
+        await probe.Started.Task.WaitAsync(Patience);
+        (await pipeline.WriteAsync(2)).Should().BeTrue();
+        var waiting = pipeline.WriteAsync(3).AsTask();
+
+        await Task.Delay(100);
+        waiting.IsCompleted.Should().BeFalse();
+        probe.Gate.SetResult();
+
+        (await waiting.WaitAsync(Patience)).Should().BeTrue();
+        await WaitUntilAsync(() => Counts(host).Processed == 3);
+        Counts(host).Dropped.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task WriteAsync_HonoursCallerCancellationWhileFull()
+    {
+        var probe = new HandlerProbe { Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously) };
+        using IHost host = await StartAsync(probe, options => options.Capacity = 1);
+        var pipeline = host.Services.GetRequiredService<IBatchPipeline<int>>();
+        await pipeline.WriteAsync(1);
+        await probe.Started.Task.WaitAsync(Patience);
+        await pipeline.WriteAsync(2);
+
+        using var giveUp = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+        var act = async () => await pipeline.WriteAsync(3, giveUp.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        probe.Gate.SetResult();
+        await WaitUntilAsync(() => Counts(host).Processed == 2);
+    }
+
+    [Fact]
     public async Task FailedBatch_IsCountedAndTheLoopContinues()
     {
         var probe = new HandlerProbe { FailFirstBatch = true };

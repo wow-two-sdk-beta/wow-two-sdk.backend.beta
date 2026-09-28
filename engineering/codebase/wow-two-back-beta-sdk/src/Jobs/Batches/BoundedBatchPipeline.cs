@@ -6,7 +6,10 @@ namespace WoW.Two.Sdk.Backend.Beta.Jobs.Batches;
 
 /// <summary>Buffers work items in a bounded channel and counts every dropped, processed and failed item.</summary>
 /// <typeparam name="TItem">The work item type.</typeparam>
-/// <remarks>Producers never wait: a full or stopping pipeline drops the item, counts it and logs at powers of two.</remarks>
+/// <remarks>
+/// <see cref="TryWrite"/> never waits: a full or stopping pipeline drops the item, counts it and logs at powers of two.
+/// <see cref="WriteAsync"/> waits for capacity instead and drops only once the pipeline is stopping.
+/// </remarks>
 public sealed class BoundedBatchPipeline<TItem> : IBatchPipeline<TItem>
 {
     private static readonly Meter Meter = new("WoW.Two.Sdk.Backend.Beta.Jobs.Batches");
@@ -62,17 +65,36 @@ public sealed class BoundedBatchPipeline<TItem> : IBatchPipeline<TItem>
             return true;
         }
 
+        RecordDropped();
+        return false;
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<bool> WriteAsync(TItem item, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _channel.Writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (ChannelClosedException)
+        {
+            RecordDropped();
+            return false;
+        }
+    }
+
+    internal void Complete() => _channel.Writer.TryComplete();
+
+    private void RecordDropped()
+    {
         Dropped.Add(1, _tag);
         long count = Interlocked.Increment(ref _droppedCount);
         if ((count & (count - 1)) == 0)
         {
             _logger.BatchItemsDropped(Name, count);
         }
-
-        return false;
     }
-
-    internal void Complete() => _channel.Writer.TryComplete();
 
     internal void RecordProcessed(int count)
     {
