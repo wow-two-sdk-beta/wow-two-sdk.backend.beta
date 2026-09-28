@@ -16,9 +16,9 @@ Parser types live under `Captions/Parsers/` and `Csv/Parsers/`, with matching na
 | `Endpoints/` | `MapImageToolEndpoints()`, `MapPdfToolEndpoints()` | The image and PDF tools as multipart HTTP endpoints (see `Endpoints/endpoints.md`) |
 | `Captions/` | `AddCaptionParsing()`, `ICaptionParser` (+ VTT/SRT/TTML/json3), `ITimedText` helpers | Parse/convert caption formats; slice parts and render text (see `Captions/captions.md`) |
 | `YouTube/` | `YouTubeUrlMapper`, `YouTubeLinkExtractor` | Video and playlist links in any published form, and links in pasted text (see `YouTube/youtube.md`) |
-| `Tabular/` | `ITabularExporter`, `TabularFormat` | Shared row-export abstraction (CSV / XLSX) |
+| `Tabular/` | `ITabularExporter`, `ITabularParser`, `TabularFormat` | Shared row export and import (CSV / XLSX), picked by format |
 | `Csv/` | `AddCsvExport()`, `CsvTabularExporter`, `ICsvParser` | CSV read + write via CsvHelper |
-| `Excel/` | `AddExcelExport()`, `ExcelTabularExporter` | XLSX write via ClosedXML |
+| `Excel/` | `AddExcelExport()`, `ExcelTabularExporter`, `IExcelParser` | XLSX write and import via ClosedXML |
 
 ## Tabular export — quickstart
 

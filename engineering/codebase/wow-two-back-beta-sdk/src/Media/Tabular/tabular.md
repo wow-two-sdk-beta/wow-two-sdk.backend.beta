@@ -61,3 +61,18 @@ defaults; library configuration examples can use construction paths that this wr
 
 - [CsvHelper member attributes](https://joshclose.github.io/CsvHelper/examples/configuration/attributes/).
 - [ClosedXML object member selection and ordering](https://docs.closedxml.io/en/0.104.2/features/bulk-insert-data.html).
+
+## Import
+
+`ITabularParser.ReadAsync<T>` reads a document back into records; `AddCsvExport()` and `AddExcelExport()` register
+one parser per format, so an upload picks its parser by extension.
+
+| Contract | CSV — CsvHelper | XLSX — ClosedXML |
+|---|---|---|
+| Headers | Property names, `[Name]` overrides | `[XLColumn(Header)]`, else the property name ignoring case, spaces, `_` and `-` |
+| Unknown columns · blank rows | CsvHelper configuration | skipped |
+| Values | CsvHelper conversion, invariant | typed cells, else invariant text; booleans take yes/no, true/false, 1/0 |
+| A bad value | CsvHelper exception | `TabularRowException` with the row and column header → 400 |
+| Worksheet | — | the first, or `ReadAsync<T>(stream, "Sheet")` on `IExcelParser` |
+
+XLSX import buffers the workbook in memory (ClosedXML needs a seekable package) and yields rows lazily from it.
