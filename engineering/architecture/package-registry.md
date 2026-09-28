@@ -258,9 +258,9 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Eskiz` | `AddEskizSmsBroker` — Uzbekistan gateway, cached bearer token | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Plivo` | Plivo impl | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Acs` | Azure Comm Services SMS impl | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Push` | `IPushSender` abstraction | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Push.Fcm` | Firebase Cloud Messaging impl | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Push.Apns` | Apple Push (dotAPNS) impl | planned |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Push` | `IPushBroker` + `PushMessage` + `PushSendResult.TokenInvalid` | implemented (mono-lib, unreleased) |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Push.Fcm` | `AddFcmPushBroker` — HTTP v1, service-account RS256 assertion, cached OAuth token | implemented (mono-lib, unreleased) |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Push.Apns` | `AddApnsPushBroker` — HTTP/2, `.p8` ES256 provider token (no dotAPNS) | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Push.OneSignal` | OneSignal impl | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Push.WebPush` | Web Push impl | planned |
 
