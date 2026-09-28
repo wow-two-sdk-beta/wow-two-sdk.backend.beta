@@ -41,6 +41,7 @@ public static class IdentityCoreServiceCollectionExtensions
                 .Validate(options => options.Lockout.DefaultLockout > TimeSpan.Zero, "IdentityCoreOptions.Lockout.DefaultLockout must be positive."));
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<UserAccountService<TUser, TKey>>();
+        services.TryAddScoped<UserClaimsPrincipalFactory<TUser, TKey>>();
 
         return new IdentityBuilder<TUser, TKey>(services);
     }

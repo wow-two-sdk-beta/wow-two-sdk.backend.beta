@@ -12,6 +12,9 @@ public sealed record IdentityCoreOptions
     /// <summary>Claim types written into principals and read back from them.</summary>
     public IdentityClaimOptions Claims { get; } = new();
 
+    /// <summary>Sign-in preconditions (consumed by the sign-in slice).</summary>
+    public SignInOptions SignIn { get; } = new();
+
     /// <summary>Lockout rules (consumed by the lockout slice).</summary>
     public LockoutOptions Lockout { get; } = new();
 }

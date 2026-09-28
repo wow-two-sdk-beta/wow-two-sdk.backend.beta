@@ -9,6 +9,9 @@ public static class UserTokenPurposeConstants
     /// <summary>Authorizes one password reset.</summary>
     public const string PasswordReset = "PasswordReset";
 
+    /// <summary>Carries a password-verified user into the two-factor step of a sign-in.</summary>
+    public const string TwoFactorSignIn = "TwoFactorSignIn";
+
     /// <summary>Authorizes a move to one new email address.</summary>
     public const string ChangeEmail = "ChangeEmail";
 

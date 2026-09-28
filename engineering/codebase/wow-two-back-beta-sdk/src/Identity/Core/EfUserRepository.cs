@@ -64,6 +64,13 @@ public sealed class EfUserRepository<TUser, TKey, TContext> : IUserRepository<TU
     public async Task DeleteAsync(TUser user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
+        var userId = user.Id;
+
+        // The schema has no foreign keys, so the user's relation rows leave in the same save.
+        _context.RemoveRange(await _context.Set<IdentityUserRole<TKey>>().Where(r => r.UserId.Equals(userId)).ToListAsync(cancellationToken));
+        _context.RemoveRange(await _context.Set<IdentityUserClaim<TKey>>().Where(c => c.UserId.Equals(userId)).ToListAsync(cancellationToken));
+        _context.RemoveRange(await _context.Set<IdentityUserLogin<TKey>>().Where(l => l.UserId.Equals(userId)).ToListAsync(cancellationToken));
+        _context.RemoveRange(await _context.Set<IdentityUserToken<TKey>>().Where(t => t.UserId.Equals(userId)).ToListAsync(cancellationToken));
         Users.Remove(user);
         await _context.SaveChangesAsync(cancellationToken);
     }

@@ -4,8 +4,8 @@ Our **own** identity system (not a wrapper over `Microsoft.AspNetCore.Identity`)
 compose only what an app needs. Core is the mandatory slice: the user entity + user store + normalizer + the
 `UserAccountService` facade. Entities carry ASP.NET-Identity-shaped columns and persist through the Data layer.
 
-> Step 1 of the identity build order (see `engineering/planning/identity/identity-architecture.md`). Vertical shipped:
-> create → find → delete a user. Password / email / lockout / roles / 2FA / sign-in are later slices on this schema.
+> Build order: `engineering/planning/identity/identity-architecture.md` §9; slice track: `identity-slices.md`.
+> Every slice below is opt-in through the builder `AddUserAccounts` returns.
 
 ## Quick start
 
@@ -30,26 +30,34 @@ var result  = await service.CreateAsync(new IdentityUser { UserName = "alice", E
 var alice   = await service.FindByNameAsync("ALICE");   // case-insensitive via the normalizer
 ```
 
-## Layout
+## Slices
 
-| File | What |
-|---|---|
-| `IdentityUser.cs` / `IdentityRole.cs` | user + role entities (`IdentityUser<TKey>` + `IdentityUser : IdentityUser<Guid>`) |
-| `IdentityRelations.cs` | user-role / user-claim / role-claim / user-login / user-token entities |
-| `IdentitySchema.cs` | `ApplyIdentitySchema<TUser,TRole,TKey>()` — EF mapping (keys, unique indexes, lengths) |
-| `NormalizeMapper.cs` | `INormalizeMapper` + upper-invariant default |
-| `IUserRepository.cs` / `EfUserRepository.cs` | core store slice + EF impl |
-| `UserAccountService.cs` | thin facade — normalize, enforce uniqueness, stamp, persist |
-| `IdentityResult.cs` | `IdentityResult` / `IdentityError` |
-| `IdentityBuilder.cs` / `IdentityCoreServiceCollectionExtensions.cs` | `AddIdentityCore` + `.AddEntityFrameworkStores` |
+| Builder call | Service | Folder |
+|---|---|---|
+| `AddEntityFrameworkStores<TContext>()` | `UserAccountService`, `UserClaimsPrincipalFactory` | `./` |
+| `AddArgon2Passwords()` · `AddBreachedPasswordCheck()` | `UserPasswordService` | `Passwords/` |
+| `AddUserTokens(o => o.SigningKey = …)` | `UserTokenIssuer` | `Tokens/` |
+| `AddEmailConfirmation()` | `UserEmailService` | `Emails/` |
+| `AddLockout()` | `UserLockoutService` | `Lockout/` |
+| `AddSecurityStampValidation()` | `SecurityStampValidator` + cookie/JWT hooks | `SecurityStamps/` |
+| `AddRoles<TRole>()` | `RoleService`, `UserRoleService` | `Roles/` |
+| `AddUserClaims()` | `UserClaimService` | `UserClaims/` |
+| `AddExternalLogins()` | `UserLoginService` | `Logins/` |
+| `AddTwoFactor()` | `UserTwoFactorService` | `TwoFactor/` |
+| `AddSignIn()` | `SignInService` | `SignIn/` |
+
+Table-backed slices (`AddRoles`, `AddUserClaims`, `AddExternalLogins`, `AddTwoFactor`) register their EF repositories
+only when called after `AddEntityFrameworkStores`; otherwise the host registers its own repositories.
 
 ## Notes
 
 - **Schema owned by EF fluent config** (`ApplyIdentitySchema`), not the bespoke SQL migrator — the identity schema is a
   library schema consumers migrate via EF. Casing comes from `UseSnakeCaseNamingConvention()`.
 - Uniqueness is enforced **both** in the facade (`DuplicateUserName`/`DuplicateEmail`) and by the DB unique index.
-- A capability that isn't registered is **absent** — resolving `UserAccountService` without `.AddEntityFrameworkStores`
-  (or another `IUserRepository`) fails fast at resolution, rather than silently no-op'ing.
+- A capability that isn't registered is **absent** — resolving its service fails at resolution, rather than
+  silently no-op'ing. Optional collaborators (lockout inside sign-in, tokens inside passwords) switch steps on or off.
+- Credential changes (password, email, role or claim removal, 2FA changes, unlinking) rotate the security stamp.
+- Deleting a user removes its role, claim, login and token rows in the same save; the schema has no foreign keys.
 - Entry point is **`AddUserAccounts`** (not `AddIdentityCore` as the deep-dive drafted) — ASP.NET's own
   `AddIdentityCore<TUser>` extension is always in scope via the shared framework and would collide.
 - User updates preserve the loaded tracked instance. A detached replacement with the same key is rejected while

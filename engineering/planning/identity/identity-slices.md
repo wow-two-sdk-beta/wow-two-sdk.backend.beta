@@ -23,9 +23,10 @@
 - [x] I1 — password slice: Argon2id via `IPasswordHasher<TUser>`, rules + breach validators, set/change/check; rehash upgrade
 - [x] I2 — purpose tokens + email slice: `UserTokenIssuer`, email confirmation and change, password reset; 13 tests
 - [x] I3 — lockout + security stamps: failure counting, lockout window, rotation; cookie + JWT revocation end to end
-- [ ] I4 — roles + user claims + principal factory: repositories, services, `UserClaimsPrincipalFactory`
-- [ ] I5 — sign-in: `SignInService` orchestrating password → lockout → confirmation → two-factor → principal
-- [ ] I6 — external logins + stored tokens + two-factor: login repository, authenticator key, recovery codes
+- [x] I4 — roles + user claims + principal factory: repositories, services, `UserClaimsPrincipalFactory`
+- [x] I5 — sign-in: `SignInService` orchestrating lockout → password → preconditions → two-factor → principal
+- [x] I6 — external logins + stored tokens + two-factor: login repository, authenticator key, hashed recovery codes
+- [ ] I7 — phone slice: set, OTP confirmation and phone sign-in over the shipped `IOtpService`
 
 ---
 
@@ -64,3 +65,9 @@
 
 - `.AddExternalLogins()` registers the login repository plus `UserLoginService`.
 - `.AddTwoFactor()` registers stored tokens, the TOTP authenticator key and hashed recovery codes.
+- Two-factor sign-in carries the password-verified user in a 5-minute purpose-token ticket plus the user id.
+
+## I7 — Phone slice
+
+- `.AddPhoneNumbers()` registers `UserPhoneService`: set (unconfirmed), send and verify OTP codes, sign in by phone.
+- Acceptance: a verified code confirms the number; a phone sign-in code resolves the user for `SignInAsync`.
