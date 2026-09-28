@@ -36,7 +36,17 @@
 - [x] S5 — passwordless email: link and code over the OTP service, account routes, `login/two-factor` for 2FA
   accounts; login endpoints now share one session helper
 
+- [x] S6 — pagination: `PageDto<T>` / `TokenPageDto<T>` matching the UI SDK's `Page<T>` / `TokenPage<T>`, query
+  binding, EF offset and keyset (composite key) paging with opaque tokens; SQLite and PostgreSQL tests
+
 ---
+
+## S6 — Pagination
+
+- Wire shape mirrors the UI SDK (`pagination-model.md`): `items`, `pageNumber`, `pageSize`, `totalCount`; or
+  `items`, `pageSize`, `nextPageToken` (absent on the last page). Backend payloads end in `Dto`.
+- Acceptance: offset pages count and clamp sizes; keyset pages walk every row once, including ties on the first key;
+  an altered token answers 400.
 
 ## S1 — Captcha
 

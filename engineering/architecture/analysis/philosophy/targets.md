@@ -434,7 +434,7 @@ Subpath: `wow-two-sdk.backend.beta.web` + `.api`.
 | OData | LATER | Optional companion |
 | GraphQL via HotChocolate | LATER | Companion package — significant surface |
 | Webhooks (outbound + inbound, HMAC verify, retry) | DONE | Outbound `AddWebhooks`, inbound `AddInboundWebhooks`; durable store + management API open in `planning/messaging/webhooks.md` |
-| Pagination conventions (cursor + offset) | NOW | Built-in helpers |
+| Pagination conventions (cursor + offset) | DONE | `Web/Contracts/Paging/` — UI SDK wire shapes, EF offset + keyset paging, 2026-09-28 |
 | Idempotency middleware | NEXT | See §2.22 |
 | Output formatters (XML, etc.) | LATER | Inherit from MVC if needed |
 
