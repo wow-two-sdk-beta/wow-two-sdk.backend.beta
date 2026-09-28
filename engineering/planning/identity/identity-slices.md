@@ -28,6 +28,8 @@
 - [x] I6 — external logins + stored tokens + two-factor: login repository, authenticator key, hashed recovery codes
 - [x] I7 — phone slice: set, OTP confirmation and phone sign-in over the shipped `IOtpService`
 - [x] I8 — refresh tokens: rotation, reuse detection revoking the family, stamp binding, purge; 61 identity tests pass
+- [x] I9 — account HTTP API: `MapUserAccountEndpoints` (register, login bearer/cookie, refresh, logout, email confirm,
+  forgot/reset password, info); emails from `UserAccounts:Emails` configuration; end-to-end tests
 
 ---
 

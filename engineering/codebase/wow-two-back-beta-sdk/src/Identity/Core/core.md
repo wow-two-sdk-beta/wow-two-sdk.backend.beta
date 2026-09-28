@@ -46,6 +46,7 @@ var alice   = await service.FindByNameAsync("ALICE");   // case-insensitive via 
 | `AddTwoFactor()` | `UserTwoFactorService` | `TwoFactor/` |
 | `AddPhoneNumbers()` | `UserPhoneService` | `Phones/` |
 | `AddRefreshTokens()` | `RefreshTokenService` | `RefreshTokens/` |
+| `AddAccountEndpoints()` + `MapUserAccountEndpoints<TUser>()` | account HTTP API | `Endpoints/` |
 | `AddSignIn()` | `SignInService` | `SignIn/` |
 
 Table-backed slices (`AddRoles`, `AddUserClaims`, `AddExternalLogins`, `AddTwoFactor`, `AddRefreshTokens`) register their EF repositories

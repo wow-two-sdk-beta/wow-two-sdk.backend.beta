@@ -116,6 +116,29 @@ public sealed class SignInService<TUser, TKey>
             : await CompleteFirstFactorAsync(user, cancellationToken);
     }
 
+    /// <summary>
+    /// Renew the session of a user who already completed sign-in (refresh-token redemption): lockout and preconditions
+    /// apply again, the second factor does not.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<SignInResult> RenewAsync(TUser user, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        if (_lockout?.IsLockedOut(user) == true)
+            return LockedOutResult;
+        if ((_options.RequireConfirmedEmail && !user.EmailConfirmed)
+            || (_options.RequireConfirmedPhoneNumber && !user.PhoneNumberConfirmed))
+            return new SignInResult { Status = SignInStatus.NotAllowed, UserId = IdOf(user) };
+
+        return new SignInResult
+        {
+            Status = SignInStatus.Succeeded,
+            UserId = IdOf(user),
+            Principal = await _principals.CreateAsync(user, cancellationToken: cancellationToken),
+        };
+    }
+
     /// <summary>Complete a sign-in with an authenticator code, after a <see cref="SignInStatus.RequiresTwoFactor"/> result.</summary>
     /// <param name="userId">The user id from that result.</param>
     /// <param name="ticket">The two-factor ticket from that result.</param>

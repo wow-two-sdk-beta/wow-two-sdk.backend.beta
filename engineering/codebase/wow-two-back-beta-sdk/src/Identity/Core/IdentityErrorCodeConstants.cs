@@ -84,6 +84,18 @@ public static class IdentityErrorCodeConstants
     /// <summary>A one-time code sent to the phone does not verify.</summary>
     public const string InvalidPhoneCode = "InvalidPhoneCode";
 
+    /// <summary>The login or password is wrong, or the account does not exist.</summary>
+    public const string SignInFailed = "SignInFailed";
+
+    /// <summary>The credentials were right but the email or phone is not confirmed yet.</summary>
+    public const string SignInNotAllowed = "SignInNotAllowed";
+
+    /// <summary>The password was right; the request must repeat with a second-factor code.</summary>
+    public const string TwoFactorRequired = "TwoFactorRequired";
+
+    /// <summary>The refresh token is unknown, spent, expired or revoked.</summary>
+    public const string InvalidRefreshToken = "InvalidRefreshToken";
+
     /// <summary>Two-factor was enabled before an authenticator key was verified.</summary>
     public const string AuthenticatorNotConfigured = "AuthenticatorNotConfigured";
 }

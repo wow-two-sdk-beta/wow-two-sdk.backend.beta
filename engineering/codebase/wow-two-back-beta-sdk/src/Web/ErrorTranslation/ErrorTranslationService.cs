@@ -79,7 +79,7 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
         var current = settings.CurrentValue;
         if (error.Metadata?.TryGetValue(MessageKeyMetadata, out var key) == true
             && key is string messageKey
-            && TryCatalog(current, culture, messageKey, out var keyed)
+            && (TryCatalog(current, culture, messageKey, out var keyed) || TryBuiltIn(FieldCodeMessageConstants.Messages, culture, messageKey, out keyed))
             && MessageTemplateMapper.TryFormat(keyed, error.Metadata, culture, out var keyedMessage))
             return keyedMessage;
 

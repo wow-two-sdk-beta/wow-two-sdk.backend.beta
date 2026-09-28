@@ -39,6 +39,10 @@ internal static class FieldCodeMessageConstants
                 ["InvalidRecoveryCode"] = "Код восстановления неверен или уже использован.",
                 ["AuthenticatorNotConfigured"] = "Сначала настройте приложение-аутентификатор.",
                 ["InvalidPhoneCode"] = "Код неверен или устарел.",
+                ["SignInFailed"] = "Неверный логин или пароль.",
+                ["SignInNotAllowed"] = "Подтвердите email или телефон, чтобы войти.",
+                ["TwoFactorRequired"] = "Введите код двухфакторной аутентификации.",
+                ["InvalidRefreshToken"] = "Сеанс истёк. Войдите снова.",
             }.ToFrozenDictionary(StringComparer.Ordinal),
             ["uz"] = new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -70,6 +74,10 @@ internal static class FieldCodeMessageConstants
                 ["InvalidRecoveryCode"] = "Tiklash kodi notoʻgʻri yoki allaqachon ishlatilgan.",
                 ["AuthenticatorNotConfigured"] = "Avval autentifikator ilovasini sozlang.",
                 ["InvalidPhoneCode"] = "Kod notoʻgʻri yoki muddati oʻtgan.",
+                ["SignInFailed"] = "Login yoki parol notoʻgʻri.",
+                ["SignInNotAllowed"] = "Kirish uchun elektron pochta yoki telefonni tasdiqlang.",
+                ["TwoFactorRequired"] = "Ikki bosqichli autentifikatsiya kodini kiriting.",
+                ["InvalidRefreshToken"] = "Seans muddati tugadi. Qaytadan kiring.",
             }.ToFrozenDictionary(StringComparer.Ordinal),
         }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 }
