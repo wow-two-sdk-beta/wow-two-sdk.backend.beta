@@ -163,6 +163,7 @@
     <PackageReference Include="MailKit" />
     <PackageReference Include="SendGrid" />
     <PackageReference Include="AWSSDK.SimpleEmailV2" />
+    <PackageReference Include="AWSSDK.S3" />
   </ItemGroup>
 
   <!-- Hangfire is LGPL-3.0 — the one exception to the permissive-only rule, blessed by targets.md §6 (P4).

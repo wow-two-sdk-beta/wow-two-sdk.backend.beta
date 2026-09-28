@@ -24,6 +24,18 @@ public static class BlobStoragePathMapper
         return normalized;
     }
 
+    /// <summary>Normalizes a listing prefix: the same rules as <see cref="Normalize"/>, but one trailing slash may remain.</summary>
+    /// <param name="prefix">The prefix, e.g. <c>avatars/</c> or <c>avatars/u1</c>; null or blank lists everything.</param>
+    /// <returns>The normalized prefix, or null for everything.</returns>
+    public static string? NormalizePrefix(string? prefix)
+    {
+        if (string.IsNullOrWhiteSpace(prefix))
+            return null;
+
+        var trimmed = prefix.Replace('\\', '/').TrimStart('/');
+        return trimmed.EndsWith('/') ? Normalize(trimmed[..^1]) + "/" : Normalize(trimmed);
+    }
+
     /// <summary>Resolves a logical path to an absolute filesystem path under <paramref name="rootFullPath"/>, ensuring it cannot escape the root.</summary>
     /// <param name="rootFullPath">The absolute store root directory.</param>
     /// <param name="path">The logical blob path.</param>

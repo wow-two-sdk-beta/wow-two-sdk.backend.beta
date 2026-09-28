@@ -307,7 +307,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | Group | Packages |
 |---|---|
 | Realtime | `…Realtime.SignalR`, `…Realtime.SignalR.Redis`, `…Realtime.SignalR.AzureSignalR`, `…Realtime.Sse`, `…Realtime.WebSockets`, `…Realtime.MagicOnion` |
-| Storage | `…Storage`, `…Storage.FluentStorage`, `…Storage.Azure`, `…Storage.S3`, `…Storage.Gcs`, `…Storage.Minio`, `…Storage.Local` |
+| Storage | **`…Storage` core + `…Storage.Local` — shipped** (`IBlobRepository`, `AddLocalBlobStorage`) · **`…Storage.S3` — implemented, unreleased** (`AddS3BlobStorage`; AWS, R2 and MinIO endpoints; S3Mock round-trip test) · planned: `…Storage.Azure`, `…Storage.Gcs`, `…Storage.FluentStorage` |
 | Media | **`…Media.Captions` — shipped** (`VttCaptionParser` + `CaptionSegment`/`CaptionTrack` + `AddVttCaptionParser()`, `src/Media/Captions/`, extracted from the TranscriptForge POC; `ITimedText` slicing, `TimedTextRenderer` and `CaptionClockMapper` from TranscriptForge v0.5) · **`…Media.YouTube` — shipped** (`YouTubeUrlMapper`, `YouTubeLinkExtractor`, `src/Media/YouTube/`, TranscriptForge v0.5) · planned: `…Media.ImageSharp`, `…Media.Skia`, `…Media.Magick`, `…Media.FFmpeg`, `…Media.QuestPdf`, `…Media.ClosedXml`, `…Media.OpenXml`, `…Media.CsvHelper`, `…Media.Markdig` |
 | Search | `…Search.PostgresFts`, `…Search.Elasticsearch`, `…Search.OpenSearch`, `…Search.Meilisearch`, `…Search.Algolia`, `…Search.Typesense`, `…Search.Lucene` |
 | Workflow | `…Workflow.Stateless`, `…Workflow.Elsa`, `…Workflow.WorkflowCore`, `…Workflow.DurableTask`, `…Workflow.Temporal` |

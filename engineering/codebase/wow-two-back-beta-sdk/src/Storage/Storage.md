@@ -1,8 +1,8 @@
 # Storage
 
-*Provider-neutral blob (file object) storage — one `IBlobRepository` surface over the local filesystem now, cloud backends (S3 / Azure Blob / GCS) later.*
+*Provider-neutral blob (file object) storage — one `IBlobRepository` surface over the local filesystem or an S3-compatible bucket; Azure Blob / GCS later.*
 
-Namespace root: `WoW.Two.Sdk.Backend.Beta.Storage`. The core + local impl are pure BCL — zero dependencies.
+Namespace root: `WoW.Two.Sdk.Backend.Beta.Storage`. The core + local impl are pure BCL; the S3 adapter uses `AWSSDK.S3`.
 
 ## Surface
 
@@ -10,6 +10,7 @@ Namespace root: `WoW.Two.Sdk.Backend.Beta.Storage`. The core + local impl are pu
 |---|---|---|
 | `Core/` | `IBlobRepository`, `BlobInfo`, `BlobStoragePathMapper` | Save/read/exists/delete/info/list over forward-slash paths; traversal-guarded |
 | `FileSystem/` | `AddLocalBlobStorage(rootPath)`, `LocalFileBlobRepository` | Filesystem-backed store (dev / single-node) |
+| `S3/` | `AddS3BlobStorage(o => …)`, `S3BlobRepository` | S3-compatible bucket (AWS, R2, MinIO, …) via `AWSSDK.S3` |
 
 ## Quickstart
 

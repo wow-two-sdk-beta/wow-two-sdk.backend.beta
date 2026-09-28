@@ -69,7 +69,7 @@ public sealed class LocalFileBlobRepository : IBlobRepository
     {
         if (Directory.Exists(_root))
         {
-            var normalizedPrefix = string.IsNullOrWhiteSpace(prefix) ? null : BlobStoragePathMapper.Normalize(prefix);
+            var normalizedPrefix = BlobStoragePathMapper.NormalizePrefix(prefix);
 
             foreach (var file in Directory.EnumerateFiles(_root, "*", SearchOption.AllDirectories))
             {
