@@ -37,4 +37,5 @@
 - [x] I4 — analysis: BlurHash placeholder, dominant colors, perceptual hash for duplicates; 22 image tests
 - [x] P1 — PDF core: info, merge, split, extract/reorder, remove, rotate, images → PDF, metadata, AES-256, text
 - [x] P2 — PDF stamps: text watermark and page numbers with Skia-resolved fonts (TTC faces extracted); 7 tests
+- [x] T1 — tool endpoints: `MapImageToolEndpoints`, `MapPdfToolEndpoints` (multipart in, files or JSON out); 4 tests
 - [ ] P3 — PDF → images companion over PDFium [parked: native size]

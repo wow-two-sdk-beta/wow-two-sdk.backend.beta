@@ -13,6 +13,7 @@ Parser types live under `Captions/Parsers/` and `Csv/Parsers/`, with matching na
 |---|---|---|
 | `Images/` | `AddImageProcessing()`, `IImageService` (probe, edit, collage, analyze) | Resize, compress, caption, watermark, collage, BlurHash over SkiaSharp (see `Images/images.md`) |
 | `Pdf/` | `AddPdfProcessing()`, `IPdfService` (info, merge, split, pages, images → PDF, metadata, AES-256, text, stamps) | PDF tools over PDFsharp + PdfPig (see `Pdf/pdf.md`) |
+| `Endpoints/` | `MapImageToolEndpoints()`, `MapPdfToolEndpoints()` | The image and PDF tools as multipart HTTP endpoints (see `Endpoints/endpoints.md`) |
 | `Captions/` | `AddCaptionParsing()`, `ICaptionParser` (+ VTT/SRT/TTML/json3), `ITimedText` helpers | Parse/convert caption formats; slice parts and render text (see `Captions/captions.md`) |
 | `YouTube/` | `YouTubeUrlMapper`, `YouTubeLinkExtractor` | Video and playlist links in any published form, and links in pasted text (see `YouTube/youtube.md`) |
 | `Tabular/` | `ITabularExporter`, `TabularFormat` | Shared row-export abstraction (CSV / XLSX) |
