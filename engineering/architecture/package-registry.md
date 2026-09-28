@@ -252,9 +252,10 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.Ses` | `AddSesEmailBroker()` — SES v2 simple send (no attachments; raw-MIME future) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.Acs` | Azure Communication Services email impl | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.FluentEmail` | FluentEmail templating | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Sms` | `ISmsSender` abstraction | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Twilio` | Twilio impl | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Vonage` | Vonage impl | planned |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Sms` | `ISmsBroker` + `SmsMessage` + `AddSmsDefaults`; OTP delivery via `AddSmsOtpDelivery` (`Identity/Otp/Sms`) | implemented (mono-lib, unreleased) |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Twilio` | `AddTwilioSmsBroker` — Messages API over HttpClient | implemented (mono-lib, unreleased) |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Vonage` | `AddVonageSmsBroker` — SMS API over HttpClient | implemented (mono-lib, unreleased) |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Eskiz` | `AddEskizSmsBroker` — Uzbekistan gateway, cached bearer token | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Plivo` | Plivo impl | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Sms.Acs` | Azure Comm Services SMS impl | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Push` | `IPushSender` abstraction | planned |
