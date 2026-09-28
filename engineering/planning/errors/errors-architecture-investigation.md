@@ -136,7 +136,8 @@ Cancellation ✅ · infra-classification ✅ · logging/observability ✅ · hea
 **DONE (shipped, tested):** `AppError`/`AppErrorType`/`AppException`/catalog · `Result`/`Result<T>` · `AppResult<TSuccess>` · bridge · validation reshape · `IErrorHttpStatusCodeMapper` · PD factory + handlers (+`code`/`errors[]`) · `ErrorNature`+classifier · **`IExceptionMapper`/`IExceptionMappingRule` seam + `DbExceptionMappingRule`** · `ExceptionToResultBehavior` · `AppErrorObserver` · auth→403 · deletes · **`AddApiDefaults` wiring + end-to-end exception→ProblemDetails pipeline (Web.Tests E2E)**.
 **NEXT:** product migration (wheelhouse/smart-qr → `AppResult<TSuccess>`+`AppError`) · app error catalogs (`OrderErrors.*`) + wheelhouse reference adoption.
 **DONE 2026-09-28:** result combinators (`ResultCombinatorExtensions`) · i18n fill as config-activated error translation (`messageKey` metadata; `../errors/error-translation.md`).
-**LATER:** `HttpClientError` (http-layer) · FE label-map · frontend (`ApiError`/per-field/`ErrorBoundary`) · error-code analyzer · `FieldError`→`ValidationFailure` rename.
+**DONE 2026-09-28:** `HttpClientError` as `Http/Errors` (`HttpExceptionMappingRule`, `ToAppErrorAsync`).
+**LATER:** FE label-map · frontend (`ApiError`/per-field/`ErrorBoundary`) · error-code analyzer · `FieldError`→`ValidationFailure` rename.
 
 ---
 
