@@ -50,8 +50,10 @@ Registration extensions, caption data and writers remain in `Media.Captions`.
 
 - Null or blank input yields no segments. Accepted cues retain document order; cue order and start/end relationships are not validated.
 - VTT and SRT strip tags and decode HTML entities. TTML flattens XML elements; json3 preserves text markup and entities.
-- VTT consumes the header through the first blank line; headerless input can lose the first cue. Timing requires two-digit hours and three decimal digits.
-- VTT skips unmatched or text-less cues and adjacent duplicate overlays. Matched but invalid timestamps throw `FormatException`; no partial list is returned.
+- VTT consumes the header through the first blank line or timing line. Timing requires two-digit hours and three decimal digits.
+- A VTT cue's text runs to the first empty line; a line holding only spaces (YouTube opens cues with one) is skipped, not an end.
+- YouTube's rolling auto-captions — recognized by per-word timing tags — read line by line: each segment keeps only the lines its cue added, and the finished-line flashes between cues drop. 1:1 with json3's events on real tracks.
+- Written VTT keeps one segment per cue and skips text-less cues and an identical cue repeated at the previous end. Matched but invalid timestamps throw `FormatException`; no partial list is returned.
 - SRT skips blank-line-separated blocks without a matching timing line or text. Missing/out-of-order cue indices are tolerated; unparseable/overflowing conversions return zero, while clock-component ranges are not strictly validated.
 - TTML invalid XML syntax returns no segments. Paragraphs without `begin` or text are skipped; missing `end`/`dur` makes end equal start.
 - TTML unsupported/unparseable time tokens usually normalize to zero. Nonfinite/out-of-range offsets or duration arithmetic can throw without returning a partial list.
