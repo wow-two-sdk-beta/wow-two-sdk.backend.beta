@@ -260,6 +260,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Jobs.NCronJob` | NCronJob alt | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms` | Meta — email + SMS + push abstractions | planned |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email` | `IEmailBroker` + `EmailMessage`/`EmailSendResult` (result-typed) + `AddEmailDefaults()` (From/Reply-To defaults) | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Email.Templates` | `AddEmailTemplates()` (`Comms:Email:Templates`) — Markdown templates per culture, ICU placeholders, branded inlined-style layout, text twin, buttons, `ITemplatedEmailService.SendAsync` | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.MailKit` | `AddMailKitEmailBroker()` — SMTP via MailKit (any relay; mailpit/mailhog dev) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.SendGrid` | `AddSendGridEmailBroker()` — SendGrid v3 API | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Email.Mailgun` | Mailgun impl | planned |

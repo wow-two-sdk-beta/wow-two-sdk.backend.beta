@@ -30,7 +30,8 @@
 - [x] S2 — usage quotas: `IQuotaService`, in-memory and Redis counters, `RequireQuota(name)`, usage read-out; 5 tests
 - [x] S3 — signed blob URLs: read and write URLs for S3, Azure and local storage; local transfer endpoints; S3 now
   presigns SigV4 (AWSSDK fell back to SigV2); s3mock, Azurite and route tests
-- [ ] S4 — email templates: Markdown templates per culture, layout, text twin, `SendTemplateAsync`
+- [x] S4 — email templates: Markdown templates per culture, layout, text twin, `ITemplatedEmailService.SendAsync`;
+  escaped values, buttons; 5 tests
 - [ ] S5 — passwordless email: magic link and email code sign-in in `SignInService` and the account API
 
 ---
