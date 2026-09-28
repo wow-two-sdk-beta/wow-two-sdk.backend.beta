@@ -246,6 +246,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Messaging.RedisStreams` | `AddRedisStreamsEventBus` — consumer group + `XPENDING`/`XCLAIM` stale recovery, emulated DLQ, in-context settle | shipped (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Mqtt` | MQTTnet direct use | planned |
 | `WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks` | `AddWebhooks` — outbound HMAC-signed delivery + SSRF guard + retry | shipped (mono-lib) |
+| `WoW.Two.Sdk.Backend.Beta.Messaging.Webhooks.Inbound` | `AddInboundWebhooks()` (`Webhooks:Inbound`) + `.RequireWebhookSignature(name)` — wow2/Standard/Stripe/GitHub/Shopify/Slack/Paddle/Telegram validators, replay window, delivery-id dedupe | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Jobs` | Meta — Hangfire defaults | planned |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire` | `AddHangfireJobs(storage, opts)` (plus a provider-aware `(provider, config)` storage overload) + `AddInMemoryHangfireJobs()` (dev) + `UseHangfireJobsDashboard()` (local-only default). SDK serializer conventions, worker/queue/schedule-polling tuning. **Hangfire is LGPL-3.0 — sole exception to permissive-only, per targets.md P4** | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Jobs.Hangfire.Postgres` | `AddPostgresHangfireJobs(connStr, opts, storage)` — PostgreSQL storage preset; `AddPostgresHangfireJobs(opts, storage)` / `UsePostgresPersistenceStorage(provider)` reuse the persistence floor's `DatabaseSettings` | shipped |

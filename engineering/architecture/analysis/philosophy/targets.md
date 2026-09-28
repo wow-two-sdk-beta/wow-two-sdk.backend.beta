@@ -433,7 +433,7 @@ Subpath: `wow-two-sdk.backend.beta.web` + `.api`.
 | Sieve / Gridify for filter/sort/page | NEXT | Pick one; lean Gridify |
 | OData | LATER | Optional companion |
 | GraphQL via HotChocolate | LATER | Companion package — significant surface |
-| Webhooks (outbound + inbound, HMAC verify, retry) | NEXT | First-class |
+| Webhooks (outbound + inbound, HMAC verify, retry) | DONE | Outbound `AddWebhooks`, inbound `AddInboundWebhooks`; durable store + management API open in `planning/messaging/webhooks.md` |
 | Pagination conventions (cursor + offset) | NOW | Built-in helpers |
 | Idempotency middleware | NEXT | See §2.22 |
 | Output formatters (XML, etc.) | LATER | Inherit from MVC if needed |
@@ -600,7 +600,7 @@ Abstractions: `IEmailBroker`, `ISmsSender`, `IPushSender`. Default impls: **Mail
 | `IBillingProvider` abstraction | LATER | First-class seam |
 | **Stripe.net** as primary adapter | LATER | Default once shipped |
 | Paddle / Braintree / Adyen / ChargeBee / Recurly / Square | LATER | Per-vendor adapters |
-| Webhook signature verification + replay protection + idempotency | NEXT | Generic infra (used by all payment + non-payment webhooks) |
+| Webhook signature verification + replay protection + idempotency | DONE | `Messaging/Webhooks/Inbound/` — 8 schemes, replay window, delivery-id dedupe, 2026-09-28 |
 
 ### 3.15 Search — LATER (P3)
 
