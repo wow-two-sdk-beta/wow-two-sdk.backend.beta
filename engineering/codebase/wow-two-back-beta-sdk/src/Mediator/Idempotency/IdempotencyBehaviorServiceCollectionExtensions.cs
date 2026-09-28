@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using StackExchange.Redis;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Options;
 
 namespace WoW.Two.Sdk.Backend.Beta.Mediator.Idempotency;
@@ -37,6 +38,32 @@ public static partial class IdempotencyBehaviorServiceCollectionExtensions
         services.RemoveAll<IIdempotencyRepository>();
         services.AddSingleton<SqlIdempotencyRepository>();
         services.AddSingleton<IIdempotencyRepository>(serviceProvider => serviceProvider.GetRequiredService<SqlIdempotencyRepository>());
+        return services;
+    }
+
+    /// <summary>
+    /// Registers <see cref="RedisIdempotencyRepository"/> as the durable store: atomic across hosts, with in-progress keys
+    /// expiring after their lease. It uses a registered <c>IConnectionMultiplexer</c>, else connects with
+    /// <see cref="RedisIdempotencyOptions.ConnectionString"/>. Options come from <paramref name="configure"/>, then the host
+    /// section <c>Mediator:Idempotency:Redis</c>.
+    /// </summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configure">Connection, key prefix, lease and serializer settings.</param>
+    public static IServiceCollection AddRedisIdempotencyRepository(this IServiceCollection services, Action<RedisIdempotencyOptions>? configure = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddModuleOptions(
+            RedisIdempotencyOptions.SectionName,
+            configure,
+            builder => builder
+                .Validate(o => o.PendingLease > TimeSpan.Zero, "RedisIdempotencyOptions.PendingLease must be positive.")
+                .Validate(o => !string.IsNullOrWhiteSpace(o.KeyPrefix), "RedisIdempotencyOptions.KeyPrefix must not be empty."));
+        services.TryAddSingleton<IConnectionMultiplexer>(serviceProvider =>
+            ConnectionMultiplexer.Connect(serviceProvider.GetRequiredService<RedisIdempotencyOptions>().ConnectionString
+                ?? throw new InvalidOperationException("Redis idempotency needs RedisIdempotencyOptions.ConnectionString or a registered IConnectionMultiplexer.")));
+        services.RemoveAll<IIdempotencyRepository>();
+        services.AddSingleton<RedisIdempotencyRepository>();
+        services.AddSingleton<IIdempotencyRepository>(serviceProvider => serviceProvider.GetRequiredService<RedisIdempotencyRepository>());
         return services;
     }
 

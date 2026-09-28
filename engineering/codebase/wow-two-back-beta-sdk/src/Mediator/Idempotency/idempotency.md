@@ -54,6 +54,16 @@ services.AddSqlIdempotencyRepository(o => o.PendingLease = TimeSpan.FromMinutes(
 - Schema: run `CreateTableSql` in a migration, or `EnsureTableAsync()` in development and tests.
 - `PurgeExpiredAsync()` deletes expired responses and lapsed leases; schedule it from a recurring job.
 
+### Redis
+
+```csharp
+services.AddRedisIdempotencyRepository(o => o.ConnectionString = cfg.GetConnectionString("redis"));  // or Mediator:Idempotency:Redis
+```
+
+- `RedisIdempotencyRepository` keeps one hash per key digest; Lua scripts make acquire, store and release atomic.
+- An in-progress key expires with `PendingLease`, so a crashed host never blocks the retry; a late store is refused.
+- It reuses a registered `IConnectionMultiplexer`, else connects with `ConnectionString`.
+
 ## Limits and replacement
 
 This is process-local deduplication, not crash-safe or distributed exactly-once execution.
