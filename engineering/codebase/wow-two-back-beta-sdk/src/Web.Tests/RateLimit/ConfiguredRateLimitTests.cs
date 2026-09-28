@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Meta;
 using Xunit;
 
@@ -57,10 +58,25 @@ public sealed class ConfiguredRateLimitTests
     {
         var act = () => StartAsync(new Dictionary<string, string?> { ["RateLimits:GlobalPolicy"] = "missing" });
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*missing*");
+        await act.Should().ThrowAsync<OptionsValidationException>().WithMessage("*missing*");
     }
 
-    private static async Task<WebApplication> StartAsync(Dictionary<string, string?> settings)
+    [Fact]
+    public async Task Policies_BindLazily_WhenConfigurationIsAddedAfterRegistration()
+    {
+        // A test host's overrides land after the application registered its services; the limiter still sees them.
+        await using var app = await StartAsync(
+            new Dictionary<string, string?> { ["RateLimits:Policies:login:PermitLimit"] = "1" },
+            new Dictionary<string, string?> { ["RateLimits:Policies:login:PermitLimit"] = "3" });
+        var client = app.GetTestServer().CreateClient();
+
+        for (var attempt = 0; attempt < 3; attempt++)
+            (await client.PostAsync("/login", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.PostAsync("/login", null)).StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+    }
+
+    private static async Task<WebApplication> StartAsync(
+        Dictionary<string, string?> settings, Dictionary<string, string?>? addedLater = null)
     {
         var builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.UseTestServer();
@@ -72,6 +88,7 @@ public sealed class ConfiguredRateLimitTests
             options.EnableOtlpExporters = false;
             options.ExposeOpenApi = false;
         });
+        if (addedLater is not null) builder.Configuration.AddInMemoryCollection(addedLater);
         var app = builder.Build();
         app.UseApiDefaults();
         app.MapPost("/login", () => "ok").RequireRateLimiting("login");

@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Tenancy.Core;
 using WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling.Factories;
@@ -17,32 +19,36 @@ public static class ConfiguredRateLimitServiceCollectionExtensions
 {
     /// <summary>
     /// Adds every policy of the <c>RateLimits</c> configuration section (and its optional global policy) to the rate
-    /// limiter, and rejects with <c>429</c>, <c>Retry-After</c> and a problem-details body. Policies are read once, at
-    /// startup; <c>AddApiDefaults</c> calls this already.
+    /// limiter, and rejects with <c>429</c>, <c>Retry-After</c> and a problem-details body. Policies bind when the limiter
+    /// is built, so configuration a test host adds after registration applies; a global policy naming no policy fails
+    /// when the host starts. <c>AddApiDefaults</c> calls this already.
     /// </summary>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configuration">The host configuration.</param>
+    /// <returns>The same <paramref name="services"/> for chaining.</returns>
     public static IServiceCollection AddConfiguredRateLimits(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var settings = new RateLimitSettings();
-        configuration.GetSection(RateLimitSettings.SectionName).Bind(settings);
-        if (settings.GlobalPolicy is { } global && !settings.Policies.ContainsKey(global))
-            throw new InvalidOperationException($"RateLimits:GlobalPolicy '{global}' names no configured policy.");
+        services.AddOptions<RateLimitSettings>()
+            .Bind(configuration.GetSection(RateLimitSettings.SectionName))
+            .ValidateOnStart();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<RateLimitSettings>, GlobalPolicyValidator>());
 
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = RejectAsync;
+        });
+
+        services.AddOptions<RateLimiterOptions>().Configure<IOptions<RateLimitSettings>>((options, bound) =>
+        {
+            var settings = bound.Value;
             foreach (var (name, policy) in settings.Policies)
                 options.AddPolicy(name, context => Partition(context, name, policy));
-            if (settings.GlobalPolicy is { } globalName)
-            {
-                var policy = settings.Policies[globalName];
-                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => Partition(context, globalName, policy));
-            }
+            if (settings.GlobalPolicy is { } globalName && settings.Policies.TryGetValue(globalName, out var global))
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => Partition(context, globalName, global));
         });
         return services;
     }
@@ -98,5 +104,14 @@ public static class ConfiguredRateLimitServiceCollectionExtensions
         }
 
         http.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+    }
+
+    /// <summary>Fails the start when the global policy names no configured policy.</summary>
+    private sealed class GlobalPolicyValidator : IValidateOptions<RateLimitSettings>
+    {
+        public ValidateOptionsResult Validate(string? name, RateLimitSettings options) =>
+            options.GlobalPolicy is { } global && !options.Policies.ContainsKey(global)
+                ? ValidateOptionsResult.Fail($"RateLimits:GlobalPolicy '{global}' names no configured policy.")
+                : ValidateOptionsResult.Success;
     }
 }

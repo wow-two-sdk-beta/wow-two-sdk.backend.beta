@@ -37,4 +37,5 @@ app.MapGroup("/api").RequireRateLimiting(RateLimitServiceCollectionExtensions.De
 - Algorithms: `SlidingWindow` (default), `FixedWindow`, `TokenBucket`, `Concurrency`; partitions: `Ip`, `User`, `Tenant`
   (user and tenant fall back to the IP).
 - Rejections answer `429` with `Retry-After` and a problem-details body (`code: TooManyRequests`), translated when
-  error translation is on. A `GlobalPolicy` naming no policy fails at startup; policies are read once.
+  error translation is on. A `GlobalPolicy` naming no policy fails when the host starts.
+- Policies bind when the limiter is built, so configuration a test host adds after registration applies.
