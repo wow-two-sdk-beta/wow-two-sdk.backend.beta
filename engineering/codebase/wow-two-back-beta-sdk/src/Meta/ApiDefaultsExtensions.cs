@@ -80,6 +80,9 @@ public static class ApiDefaultsExtensions
             builder.Services.AddPerIpSlidingWindowRateLimit();
         }
 
+        // Policies declared under RateLimits are added whether or not the per-IP default is on.
+        builder.Services.AddConfiguredRateLimits(builder.Configuration);
+
         if (options.EnableOutputCache)
         {
             builder.Services.AddDefaultOutputCache();
@@ -141,10 +144,7 @@ public static class ApiDefaultsExtensions
 
         useIdentity?.Invoke(app);
 
-        if (options.EnableRateLimiting)
-        {
-            app.UseRateLimiter();
-        }
+        app.UseRateLimiter();
 
         // Inert until the HttpIdempotency section enables it; after authentication so keys are scoped per caller.
         app.UseHttpIdempotency();

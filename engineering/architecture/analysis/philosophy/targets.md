@@ -188,10 +188,10 @@ Mirrors §4 of `ideas.md`. Each subsection states the verdict + concrete chosen 
 | Item | Verdict | Note |
 |---|---|---|
 | `Microsoft.AspNetCore.RateLimiting` middleware | LOCKED | Built-in |
-| Per-IP / per-user / per-tenant / per-route policies | NOW | Convention helpers |
+| Per-IP / per-user / per-tenant / per-route policies | DONE | Config-declared policies (`RateLimits` section), 2026-09-28 |
 | Distributed rate limiter via Redis | NEXT | Custom `PartitionedRateLimiter<T>` |
 | AspNetCoreRateLimit | SKIP | Pre-built-in API; superseded |
-| 429 + `Retry-After` + RFC-compliant ProblemDetails | NOW | Default |
+| 429 + `Retry-After` + RFC-compliant ProblemDetails | DONE | Configured-policy rejections, 2026-09-28 |
 
 ### 2.11 Background jobs — NEXT (P2)
 
