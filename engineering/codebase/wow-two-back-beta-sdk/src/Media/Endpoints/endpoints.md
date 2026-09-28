@@ -18,7 +18,7 @@ tools.MapPdfToolEndpoints();
 | `pdf/merge` · `pdf/from-images` | `files`…, `spec` (`PdfImagesSpec`, from-images) | the PDF |
 | `pdf/split` | `file`, `pagesPerPart` | a ZIP of parts |
 | `pdf/extract` · `pdf/remove` · `pdf/rotate` | `file`, `pages` (`1-3,5`), `degrees` (rotate) | the PDF |
-| `pdf/metadata` · `pdf/encrypt` · `pdf/watermark` · `pdf/page-numbers` | `file`, `spec` JSON | the PDF |
+| `pdf/compress` · `pdf/metadata` · `pdf/encrypt` · `pdf/watermark` · `pdf/page-numbers` | `file`, `spec` JSON | the PDF |
 | `pdf/decrypt` | `file`, `password` | the PDF |
 
 - Specs are the C# records as JSON in camelCase, enums as names: `{"resize":{"width":800},"output":{"format":"webp"}}`.

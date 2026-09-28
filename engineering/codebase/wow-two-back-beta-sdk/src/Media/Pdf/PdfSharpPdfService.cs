@@ -178,6 +178,26 @@ public sealed class PdfSharpPdfService(IOptionsMonitor<PdfOptions> options, IIma
     }
 
     /// <inheritdoc />
+    public async Task<PdfResult> CompressAsync(Stream pdf, PdfCompressSpec spec, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(spec);
+        if (spec.ImageQuality is < 1 or > 100 || spec.MaxImageDimension < 16)
+            throw new PdfRejectedException("pdf_compress_invalid", "Compression needs a quality of 1–100 and a size of at least 16 pixels.");
+
+        using var document = Open(await ReadAsync(pdf, cancellationToken), PdfDocumentOpenMode.Modify);
+        document.Options.CompressContentStreams = true;
+        document.Options.FlateEncodeMode = PdfFlateEncodeMode.BestCompression;
+        var seen = new HashSet<PdfDictionary>(ReferenceEqualityComparer.Instance);
+        foreach (var page in document.Pages)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            PdfImageRecompressionMapper.Recompress(page.Elements.GetDictionary("/Resources"), spec, seen);
+        }
+
+        return Save(document);
+    }
+
+    /// <inheritdoc />
     public async Task<PdfResult> EncryptAsync(Stream pdf, PdfEncryptSpec spec, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(spec);

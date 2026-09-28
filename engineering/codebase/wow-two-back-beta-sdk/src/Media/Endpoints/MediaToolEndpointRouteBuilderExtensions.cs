@@ -51,7 +51,7 @@ public static class MediaToolEndpointRouteBuilderExtensions
 
     /// <summary>
     /// Maps <c>pdf/info</c>, <c>merge</c>, <c>split</c> (a ZIP), <c>extract</c>, <c>remove</c>, <c>rotate</c>,
-    /// <c>from-images</c>, <c>metadata</c>, <c>encrypt</c>, <c>decrypt</c>, <c>text</c>, <c>watermark</c> and
+    /// <c>from-images</c>, <c>compress</c>, <c>metadata</c>, <c>encrypt</c>, <c>decrypt</c>, <c>text</c>, <c>watermark</c> and
     /// <c>page-numbers</c> under <paramref name="endpoints"/>; needs <c>AddPdfProcessing</c>. Page lists travel as
     /// <c>pages=1-3,5</c>. Returns the group for authorization or rate limits.
     /// </summary>
@@ -77,6 +77,8 @@ public static class MediaToolEndpointRouteBuilderExtensions
             => Download(await pdf.RotatePagesAsync(file.OpenReadStream(), degrees, pages is null ? null : PdfPageRange.Parse(pages), ct), file.FileName));
         group.MapPost("from-images", async (IFormFileCollection files, [FromForm] string? spec, IPdfService pdf, CancellationToken ct)
             => Download(await pdf.FromImagesAsync([.. files.Select(part => part.OpenReadStream())], Spec<PdfImagesSpec>(spec) ?? new PdfImagesSpec(), ct), "images.pdf"));
+        group.MapPost("compress", async (IFormFile file, [FromForm] string? spec, IPdfService pdf, CancellationToken ct)
+            => Download(await pdf.CompressAsync(file.OpenReadStream(), Spec<PdfCompressSpec>(spec) ?? new PdfCompressSpec(), ct), file.FileName));
         group.MapPost("metadata", async (IFormFile file, [FromForm] string spec, IPdfService pdf, CancellationToken ct)
             => Download(await pdf.UpdateMetadataAsync(file.OpenReadStream(), Required<PdfMetadataSpec>(spec), ct), file.FileName));
         group.MapPost("encrypt", async (IFormFile file, [FromForm] string spec, IPdfService pdf, CancellationToken ct)

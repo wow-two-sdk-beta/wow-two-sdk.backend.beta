@@ -54,6 +54,15 @@ public interface IPdfService
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     Task<PdfResult> UpdateMetadataAsync(Stream pdf, PdfMetadataSpec metadata, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Shrinks the PDF: embedded JPEG photos are downscaled and re-encoded (never grown), content streams deflated.
+    /// Other image kinds (PNG-like, masks, indexed colors) stay as they are.
+    /// </summary>
+    /// <param name="pdf">The PDF.</param>
+    /// <param name="spec">Photo quality and size.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    Task<PdfResult> CompressAsync(Stream pdf, PdfCompressSpec spec, CancellationToken cancellationToken = default);
+
     /// <summary>Protects the PDF with AES-256 and the given passwords and permissions.</summary>
     /// <param name="pdf">The PDF, unencrypted.</param>
     /// <param name="spec">Passwords and permissions.</param>

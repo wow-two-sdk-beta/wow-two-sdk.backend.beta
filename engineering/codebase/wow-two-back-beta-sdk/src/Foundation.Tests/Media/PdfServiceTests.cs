@@ -88,6 +88,24 @@ public sealed class PdfServiceTests
     }
 
     [Fact]
+    public async Task Compress_ShouldShrinkPhotos_KeepingPagesAndText()
+    {
+        var pdf = await Pdf.FromImagesAsync([Photo(1600, 1200)], new PdfImagesSpec { ImageQuality = 95, MaxImageDimension = 3000 });
+        var numbered = await Pdf.AddPageNumbersAsync(Stream(pdf.Content), new PdfPageNumberSpec());
+
+        var compressed = await Pdf.CompressAsync(Stream(numbered.Content), new PdfCompressSpec { ImageQuality = 50, MaxImageDimension = 800 });
+
+        compressed.Content.Length.Should().BeLessThan(numbered.Content.Length / 3);
+        compressed.PageCount.Should().Be(1);
+        (await Pdf.ExtractTextAsync(Stream(compressed.Content))).Pages[1].Should().Contain("1 / 1");
+        using var document = UglyToad.PdfPig.PdfDocument.Open(compressed.Content);
+        var image = document.GetPage(1).GetImages().Single();
+        (image.WidthInSamples, image.HeightInSamples).Should().Be((800, 600));
+        using var decoded = SKBitmap.Decode(image.RawMemory.ToArray());
+        decoded.Width.Should().Be(800, "the embedded stream stays a valid JPEG");
+    }
+
+    [Fact]
     public async Task Refusals_ShouldCarryStableReasons()
     {
         var pdf = await Pdf.FromImagesAsync([Png(100, 100), Png(100, 100), Png(100, 100)], new PdfImagesSpec());
@@ -122,6 +140,18 @@ public sealed class PdfServiceTests
         => (await act.Should().ThrowAsync<PdfRejectedException>()).Which.Reason;
 
     private static MemoryStream Stream(byte[] bytes) => new(bytes);
+
+    /// <summary>A noisy photo, which JPEG cannot squeeze much at high quality.</summary>
+    private static MemoryStream Photo(int width, int height)
+    {
+        var random = new Random(3);
+        var pixels = new SKColor[width * height];
+        for (var index = 0; index < pixels.Length; index++)
+            pixels[index] = new SKColor((byte)random.Next(256), (byte)random.Next(256), (byte)random.Next(256));
+        using var bitmap = new SKBitmap(width, height) { Pixels = pixels };
+        using var image = SKImage.FromBitmap(bitmap);
+        return new MemoryStream(image.Encode(SKEncodedImageFormat.Jpeg, 95).ToArray());
+    }
 
     private static MemoryStream Png(int width, int height)
     {

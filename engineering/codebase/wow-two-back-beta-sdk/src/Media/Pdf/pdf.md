@@ -20,6 +20,7 @@ var text     = await pdf.ExtractTextAsync(file, cancellationToken: ct);
 | `MergeAsync` · `SplitAsync` | join in order · cut into parts of N pages |
 | `ExtractPagesAsync` · `RemovePagesAsync` · `RotatePagesAsync` | subset/reorder · drop · turn by 90° steps |
 | `FromImagesAsync` | one upright image per page (EXIF applied, photos re-encoded), A4/Letter/Legal/A3/A5 or image size |
+| `CompressAsync` | embedded JPEG photos downscaled and re-encoded (kept only when smaller), streams deflated |
 | `UpdateMetadataAsync` | title, author, subject, keywords, creator |
 | `EncryptAsync` · `DecryptAsync` | AES-256 with open/owner passwords and permissions · removal keeping outlines and information |
 | `ExtractTextAsync` | reading-order text per page; scanned pages without a text layer read empty |
@@ -31,4 +32,5 @@ var text     = await pdf.ExtractTextAsync(file, cancellationToken: ct);
 - Limits: `MaxInputBytes`, `MaxPages`. Refusals are `PdfRejectedException` with a `Reason` (`pdf_unreadable`,
   `pdf_password_required`, `pdf_password_invalid`, `pdf_page_range_invalid`, `pdf_empty`, `pdf_too_large`) → 400.
 - Stamps draw in unrotated page space; on a page with `/Rotate` they turn with it.
+- Compression touches JPEG photos in RGB, gray or CMYK (ICC-based too); PNG-like images, masks and indexed colors stay.
 - Not here: PDF → images needs PDFium natives and waits for a companion package.
