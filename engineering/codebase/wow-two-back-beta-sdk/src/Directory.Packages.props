@@ -193,6 +193,7 @@
     <PackageVersion Include="RabbitMQ.Client" Version="7.0.0" />
     <PackageVersion Include="Confluent.Kafka" Version="2.6.1" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.18.2" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.2" />
     <PackageVersion Include="Azure.Messaging.EventHubs" Version="5.11.5" />
     <PackageVersion Include="AWSSDK.SQS" Version="3.7.400.71" />
     <PackageVersion Include="NATS.Client.Core" Version="2.5.5" />
