@@ -1,8 +1,8 @@
 namespace WoW.Two.Sdk.Backend.Beta.Identity.ApiKeys;
 
-/// <summary>Defines the product's store of API keys, which the scheme reads by hash — secrets are never stored.</summary>
+/// <summary>Defines the product's repository of API keys, which the scheme reads by hash — secrets are never stored.</summary>
 /// <remarks>Register it scoped, beside <c>AddApiKeyAuthentication</c>; the scheme resolves it per request.</remarks>
-public interface IApiKeyStore
+public interface IApiKeyRepository
 {
     /// <summary>Finds the live — unrevoked, unexpired — key with a secret hash.</summary>
     /// <param name="hash">The lowercase hex SHA-256 of the presented secret.</param>

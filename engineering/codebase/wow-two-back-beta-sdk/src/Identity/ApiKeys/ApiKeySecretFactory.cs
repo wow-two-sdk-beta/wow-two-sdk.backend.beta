@@ -21,7 +21,7 @@ public sealed class ApiKeySecretFactory(IOptions<ApiKeyOptions> options)
     {
         var secret = Shape.Marker
             + new string(RandomNumberGenerator.GetItems<char>(ApiKeyOptions.Alphabet, Shape.RandomLength));
-        return new ApiKeySecret(secret, ToPrefix(secret), ToHash(secret));
+        return new ApiKeySecret { Secret = secret, Prefix = ToPrefix(secret), Hash = ToHash(secret) };
     }
 
     /// <summary>Maps a secret to its SHA-256; secrets are long and random, so a fast hash resists guessing.</summary>

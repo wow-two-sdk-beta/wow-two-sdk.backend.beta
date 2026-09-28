@@ -7,14 +7,14 @@ Extracted from TranscriptForge v0.7 (public API and MCP access).
 
 | Seam | Default |
 |---|---|
-| `IApiKeyStore` | **product-owned** — `FindLiveByHashAsync(hash)` and `TouchAsync(id, usedAt)` over its key table |
+| `IApiKeyRepository` | **product-owned** — `FindLiveByHashAsync(hash)` and `TouchAsync(id, usedAt)` over its key table |
 | `ApiKeySecretFactory` | `Create()` mints `{marker}` + 32 base62 characters; `ToHash` (SHA-256 hex), `ToPrefix`, `IsSecretShaped` |
 | `ApiKeySecretReader` | a Bearer token carrying the marker, else the key header; any other Bearer is left to other schemes |
 | `ApiKeyAuthenticationHandler` | scheme `ApiKey` — claims `api_key_id` and `Name`; last use written once per `TouchInterval` |
 | `ApiKeyAccessGateMiddleware` | guarded / open / local-only paths; loopback passes without a key |
 
 ```csharp
-builder.Services.AddScoped<IApiKeyStore, ApiKeyRepository>();
+builder.Services.AddScoped<IApiKeyRepository, ApiKeyRepository>();
 builder.Services.AddApiKeyAuthentication(
     keys => keys.Marker = "tf_",
     gate =>

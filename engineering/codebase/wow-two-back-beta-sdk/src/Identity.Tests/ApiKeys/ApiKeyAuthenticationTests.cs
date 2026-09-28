@@ -133,19 +133,19 @@ public sealed class ApiKeyAuthenticationTests
     }
 
     /// <summary>Holds an in-memory host with the scheme, the gate and a dictionary store.</summary>
-    private sealed class Host(WebApplication app, DictionaryStore store, ApiKeySecretFactory secrets) : IAsyncDisposable
+    private sealed class Host(WebApplication app, DictionaryApiKeyRepository store, ApiKeySecretFactory secrets) : IAsyncDisposable
     {
         public HttpClient Client { get; } = app.GetTestClient();
 
-        public DictionaryStore Store => store;
+        public DictionaryApiKeyRepository Store => store;
 
         public static async Task<Host> StartAsync()
         {
-            var store = new DictionaryStore();
+            var store = new DictionaryApiKeyRepository();
             var builder = WebApplication.CreateSlimBuilder();
             builder.WebHost.UseTestServer();
             builder.Logging.ClearProviders();
-            builder.Services.AddSingleton<IApiKeyStore>(store);
+            builder.Services.AddSingleton<IApiKeyRepository>(store);
             builder.Services.AddApiKeyAuthentication(
                 keys => keys.Marker = Marker,
                 gate =>
@@ -174,7 +174,7 @@ public sealed class ApiKeyAuthenticationTests
         public ApiKeySecret AddKey(string name)
         {
             var key = secrets.Create();
-            store.Keys[key.Hash] = new ApiKeyRecord(Guid.NewGuid().ToString(), name, null);
+            store.Keys[key.Hash] = new ApiKeyRecord { Id = Guid.NewGuid().ToString(), Name = name };
             return key;
         }
 
@@ -186,7 +186,7 @@ public sealed class ApiKeyAuthenticationTests
     }
 
     /// <summary>Stands in for a product's key table.</summary>
-    private sealed class DictionaryStore : IApiKeyStore
+    private sealed class DictionaryApiKeyRepository : IApiKeyRepository
     {
         public Dictionary<string, ApiKeyRecord> Keys { get; } = [];
 

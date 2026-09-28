@@ -10,7 +10,7 @@ public static class ApiKeyServiceCollectionExtensions
 {
     /// <summary>Registers the <c>ApiKey</c> authentication scheme, the secret factory and reader, and the gate's options.</summary>
     /// <remarks>
-    /// The product registers its <see cref="IApiKeyStore"/> (scoped) and calls <see cref="UseApiKeyAccessGate"/> after
+    /// The product registers its <see cref="IApiKeyRepository"/> (scoped) and calls <see cref="UseApiKeyAccessGate"/> after
     /// authentication. The default scheme is left alone, so JWT or cookies keep theirs.
     /// </remarks>
     /// <param name="services">The service collection to configure.</param>

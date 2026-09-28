@@ -10,7 +10,7 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.ApiKeys;
 /// <summary>Authenticates a request by the API key it presents — a marked Bearer token or the key header.</summary>
 /// <remarks>
 /// No key means no result, so another scheme — or the access gate's local pass — decides; a presented key must match
-/// a live one in the product's <see cref="IApiKeyStore"/>. Last use is written at most once per touch interval.
+/// a live one in the product's <see cref="IApiKeyRepository"/>. Last use is written at most once per touch interval.
 /// </remarks>
 public sealed class ApiKeyAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> schemeOptions,
@@ -33,7 +33,7 @@ public sealed class ApiKeyAuthenticationHandler(
         if (!secrets.IsSecretShaped(secret))
             return AuthenticateResult.Fail(NotValid);
 
-        var store = Context.RequestServices.GetRequiredService<IApiKeyStore>();
+        var store = Context.RequestServices.GetRequiredService<IApiKeyRepository>();
         var key = await store.FindLiveByHashAsync(ApiKeySecretFactory.ToHash(secret), Context.RequestAborted);
         if (key is null)
             return AuthenticateResult.Fail(NotValid);
