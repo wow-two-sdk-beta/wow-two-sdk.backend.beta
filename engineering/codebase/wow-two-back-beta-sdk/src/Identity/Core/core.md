@@ -47,6 +47,7 @@ var alice   = await service.FindByNameAsync("ALICE");   // case-insensitive via 
 | `AddPhoneNumbers()` | `UserPhoneService` | `Phones/` |
 | `AddRefreshTokens()` | `RefreshTokenService` | `RefreshTokens/` |
 | `AddPasskeys(o => …)` | `UserPasskeyService`, `SignInService.PasskeySignInAsync` | `Passkeys/` |
+| `AddEmailSignIn(o => …)` | `UserEmailSignInService` (single-use link or code over OTP) | `EmailSignIn/` |
 | `AddAccountEndpoints()` + `MapUserAccountEndpoints<TUser>()` | account HTTP API | `Endpoints/` |
 | `AddSignIn()` | `SignInService` | `SignIn/` |
 

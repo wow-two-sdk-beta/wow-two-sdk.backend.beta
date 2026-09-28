@@ -33,6 +33,8 @@ app.MapGroup("/account").MapUserAccountEndpoints<AppUser>();
 | `GET manage/info` | the signed-in account (authorized) |
 | `GET manage/2fa` · `POST manage/2fa/authenticator` · `enable` · `disable` · `recovery-codes` | two-factor setup; mapped only with `.AddTwoFactor()` |
 | `POST manage/2fa/methods/{method}/send` · `…/{method}/enable` · `manage/2fa/preferred` | delivered-code methods: send, enable with the code, choose the first method |
+| `POST email-sign-in/send` · `POST email-sign-in[?useCookies=true]` | passwordless link or code; mapped only with `.AddEmailSignIn()` |
+| `POST login/two-factor[?useCookies=true]` | finishes a first factor that answered with a ticket; mapped with `.AddTwoFactor()` |
 | `POST passkeys/login/options` · `POST passkeys/login[?useCookies=true]` | usernameless passkey sign-in; mapped only with `.AddPasskeys()` |
 | `GET manage/passkeys` · `POST manage/passkeys/options` · `POST manage/passkeys` · `DELETE manage/passkeys/{id}` | list, start, finish and remove registrations |
 

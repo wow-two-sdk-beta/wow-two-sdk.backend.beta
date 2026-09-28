@@ -46,6 +46,7 @@ internal static class FieldCodeMessageConstants
                 ["TwoFactorMethodUnavailable"] = "Этот способ двухфакторной аутентификации недоступен.",
                 ["InvalidTwoFactorCode"] = "Код неверен или устарел.",
                 ["InvalidPasskey"] = "Ключ доступа не подтверждён. Попробуйте ещё раз.",
+                ["InvalidEmailSignIn"] = "Ссылка или код неверны или устарели.",
             }.ToFrozenDictionary(StringComparer.Ordinal),
             ["uz"] = new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -84,6 +85,7 @@ internal static class FieldCodeMessageConstants
                 ["TwoFactorMethodUnavailable"] = "Ikki bosqichli autentifikatsiyaning bu usuli mavjud emas.",
                 ["InvalidTwoFactorCode"] = "Kod notoʻgʻri yoki muddati oʻtgan.",
                 ["InvalidPasskey"] = "Kirish kaliti tasdiqlanmadi. Qaytadan urinib koʻring.",
+                ["InvalidEmailSignIn"] = "Havola yoki kod notoʻgʻri yoki muddati oʻtgan.",
             }.ToFrozenDictionary(StringComparer.Ordinal),
         }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 }

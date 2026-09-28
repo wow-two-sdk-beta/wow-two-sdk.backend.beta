@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Emails;
+using WoW.Two.Sdk.Backend.Beta.Identity.Core.EmailSignIn;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passkeys;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passwords;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.RefreshTokens;
@@ -27,7 +28,8 @@ public static class UserAccountEndpointRouteBuilderExtensions
     /// Maps <c>register</c>, <c>login</c>, <c>refresh</c>, <c>logout</c>, <c>confirm-email</c>,
     /// <c>resend-confirmation-email</c>, <c>forgot-password</c>, <c>reset-password</c>, <c>manage/info</c> and, with the
     /// two-factor slice registered, <c>manage/2fa</c> (status, authenticator, enable, disable, recovery-codes, preferred,
-    /// methods/{method}/send, methods/{method}/enable) and, with the passkey slice registered, <c>passkeys/login/options</c>,
+    /// methods/{method}/send, methods/{method}/enable, plus <c>login/two-factor</c>); with email sign-in registered,
+    /// <c>email-sign-in/send</c> and <c>email-sign-in</c>; and, with the passkey slice registered, <c>passkeys/login/options</c>,
     /// <c>passkeys/login</c> and <c>manage/passkeys</c> (list, options, register, remove) under
     /// <paramref name="endpoints"/> — mount it on a group such as <c>app.MapGroup("/account")</c>. Sign-in returns a bearer
     /// session (JWT via <see cref="ITokenIssuer"/>, plus a refresh token when registered) or, with <c>?useCookies=true</c>,
@@ -62,6 +64,13 @@ public static class UserAccountEndpointRouteBuilderExtensions
             endpoints.MapPost("/manage/2fa/preferred", SetPreferredMethodAsync<TUser, TKey>).RequireAuthorization();
             endpoints.MapPost("/manage/2fa/methods/{method}/send", SendMethodCodeAsync<TUser, TKey>).RequireAuthorization();
             endpoints.MapPost("/manage/2fa/methods/{method}/enable", EnableMethodAsync<TUser, TKey>).RequireAuthorization();
+            endpoints.MapPost("/login/two-factor", TwoFactorLoginAsync<TUser, TKey>);
+        }
+
+        if (endpoints.ServiceProvider.GetService<IServiceProviderIsService>()?.IsService(typeof(UserEmailSignInService<TUser, TKey>)) == true)
+        {
+            endpoints.MapPost("/email-sign-in/send", SendEmailSignInAsync<TUser, TKey>);
+            endpoints.MapPost("/email-sign-in", EmailSignInAsync<TUser, TKey>);
         }
 
         if (endpoints.ServiceProvider.GetService<IServiceProviderIsService>()?.IsService(typeof(UserPasskeyService<TUser, TKey>)) == true)
@@ -116,17 +125,7 @@ public static class UserAccountEndpointRouteBuilderExtensions
                 throw (await TwoFactorChallengeAsync<TUser, TKey>(services, signIn, userId, ticket, method, request.TwoFactorMethod is not null, cancellationToken)).ToException();
         }
 
-        if (!result.Succeeded)
-            throw FailureOf(result.Status).ToException();
-
-        if (useCookies == true)
-        {
-            await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, result.Principal!);
-            return Results.NoContent();
-        }
-
-        var user = await FindAsync<TUser, TKey>(services, result.UserId, cancellationToken);
-        return Results.Ok(ApiResponse<AccessTokenDto>.Ok(await IssueAsync<TUser, TKey>(services, result.Principal!, user, null, cancellationToken)));
+        return await SessionAsync<TUser, TKey>(result, useCookies, http, cancellationToken);
     }
 
     private static IResult PasskeySignInOptions<TUser, TKey>(HttpContext http)
@@ -140,10 +139,83 @@ public static class UserAccountEndpointRouteBuilderExtensions
     {
         var services = http.RequestServices;
         var result = await services.GetRequiredService<SignInService<TUser, TKey>>().PasskeySignInAsync(request.State, request.Credential.GetRawText(), cancellationToken);
+        if (result.Status == SignInStatus.Failed)
+            throw Unauthorized(IdentityErrorCodeConstants.InvalidPasskey, "The passkey could not be verified; try again.").ToException();
+
+        return await SessionAsync<TUser, TKey>(result, useCookies, http, cancellationToken);
+    }
+
+    private static async Task<IResult> SendEmailSignInAsync<TUser, TKey>(EmailSignInSendApiRequest request, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var services = http.RequestServices;
+        var signIn = services.GetRequiredService<UserEmailSignInService<TUser, TKey>>();
+        var mail = services.GetService<UserAccountMailService<TUser, TKey>>();
+        if (string.Equals(request.Method, "code", StringComparison.OrdinalIgnoreCase))
+        {
+            if (await signIn.CreateCodeAsync(request.Email, cancellationToken) is { } code && mail is not null)
+                await mail.SendSignInCodeAsync(code.User, code.Code.Code!, cancellationToken);
+        }
+        else if (await signIn.CreateLinkTokenAsync(request.Email, cancellationToken) is { } link && mail is not null)
+        {
+            await mail.SendMagicLinkAsync(link.User, link.Token.Code!, cancellationToken);
+        }
+
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> EmailSignInAsync<TUser, TKey>(EmailSignInApiRequest request, bool? useCookies, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var services = http.RequestServices;
+        var emailSignIn = services.GetRequiredService<UserEmailSignInService<TUser, TKey>>();
+        var user = !string.IsNullOrWhiteSpace(request.Token)
+            ? await emailSignIn.VerifyLinkTokenAsync(request.Email, request.Token, cancellationToken)
+            : await emailSignIn.VerifyCodeAsync(request.Email, request.Code ?? string.Empty, cancellationToken);
+        if (user is null)
+            throw Unauthorized(IdentityErrorCodeConstants.InvalidEmailSignIn, "The link or code is invalid or has expired.").ToException();
+
+        var signIn = services.GetRequiredService<SignInService<TUser, TKey>>();
+        var result = await signIn.SignInAsync(user, cancellationToken);
+        if (result is { Status: SignInStatus.RequiresTwoFactor, TwoFactorTicket: { } ticket } && TryParseKey<TKey>(result.UserId, out var userId))
+        {
+            var method = result.TwoFactorMethod ?? TwoFactorMethodNameConstants.Authenticator;
+            throw (await TwoFactorChallengeAsync<TUser, TKey>(services, signIn, userId, ticket, method, chosen: false, cancellationToken, exposeTicket: true)).ToException();
+        }
+
+        return await SessionAsync<TUser, TKey>(result, useCookies, http, cancellationToken);
+    }
+
+    private static async Task<IResult> TwoFactorLoginAsync<TUser, TKey>(TwoFactorLoginApiRequest request, bool? useCookies, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var services = http.RequestServices;
+        if (!TryParseKey<TKey>(request.UserId, out var userId))
+            throw Unauthorized(IdentityErrorCodeConstants.SignInFailed, "The sign-in has expired; start again.").ToException();
+
+        var signIn = services.GetRequiredService<SignInService<TUser, TKey>>();
+        var method = request.TwoFactorMethod ?? TwoFactorMethodNameConstants.Authenticator;
+        SignInResult result;
+        if (!string.IsNullOrWhiteSpace(request.TwoFactorCode))
+            result = await signIn.TwoFactorSignInAsync(userId, request.Ticket, method, request.TwoFactorCode, cancellationToken);
+        else if (!string.IsNullOrWhiteSpace(request.RecoveryCode))
+            result = await signIn.RecoveryCodeSignInAsync(userId, request.Ticket, request.RecoveryCode, cancellationToken);
+        else
+            throw (await TwoFactorChallengeAsync<TUser, TKey>(services, signIn, userId, request.Ticket, method, request.TwoFactorMethod is not null, cancellationToken, exposeTicket: true)).ToException();
+
+        return await SessionAsync<TUser, TKey>(result, useCookies, http, cancellationToken);
+    }
+
+    /// <summary>The session of a successful sign-in: a cookie with <c>useCookies</c>, else a bearer token pair.</summary>
+    private static async Task<IResult> SessionAsync<TUser, TKey>(SignInResult result, bool? useCookies, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
         if (!result.Succeeded)
-            throw (result.Status == SignInStatus.Failed
-                ? Unauthorized(IdentityErrorCodeConstants.InvalidPasskey, "The passkey could not be verified; try again.")
-                : FailureOf(result.Status)).ToException();
+            throw FailureOf(result.Status).ToException();
 
         if (useCookies == true)
         {
@@ -151,6 +223,7 @@ public static class UserAccountEndpointRouteBuilderExtensions
             return Results.NoContent();
         }
 
+        var services = http.RequestServices;
         var user = await FindAsync<TUser, TKey>(services, result.UserId, cancellationToken);
         return Results.Ok(ApiResponse<AccessTokenDto>.Ok(await IssueAsync<TUser, TKey>(services, result.Principal!, user, null, cancellationToken)));
     }
@@ -422,7 +495,8 @@ public static class UserAccountEndpointRouteBuilderExtensions
 
     /// <summary>
     /// The 401 a second-factor step answers with: names the method asked for and the available ones, and sends a
-    /// delivered method's code when the client chose it or <see cref="TwoFactorOptions.AutoSendCode"/> is on.
+    /// delivered method's code when the client chose it or <see cref="TwoFactorOptions.AutoSendCode"/> is on. A first
+    /// factor that cannot be repeated (a spent link) exposes the ticket for <c>login/two-factor</c>.
     /// </summary>
     private static async Task<AppError> TwoFactorChallengeAsync<TUser, TKey>(
         IServiceProvider services,
@@ -431,11 +505,18 @@ public static class UserAccountEndpointRouteBuilderExtensions
         string ticket,
         string method,
         bool chosen,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool exposeTicket = false)
         where TUser : IdentityUser<TKey>, new()
         where TKey : notnull, IEquatable<TKey>
     {
         var extensions = new Dictionary<string, object?>(StringComparer.Ordinal) { ["twoFactorMethod"] = method };
+        if (exposeTicket)
+        {
+            extensions["userId"] = Convert.ToString(userId, System.Globalization.CultureInfo.InvariantCulture);
+            extensions["twoFactorTicket"] = ticket;
+        }
+
         if (services.GetService<UserTwoFactorMethodService<TUser, TKey>>() is { } methods
             && await services.GetRequiredService<UserAccountService<TUser, TKey>>().FindByIdAsync(userId, cancellationToken) is { } user)
         {

@@ -162,6 +162,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Identity.IdentityApi` | `AddIdentityApiEndpoints<TContext>()` — bearer-token Identity endpoints with hardened defaults | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Mfa.Totp` | `TotpService` — secret gen + otpauth URI + verify with ±1 step tolerance | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Mfa.WebAuthn` | `AddFido2WebAuthn(domain, name, origins)` — Fido2.AspNet | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Identity.Core.EmailSignIn` | `.AddEmailSignIn()` (`Identity:EmailSignIn`) — single-use link or code sign-in over the OTP service, `email-sign-in` routes, `login/two-factor` ticket completion | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Core.Passkeys` | `.AddPasskeys(o => …)` (`Identity:Passkeys`) — `identity_passkeys`, `UserPasskeyService`, usernameless `PasskeySignInAsync`, single-use ceremonies, account routes | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Identity.PasswordHashing.Argon2` | `UseArgon2PasswordHasher<TUser>()` — OWASP 2024 baseline | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Policies` | `AddRolePolicy()` — `IRolePolicy` + `DictionaryRolePolicy` default (scope → allowed roles) | shipped |

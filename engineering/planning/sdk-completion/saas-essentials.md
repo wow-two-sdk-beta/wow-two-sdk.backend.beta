@@ -22,7 +22,8 @@
 - A quota's limit may differ per plan; the plan comes from a claim, the subject from the user, API key or IP.
 - Signed URLs are issued by the storage provider that holds the blob; local files get HMAC-signed SDK routes.
 - Email templates are Markdown with `{placeholders}` in a shared responsive layout, with a plain-text twin.
-- Passwordless sign-in reuses purpose tokens (link) and the OTP service (code); unknown addresses stay silent.
+- Passwordless sign-in keeps both the link token and the code in the OTP service, so each is single-use;
+  unknown addresses stay silent.
 
 ## Status
 
@@ -32,7 +33,8 @@
   presigns SigV4 (AWSSDK fell back to SigV2); s3mock, Azurite and route tests
 - [x] S4 — email templates: Markdown templates per culture, layout, text twin, `ITemplatedEmailService.SendAsync`;
   escaped values, buttons; 5 tests
-- [ ] S5 — passwordless email: magic link and email code sign-in in `SignInService` and the account API
+- [x] S5 — passwordless email: link and code over the OTP service, account routes, `login/two-factor` for 2FA
+  accounts; login endpoints now share one session helper
 
 ---
 

@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using WoW.Two.Sdk.Backend.Beta.Comms.Email;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Emails;
+using WoW.Two.Sdk.Backend.Beta.Identity.Core.EmailSignIn;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Endpoints;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Lockout;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passkeys;
@@ -215,6 +216,59 @@ public sealed partial class AccountEndpointTests
         (await client.DeleteAsync($"/account/manage/passkeys/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task EmailSignIn_ShouldUseLinksAndCodesOnce_AndHandOffToTwoFactor()
+    {
+        await using var app = await StartAsync(new Dictionary<string, string?>
+        {
+            ["UserAccounts:Emails:MagicLink"] = "https://app.test/magic?email={email}&token={token}",
+            ["Identity:Otp:RateLimitWindow"] = "00:00:00",
+        });
+        var client = app.Server.CreateClient();
+        await client.PostAsJsonAsync("/account/register", new { email = "lea@example.test", password = Password });
+
+        (await client.PostAsJsonAsync("/account/email-sign-in/send", new { email = "nobody@example.test" })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await client.PostAsJsonAsync("/account/email-sign-in/send", new { email = "LEA@example.test" })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        app.Mail.Sent.Should().NotContain(message => message.To[0].Address == "nobody@example.test");
+        var token = System.Web.HttpUtility.ParseQueryString(new Uri(LinkPattern().Match(app.Mail.Sent.Single(message => message.Subject == "Your sign-in link").TextBody!).Value).Query)["token"];
+
+        using var linked = await client.PostAsJsonAsync("/account/email-sign-in", new { email = "lea@example.test", token });
+        var access = (await Data(linked)).GetProperty("accessToken").GetString();
+        using var info = new HttpRequestMessage(HttpMethod.Get, "/account/manage/info");
+        info.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
+        (await Data(await client.SendAsync(info))).GetProperty("emailConfirmed").GetBoolean().Should().BeTrue("the link proved the address");
+
+        using var replayed = await client.PostAsJsonAsync("/account/email-sign-in", new { email = "lea@example.test", token });
+        replayed.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await Problem(replayed)).GetProperty("detail").GetString().Should().Be("The link or code is invalid or has expired.");
+
+        await client.PostAsJsonAsync("/account/email-sign-in/send", new { email = "lea@example.test", method = "code" });
+        var code = app.Mail.Sent.Last(message => message.Subject == "Your sign-in code").TextBody!.Split(' ')[4].TrimEnd('.');
+        code.Should().MatchRegex("^[0-9]{6}$");
+        (await client.PostAsJsonAsync("/account/email-sign-in", new { email = "lea@example.test", code = "000000" == code ? "111111" : "000000" })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.PostAsJsonAsync("/account/email-sign-in", new { email = "lea@example.test", code })).StatusCode.Should().Be(HttpStatusCode.OK, "a wrong guess leaves the code usable");
+        (await client.PostAsJsonAsync("/account/email-sign-in", new { email = "lea@example.test", code })).StatusCode.Should().Be(HttpStatusCode.Unauthorized, "a used code is spent");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", access);
+        var setup = await Data(await client.PostAsync("/account/manage/2fa/authenticator", null));
+        var totp = app.Services.GetRequiredService<ITotpService>();
+        var key = OtpNet.Base32Encoding.ToBytes(setup.GetProperty("sharedKey").GetString());
+        await client.PostAsJsonAsync("/account/manage/2fa/enable", new { code = totp.ComputeCode(key) });
+        client.DefaultRequestHeaders.Authorization = null;
+
+        await client.PostAsJsonAsync("/account/email-sign-in/send", new { email = "lea@example.test" });
+        var second = System.Web.HttpUtility.ParseQueryString(new Uri(LinkPattern().Match(app.Mail.Sent.Last(message => message.Subject == "Your sign-in link").TextBody!).Value).Query)["token"];
+        using var challenge = await client.PostAsJsonAsync("/account/email-sign-in", new { email = "lea@example.test", token = second });
+        challenge.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var problem = await Problem(challenge);
+        var ticket = problem.GetProperty("twoFactorTicket").GetString();
+        var userId = problem.GetProperty("userId").GetString();
+
+        (await client.PostAsJsonAsync("/account/login/two-factor", new { userId, ticket, twoFactorCode = "000000" })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        using var completed = await client.PostAsJsonAsync("/account/login/two-factor", new { userId, ticket, twoFactorCode = totp.ComputeCode(key) });
+        (await Data(completed)).GetProperty("accessToken").GetString().Should().NotBeNullOrEmpty();
+    }
+
     private static string CodeOf(EmailMessage message) => message.TextBody!.Split(' ')[0];
 
     [GeneratedRegex(@"https://app\.test/\S+")]
@@ -264,6 +318,7 @@ public sealed partial class AccountEndpointTests
             .AddLockout()
             .AddRefreshTokens()
             .AddTwoFactor(o => o.Issuer = "Tests")
+            .AddEmailSignIn()
             .AddPasskeys(o =>
             {
                 o.ServerDomain = "app.test";
