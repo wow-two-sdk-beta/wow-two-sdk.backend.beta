@@ -82,6 +82,17 @@ public interface IPdfService
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     Task<PdfTextResult> ExtractTextAsync(Stream pdf, IReadOnlyList<PdfPageRange>? pages = null, string? password = null, CancellationToken cancellationToken = default);
 
+    /// <summary>Reads the interactive form: every field's name, kind, value and choices; empty when the PDF has no form.</summary>
+    /// <param name="pdf">The PDF.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    Task<IReadOnlyList<PdfFormField>> ReadFormAsync(Stream pdf, CancellationToken cancellationToken = default);
+
+    /// <summary>Fills form fields by name; viewers redraw the filled fields, and <see cref="PdfFormFillSpec.LockFields"/> makes them final.</summary>
+    /// <param name="pdf">The PDF with a form.</param>
+    /// <param name="spec">The values and fill behaviour.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    Task<PdfResult> FillFormAsync(Stream pdf, PdfFormFillSpec spec, CancellationToken cancellationToken = default);
+
     /// <summary>Stamps text across the listed pages, such as DRAFT.</summary>
     /// <param name="pdf">The PDF.</param>
     /// <param name="spec">The text, its look and the pages.</param>

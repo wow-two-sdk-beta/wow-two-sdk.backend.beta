@@ -255,6 +255,27 @@ public sealed class PdfSharpPdfService(IOptionsMonitor<PdfOptions> options, IIma
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<PdfFormField>> ReadFormAsync(Stream pdf, CancellationToken cancellationToken = default)
+    {
+        using var document = Open(await ReadAsync(pdf, cancellationToken), PdfDocumentOpenMode.Modify);
+        PdfFontRepository.Install(options);
+        return PdfFormMapper.HasForm(document) ? PdfFormMapper.Read(document.AcroForm!.Fields) : [];
+    }
+
+    /// <inheritdoc />
+    public async Task<PdfResult> FillFormAsync(Stream pdf, PdfFormFillSpec spec, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(spec);
+        using var document = Open(await ReadAsync(pdf, cancellationToken), PdfDocumentOpenMode.Modify);
+        if (!PdfFormMapper.HasForm(document))
+            throw new PdfRejectedException("pdf_form_missing", "The PDF has no fillable form.");
+
+        PdfFontRepository.Install(options);
+        PdfFormMapper.Fill(document.AcroForm!, spec);
+        return Save(document);
+    }
+
+    /// <inheritdoc />
     public async Task<PdfResult> AddWatermarkAsync(Stream pdf, PdfWatermarkSpec spec, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(spec);

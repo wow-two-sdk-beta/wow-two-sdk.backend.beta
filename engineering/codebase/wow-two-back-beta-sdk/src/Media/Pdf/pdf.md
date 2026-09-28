@@ -24,6 +24,7 @@ var text     = await pdf.ExtractTextAsync(file, cancellationToken: ct);
 | `UpdateMetadataAsync` | title, author, subject, keywords, creator |
 | `EncryptAsync` · `DecryptAsync` | AES-256 with open/owner passwords and permissions · removal keeping outlines and information |
 | `ExtractTextAsync` | reading-order text per page; scanned pages without a text layer read empty |
+| `ReadFormAsync` · `FillFormAsync` | AcroForm fields (text, check box, radio, combo, list) with options · fill by name, optionally locked read-only |
 | `AddWatermarkAsync` · `AddPageNumbersAsync` | diagonal text stamp · `{page}`/`{total}` template at an anchor |
 
 - Page lists: `PdfPageRange.Parse("1-3, 5, 8-")`; a descending run such as `5-3` reads backwards.
@@ -32,5 +33,7 @@ var text     = await pdf.ExtractTextAsync(file, cancellationToken: ct);
 - Limits: `MaxInputBytes`, `MaxPages`. Refusals are `PdfRejectedException` with a `Reason` (`pdf_unreadable`,
   `pdf_password_required`, `pdf_password_invalid`, `pdf_page_range_invalid`, `pdf_empty`, `pdf_too_large`) → 400.
 - Stamps draw in unrotated page space; on a page with `/Rotate` they turn with it.
+- Forms: unknown names and values outside a field's options are refused; filled fields redraw in viewers
+  (`NeedAppearances`). Flattening is not offered — `LockFields` makes a filled form read-only instead.
 - Compression touches JPEG photos in RGB, gray or CMYK (ICC-based too); PNG-like images, masks and indexed colors stay.
 - Not here: PDF → images needs PDFium natives and waits for a companion package.

@@ -20,6 +20,7 @@ tools.MapPdfToolEndpoints();
 | `pdf/extract` · `pdf/remove` · `pdf/rotate` | `file`, `pages` (`1-3,5`), `degrees` (rotate) | the PDF |
 | `pdf/compress` · `pdf/metadata` · `pdf/encrypt` · `pdf/watermark` · `pdf/page-numbers` | `file`, `spec` JSON | the PDF |
 | `pdf/decrypt` | `file`, `password` | the PDF |
+| `pdf/form` · `pdf/form/fill` | `file`; fill adds `spec` (`{"values":{…},"lockFields":true}`) | JSON fields · the PDF |
 
 - Specs are the C# records as JSON in camelCase, enums as names: `{"resize":{"width":800},"output":{"format":"webp"}}`.
 - Downloads keep the upload's name with the new extension (`photo.jpg` → `photo.webp`).

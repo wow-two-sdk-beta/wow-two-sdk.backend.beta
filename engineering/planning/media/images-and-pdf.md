@@ -26,8 +26,9 @@
 
 ## Venture adoption (`ventures/pdf-editor`)
 
-- Covered: merge, split, extract, remove, reorder, rotate, watermark, page numbers, metadata, encrypt, decrypt, text.
-- Still inline there: header/footer, Bates numbering, forms, redaction, OCR, DOCX export, DjVu, bulk CSV jobs.
+- Covered: merge, split, extract, remove, reorder, rotate, watermark, page numbers (and header/footer text), metadata,
+  encrypt, decrypt, text, forms.
+- Still inline there: Bates numbering, redaction, OCR, DOCX export, DjVu, bulk CSV jobs; flattening stays unbuilt.
 
 ## Status
 
@@ -38,5 +39,6 @@
 - [x] P1 — PDF core: info, merge, split, extract/reorder, remove, rotate, images → PDF, metadata, AES-256, text
 - [x] P2 — PDF stamps: text watermark and page numbers with Skia-resolved fonts (TTC faces extracted); 7 tests
 - [x] P4 — compression: JPEG photos downscaled and re-encoded in place, never grown; streams deflated; 1 test
+- [x] P5 — forms: read AcroForm fields with options, fill by name (Unicode), lock read-only, refuse unknown names or options
 - [x] T1 — tool endpoints: `MapImageToolEndpoints`, `MapPdfToolEndpoints` (multipart in, files or JSON out); 4 tests
 - [ ] P3 — PDF → images companion over PDFium [parked: native size]

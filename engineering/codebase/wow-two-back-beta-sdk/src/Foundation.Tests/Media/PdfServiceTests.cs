@@ -106,6 +106,35 @@ public sealed class PdfServiceTests
     }
 
     [Fact]
+    public async Task Forms_ShouldReadFillAndLockFields()
+    {
+        var form = await Pdf.ReadFormAsync(Stream(FormPdf()));
+
+        form.Select(field => (field.Name, field.Type, field.Value)).Should().Equal(
+            ("name", PdfFormFieldType.Text, "old"),
+            ("agree", PdfFormFieldType.CheckBox, "Off"),
+            ("city", PdfFormFieldType.ComboBox, "Tashkent"));
+        form[1].Options.Should().Equal("Yes");
+        form[2].Options.Should().Equal("Tashkent", "Samarkand", "Bukhara");
+
+        var filled = await Pdf.FillFormAsync(Stream(FormPdf()), new PdfFormFillSpec
+        {
+            Values = new Dictionary<string, string> { ["name"] = "Алишер Навоий", ["agree"] = "yes", ["city"] = "Samarkand" },
+            LockFields = true,
+        });
+
+        var read = await Pdf.ReadFormAsync(Stream(filled.Content));
+        read.Select(field => field.Value).Should().Equal("Алишер Навоий", "Yes", "Samarkand");
+        read.Should().OnlyContain(field => field.ReadOnly);
+
+        (await Reject(() => Pdf.FillFormAsync(Stream(FormPdf()), new PdfFormFillSpec { Values = new Dictionary<string, string> { ["surname"] = "x" } }))).Should().Be("pdf_form_field_unknown");
+        (await Reject(() => Pdf.FillFormAsync(Stream(FormPdf()), new PdfFormFillSpec { Values = new Dictionary<string, string> { ["city"] = "Paris" } }))).Should().Be("pdf_form_value_invalid");
+        var plain = await Pdf.FromImagesAsync([Png(10, 10)], new PdfImagesSpec());
+        (await Pdf.ReadFormAsync(Stream(plain.Content))).Should().BeEmpty();
+        (await Reject(() => Pdf.FillFormAsync(Stream(plain.Content), new PdfFormFillSpec { Values = new Dictionary<string, string>() }))).Should().Be("pdf_form_missing");
+    }
+
+    [Fact]
     public async Task Refusals_ShouldCarryStableReasons()
     {
         var pdf = await Pdf.FromImagesAsync([Png(100, 100), Png(100, 100), Png(100, 100)], new PdfImagesSpec());
@@ -140,6 +169,37 @@ public sealed class PdfServiceTests
         => (await act.Should().ThrowAsync<PdfRejectedException>()).Which.Reason;
 
     private static MemoryStream Stream(byte[] bytes) => new(bytes);
+
+    /// <summary>A one-page PDF with a text box, a check box and a combo box, written object by object with a true cross-reference table.</summary>
+    private static byte[] FormPdf()
+    {
+        string[] objects =
+        [
+            "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R 5 0 R 6 0 R] /DA (/Helv 0 Tf 0 g) /DR << /Font << /Helv 7 0 R >> >> >> >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [4 0 R 5 0 R 6 0 R] >>",
+            "<< /Type /Annot /Subtype /Widget /FT /Tx /T (name) /V (old) /Rect [50 700 300 720] /P 3 0 R /F 4 /DA (/Helv 12 Tf 0 g) >>",
+            "<< /Type /Annot /Subtype /Widget /FT /Btn /T (agree) /V /Off /AS /Off /Rect [50 650 70 670] /P 3 0 R /F 4 /AP << /N << /Yes 8 0 R /Off 9 0 R >> >> >>",
+            "<< /Type /Annot /Subtype /Widget /FT /Ch /Ff 131072 /T (city) /Opt [(Tashkent) (Samarkand) (Bukhara)] /V (Tashkent) /Rect [50 600 200 620] /P 3 0 R /F 4 /DA (/Helv 12 Tf 0 g) >>",
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+            "<< /Type /XObject /Subtype /Form /BBox [0 0 20 20] /Length 0 >>\nstream\n\nendstream",
+            "<< /Type /XObject /Subtype /Form /BBox [0 0 20 20] /Length 0 >>\nstream\n\nendstream",
+        ];
+        var pdf = new System.Text.StringBuilder("%PDF-1.7\n");
+        var offsets = new List<int>();
+        for (var index = 0; index < objects.Length; index++)
+        {
+            offsets.Add(pdf.Length);
+            pdf.Append(System.Globalization.CultureInfo.InvariantCulture, $"{index + 1} 0 obj\n{objects[index]}\nendobj\n");
+        }
+
+        var xref = pdf.Length;
+        pdf.Append(System.Globalization.CultureInfo.InvariantCulture, $"xref\n0 {objects.Length + 1}\n0000000000 65535 f \n");
+        foreach (var offset in offsets)
+            pdf.Append(System.Globalization.CultureInfo.InvariantCulture, $"{offset:D10} 00000 n \n");
+        pdf.Append(System.Globalization.CultureInfo.InvariantCulture, $"trailer\n<< /Size {objects.Length + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n");
+        return System.Text.Encoding.ASCII.GetBytes(pdf.ToString());
+    }
 
     /// <summary>A noisy photo, which JPEG cannot squeeze much at high quality.</summary>
     private static MemoryStream Photo(int width, int height)

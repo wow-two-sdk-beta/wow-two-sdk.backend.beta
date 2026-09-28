@@ -51,7 +51,8 @@ public static class MediaToolEndpointRouteBuilderExtensions
 
     /// <summary>
     /// Maps <c>pdf/info</c>, <c>merge</c>, <c>split</c> (a ZIP), <c>extract</c>, <c>remove</c>, <c>rotate</c>,
-    /// <c>from-images</c>, <c>compress</c>, <c>metadata</c>, <c>encrypt</c>, <c>decrypt</c>, <c>text</c>, <c>watermark</c> and
+    /// <c>from-images</c>, <c>compress</c>, <c>metadata</c>, <c>encrypt</c>, <c>decrypt</c>, <c>text</c>, <c>form</c>,
+    /// <c>form/fill</c>, <c>watermark</c> and
     /// <c>page-numbers</c> under <paramref name="endpoints"/>; needs <c>AddPdfProcessing</c>. Page lists travel as
     /// <c>pages=1-3,5</c>. Returns the group for authorization or rate limits.
     /// </summary>
@@ -87,6 +88,10 @@ public static class MediaToolEndpointRouteBuilderExtensions
             => Download(await pdf.DecryptAsync(file.OpenReadStream(), password, ct), file.FileName));
         group.MapPost("text", async (IFormFile file, [FromForm] string? pages, [FromForm] string? password, IPdfService pdf, CancellationToken ct)
             => Results.Ok(ApiResponse<PdfTextResult>.Ok(await pdf.ExtractTextAsync(file.OpenReadStream(), pages is null ? null : PdfPageRange.Parse(pages), password, ct))));
+        group.MapPost("form", async (IFormFile file, IPdfService pdf, CancellationToken ct)
+            => Results.Ok(ApiResponse<IReadOnlyList<PdfFormField>>.Ok(await pdf.ReadFormAsync(file.OpenReadStream(), ct))));
+        group.MapPost("form/fill", async (IFormFile file, [FromForm] string spec, IPdfService pdf, CancellationToken ct)
+            => Download(await pdf.FillFormAsync(file.OpenReadStream(), Required<PdfFormFillSpec>(spec), ct), file.FileName));
         group.MapPost("watermark", async (IFormFile file, [FromForm] string spec, IPdfService pdf, CancellationToken ct)
             => Download(await pdf.AddWatermarkAsync(file.OpenReadStream(), Required<PdfWatermarkSpec>(spec), ct), file.FileName));
         group.MapPost("page-numbers", async (IFormFile file, [FromForm] string? spec, IPdfService pdf, CancellationToken ct)
