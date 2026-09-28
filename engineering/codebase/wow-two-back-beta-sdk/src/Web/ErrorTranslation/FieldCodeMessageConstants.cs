@@ -1,0 +1,75 @@
+using System.Collections.Frozen;
+
+namespace WoW.Two.Sdk.Backend.Beta.Web.ErrorTranslation;
+
+/// <summary>Holds the SDK's built-in texts for the field-error codes its own slices emit (identity), by neutral culture.</summary>
+internal static class FieldCodeMessageConstants
+{
+    /// <summary>Culture → code → template.</summary>
+    internal static readonly FrozenDictionary<string, FrozenDictionary<string, string>> Messages =
+        new Dictionary<string, FrozenDictionary<string, string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ru"] = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["UserNameRequired"] = "Укажите имя пользователя.",
+                ["DuplicateUserName"] = "Имя пользователя «{UserName}» уже занято.",
+                ["DuplicateEmail"] = "Email {Email} уже используется.",
+                ["PasswordTooShort"] = "Пароль должен содержать не менее {MinLength} символов.",
+                ["PasswordTooLong"] = "Пароль должен содержать не более {MaxLength} символов.",
+                ["PasswordRequiresDigit"] = "Пароль должен содержать цифру.",
+                ["PasswordRequiresLower"] = "Пароль должен содержать строчную букву.",
+                ["PasswordRequiresUpper"] = "Пароль должен содержать заглавную букву.",
+                ["PasswordRequiresNonAlphanumeric"] = "Пароль должен содержать символ, не являющийся буквой или цифрой.",
+                ["PasswordRequiresUniqueChars"] = "Пароль должен содержать не менее {RequiredUniqueChars} разных символов.",
+                ["PasswordMatchesAccount"] = "Пароль не должен совпадать с именем пользователя или email.",
+                ["PasswordBreached"] = "Этот пароль встречался в утечках данных. Выберите другой.",
+                ["PasswordBreachCheckUnavailable"] = "Не удалось проверить пароль. Повторите попытку.",
+                ["PasswordMismatch"] = "Текущий пароль указан неверно.",
+                ["UserAlreadyHasPassword"] = "У учётной записи уже есть пароль.",
+                ["InvalidToken"] = "Ссылка недействительна или устарела.",
+                ["LockedOut"] = "Учётная запись временно заблокирована.",
+                ["LockoutNotEnabled"] = "Для этой учётной записи блокировка отключена.",
+                ["RoleNameRequired"] = "Укажите название роли.",
+                ["DuplicateRoleName"] = "Роль «{RoleName}» уже существует.",
+                ["RoleNotFound"] = "Роль «{RoleName}» не найдена.",
+                ["UserAlreadyInRole"] = "Пользователь уже имеет роль «{RoleName}».",
+                ["UserNotInRole"] = "У пользователя нет роли «{RoleName}».",
+                ["LoginAlreadyAssociated"] = "Эта учётная запись {LoginProvider} уже привязана.",
+                ["InvalidAuthenticatorCode"] = "Код аутентификатора неверен.",
+                ["InvalidRecoveryCode"] = "Код восстановления неверен или уже использован.",
+                ["AuthenticatorNotConfigured"] = "Сначала настройте приложение-аутентификатор.",
+                ["InvalidPhoneCode"] = "Код неверен или устарел.",
+            }.ToFrozenDictionary(StringComparer.Ordinal),
+            ["uz"] = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["UserNameRequired"] = "Foydalanuvchi nomini kiriting.",
+                ["DuplicateUserName"] = "«{UserName}» foydalanuvchi nomi band.",
+                ["DuplicateEmail"] = "{Email} elektron pochtasi allaqachon ishlatilmoqda.",
+                ["PasswordTooShort"] = "Parol kamida {MinLength} ta belgidan iborat boʻlishi kerak.",
+                ["PasswordTooLong"] = "Parol koʻpi bilan {MaxLength} ta belgidan iborat boʻlishi kerak.",
+                ["PasswordRequiresDigit"] = "Parolda raqam boʻlishi kerak.",
+                ["PasswordRequiresLower"] = "Parolda kichik harf boʻlishi kerak.",
+                ["PasswordRequiresUpper"] = "Parolda katta harf boʻlishi kerak.",
+                ["PasswordRequiresNonAlphanumeric"] = "Parolda harf yoki raqam boʻlmagan belgi boʻlishi kerak.",
+                ["PasswordRequiresUniqueChars"] = "Parolda kamida {RequiredUniqueChars} ta turli belgi boʻlishi kerak.",
+                ["PasswordMatchesAccount"] = "Parol foydalanuvchi nomi yoki elektron pochta bilan bir xil boʻlmasligi kerak.",
+                ["PasswordBreached"] = "Bu parol maʼlumotlar sizib chiqishida uchragan. Boshqasini tanlang.",
+                ["PasswordBreachCheckUnavailable"] = "Parolni tekshirib boʻlmadi. Qayta urinib koʻring.",
+                ["PasswordMismatch"] = "Joriy parol notoʻgʻri.",
+                ["UserAlreadyHasPassword"] = "Hisobda allaqachon parol mavjud.",
+                ["InvalidToken"] = "Havola yaroqsiz yoki muddati oʻtgan.",
+                ["LockedOut"] = "Hisob vaqtincha bloklangan.",
+                ["LockoutNotEnabled"] = "Bu hisob uchun bloklash oʻchirilgan.",
+                ["RoleNameRequired"] = "Rol nomini kiriting.",
+                ["DuplicateRoleName"] = "«{RoleName}» roli allaqachon mavjud.",
+                ["RoleNotFound"] = "«{RoleName}» roli topilmadi.",
+                ["UserAlreadyInRole"] = "Foydalanuvchida «{RoleName}» roli allaqachon bor.",
+                ["UserNotInRole"] = "Foydalanuvchida «{RoleName}» roli yoʻq.",
+                ["LoginAlreadyAssociated"] = "Bu {LoginProvider} hisobi allaqachon bogʻlangan.",
+                ["InvalidAuthenticatorCode"] = "Autentifikator kodi notoʻgʻri.",
+                ["InvalidRecoveryCode"] = "Tiklash kodi notoʻgʻri yoki allaqachon ishlatilgan.",
+                ["AuthenticatorNotConfigured"] = "Avval autentifikator ilovasini sozlang.",
+                ["InvalidPhoneCode"] = "Kod notoʻgʻri yoki muddati oʻtgan.",
+            }.ToFrozenDictionary(StringComparer.Ordinal),
+        }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+}

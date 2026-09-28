@@ -21,6 +21,13 @@ internal static class IdentityUserExtensions
     /// <summary>Creates a failed result carrying one error.</summary>
     /// <param name="code">The stable error code.</param>
     /// <param name="description">The human-readable description.</param>
-    internal static IdentityResult Failure(string code, string description)
-        => IdentityResult.Failed(new IdentityError { Code = code, Description = description });
+    /// <param name="parameters">The values the description was built from, by placeholder name.</param>
+    internal static IdentityResult Failure(string code, string description, IReadOnlyDictionary<string, object>? parameters = null)
+        => IdentityResult.Failed(new IdentityError { Code = code, Description = description, Params = parameters });
+
+    /// <summary>One placeholder value for <see cref="Failure"/>.</summary>
+    /// <param name="name">The placeholder name.</param>
+    /// <param name="value">Its value; null becomes an empty string.</param>
+    internal static IReadOnlyDictionary<string, object> Param(string name, object? value)
+        => new Dictionary<string, object>(StringComparer.Ordinal) { [name] = value ?? string.Empty };
 }

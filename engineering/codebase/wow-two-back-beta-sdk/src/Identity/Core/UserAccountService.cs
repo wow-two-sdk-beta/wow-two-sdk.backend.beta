@@ -30,10 +30,10 @@ public sealed class UserAccountService<TUser, TKey>(IUserRepository<TUser, TKey>
         user.LockoutEnabled = options.Lockout.EnabledForNewUsers;
 
         if (await repository.FindByNormalizedUserNameAsync(user.NormalizedUserName!, cancellationToken) is not null)
-            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.DuplicateUserName, $"User name '{user.UserName}' is already taken.");
+            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.DuplicateUserName, $"User name '{user.UserName}' is already taken.", IdentityUserExtensions.Param("UserName", user.UserName));
 
         if (await IsEmailTakenAsync(user.NormalizedEmail, cancellationToken: cancellationToken))
-            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.DuplicateEmail, $"Email '{user.Email}' is already taken.");
+            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.DuplicateEmail, $"Email '{user.Email}' is already taken.", IdentityUserExtensions.Param("Email", user.Email));
 
         await repository.CreateAsync(user, cancellationToken);
         return IdentityResult.Success;

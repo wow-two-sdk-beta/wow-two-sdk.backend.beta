@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
@@ -14,7 +15,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Web.ErrorTranslation;
 /// <summary>
 /// Provides error-message translation per <see cref="ErrorTranslationSettings"/>, re-read on every call so a
 /// configuration reload switches it live. Culture comes from the request-localization feature when that middleware ran,
-/// otherwise from <c>Accept-Language</c>. Field errors try the host catalog, then FluentValidation's language pack;
+/// otherwise from <c>Accept-Language</c>. Field errors try the host catalog, the built-in identity texts, then
+/// FluentValidation's language pack;
 /// top-level errors try their <c>messageKey</c>, then their error type in the catalog and the built-in texts.
 /// A template whose placeholder has no argument yields the authored message instead.
 /// </summary>
@@ -74,7 +76,7 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
             return error.Message;
 
         var type = error.Type.ToString();
-        return (TryCatalog(current, culture, type, out var template) || TryBuiltIn(culture, type, out template))
+        return (TryCatalog(current, culture, type, out var template) || TryBuiltIn(ErrorTypeMessageConstants.Messages, culture, type, out template))
             && TryFill(template, error.Metadata, culture, out var message)
                 ? message
                 : error.Message;
@@ -91,6 +93,7 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
         var current = settings.CurrentValue;
         var arguments = error.Params?.ToDictionary(pair => pair.Key, pair => (object?)pair.Value, StringComparer.Ordinal);
         return (TryCatalog(current, culture, error.Code, out var template)
+                || TryBuiltIn(FieldCodeMessageConstants.Messages, culture, error.Code, out template)
                 || (current.UseValidatorTranslations && TryValidatorPack(culture, error.Code, out template)))
             && TryFill(template, arguments, culture, out var message)
                 ? message
@@ -174,11 +177,15 @@ public sealed class ErrorTranslationService(IOptionsMonitor<ErrorTranslationSett
         return false;
     }
 
-    private static bool TryBuiltIn(CultureInfo culture, string type, [NotNullWhen(true)] out string? template)
+    private static bool TryBuiltIn(
+        FrozenDictionary<string, FrozenDictionary<string, string>> builtIn,
+        CultureInfo culture,
+        string key,
+        [NotNullWhen(true)] out string? template)
     {
         for (var candidate = culture; !Equals(candidate, CultureInfo.InvariantCulture); candidate = candidate.Parent)
         {
-            if (ErrorTypeMessageConstants.Messages.TryGetValue(candidate.Name, out var messages) && messages.TryGetValue(type, out template))
+            if (builtIn.TryGetValue(candidate.Name, out var messages) && messages.TryGetValue(key, out template))
                 return true;
         }
 

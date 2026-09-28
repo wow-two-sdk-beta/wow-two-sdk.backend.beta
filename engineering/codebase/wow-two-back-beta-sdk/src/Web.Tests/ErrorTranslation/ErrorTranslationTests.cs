@@ -5,6 +5,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Validation;
+using WoW.Two.Sdk.Backend.Beta.Identity.Core;
+using WoW.Two.Sdk.Backend.Beta.Web.Contracts;
 using WoW.Two.Sdk.Backend.Beta.Web.ErrorMapping;
 using WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling.Factories;
 using Xunit;
@@ -96,6 +98,43 @@ public sealed class ErrorTranslationTests
         configuration.Reload();
 
         Render(provider, notFound, "ru").Detail.Should().Be("Запрошенный ресурс не найден.");
+    }
+
+    [Fact]
+    public void IdentityFailures_TranslateThroughBuiltInTextsWithTheirValues()
+    {
+        using var provider = Build(Enabled("en", "ru"));
+        var result = IdentityResult.Failed(
+            new IdentityError { Code = IdentityErrorCodeConstants.PasswordTooShort, Description = "Passwords must be at least 12 characters.", Params = new Dictionary<string, object> { ["MinLength"] = 12 } },
+            new IdentityError { Code = IdentityErrorCodeConstants.DuplicateEmail, Description = "Email 'a@b.uz' is already taken.", Params = new Dictionary<string, object> { ["Email"] = "a@b.uz" } });
+
+        var errors = Errors(Render(provider, result.ToValidationError(), "ru"));
+
+        errors.Select(e => (e.Property, e.Message)).Should().Equal(
+            ("password", "Пароль должен содержать не менее 12 символов."),
+            ("email", "Email a@b.uz уже используется."));
+        Errors(Render(provider, result.ToValidationError(), "en")).Select(e => e.Message)
+            .Should().Equal("Passwords must be at least 12 characters.", "Email 'a@b.uz' is already taken.");
+    }
+
+    [Fact]
+    public void ToApiFailure_CarriesTheMappedStatusAndTheTranslatedMessage()
+    {
+        using var provider = Build(Enabled("en", "ru"));
+        var context = new DefaultHttpContext { RequestServices = provider };
+        context.Request.Headers.AcceptLanguage = "ru";
+
+        var failure = AppErrorFactory.NotFound("Order 42 was not found.").ToApiFailure<OrderDto>(context);
+
+        failure.StatusCode.Should().Be(System.Net.HttpStatusCode.NotFound);
+        failure.Error.Should().Be("Запрошенный ресурс не найден.");
+        AppErrorFactory.NotFound("Order 42 was not found.").ToApiFailure<OrderDto>(new DefaultHttpContext()).Error
+            .Should().Be("Order 42 was not found.");
+    }
+
+    private sealed record OrderDto
+    {
+        public int Id { get; init; }
     }
 
     private static Dictionary<string, string?> Enabled(params string[] cultures)

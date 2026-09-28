@@ -18,9 +18,9 @@ public sealed class PasswordRulesValidator<TUser, TKey>(IdentityCoreOptions opti
         var errors = new List<IdentityError>();
 
         if (password.Length < rules.MinLength)
-            Add(errors, IdentityErrorCodeConstants.PasswordTooShort, $"Passwords must be at least {rules.MinLength} characters.");
+            Add(errors, IdentityErrorCodeConstants.PasswordTooShort, $"Passwords must be at least {rules.MinLength} characters.", ("MinLength", rules.MinLength));
         if (password.Length > rules.MaxLength)
-            Add(errors, IdentityErrorCodeConstants.PasswordTooLong, $"Passwords must be at most {rules.MaxLength} characters.");
+            Add(errors, IdentityErrorCodeConstants.PasswordTooLong, $"Passwords must be at most {rules.MaxLength} characters.", ("MaxLength", rules.MaxLength));
         if (rules.RequireDigit && !password.Any(char.IsAsciiDigit))
             Add(errors, IdentityErrorCodeConstants.PasswordRequiresDigit, "Passwords must contain a digit.");
         if (rules.RequireLowercase && !password.Any(char.IsLower))
@@ -30,7 +30,7 @@ public sealed class PasswordRulesValidator<TUser, TKey>(IdentityCoreOptions opti
         if (rules.RequireNonAlphanumeric && password.All(char.IsLetterOrDigit))
             Add(errors, IdentityErrorCodeConstants.PasswordRequiresNonAlphanumeric, "Passwords must contain a symbol.");
         if (password.Distinct().Count() < rules.RequiredUniqueChars)
-            Add(errors, IdentityErrorCodeConstants.PasswordRequiresUniqueChars, $"Passwords must use at least {rules.RequiredUniqueChars} different characters.");
+            Add(errors, IdentityErrorCodeConstants.PasswordRequiresUniqueChars, $"Passwords must use at least {rules.RequiredUniqueChars} different characters.", ("RequiredUniqueChars", rules.RequiredUniqueChars));
         if (rules.RejectAccountIdentifiers && (MatchesIdentifier(password, user.UserName) || MatchesIdentifier(password, user.Email)))
             Add(errors, IdentityErrorCodeConstants.PasswordMatchesAccount, "Passwords must differ from the user name and email.");
 
@@ -40,6 +40,11 @@ public sealed class PasswordRulesValidator<TUser, TKey>(IdentityCoreOptions opti
     private static bool MatchesIdentifier(string password, string? identifier)
         => !string.IsNullOrEmpty(identifier) && string.Equals(password, identifier, StringComparison.OrdinalIgnoreCase);
 
-    private static void Add(List<IdentityError> errors, string code, string description)
-        => errors.Add(new IdentityError { Code = code, Description = description });
+    private static void Add(List<IdentityError> errors, string code, string description, (string Name, object Value)? parameter = null)
+        => errors.Add(new IdentityError
+        {
+            Code = code,
+            Description = description,
+            Params = parameter is { } value ? new Dictionary<string, object>(StringComparer.Ordinal) { [value.Name] = value.Value } : null,
+        });
 }

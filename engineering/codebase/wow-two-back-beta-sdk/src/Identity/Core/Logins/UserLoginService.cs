@@ -25,7 +25,7 @@ public sealed class UserLoginService<TUser, TKey>(IUserLoginRepository<TKey> log
         ArgumentException.ThrowIfNullOrWhiteSpace(providerKey);
 
         if (await logins.FindAsync(loginProvider, providerKey, cancellationToken) is not null)
-            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.LoginAlreadyAssociated, $"This {loginProvider} account is already linked.");
+            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.LoginAlreadyAssociated, $"This {loginProvider} account is already linked.", IdentityUserExtensions.Param("LoginProvider", loginProvider));
 
         await logins.AddAsync(
             new IdentityUserLogin<TKey> { UserId = user.Id, LoginProvider = loginProvider, ProviderKey = providerKey, ProviderDisplayName = displayName },

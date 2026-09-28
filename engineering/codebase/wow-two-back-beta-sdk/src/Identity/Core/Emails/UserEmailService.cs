@@ -66,7 +66,7 @@ public sealed class UserEmailService<TUser, TKey>(
         if (!tokens.Verify(user, Scope(UserTokenPurposeConstants.ChangeEmail, normalized), token))
             return InvalidToken();
         if (await accounts.IsEmailTakenAsync(normalized, user, cancellationToken))
-            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.DuplicateEmail, $"Email '{newEmail}' is already taken.");
+            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.DuplicateEmail, $"Email '{newEmail}' is already taken.", IdentityUserExtensions.Param("Email", newEmail));
 
         user.Email = newEmail;
         user.NormalizedEmail = normalized;
@@ -86,7 +86,7 @@ public sealed class UserEmailService<TUser, TKey>(
 
         var normalized = email.ToCanonical();
         if (await accounts.IsEmailTakenAsync(normalized, user, cancellationToken))
-            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.DuplicateEmail, $"Email '{email}' is already taken.");
+            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.DuplicateEmail, $"Email '{email}' is already taken.", IdentityUserExtensions.Param("Email", email));
 
         user.Email = email;
         user.NormalizedEmail = normalized;

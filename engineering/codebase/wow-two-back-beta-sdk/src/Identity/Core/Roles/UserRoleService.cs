@@ -28,7 +28,7 @@ public sealed class UserRoleService<TUser, TRole, TKey>(
         if (await roles.FindByNameAsync(roleName, cancellationToken) is not { } role)
             return RoleNotFound(roleName);
         if (await memberships.ContainsAsync(user.Id, role.Id, cancellationToken))
-            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.UserAlreadyInRole, $"The user already holds role '{roleName}'.");
+            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.UserAlreadyInRole, $"The user already holds role '{roleName}'.", IdentityUserExtensions.Param("RoleName", roleName));
 
         await memberships.AddAsync(user.Id, role.Id, cancellationToken);
         return IdentityResult.Success;
@@ -44,7 +44,7 @@ public sealed class UserRoleService<TUser, TRole, TKey>(
         if (await roles.FindByNameAsync(roleName, cancellationToken) is not { } role)
             return RoleNotFound(roleName);
         if (!await memberships.ContainsAsync(user.Id, role.Id, cancellationToken))
-            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.UserNotInRole, $"The user does not hold role '{roleName}'.");
+            return IdentityUserExtensions.Failure(IdentityErrorCodeConstants.UserNotInRole, $"The user does not hold role '{roleName}'.", IdentityUserExtensions.Param("RoleName", roleName));
 
         await memberships.RemoveAsync(user.Id, role.Id, cancellationToken);
         return await accounts.RotateSecurityStampAsync(user, cancellationToken);
@@ -79,5 +79,5 @@ public sealed class UserRoleService<TUser, TRole, TKey>(
             : [];
 
     private static IdentityResult RoleNotFound(string roleName)
-        => IdentityUserExtensions.Failure(IdentityErrorCodeConstants.RoleNotFound, $"Role '{roleName}' does not exist.");
+        => IdentityUserExtensions.Failure(IdentityErrorCodeConstants.RoleNotFound, $"Role '{roleName}' does not exist.", IdentityUserExtensions.Param("RoleName", roleName));
 }

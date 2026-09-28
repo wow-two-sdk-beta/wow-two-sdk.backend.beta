@@ -102,7 +102,7 @@ public sealed class RoleService<TRole, TKey>(IRoleRepository<TRole, TKey> reposi
 
         var holder = await repository.FindByNormalizedNameAsync(name.ToCanonical()!, cancellationToken);
         return holder is not null && !holder.Id.Equals(role.Id)
-            ? IdentityUserExtensions.Failure(IdentityErrorCodeConstants.DuplicateRoleName, $"Role name '{name}' is already taken.")
+            ? IdentityUserExtensions.Failure(IdentityErrorCodeConstants.DuplicateRoleName, $"Role name '{name}' is already taken.", IdentityUserExtensions.Param("RoleName", name))
             : IdentityResult.Success;
     }
 }

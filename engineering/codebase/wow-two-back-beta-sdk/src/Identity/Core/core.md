@@ -60,6 +60,7 @@ only when called after `AddEntityFrameworkStores`; otherwise the host registers 
   silently no-op'ing. Optional collaborators (lockout inside sign-in, tokens inside passwords) switch steps on or off.
 - Credential changes (password, email, role or claim removal, 2FA changes, unlinking) rotate the security stamp.
 - Deleting a user removes its role, claim, login and token rows in the same save; the schema has no foreign keys.
+- `IdentityResult.ToValidationError()` turns failures into field errors (code + values) that error translation matches.
 - Entry point is **`AddUserAccounts`** (not `AddIdentityCore` as the deep-dive drafted) — ASP.NET's own
   `AddIdentityCore<TUser>` extension is always in scope via the shared framework and would collide.
 - User updates preserve the loaded tracked instance. A detached replacement with the same key is rejected while

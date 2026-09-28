@@ -28,7 +28,7 @@ validation advisories; no code change is needed.
 | Message | Order |
 |---|---|
 | top-level (`AppError`) | catalog `messageKey` → catalog error type → built-in type text (`ru`, `uz`) → authored |
-| field (`FieldError`) | catalog code → FluentValidation language pack → authored |
+| field (`FieldError`) | catalog code → built-in identity code text (`ru`, `uz`) → FluentValidation language pack → authored |
 
 - Culture: the request-localization feature when that middleware ran, else `Accept-Language`, else the default culture.
 - `SupportedCultures` empty accepts any culture a translation exists for; `uz` picks FluentValidation's Latin pack.
@@ -37,3 +37,13 @@ validation advisories; no code change is needed.
 - `TranslateByErrorType: false` keeps specific authored messages unless a `messageKey` matches.
 - The section reloads live with the configuration.
 - Products translate their own strings with `IErrorTranslationService.TryTranslate(context, key, arguments, out message)`.
+
+## Response models
+
+```csharp
+return Results.Json(error.ToApiFailure<OrderDto>(http));              // ApiResponse<OrderDto>.Failure, translated
+return Results.Problem(…) / throw identity.ToValidationError().ToException();   // identity codes → translatable field errors
+```
+
+- `ToApiFailure<T>` works for any response model: status from `IErrorHttpStatusCodeMapper`, message from `IErrorMessageMapper`.
+- `IdentityResult.ToValidationError()` keeps each identity code and its values (`MinLength`, `Email`, `RoleName`, …).

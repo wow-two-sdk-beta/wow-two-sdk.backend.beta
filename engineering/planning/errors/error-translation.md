@@ -21,8 +21,8 @@
 ## Status
 
 - [x] I1 — settings, culture resolution, catalog + FluentValidation + built-in type messages, default mappers wired; 5 tests
-- [ ] I2 — response models: `AppError.ToApiFailure<T>(HttpContext)` and identity errors as translatable field errors
-- [ ] I3 — `AddApiDefaults` hosts: config-only activation proven end to end through the exception handler
+- [x] I2 — response models: `AppError.ToApiFailure<T>(HttpContext)`; identity errors carry values and become field errors
+- [x] I3 — `AddApiDefaults` hosts: config-only activation proven end to end through the exception handler
 
 ---
 
@@ -37,7 +37,8 @@
 ## I2 — Response models
 
 - `ToApiFailure<T>` builds `ApiResponse<T>.Failure` with the mapped status and the translated message.
-- `IdentityResult` failures become `FieldError`s keyed by `IdentityError.Code`, so catalogs translate them.
+- `IdentityResult.ToValidationError()` turns failures into `FieldError`s keyed by `IdentityError.Code`, with
+  `IdentityError.Params` as placeholder values; built-in `ru`/`uz` texts cover every identity code.
 
 ## I3 — Host activation
 
