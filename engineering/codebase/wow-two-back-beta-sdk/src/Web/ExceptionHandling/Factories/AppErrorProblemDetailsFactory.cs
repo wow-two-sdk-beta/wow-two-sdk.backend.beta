@@ -11,6 +11,12 @@ public sealed class AppErrorProblemDetailsFactory(
     IErrorMessageMapper messageMapper,
     IFieldErrorMessageMapper fieldMessageMapper) : IAppErrorProblemDetailsFactory
 {
+    /// <summary>
+    /// The metadata key whose <c>IReadOnlyDictionary&lt;string, object?&gt;</c> value is copied into the problem's extensions,
+    /// for values a client acts on (the two-factor method a sign-in asks for); <c>code</c> and <c>errors</c> stay reserved.
+    /// </summary>
+    public const string ExtensionsMetadataKey = "problemExtensions";
+
     private const string RetryAfterMetadataKey = "retryAfter";
     private const string WwwAuthenticateMetadataKey = "wwwAuthenticate";
 
@@ -36,6 +42,12 @@ public sealed class AppErrorProblemDetailsFactory(
         if (failures is not null)
         {
             problem.Extensions["errors"] = ResolveMessages(failures, httpContext);
+        }
+
+        if (error.Metadata?.TryGetValue(ExtensionsMetadataKey, out var raw) == true && raw is IReadOnlyDictionary<string, object?> extensions)
+        {
+            foreach (var (key, value) in extensions)
+                problem.Extensions.TryAdd(key, value);
         }
 
         PromoteReservedHeaders(error, httpContext);

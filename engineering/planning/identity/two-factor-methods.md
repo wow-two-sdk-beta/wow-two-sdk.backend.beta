@@ -21,15 +21,21 @@
 - Brokers register keyed by name (`twilio`, `vonage`, `eskiz`, `whatsapp`, `telegram`) and the first registered of a
   kind is the default; a method names its broker or takes the default.
 - Code generation moves to `OtpCodeSpec` (numeric, alphanumeric, letters; length) so each method sets its own.
-- Formatting is `ITwoFactorMessageFormatter`; the default fills per-culture templates (ICU placeholders `{code}`,
-  `{minutes}`, `{app}`) and falls back to the method's default culture.
+- Formatting sits one level down, as `IOtpMessageFormatter`, so phone confirmation and passwordless codes share it;
+  two-factor codes use the purpose `two-factor`. Per-culture ICU templates (`{code}`, `{minutes}`, `{app}`), culture
+  parents, then the default culture, then built-in `en`/`ru`/`uz`.
+- Channels are keyed `IOtpDeliveryHandler`s (`sms`, `whatsapp`, `telegram`, `telegram-gateway`, `email`); a method names
+  a channel and optionally a broker. `IOtpDeliveryHandler` keeps its shape, so enumerating consumers (Haven) keep working.
+- Brokers per capability register keyed (`ISmsBroker`, `IWhatsAppBroker`); `Add{Capability}Brokers(configuration)`
+  registers each provider whose section exists, so the host configuration alone adds or reroutes one.
 - Options: `TwoFactorOptions` (code `Action<>` + host section `Identity:TwoFactor`), host configuration applied last.
 
 ## Status
 
 - [x] M1 — module-options recipe `AddModuleOptions<TOptions>`: code `Action<TOptions>` + host section, host last,
   live reload; first consumer `ConfigureValidation` (error translation)
-- [ ] M2 — OTP code specs: numeric / alphanumeric / letters generator, per-call spec and lifetime
-- [ ] M3 — channel brokers: keyed SMS brokers, WhatsApp Cloud API broker, Telegram Bot API broker
-- [ ] M4 — two-factor methods: issue + verify per method, formatter, user method choice, sign-in wiring
-- [ ] M5 — account API: auto-send the chosen method's code on login; enable / choose a delivered method
+- [x] M2 — OTP code specs: numeric / alphanumeric / letters generator, per-call spec and lifetime; forgiving verify
+- [x] M3 — channels: keyed SMS brokers, WhatsApp (Meta Cloud API, Twilio), Telegram Gateway, email; formatter
+- [x] M4 — two-factor methods: `UserTwoFactorMethodService` send / verify / enable / preferred; sign-in wiring
+- [x] M5 — account API: login challenge names the method and auto-sends; `manage/2fa/methods/{method}/send|enable`,
+  `manage/2fa/preferred`; 21 new tests incl. a host-configured email method end to end

@@ -29,6 +29,7 @@ public sealed class SignInService<TUser, TKey>
     private readonly UserLockoutService<TUser, TKey>? _lockout;
     private readonly UserTokenIssuer<TUser, TKey>? _tokens;
     private readonly UserTwoFactorService<TUser, TKey>? _twoFactor;
+    private readonly UserTwoFactorMethodService<TUser, TKey>? _twoFactorMethods;
     private static string? s_decoyHash;
 
     /// <summary>Create the service over the registered slices.</summary>
@@ -40,6 +41,7 @@ public sealed class SignInService<TUser, TKey>
     /// <param name="lockout">The lockout slice; null skips lockout.</param>
     /// <param name="tokens">The purpose-token issuer; null omits two-factor tickets.</param>
     /// <param name="twoFactor">The two-factor slice; null disables the second-factor methods.</param>
+    /// <param name="twoFactorMethods">The delivered-code methods of the two-factor slice; null leaves only the authenticator.</param>
     public SignInService(
         UserAccountService<TUser, TKey> accounts,
         UserClaimsPrincipalFactory<TUser, TKey> principals,
@@ -48,7 +50,8 @@ public sealed class SignInService<TUser, TKey>
         IPasswordHasher<TUser>? hasher = null,
         UserLockoutService<TUser, TKey>? lockout = null,
         UserTokenIssuer<TUser, TKey>? tokens = null,
-        UserTwoFactorService<TUser, TKey>? twoFactor = null)
+        UserTwoFactorService<TUser, TKey>? twoFactor = null,
+        UserTwoFactorMethodService<TUser, TKey>? twoFactorMethods = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         _accounts = accounts;
@@ -59,6 +62,7 @@ public sealed class SignInService<TUser, TKey>
         _lockout = lockout;
         _tokens = tokens;
         _twoFactor = twoFactor;
+        _twoFactorMethods = twoFactorMethods;
     }
 
     /// <summary>Sign in with a user name (or email, when allowed) and password.</summary>
@@ -148,6 +152,46 @@ public sealed class SignInService<TUser, TKey>
     public Task<SignInResult> TwoFactorSignInAsync(TKey userId, string ticket, string code, CancellationToken cancellationToken = default)
         => SecondFactorSignInAsync(userId, ticket, (factor, user) => factor.VerifyAuthenticatorCodeAsync(user, code, cancellationToken), cancellationToken);
 
+    /// <summary>Complete a sign-in with a code for <paramref name="method"/> — the authenticator or a delivered method — after a <see cref="SignInStatus.RequiresTwoFactor"/> result.</summary>
+    /// <param name="userId">The user id from that result.</param>
+    /// <param name="ticket">The two-factor ticket from that result.</param>
+    /// <param name="method">The method the code belongs to, such as <c>sms</c>.</param>
+    /// <param name="code">The code.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="NotSupportedException">The two-factor slice or purpose tokens are not registered.</exception>
+    public Task<SignInResult> TwoFactorSignInAsync(TKey userId, string ticket, string method, string code, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(method);
+        return _twoFactorMethods is null || string.Equals(method, TwoFactorMethodNameConstants.Authenticator, StringComparison.OrdinalIgnoreCase)
+            ? TwoFactorSignInAsync(userId, ticket, code, cancellationToken)
+            : SecondFactorSignInAsync(userId, ticket, (_, user) => _twoFactorMethods.VerifyCodeAsync(user, method, code, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>
+    /// Send the code of <paramref name="method"/> (or the preferred method) to a user holding a two-factor ticket; a
+    /// ticket that does not verify reports <see cref="TwoFactorCodeStatus.Unavailable"/>.
+    /// </summary>
+    /// <param name="userId">The user id from the <see cref="SignInStatus.RequiresTwoFactor"/> result.</param>
+    /// <param name="ticket">The two-factor ticket from that result.</param>
+    /// <param name="method">The method to send; null takes the preferred method.</param>
+    /// <param name="culture">The recipient's culture for the wording; null takes the current UI culture.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="NotSupportedException">The two-factor slice or purpose tokens are not registered.</exception>
+    public async Task<TwoFactorCodeResult> SendTwoFactorCodeAsync(TKey userId, string ticket, string? method = null, CultureInfo? culture = null, CancellationToken cancellationToken = default)
+    {
+        var methods = _twoFactorMethods ?? throw new NotSupportedException("Delivered two-factor codes need the two-factor slice; call .AddTwoFactor().");
+        var tokens = _tokens ?? throw new NotSupportedException("Two-factor sign-in needs purpose tokens; call .AddUserTokens(...).");
+
+        var user = await _accounts.FindByIdAsync(userId, cancellationToken);
+        if (user is null || !tokens.Verify(user, UserTokenPurposeConstants.TwoFactorSignIn, ticket))
+            return new TwoFactorCodeResult { Status = TwoFactorCodeStatus.Unavailable, Method = method ?? string.Empty };
+
+        method ??= await methods.GetPreferredMethodAsync(user, cancellationToken);
+        return method is null
+            ? new TwoFactorCodeResult { Status = TwoFactorCodeStatus.Unavailable, Method = string.Empty }
+            : await methods.SendCodeAsync(user, method, culture, cancellationToken);
+    }
+
     /// <summary>Complete a sign-in with a recovery code, which is consumed.</summary>
     /// <param name="userId">The user id from the <see cref="SignInStatus.RequiresTwoFactor"/> result.</param>
     /// <param name="ticket">The two-factor ticket from that result.</param>
@@ -199,6 +243,9 @@ public sealed class SignInService<TUser, TKey>
                 Status = SignInStatus.RequiresTwoFactor,
                 UserId = IdOf(user),
                 TwoFactorTicket = _tokens?.Issue(user, UserTokenPurposeConstants.TwoFactorSignIn),
+                TwoFactorMethod = _twoFactorMethods is null
+                    ? TwoFactorMethodNameConstants.Authenticator
+                    : await _twoFactorMethods.GetPreferredMethodAsync(user, cancellationToken) ?? TwoFactorMethodNameConstants.Authenticator,
             };
         }
 

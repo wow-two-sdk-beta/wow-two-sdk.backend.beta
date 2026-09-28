@@ -17,6 +17,9 @@ public sealed record SignInResult
     /// <summary>A short-lived ticket to present with the second factor; set for <see cref="SignInStatus.RequiresTwoFactor"/> when purpose tokens are registered.</summary>
     public string? TwoFactorTicket { get; init; }
 
+    /// <summary>The method the second factor asks for first — <c>authenticator</c> or a delivered method such as <c>sms</c>; set for <see cref="SignInStatus.RequiresTwoFactor"/>.</summary>
+    public string? TwoFactorMethod { get; init; }
+
     /// <summary>Whether the user is signed in.</summary>
     public bool Succeeded => Status == SignInStatus.Succeeded;
 }

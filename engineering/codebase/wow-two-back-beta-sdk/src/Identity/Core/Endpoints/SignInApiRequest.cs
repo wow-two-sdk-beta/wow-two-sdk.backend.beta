@@ -9,8 +9,14 @@ public sealed record SignInApiRequest
     /// <summary>The password.</summary>
     public required string Password { get; init; }
 
-    /// <summary>An authenticator code, when two-factor is enabled.</summary>
+    /// <summary>A second-factor code, when two-factor is enabled: from the authenticator or the delivered method.</summary>
     public string? TwoFactorCode { get; init; }
+
+    /// <summary>
+    /// The second-factor method, such as <c>sms</c>; null takes the preferred method. Naming a delivered method without a
+    /// code sends that method's code.
+    /// </summary>
+    public string? TwoFactorMethod { get; init; }
 
     /// <summary>A recovery code, instead of an authenticator code.</summary>
     public string? RecoveryCode { get; init; }

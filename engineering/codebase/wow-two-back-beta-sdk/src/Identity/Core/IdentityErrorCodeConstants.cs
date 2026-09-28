@@ -98,4 +98,10 @@ public static class IdentityErrorCodeConstants
 
     /// <summary>Two-factor was enabled before an authenticator key was verified.</summary>
     public const string AuthenticatorNotConfigured = "AuthenticatorNotConfigured";
+
+    /// <summary>The two-factor method is not configured, or the account has no confirmed address for it.</summary>
+    public const string TwoFactorMethodUnavailable = "TwoFactorMethodUnavailable";
+
+    /// <summary>The delivered two-factor code is wrong, spent or expired.</summary>
+    public const string InvalidTwoFactorCode = "InvalidTwoFactorCode";
 }

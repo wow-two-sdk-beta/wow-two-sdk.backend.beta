@@ -11,4 +11,10 @@ public sealed record TwoFactorStatusDto
 
     /// <summary>Unused recovery codes.</summary>
     public required int RecoveryCodesLeft { get; init; }
+
+    /// <summary>The methods the account can use: <c>authenticator</c> once set up, and each delivered method with a confirmed address.</summary>
+    public IReadOnlyList<string> Methods { get; init; } = [];
+
+    /// <summary>The method a sign-in asks for first.</summary>
+    public string? PreferredMethod { get; init; }
 }

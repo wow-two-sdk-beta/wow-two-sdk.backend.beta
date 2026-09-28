@@ -43,6 +43,8 @@ internal static class FieldCodeMessageConstants
                 ["SignInNotAllowed"] = "Подтвердите email или телефон, чтобы войти.",
                 ["TwoFactorRequired"] = "Введите код двухфакторной аутентификации.",
                 ["InvalidRefreshToken"] = "Сеанс истёк. Войдите снова.",
+                ["TwoFactorMethodUnavailable"] = "Этот способ двухфакторной аутентификации недоступен.",
+                ["InvalidTwoFactorCode"] = "Код неверен или устарел.",
             }.ToFrozenDictionary(StringComparer.Ordinal),
             ["uz"] = new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -78,6 +80,8 @@ internal static class FieldCodeMessageConstants
                 ["SignInNotAllowed"] = "Kirish uchun elektron pochta yoki telefonni tasdiqlang.",
                 ["TwoFactorRequired"] = "Ikki bosqichli autentifikatsiya kodini kiriting.",
                 ["InvalidRefreshToken"] = "Seans muddati tugadi. Qaytadan kiring.",
+                ["TwoFactorMethodUnavailable"] = "Ikki bosqichli autentifikatsiyaning bu usuli mavjud emas.",
+                ["InvalidTwoFactorCode"] = "Kod notoʻgʻri yoki muddati oʻtgan.",
             }.ToFrozenDictionary(StringComparer.Ordinal),
         }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 }

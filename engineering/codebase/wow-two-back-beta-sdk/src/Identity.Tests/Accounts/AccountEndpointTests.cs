@@ -23,6 +23,7 @@ using WoW.Two.Sdk.Backend.Beta.Identity.Core.SignIn;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Tokens;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.TwoFactor;
 using WoW.Two.Sdk.Backend.Beta.Identity.Mfa.Totp;
+using WoW.Two.Sdk.Backend.Beta.Identity.Otp.Email;
 using WoW.Two.Sdk.Backend.Beta.Identity.Jwt;
 using WoW.Two.Sdk.Backend.Beta.Identity.Jwt.Issuance;
 using WoW.Two.Sdk.Backend.Beta.Meta;
@@ -126,6 +127,56 @@ public sealed partial class AccountEndpointTests
         withRecovery.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task DeliveredTwoFactor_ConfiguredByTheHost_CompletesLoginOverEmail()
+    {
+        await using var app = await StartAsync(new Dictionary<string, string?>
+        {
+            ["Identity:TwoFactor:Methods:email:Channel"] = "email",
+            ["Identity:TwoFactor:Methods:email:Code:Kind"] = "Alphanumeric",
+            ["Identity:TwoFactor:Methods:email:Code:Length"] = "8",
+            ["Identity:Otp:RateLimitWindow"] = "00:00:00",
+            ["Identity:Otp:Messages:AppName"] = "Tests",
+        });
+        var client = app.Server.CreateClient();
+        await client.PostAsJsonAsync("/account/register", new { email = "ida@example.test", password = Password });
+        var confirmation = app.Mail.Sent.Single(message => message.Subject == "Confirm your email");
+        await client.GetAsync("/account/confirm-email" + new Uri(LinkPattern().Match(confirmation.TextBody!).Value).Query);
+        var access = (await Data(await client.PostAsJsonAsync("/account/login", new { login = "ida@example.test", password = Password })))
+            .GetProperty("accessToken").GetString();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", access);
+
+        (await Data(await client.GetAsync("/account/manage/2fa"))).GetProperty("methods").EnumerateArray().Select(m => m.GetString()).Should().Equal("email");
+        var sent = await Data(await client.PostAsync("/account/manage/2fa/methods/email/send", null));
+        sent.GetProperty("method").GetString().Should().Be("email");
+        var setupCode = CodeOf(app.Mail.Sent.Last());
+        app.Mail.Sent.Last().Subject.Should().Be("Your Tests verification code");
+        setupCode.Should().MatchRegex("^[A-HJ-NP-Z2-9]{8}$");
+        (await Data(await client.PostAsJsonAsync("/account/manage/2fa/methods/email/enable", new { code = setupCode })))
+            .GetProperty("recoveryCodes").GetArrayLength().Should().Be(10);
+        (await Data(await client.GetAsync("/account/manage/2fa"))).GetProperty("preferredMethod").GetString().Should().Be("email");
+
+        client.DefaultRequestHeaders.Authorization = null;
+        using var challenge = await client.PostAsJsonAsync("/account/login", new { login = "ida@example.test", password = Password });
+        challenge.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var problem = await Problem(challenge);
+        problem.GetProperty("twoFactorMethod").GetString().Should().Be("email");
+        problem.GetProperty("codeSent").GetBoolean().Should().BeTrue();
+        problem.GetProperty("twoFactorMethods").EnumerateArray().Select(m => m.GetString()).Should().Equal("email");
+
+        var loginCode = CodeOf(app.Mail.Sent.Last());
+        using var wrong = await client.PostAsJsonAsync("/account/login", new { login = "ida@example.test", password = Password, twoFactorCode = "WRONG123" });
+        wrong.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        using var withCode = await client.PostAsJsonAsync("/account/login", new { login = "ida@example.test", password = Password, twoFactorCode = loginCode.ToLowerInvariant() });
+        withCode.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var unknown = await client.PostAsJsonAsync("/account/login", new { login = "ida@example.test", password = Password, twoFactorMethod = "sms" });
+        unknown.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Problem(unknown)).GetProperty("detail").GetString().Should().Contain("'sms'");
+    }
+
+    private static string CodeOf(EmailMessage message) => message.TextBody!.Split(' ')[0];
+
     [GeneratedRegex(@"https://app\.test/\S+")]
     private static partial Regex LinkPattern();
 
@@ -142,7 +193,7 @@ public sealed partial class AccountEndpointTests
         return document.RootElement.Clone();
     }
 
-    private static async Task<AccountApp> StartAsync()
+    private static async Task<AccountApp> StartAsync(Dictionary<string, string?>? configuration = null)
     {
         var connection = new SqliteConnection("DataSource=:memory:");
         connection.Open();
@@ -155,6 +206,8 @@ public sealed partial class AccountEndpointTests
             ["UserAccounts:Emails:ConfirmationLink"] = "https://app.test/confirm?userId={userId}&token={token}",
             ["UserAccounts:Emails:ResetLink"] = "https://app.test/reset?email={email}&token={token}",
         });
+        if (configuration is not null)
+            builder.Configuration.AddInMemoryCollection(configuration);
         builder.AddApiDefaults(options =>
         {
             options.EnableHttpsRedirection = false;
@@ -177,6 +230,7 @@ public sealed partial class AccountEndpointTests
         builder.Services.AddJwtTokenIssuance(o => { o.Issuer = "tests"; o.Audience = "tests"; o.SigningKey = JwtKey; });
         builder.Services.AddAuthorization();
         builder.Services.AddSingleton<IEmailBroker>(mail);
+        builder.Services.AddEmailOtpDelivery();
 
         var web = builder.Build();
         web.UseApiDefaults(pipeline =>

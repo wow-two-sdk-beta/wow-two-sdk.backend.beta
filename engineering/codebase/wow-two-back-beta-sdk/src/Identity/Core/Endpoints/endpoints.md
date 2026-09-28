@@ -25,16 +25,23 @@ app.MapGroup("/account").MapUserAccountEndpoints<AppUser>();
 | Route | Does |
 |---|---|
 | `POST register` | creates the account; sends the confirmation email when configured |
-| `POST login[?useCookies=true]` | bearer `{ accessToken, expiresIn, refreshToken }` or a cookie; `twoFactorCode` / `recoveryCode` in the body |
+| `POST login[?useCookies=true]` | bearer `{ accessToken, expiresIn, refreshToken }` or a cookie; `twoFactorCode` / `recoveryCode` / `twoFactorMethod` in the body |
 | `POST refresh` · `POST logout` | rotate the refresh token · revoke it and clear the cookie |
 | `GET confirm-email?userId&token` | confirms the email |
 | `POST resend-confirmation-email` · `POST forgot-password` | always `204`, so they reveal no accounts |
 | `POST reset-password` | sets a new password with the emailed token |
 | `GET manage/info` | the signed-in account (authorized) |
 | `GET manage/2fa` · `POST manage/2fa/authenticator` · `enable` · `disable` · `recovery-codes` | two-factor setup; mapped only with `.AddTwoFactor()` |
+| `POST manage/2fa/methods/{method}/send` · `…/{method}/enable` · `manage/2fa/preferred` | delivered-code methods: send, enable with the code, choose the first method |
 
 - Success bodies use the `ApiResponse<T>` envelope (`{ data }`); failures are problem details with identity codes,
   translated when error translation is enabled.
 - Lockout answers `429`, an unconfirmed account `403`, wrong credentials and a missing second factor `401`.
 - Refresh renews without a second factor but re-checks lockout and confirmation; a refused renewal revokes the token.
 - Without an `IEmailBroker` or a link template, emails are skipped and `confirmationSent` is false.
+
+## Two-factor login
+
+- A login that needs the second factor answers `401` with `twoFactorMethod`, `twoFactorMethods` and, for a delivered
+  method, `codeSent` / `codeExpiresAt` as problem extensions; `AutoSendCode` sends the preferred method's code then.
+- Resend or switch: repeat the login with `twoFactorMethod` and no code. Complete: repeat it with `twoFactorCode`.

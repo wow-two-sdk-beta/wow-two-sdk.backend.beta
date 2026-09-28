@@ -14,6 +14,7 @@ using WoW.Two.Sdk.Backend.Beta.Identity.Core.SignIn;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.TwoFactor;
 using WoW.Two.Sdk.Backend.Beta.Identity.Jwt.Issuance;
 using WoW.Two.Sdk.Backend.Beta.Web.Contracts;
+using WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling.Factories;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Core.Endpoints;
 
@@ -23,7 +24,8 @@ public static class UserAccountEndpointRouteBuilderExtensions
     /// <summary>
     /// Maps <c>register</c>, <c>login</c>, <c>refresh</c>, <c>logout</c>, <c>confirm-email</c>,
     /// <c>resend-confirmation-email</c>, <c>forgot-password</c>, <c>reset-password</c>, <c>manage/info</c> and, with the
-    /// two-factor slice registered, <c>manage/2fa</c> (status, authenticator, enable, disable, recovery-codes) under
+    /// two-factor slice registered, <c>manage/2fa</c> (status, authenticator, enable, disable, recovery-codes, preferred,
+    /// methods/{method}/send, methods/{method}/enable) under
     /// <paramref name="endpoints"/> — mount it on a group such as <c>app.MapGroup("/account")</c>. Sign-in returns a bearer
     /// session (JWT via <see cref="ITokenIssuer"/>, plus a refresh token when registered) or, with <c>?useCookies=true</c>,
     /// a cookie. Failures surface as problem details, translated when error translation is enabled.
@@ -54,6 +56,9 @@ public static class UserAccountEndpointRouteBuilderExtensions
             endpoints.MapPost("/manage/2fa/enable", EnableTwoFactorAsync<TUser, TKey>).RequireAuthorization();
             endpoints.MapPost("/manage/2fa/disable", DisableTwoFactorAsync<TUser, TKey>).RequireAuthorization();
             endpoints.MapPost("/manage/2fa/recovery-codes", RegenerateRecoveryCodesAsync<TUser, TKey>).RequireAuthorization();
+            endpoints.MapPost("/manage/2fa/preferred", SetPreferredMethodAsync<TUser, TKey>).RequireAuthorization();
+            endpoints.MapPost("/manage/2fa/methods/{method}/send", SendMethodCodeAsync<TUser, TKey>).RequireAuthorization();
+            endpoints.MapPost("/manage/2fa/methods/{method}/enable", EnableMethodAsync<TUser, TKey>).RequireAuthorization();
         }
 
         return endpoints;
@@ -89,10 +94,13 @@ public static class UserAccountEndpointRouteBuilderExtensions
         var result = await signIn.PasswordSignInAsync(request.Login, request.Password, cancellationToken);
         if (result is { Status: SignInStatus.RequiresTwoFactor, TwoFactorTicket: { } ticket } && TryParseKey<TKey>(result.UserId, out var userId))
         {
+            var method = request.TwoFactorMethod ?? result.TwoFactorMethod ?? TwoFactorMethodNameConstants.Authenticator;
             if (!string.IsNullOrWhiteSpace(request.TwoFactorCode))
-                result = await signIn.TwoFactorSignInAsync(userId, ticket, request.TwoFactorCode, cancellationToken);
+                result = await signIn.TwoFactorSignInAsync(userId, ticket, method, request.TwoFactorCode, cancellationToken);
             else if (!string.IsNullOrWhiteSpace(request.RecoveryCode))
                 result = await signIn.RecoveryCodeSignInAsync(userId, ticket, request.RecoveryCode, cancellationToken);
+            else
+                throw (await TwoFactorChallengeAsync<TUser, TKey>(services, signIn, userId, ticket, method, request.TwoFactorMethod is not null, cancellationToken)).ToException();
         }
 
         if (!result.Succeeded)
@@ -223,11 +231,14 @@ public static class UserAccountEndpointRouteBuilderExtensions
         where TKey : notnull, IEquatable<TKey>
     {
         var (user, twoFactor) = await TwoFactorOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        var methods = http.RequestServices.GetService<UserTwoFactorMethodService<TUser, TKey>>();
         return Results.Ok(ApiResponse<TwoFactorStatusDto>.Ok(new TwoFactorStatusDto
         {
             Enabled = user.TwoFactorEnabled,
             HasAuthenticator = await twoFactor.GetAuthenticatorKeyAsync(user, cancellationToken) is not null,
             RecoveryCodesLeft = await twoFactor.CountRecoveryCodesAsync(user, cancellationToken),
+            Methods = methods is null ? [] : await methods.GetAvailableMethodsAsync(user, cancellationToken),
+            PreferredMethod = methods is null ? null : await methods.GetPreferredMethodAsync(user, cancellationToken),
         }));
     }
 
@@ -274,6 +285,86 @@ public static class UserAccountEndpointRouteBuilderExtensions
         var codes = await twoFactor.GenerateRecoveryCodesAsync(user, cancellationToken);
         return Results.Ok(ApiResponse<RecoveryCodesDto>.Ok(new RecoveryCodesDto { RecoveryCodes = codes }));
     }
+
+    private static async Task<IResult> SetPreferredMethodAsync<TUser, TKey>(TwoFactorMethodApiRequest request, ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var (user, _) = await TwoFactorOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        var chosen = await http.RequestServices.GetRequiredService<UserTwoFactorMethodService<TUser, TKey>>().SetPreferredMethodAsync(user, request.Method, cancellationToken);
+        if (!chosen.Succeeded)
+            throw chosen.ToValidationError().ToException();
+
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> SendMethodCodeAsync<TUser, TKey>(string method, ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var (user, _) = await TwoFactorOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        var sent = await http.RequestServices.GetRequiredService<UserTwoFactorMethodService<TUser, TKey>>().SendCodeAsync(user, method, cancellationToken: cancellationToken);
+        return sent.Sent
+            ? Results.Ok(ApiResponse<TwoFactorCodeSentDto>.Ok(new TwoFactorCodeSentDto { Method = sent.Method, ExpiresAt = sent.ExpiresAt }))
+            : throw FailureOf(sent).ToException();
+    }
+
+    private static async Task<IResult> EnableMethodAsync<TUser, TKey>(string method, TwoFactorCodeApiRequest request, ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var (user, twoFactor) = await TwoFactorOfAsync<TUser, TKey>(principal, http, cancellationToken);
+        var enabled = await http.RequestServices.GetRequiredService<UserTwoFactorMethodService<TUser, TKey>>().EnableAsync(user, method, request.Code, cancellationToken);
+        if (!enabled.Succeeded)
+            throw enabled.ToValidationError().ToException();
+
+        var codes = await twoFactor.GenerateRecoveryCodesAsync(user, cancellationToken);
+        return Results.Ok(ApiResponse<RecoveryCodesDto>.Ok(new RecoveryCodesDto { RecoveryCodes = codes }));
+    }
+
+    /// <summary>
+    /// The 401 a second-factor step answers with: names the method asked for and the available ones, and sends a
+    /// delivered method's code when the client chose it or <see cref="TwoFactorOptions.AutoSendCode"/> is on.
+    /// </summary>
+    private static async Task<AppError> TwoFactorChallengeAsync<TUser, TKey>(
+        IServiceProvider services,
+        SignInService<TUser, TKey> signIn,
+        TKey userId,
+        string ticket,
+        string method,
+        bool chosen,
+        CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var extensions = new Dictionary<string, object?>(StringComparer.Ordinal) { ["twoFactorMethod"] = method };
+        if (services.GetService<UserTwoFactorMethodService<TUser, TKey>>() is { } methods
+            && await services.GetRequiredService<UserAccountService<TUser, TKey>>().FindByIdAsync(userId, cancellationToken) is { } user)
+        {
+            extensions["twoFactorMethods"] = await methods.GetAvailableMethodsAsync(user, cancellationToken);
+            var autoSend = services.GetRequiredService<TwoFactorOptions>().AutoSendCode;
+            if (!string.Equals(method, TwoFactorMethodNameConstants.Authenticator, StringComparison.OrdinalIgnoreCase) && (chosen || autoSend))
+            {
+                var sent = await signIn.SendTwoFactorCodeAsync(userId, ticket, method, cancellationToken: cancellationToken);
+                if (sent.Status is not TwoFactorCodeStatus.Sent and not TwoFactorCodeStatus.RateLimited)
+                    return FailureOf(sent);
+
+                extensions["codeSent"] = sent.Sent;
+                extensions["codeExpiresAt"] = sent.ExpiresAt;
+            }
+        }
+
+        var metadata = MessageKey(IdentityErrorCodeConstants.TwoFactorRequired);
+        metadata[AppErrorProblemDetailsFactory.ExtensionsMetadataKey] = extensions;
+        return AppError.Of(AppErrorType.Unauthorized, "Enter your two-factor code.", metadata);
+    }
+
+    private static AppError FailureOf(TwoFactorCodeResult result) => result.Status switch
+    {
+        TwoFactorCodeStatus.RateLimited => AppError.Of(AppErrorType.TooManyRequests, "A code was sent moments ago; wait before asking again.", MessageKey(IdentityErrorCodeConstants.TwoFactorRequired)),
+        TwoFactorCodeStatus.DeliveryFailed => AppError.Of(AppErrorType.ExternalUnavailable, "The code could not be delivered; try another method.", MessageKey(IdentityErrorCodeConstants.TwoFactorMethodUnavailable)),
+        _ => AppError.Of(AppErrorType.Validation, $"The two-factor method '{result.Method}' is not available for this account.", MessageKey(IdentityErrorCodeConstants.TwoFactorMethodUnavailable)),
+    };
 
     private static async Task<(TUser User, UserTwoFactorService<TUser, TKey> TwoFactor)> TwoFactorOfAsync<TUser, TKey>(ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
         where TUser : IdentityUser<TKey>, new()

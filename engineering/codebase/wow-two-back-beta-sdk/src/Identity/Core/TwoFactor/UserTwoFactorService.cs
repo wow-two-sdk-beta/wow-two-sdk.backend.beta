@@ -31,6 +31,9 @@ public sealed class UserTwoFactorService<TUser, TKey>(
     private const string AuthenticatorKeyName = "AuthenticatorKey";
     private const string RecoveryCodesName = "RecoveryCodes";
 
+    /// <summary>The stored-token name of the user's preferred two-factor method.</summary>
+    internal const string PreferredMethodName = "TwoFactorMethod";
+
     /// <summary>Generate and store a new authenticator key, rotating the stamp; the account must verify it before enabling.</summary>
     /// <param name="user">The user.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
@@ -93,7 +96,7 @@ public sealed class UserTwoFactorService<TUser, TKey>(
         return IdentityResult.Success;
     }
 
-    /// <summary>Disable two-factor and forget the key and recovery codes; rotates the stamp.</summary>
+    /// <summary>Disable two-factor and forget the key, the recovery codes and the preferred method; rotates the stamp.</summary>
     /// <param name="user">The user.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task<IdentityResult> DisableAsync(TUser user, CancellationToken cancellationToken = default)
@@ -101,6 +104,7 @@ public sealed class UserTwoFactorService<TUser, TKey>(
         ArgumentNullException.ThrowIfNull(user);
         await tokens.RemoveAsync(user.Id, TokenProvider, AuthenticatorKeyName, cancellationToken);
         await tokens.RemoveAsync(user.Id, TokenProvider, RecoveryCodesName, cancellationToken);
+        await tokens.RemoveAsync(user.Id, TokenProvider, PreferredMethodName, cancellationToken);
         user.TwoFactorEnabled = false;
         user.RotateSecurityStamp();
         await repository.UpdateAsync(user, cancellationToken);
