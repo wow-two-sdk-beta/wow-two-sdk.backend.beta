@@ -527,7 +527,7 @@ Subpath: `wow-two-sdk.backend.beta.storage` + `.media`.
 | iText7 / Aspose / Spire | SKIP | License |
 | ClosedXML for Excel | NEXT | MIT; default xlsx |
 | EPPlus | SKIP | Polyform commercial |
-| OpenXML SDK | DONE | First-party |
+| OpenXML SDK | DONE | First-party; `Media/Word` reads, fills and builds .docx over it (2026-09-28) |
 | CsvHelper | NEXT | Default CSV |
 | Sep / Sylvan.Data.Csv | LATER | Hot-path perf alts |
 | Markdig (Markdown) | DONE | `Media.Markdown` — safe HTML, headings, front matter, 2026-09-28 |

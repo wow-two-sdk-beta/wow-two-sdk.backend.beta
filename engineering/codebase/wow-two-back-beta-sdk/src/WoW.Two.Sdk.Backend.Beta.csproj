@@ -133,6 +133,11 @@
     <PackageReference Include="Markdig" />
   </ItemGroup>
 
+  <!-- Media — Word (src/Media/Word). Open XML SDK (MIT), the version ClosedXML already brings; no natives. -->
+  <ItemGroup Label="Media — Word">
+    <PackageReference Include="DocumentFormat.OpenXml" />
+  </ItemGroup>
+
   <ItemGroup Label="Http / outbound — Refit + Polly v8 resilience + header propagation">
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.AspNetCore.HeaderPropagation" />

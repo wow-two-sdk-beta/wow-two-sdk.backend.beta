@@ -1,12 +1,13 @@
 # Media.Endpoints
 
-The image and PDF tools as multipart HTTP endpoints — a file-tool product is registration plus one line of routing.
+The image, PDF and Word tools as multipart HTTP endpoints — a file-tool product is registration plus one line of routing.
 
 ```csharp
 builder.Services.AddPdfProcessing();                               // images come with it
 var tools = app.MapGroup("/tools");
 tools.MapImageToolEndpoints().RequireRateLimiting("uploads");      // each call returns its group
 tools.MapPdfToolEndpoints();
+tools.MapWordToolEndpoints();                                     // after AddWordProcessing()
 ```
 
 | Route | Form fields | Answer |
@@ -21,6 +22,9 @@ tools.MapPdfToolEndpoints();
 | `pdf/compress` · `pdf/metadata` · `pdf/encrypt` · `pdf/watermark` · `pdf/page-numbers` | `file`, `spec` JSON | the PDF |
 | `pdf/decrypt` | `file`, `password` | the PDF |
 | `pdf/form` · `pdf/form/fill` | `file`; fill adds `spec` (`{"values":{…},"lockFields":true}`) | JSON fields · the PDF |
+| `word/info` · `word/text` | `file`, `format` (`plain` or `markdown`, text) | JSON |
+| `word/fill` | `file`, `spec` (`{"data":{…},"missingValues":"Keep"}`) | the document |
+| `word/from-markdown` | `markdown` or a `file`, optional `spec` (`WordDocumentSpec`) | the document |
 
 - Specs are the C# records as JSON in camelCase, enums as names: `{"resize":{"width":800},"output":{"format":"webp"}}`.
 - Downloads keep the upload's name with the new extension (`photo.jpg` → `photo.webp`).

@@ -10,12 +10,13 @@ using Microsoft.Extensions.Logging;
 using SkiaSharp;
 using WoW.Two.Sdk.Backend.Beta.Media.Endpoints;
 using WoW.Two.Sdk.Backend.Beta.Media.Pdf;
+using WoW.Two.Sdk.Backend.Beta.Media.Word;
 using WoW.Two.Sdk.Backend.Beta.Meta;
 using Xunit;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.Tests.Media;
 
-/// <summary>The image and PDF tools over HTTP: multipart in, files or JSON out, refusals as problem details.</summary>
+/// <summary>The image, PDF and Word tools over HTTP: multipart in, files or JSON out, refusals as problem details.</summary>
 public sealed class MediaToolEndpointTests : IAsyncLifetime
 {
     private WebApplication _app = null!;
@@ -34,11 +35,13 @@ public sealed class MediaToolEndpointTests : IAsyncLifetime
             options.EnableRateLimiting = false;
         });
         builder.Services.AddPdfProcessing();
+        builder.Services.AddWordProcessing();
         _app = builder.Build();
         _app.UseApiDefaults();
         var tools = _app.MapGroup("/tools");
         tools.MapImageToolEndpoints();
         tools.MapPdfToolEndpoints();
+        tools.MapWordToolEndpoints();
         await _app.StartAsync();
         _client = _app.GetTestServer().CreateClient();
     }
@@ -97,6 +100,35 @@ public sealed class MediaToolEndpointTests : IAsyncLifetime
         textForm.Add(new StringContent("2"), "pages");
         using var text = await _client.PostAsync("/tools/pdf/text", textForm);
         (await Data(text)).GetProperty("pages").GetProperty("2").GetString().Should().Contain("2 / 3");
+    }
+
+    [Fact]
+    public async Task WordEndpoints_ShouldBuildFillAndReadADocument()
+    {
+        using var buildForm = new MultipartFormDataContent
+        {
+            { new StringContent("# Invoice {{Number}}\n\nBill to **{{Customer}}**."), "markdown" },
+            { new StringContent("""{"title":"Invoice","paper":"Letter"}"""), "spec" },
+        };
+        using var built = await _client.PostAsync("/tools/word/from-markdown", buildForm);
+        built.Content.Headers.ContentType!.MediaType.Should().Be(WordResult.DocxContentType);
+        built.Content.Headers.ContentDisposition!.FileName.Should().Be("Invoice.docx");
+
+        using var fillForm = Form(("file", "invoice.docx", await built.Content.ReadAsByteArrayAsync()));
+        fillForm.Add(new StringContent("""{"data":{"number":"INV-9","customer":"Ada"}}"""), "spec");
+        using var filled = await _client.PostAsync("/tools/word/fill", fillForm);
+        var document = await filled.Content.ReadAsByteArrayAsync();
+
+        using var textForm = Form(("file", "invoice.docx", document));
+        textForm.Add(new StringContent("markdown"), "format");
+        (await Data(await _client.PostAsync("/tools/word/text", textForm))).GetProperty("text").GetString()
+            .Should().Be("# Invoice INV-9\n\nBill to **Ada**.");
+
+        using var missingForm = Form(("file", "invoice.docx", await built.Content.ReadAsByteArrayAsync()));
+        missingForm.Add(new StringContent("""{"data":{"number":"INV-9"}}"""), "spec");
+        using var missing = await _client.PostAsync("/tools/word/fill", missingForm);
+        missing.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await missing.Content.ReadAsStringAsync()).Should().Contain("Customer");
     }
 
     [Fact]

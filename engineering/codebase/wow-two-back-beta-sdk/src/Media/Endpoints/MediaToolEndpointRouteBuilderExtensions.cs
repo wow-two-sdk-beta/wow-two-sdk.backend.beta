@@ -8,12 +8,13 @@ using Microsoft.AspNetCore.Routing;
 using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Media.Images;
 using WoW.Two.Sdk.Backend.Beta.Media.Pdf;
+using WoW.Two.Sdk.Backend.Beta.Media.Word;
 using WoW.Two.Sdk.Backend.Beta.Web.Contracts;
 
 namespace WoW.Two.Sdk.Backend.Beta.Media.Endpoints;
 
 /// <summary>
-/// Maps the image and PDF tools as multipart HTTP endpoints, so a file-tool product is one line of routing. Specs travel
+/// Maps the image, PDF and Word tools as multipart HTTP endpoints, so a file-tool product is one line of routing. Specs travel
 /// as a JSON form field named <c>spec</c> in the same shape as the C# records; files come back as downloads.
 /// </summary>
 public static class MediaToolEndpointRouteBuilderExtensions
@@ -101,7 +102,50 @@ public static class MediaToolEndpointRouteBuilderExtensions
         return group;
     }
 
+    /// <summary>
+    /// Maps <c>word/info</c>, <c>word/text</c> (<c>format=markdown</c> for Markdown), <c>word/fill</c> and
+    /// <c>word/from-markdown</c> under <paramref name="endpoints"/>; needs <c>AddWordProcessing</c>. Returns the group for
+    /// authorization or rate limits.
+    /// </summary>
+    /// <param name="endpoints">The route builder or group.</param>
+    public static RouteGroupBuilder MapWordToolEndpoints(this IEndpointRouteBuilder endpoints)
+    {
+        ArgumentNullException.ThrowIfNull(endpoints);
+        var group = endpoints.MapGroup("word").DisableAntiforgery();
+        group.MapPost("info", async (IFormFile file, IWordService word, CancellationToken ct)
+            => Results.Ok(ApiResponse<WordInfoResult>.Ok(await word.ReadInfoAsync(file.OpenReadStream(), ct))));
+        group.MapPost("text", async (IFormFile file, [FromForm] string? format, IWordService word, CancellationToken ct)
+            => Results.Ok(ApiResponse<WordTextResult>.Ok(await word.ExtractTextAsync(file.OpenReadStream(), TextFormat(format), ct))));
+        group.MapPost("fill", async (IFormFile file, [FromForm] string spec, IWordService word, CancellationToken ct)
+            => Download(await word.FillTemplateAsync(file.OpenReadStream(), Required<WordTemplateSpec>(spec), ct), file.FileName));
+        group.MapPost("from-markdown", async (IFormFile? file, [FromForm] string? markdown, [FromForm] string? spec, IWordService word, CancellationToken ct) =>
+        {
+            var source = markdown;
+            if (file is not null)
+            {
+                using var reader = new StreamReader(file.OpenReadStream());
+                source = await reader.ReadToEndAsync(ct);
+            }
+
+            if (string.IsNullOrWhiteSpace(source))
+                throw AppErrorFactory.Validation("The form needs a markdown field or a Markdown file.").ToException();
+
+            var settings = Spec<WordDocumentSpec>(spec);
+            return Download(await word.FromMarkdownAsync(source, settings, ct), file?.FileName ?? settings?.Title ?? "document");
+        });
+        return group;
+    }
+
     private static IResult Download(PdfResult result, string name) => Results.File(result.Content, result.ContentType, Rename(name, "pdf"));
+
+    private static IResult Download(WordResult result, string name) => Results.File(result.Content, result.ContentType, Rename(name, "docx"));
+
+    private static WordTextFormat TextFormat(string? format) => format?.Trim().ToLowerInvariant() switch
+    {
+        null or "" or "plain" or "text" => WordTextFormat.Plain,
+        "markdown" or "md" => WordTextFormat.Markdown,
+        _ => throw AppErrorFactory.Validation($"Unknown text format '{format}'; use plain or markdown.").ToException(),
+    };
 
     /// <summary>The spec a form field carries as JSON; null when the field is absent.</summary>
     private static T? Spec<T>(string? json)
