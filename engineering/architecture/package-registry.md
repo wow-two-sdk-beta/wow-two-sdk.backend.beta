@@ -262,7 +262,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Comms.Push.Fcm` | `AddFcmPushBroker` — HTTP v1, service-account RS256 assertion, cached OAuth token | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Push.Apns` | `AddApnsPushBroker` — HTTP/2, `.p8` ES256 provider token (no dotAPNS) | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Comms.Push.OneSignal` | OneSignal impl | planned |
-| `WoW.Two.Sdk.Backend.Beta.Comms.Push.WebPush` | Web Push impl | planned |
+| `WoW.Two.Sdk.Backend.Beta.Comms.Push.WebPush` | `AddWebPushBroker` — VAPID (RFC 8292) + `aes128gcm` payload encryption (RFC 8291), no third-party library | implemented (mono-lib, unreleased) |
 
 ## P5 — SaaS-shaped
 
