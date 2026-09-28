@@ -14,6 +14,7 @@ using WoW.Two.Sdk.Backend.Beta.Web.ExceptionHandling;
 using WoW.Two.Sdk.Backend.Beta.Web.Hosting;
 using WoW.Two.Sdk.Backend.Beta.Web.OpenApi;
 using WoW.Two.Sdk.Backend.Beta.Web.OutputCache;
+using WoW.Two.Sdk.Backend.Beta.Web.ConditionalRequests;
 using WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails;
 using WoW.Two.Sdk.Backend.Beta.Web.RateLimit;
 using WoW.Two.Sdk.Backend.Beta.Web.SecureHeaders;
@@ -67,7 +68,8 @@ public static class ApiDefaultsExtensions
             })
             .AddOpenApiDefaults()
             .AddTraceAwareProblemDetails()
-            .AddAppExceptionHandling();
+            .AddAppExceptionHandling()
+            .AddConditionalRequests();
 
         if (options.EnableRateLimiting)
         {
@@ -122,6 +124,9 @@ public static class ApiDefaultsExtensions
         {
             app.UseResponseCompression();
         }
+
+        // Inert until the ConditionalRequests section enables it; inside compression so it hashes the plain body.
+        app.UseConditionalRequests();
 
         app.UseRouting();
 

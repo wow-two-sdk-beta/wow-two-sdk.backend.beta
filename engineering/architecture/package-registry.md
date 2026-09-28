@@ -115,6 +115,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Web.OpenApi` | `AddOpenApiDefaults` / `MapOpenApiEndpoint` — `Microsoft.AspNetCore.OpenApi` (.NET 10) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Web.OpenApi.Swashbuckle` | Swashbuckle fallback adapter | planned |
 | `WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails` | `AddTraceAwareProblemDetails` — RFC 7807 + traceId/requestId enrichment | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Web.ConditionalRequests` | ETag + `304` for GET, `SetEntityTag` / `FailsIfMatch` for versioned writes; activated by the `ConditionalRequests` section, inert in `UseApiDefaults` | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Web.ErrorTranslation` | `IErrorTranslationService` behind the default error mappers; activated by the `ErrorTranslation` configuration section; `ToApiFailure<T>` envelope helper | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Web.RateLimit` | `AddPerIpSlidingWindowRateLimit` — sliding window per-IP, 100 req/min default | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Web.OutputCache` | `AddDefaultOutputCache` — built-in middleware with default 60s policy | shipped |
