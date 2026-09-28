@@ -36,6 +36,7 @@
 - [x] S5 — passwordless email: link and code over the OTP service, account routes, `login/two-factor` for 2FA
   accounts; login endpoints now share one session helper
 
+- [x] S7 — personal data: export and account deletion with product exporters and erasure handlers
 - [x] S6 — pagination: `PageDto<T>` / `TokenPageDto<T>` matching the UI SDK's `Page<T>` / `TokenPage<T>`, query
   binding, EF offset and keyset (composite key) paging with opaque tokens; SQLite and PostgreSQL tests
 

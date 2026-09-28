@@ -11,6 +11,7 @@ using WoW.Two.Sdk.Backend.Beta.Foundation.Errors;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Emails;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.EmailSignIn;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passkeys;
+using WoW.Two.Sdk.Backend.Beta.Identity.Core.PersonalData;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passwords;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.RefreshTokens;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.SignIn;
@@ -24,12 +25,15 @@ namespace WoW.Two.Sdk.Backend.Beta.Identity.Core.Endpoints;
 /// <summary>Maps the account HTTP API over the registered identity slices.</summary>
 public static class UserAccountEndpointRouteBuilderExtensions
 {
+    private static readonly JsonSerializerOptions ExportJson = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+
     /// <summary>
     /// Maps <c>register</c>, <c>login</c>, <c>refresh</c>, <c>logout</c>, <c>confirm-email</c>,
     /// <c>resend-confirmation-email</c>, <c>forgot-password</c>, <c>reset-password</c>, <c>manage/info</c> and, with the
     /// two-factor slice registered, <c>manage/2fa</c> (status, authenticator, enable, disable, recovery-codes, preferred,
     /// methods/{method}/send, methods/{method}/enable, plus <c>login/two-factor</c>); with email sign-in registered,
-    /// <c>email-sign-in/send</c> and <c>email-sign-in</c>; and, with the passkey slice registered, <c>passkeys/login/options</c>,
+    /// <c>email-sign-in/send</c> and <c>email-sign-in</c>; with personal data registered, <c>manage/personal-data</c> and
+    /// <c>manage/delete-account</c>; and, with the passkey slice registered, <c>passkeys/login/options</c>,
     /// <c>passkeys/login</c> and <c>manage/passkeys</c> (list, options, register, remove) under
     /// <paramref name="endpoints"/> — mount it on a group such as <c>app.MapGroup("/account")</c>. Sign-in returns a bearer
     /// session (JWT via <see cref="ITokenIssuer"/>, plus a refresh token when registered) or, with <c>?useCookies=true</c>,
@@ -65,6 +69,12 @@ public static class UserAccountEndpointRouteBuilderExtensions
             endpoints.MapPost("/manage/2fa/methods/{method}/send", SendMethodCodeAsync<TUser, TKey>).RequireAuthorization();
             endpoints.MapPost("/manage/2fa/methods/{method}/enable", EnableMethodAsync<TUser, TKey>).RequireAuthorization();
             endpoints.MapPost("/login/two-factor", TwoFactorLoginAsync<TUser, TKey>);
+        }
+
+        if (endpoints.ServiceProvider.GetService<IServiceProviderIsService>()?.IsService(typeof(UserPersonalDataService<TUser, TKey>)) == true)
+        {
+            endpoints.MapGet("/manage/personal-data", ExportPersonalDataAsync<TUser, TKey>).RequireAuthorization();
+            endpoints.MapPost("/manage/delete-account", DeleteAccountAsync<TUser, TKey>).RequireAuthorization();
         }
 
         if (endpoints.ServiceProvider.GetService<IServiceProviderIsService>()?.IsService(typeof(UserEmailSignInService<TUser, TKey>)) == true)
@@ -432,6 +442,47 @@ public static class UserAccountEndpointRouteBuilderExtensions
 
         var codes = await twoFactor.GenerateRecoveryCodesAsync(user, cancellationToken);
         return Results.Ok(ApiResponse<RecoveryCodesDto>.Ok(new RecoveryCodesDto { RecoveryCodes = codes }));
+    }
+
+    private static async Task<IResult> ExportPersonalDataAsync<TUser, TKey>(ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var user = await CurrentUserAsync<TUser, TKey>(principal, http, cancellationToken);
+        var export = await http.RequestServices.GetRequiredService<UserPersonalDataService<TUser, TKey>>().ExportAsync(user, cancellationToken);
+        var json = JsonSerializer.SerializeToUtf8Bytes(export, ExportJson);
+        return Results.File(json, "application/json", "personal-data.json");
+    }
+
+    private static async Task<IResult> DeleteAccountAsync<TUser, TKey>(DeleteAccountApiRequest? request, ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var services = http.RequestServices;
+        var user = await CurrentUserAsync<TUser, TKey>(principal, http, cancellationToken);
+        if (user.PasswordHash is not null
+            && (string.IsNullOrEmpty(request?.Password)
+                || services.GetService<UserPasswordService<TUser, TKey>>() is not { } passwords
+                || !await passwords.CheckPasswordAsync(user, request.Password, cancellationToken)))
+        {
+            throw AppError.Of(AppErrorType.Forbidden, "Confirm with the account's password to delete it.", MessageKey(IdentityErrorCodeConstants.PasswordMismatch)).ToException();
+        }
+
+        await services.GetRequiredService<UserPersonalDataService<TUser, TKey>>().DeleteAsync(user, cancellationToken);
+        if (await services.GetRequiredService<IAuthenticationSchemeProvider>().GetSchemeAsync(CookieAuthenticationDefaults.AuthenticationScheme) is not null)
+            await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+        return Results.NoContent();
+    }
+
+    private static async Task<TUser> CurrentUserAsync<TUser, TKey>(ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)
+        where TUser : IdentityUser<TKey>, new()
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var services = http.RequestServices;
+        var claimType = services.GetRequiredService<IdentityCoreOptions>().Claims.UserIdClaimType;
+        return await FindAsync<TUser, TKey>(services, principal.FindFirst(claimType)?.Value, cancellationToken)
+            ?? throw AppErrorFactory.Unauthorized("The account no longer exists.").ToException();
     }
 
     private static async Task<IResult> ListPasskeysAsync<TUser, TKey>(ClaimsPrincipal principal, HttpContext http, CancellationToken cancellationToken)

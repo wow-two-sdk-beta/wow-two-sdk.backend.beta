@@ -30,6 +30,8 @@
 - [x] I8 — refresh tokens: rotation, reuse detection revoking the family, stamp binding, purge; 61 identity tests pass
 - [x] I9 — account HTTP API: `MapUserAccountEndpoints` (register, login bearer/cookie, refresh, logout, email confirm,
   forgot/reset password, info); emails from `UserAccounts:Emails` configuration; end-to-end tests
+- [x] I12 — personal data: export (identity sections + product exporters, no secrets) and account deletion
+  (product handlers, then every identity row in one transaction); end-to-end API test
 - [x] I11 — passwordless email: single-use OTP link or code, address confirmed on use, `login/two-factor` ticket
   completion for two-factor accounts; end-to-end API test
 - [x] I10 — passkeys: `identity_passkeys`, `UserPasskeyService`, usernameless `PasskeySignInAsync`, account routes;

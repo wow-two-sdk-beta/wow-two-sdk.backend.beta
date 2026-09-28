@@ -19,6 +19,8 @@ using WoW.Two.Sdk.Backend.Beta.Identity.Core.EmailSignIn;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Endpoints;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Lockout;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passkeys;
+using WoW.Two.Sdk.Backend.Beta.Identity.Core.PersonalData;
+using WoW.Two.Sdk.Backend.Beta.Identity.Core.Roles;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Passwords;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.RefreshTokens;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.SignIn;
@@ -269,6 +271,49 @@ public sealed partial class AccountEndpointTests
         (await Data(completed)).GetProperty("accessToken").GetString().Should().NotBeNullOrEmpty();
     }
 
+    [Fact]
+    public async Task PersonalData_ShouldExportEverySectionWithoutSecrets_AndDeleteTheAccountForGood()
+    {
+        await using var app = await StartAsync();
+        var client = app.Server.CreateClient();
+        await client.PostAsJsonAsync("/account/register", new { email = "kim@example.test", password = Password });
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var services = scope.ServiceProvider;
+            await services.GetRequiredService<RoleService<IdentityRole, Guid>>().CreateAsync(new IdentityRole { Name = "beta" });
+            var kim = await services.GetRequiredService<UserAccountService<IdentityUser, Guid>>().FindByEmailAsync("kim@example.test");
+            await services.GetRequiredService<UserRoleService<IdentityUser, IdentityRole, Guid>>().AddToRoleAsync(kim!, "beta");
+        }
+
+        var access = (await Data(await client.PostAsJsonAsync("/account/login", new { login = "kim@example.test", password = Password }))).GetProperty("accessToken").GetString();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", access);
+
+        using var exported = await client.GetAsync("/account/manage/personal-data");
+        exported.Content.Headers.ContentDisposition!.FileName.Should().Be("personal-data.json");
+        var json = await exported.Content.ReadAsStringAsync();
+        var sections = JsonDocument.Parse(json).RootElement.GetProperty("sections");
+        sections.GetProperty("account").GetProperty("email").GetString().Should().Be("kim@example.test");
+        sections.GetProperty("roles").EnumerateArray().Select(role => role.GetString()).Should().Equal("beta");
+        sections.GetProperty("sessions").GetArrayLength().Should().Be(1);
+        sections.GetProperty("notes").GetString().Should().Be("notes of kim@example.test");
+        json.Should().NotContainAny("passwordHash", "PasswordHash", "tokenHash", "securityStamp");
+
+        (await client.PostAsJsonAsync("/account/manage/delete-account", new { })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await client.PostAsJsonAsync("/account/manage/delete-account", new { password = "not the password" })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await client.PostAsJsonAsync("/account/manage/delete-account", new { password = Password })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        app.Services.GetRequiredService<DeletionLog>().Deleted.Should().Equal("kim@example.test");
+        client.DefaultRequestHeaders.Authorization = null;
+        (await client.PostAsJsonAsync("/account/login", new { login = "kim@example.test", password = Password })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AccountsDbContext>();
+            (await db.Set<IdentityRefreshToken<Guid>>().CountAsync()).Should().Be(0);
+            (await db.Set<IdentityUserRole<Guid>>().CountAsync()).Should().Be(0);
+            (await db.Set<IdentityUser>().CountAsync()).Should().Be(0);
+        }
+    }
+
     private static string CodeOf(EmailMessage message) => message.TextBody!.Split(' ')[0];
 
     [GeneratedRegex(@"https://app\.test/\S+")]
@@ -319,6 +364,8 @@ public sealed partial class AccountEndpointTests
             .AddRefreshTokens()
             .AddTwoFactor(o => o.Issuer = "Tests")
             .AddEmailSignIn()
+            .AddRoles<IdentityRole>()
+            .AddPersonalData()
             .AddPasskeys(o =>
             {
                 o.ServerDomain = "app.test";
@@ -331,6 +378,9 @@ public sealed partial class AccountEndpointTests
         builder.Services.AddAuthorization();
         builder.Services.AddSingleton<IEmailBroker>(mail);
         builder.Services.AddEmailOtpDelivery();
+        builder.Services.AddSingleton<DeletionLog>();
+        builder.Services.AddScoped<IPersonalDataExporter<IdentityUser>, NotesExporter>();
+        builder.Services.AddScoped<IAccountDeletionHandler<IdentityUser>, NotesDeletionHandler>();
 
         var web = builder.Build();
         web.UseApiDefaults(pipeline =>
@@ -358,6 +408,28 @@ public sealed partial class AccountEndpointTests
         {
             await web.DisposeAsync();
             await connection.DisposeAsync();
+        }
+    }
+
+    private sealed class DeletionLog
+    {
+        public List<string> Deleted { get; } = [];
+    }
+
+    private sealed class NotesExporter : IPersonalDataExporter<IdentityUser>
+    {
+        public string Section => "notes";
+
+        public Task<object?> ExportAsync(IdentityUser user, CancellationToken cancellationToken = default)
+            => Task.FromResult<object?>($"notes of {user.Email}");
+    }
+
+    private sealed class NotesDeletionHandler(DeletionLog log) : IAccountDeletionHandler<IdentityUser>
+    {
+        public Task HandleAsync(IdentityUser user, CancellationToken cancellationToken = default)
+        {
+            log.Deleted.Add(user.Email!);
+            return Task.CompletedTask;
         }
     }
 

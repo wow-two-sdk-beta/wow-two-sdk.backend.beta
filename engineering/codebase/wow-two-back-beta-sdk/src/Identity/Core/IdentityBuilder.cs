@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using WoW.Two.Sdk.Backend.Beta.Identity.Core.PersonalData;
 using WoW.Two.Sdk.Backend.Beta.Identity.Core.Roles;
 
 namespace WoW.Two.Sdk.Backend.Beta.Identity.Core;
@@ -52,6 +53,7 @@ public sealed class IdentityBuilder<TUser, TKey>
 
         Services.TryAddScoped<RoleService<TRole, TKey>>();
         Services.TryAddScoped<UserRoleService<TUser, TRole, TKey>>();
+        Services.TryAddEnumerable(ServiceDescriptor.Scoped<IPersonalDataExporter<TUser>, RolePersonalDataExporter<TUser, TRole, TKey>>());
         return this;
     }
 }

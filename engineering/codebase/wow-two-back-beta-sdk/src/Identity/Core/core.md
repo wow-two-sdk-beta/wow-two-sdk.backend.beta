@@ -48,6 +48,7 @@ var alice   = await service.FindByNameAsync("ALICE");   // case-insensitive via 
 | `AddRefreshTokens()` | `RefreshTokenService` | `RefreshTokens/` |
 | `AddPasskeys(o => …)` | `UserPasskeyService`, `SignInService.PasskeySignInAsync` | `Passkeys/` |
 | `AddEmailSignIn(o => …)` | `UserEmailSignInService` (single-use link or code over OTP) | `EmailSignIn/` |
+| `AddPersonalData()` | `UserPersonalDataService` (export sections, account erasure hooks) | `PersonalData/` |
 | `AddAccountEndpoints()` + `MapUserAccountEndpoints<TUser>()` | account HTTP API | `Endpoints/` |
 | `AddSignIn()` | `SignInService` | `SignIn/` |
 
