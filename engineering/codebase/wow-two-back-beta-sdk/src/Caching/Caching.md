@@ -39,7 +39,11 @@ public sealed class Catalog(ICacheRepository cache, ICacheKeyBuilder keys)
 - `GetOrCreateAsync` coalesces concurrent misses for the same key (stampede protection) — the factory runs once.
 - Tags enable group eviction (`RemoveByTagAsync`) across both tiers.
 - Register a Redis `IDistributedCache` (via `AddRedisDistributedCache`) and HybridCache uses it as L2 automatically — no other wiring.
-- Defaults: 5 min total / 1 min L1 / 1 MB max payload — tune via `AddHybridCaching(o => …)`.
+- Defaults: 5 min total / 1 min L1 / 1 MB max payload — tune via `AddHybridCaching(o => …)` or the host section
+  `Caching:Hybrid`, which is applied last.
+- An entry that no longer deserializes (written before its type changed shape) is dropped and recomputed by default;
+  `Caching:Hybrid:DeserializationFailure = Throw` surfaces `CacheDeserializationException` (key, type, cause) instead.
+  Values serialize as UTF-8 JSON through `JsonCacheSerializerFactory`; strings and byte arrays keep HybridCache's own.
 
 ## Roadmap (not yet built)
 
