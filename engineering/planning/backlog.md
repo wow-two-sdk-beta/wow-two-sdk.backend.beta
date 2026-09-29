@@ -170,10 +170,32 @@ SDK vectors without a group of their own below; each row is the vector's next co
 
 ---
 
+## Product-reported gaps
+
+| Item | Type | Notes |
+|---|---|---|
+| Vault consumer module: startup resolution, bounded timeout, precedence, fail-closed | feature | SecretsVault; then release and ForeverPin re-pins. Wheelhouse tracks it too |
+| `WebApiTestHost` resolves configuration read at registration lazily | fix | ListingShelf; overrides miss it today, so tests can reach the dev database |
+| `WebApiTestHost` binds JWT bearer validation to its `FakeTimeProvider` | fix | SecretsVault token-lifetime tests |
+| `RelationalTestDb` builds a schema owned by SQL migrations | feature | ListingShelf |
+| SPA hosting: immutable cache on hashed assets, revalidation on the shell | fix | ListingShelf |
+| Stored JSON presets keep dictionary keys verbatim | fix | ListingShelf; keys are camelCased today |
+| CSV file result with spreadsheet-safe cells | feature | ListingShelf |
+| Enum-mapping seam in `AddPostgresPersistence` | feature | TranscriptForge and Haven both map enums by hand |
+| Carry a product's XML docs into its OpenAPI document | feature | TranscriptForge |
+| Bump `Microsoft.Extensions.AI` to 10.x with OllamaSharp | engineering | TranscriptForge; the preview pin blocks extracting its MCP host |
+| Transcript fetch in `Media.Transcripts` | feature | Sift is the second consumer after TranscriptForge; check against the shipped caption parser |
+| HTML listing extraction shared by ListingShelf and Haven | feature | ListingShelf collects; Haven never crawls |
+| Publish granular entity abstractions | engineering | SecretsVault; slims the Domain dependency closure |
+| Drop vulnerable transitive packages | fix | Sift and PbnStudio on `10.0.21-beta`: Snappier 1.0.0, SSH.NET 2023.0.0, Datadog.Trace 3.7.0; check the current family first |
+| Keep providers out of small apps' restore graph | engineering | Sift: the mono-lib pulls AWS, Hangfire and every OAuth provider; re-check after the companion split |
+
+---
+
 ## Adoption
 
 | Item | Type | Notes |
 |---|---|---|
-| Re-pin the direct consumers to the latest beta | engineering | TransportBrain, Tnis, TnisMintrans, Wheelhouse, SecretsVault, ListingShelf, Sift, Arcade, MuseumsGallery, TranscriptForge (plus its caption-parser namespace), product template; ForeverPin re-verifies on published `10.0.60-beta` |
+| Re-pin the direct consumers to the latest beta | engineering | TransportBrain, Tnis, TnisMintrans, Wheelhouse, SecretsVault, ListingShelf, Sift, Arcade, MuseumsGallery, TranscriptForge (plus its caption-parser namespace), product template; ForeverPin re-verifies on published `10.0.60-beta`; the ten first-batch ventures (ConfigChecker, CustomerPromises, DocumentationChecker, EpubReview, FileWatch, PodcastReadiness, ProcedureReview, RetainerBalance, TrainingSeats, VendorRenewals) pin a local `10.0.60-beta.local` build |
 | Dogfood the identity slices in Haven.Auth | product | Identity build step 10 — [identity](../research/identity/identity-architecture.md) |
 | Adopt `Media.Pdf` and `Media.Word` in pdf-editor | product | The extraction source proves parity first — [images and PDF](../research/media/images-and-pdf.md) |
