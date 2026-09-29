@@ -1,6 +1,6 @@
 # Backend Implementation Targets — what we'll build
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-29*
 
 > Companion: [`ideas.md`](./ideas.md) — every .NET tech / pattern / library / runtime API that exists. **No verdicts.**
 >
@@ -13,7 +13,7 @@
 ## Current implementation checkpoint
 
 The phase inventories below retain the original catalog priorities; they are not a release manifest.
-Current source and test evidence: [September 26 sweep](../../../planning/sdk-completion/sweep-2026-09-26.md).
+Current source and test evidence: [September 26 sweep](../../../research/sdk-completion/sweep-2026-09-26.md).
 The mono library plus six companion outputs target .NET 10. Outbound destination safety, scoped data
 sessions, generated Dapper read policies and atomic mediator idempotency are implemented locally,
 with publication pending. Background workers, transaction-aware cache invalidation, full-row write
@@ -53,6 +53,7 @@ guards and translation remain active completion work.
 | 1.14 | **No PR gate; required release checks** | The developer publishes main; CI runs tests and package verification before publishing all seven outputs. |
 | 1.15 | **Standard + spec before code (per-component)** | Borrow the UI lib pattern — every public abstraction begins as `*.standard.md` (RFC 2119 contract) and `*.spec.md` (concrete API). |
 | 1.16 | **Subpath exports per top-level src/ folder** | Consumers can pull `wow-two-sdk.backend.beta.web` only, or pull the meta. Modeled on UI lib's `forms/`, `display/`, `nav/` subpaths. |
+| 1.17 | **Messaging runs on the SDK's own transport port and EF outbox** — CAP, MassTransit and Wolverine plug in only as adapters under the port (resolves the former 9.2) | CAP is a framework peer, not a transport: CAP-first would reduce the ports to thin CAP wrappers and limit pluggability to CAP's providers. |
 
 ---
 
@@ -154,7 +155,7 @@ Mirrors §4 of `ideas.md`. Each subsection states the verdict + concrete chosen 
 | JWT bearer + cookie + OIDC schemes | DONE | First-party; lib wires sane defaults |
 | API keys for outside programs — marked secrets, hash-only storage, a local-or-key gate | DONE | Shipped `src/Identity/ApiKeys/` — extracted from TranscriptForge v0.7 (public API and MCP access); the product owns `IApiKeyRepository` |
 | ASP.NET Core Identity + Identity API endpoints | DONE | First-party |
-| Own sliced identity (passwords, tokens, email, lockout, stamp revocation, roles, claims, logins, 2FA, phone, sign-in, refresh tokens) | DONE | `src/Identity/Core/` slices, 2026-09-28 — `planning/identity/identity-slices.md` |
+| Own sliced identity (passwords, tokens, email, lockout, stamp revocation, roles, claims, logins, 2FA, phone, sign-in, refresh tokens) | DONE | `src/Identity/Core/` slices, 2026-09-28 — `research/identity/identity-slices.md` |
 | Breached-password check (Pwned Passwords k-anonymity) | DONE | `AddBreachedPasswordCheck()`, fail-open by default |
 | Microsoft.Identity.Web for Entra ID | NEXT | Companion adapter |
 | OpenIddict for OSS OIDC server | NEXT | Optional adapter (Apache-2.0) |
@@ -433,7 +434,7 @@ Subpath: `wow-two-sdk.backend.beta.web` + `.api`.
 | Sieve / Gridify for filter/sort/page | NEXT | Pick one; lean Gridify |
 | OData | LATER | Optional companion |
 | GraphQL via HotChocolate | LATER | Companion package — significant surface |
-| Webhooks (outbound + inbound, HMAC verify, retry) | DONE | Outbound `AddWebhooks`, inbound `AddInboundWebhooks`; durable store + management API open in `planning/messaging/webhooks.md` |
+| Webhooks (outbound + inbound, HMAC verify, retry) | DONE | Outbound `AddWebhooks`, inbound `AddInboundWebhooks`; durable store + management API open in `research/messaging/webhooks.md` |
 | Pagination conventions (cursor + offset) | DONE | `Web/Contracts/Paging/` — UI SDK wire shapes, EF offset + keyset paging, 2026-09-28 |
 | Idempotency middleware | NEXT | See §2.22 |
 | Output formatters (XML, etc.) | LATER | Inherit from MVC if needed |
@@ -750,7 +751,6 @@ Things we deliberately won't build, with rationale.
 | # | Decision | Notes |
 |---|---|---|
 | 9.1 | Mediator: hand-rolled facade vs `Mediator` (martinothamar) source-gen | Spike both; perf + license matter |
-| 9.2 | Outbox: DotNetCore.CAP vs Wolverine | Both MIT; CAP simpler scope, Wolverine more capable |
 | 9.3 | FluentAssertions v7 vs AwesomeAssertions vs Shouldly | License pressure on FA v8+; pick OSS path |
 | 9.4 | Default cache: HybridCache vs FusionCache | FusionCache richer; HybridCache first-party |
 | 9.5 | OutputCache adapter: `Microsoft.AspNetCore.OutputCaching.StackExchangeRedis` vs custom HybridCache adapter | Redundancy if HybridCache covers it |
@@ -792,4 +792,4 @@ Beta-forever rule applies throughout — fix-forward, no version gates, push to 
   unbiased cryptographic IDs; weighted Accept-Language parsing and heuristic User-Agent mapping.
 - **DONE (source; candidate awaiting publication)**: bounded QR/barcode rendering and protected guest cookies.
 - **LATER (decision required)**: timezone/delivery policy, full calendar documents, barcode styling and expanded identity/CSRF.
-- Scope, verification and consumer adoption: [ForeverPin adoption](../../../planning/foreverpin-adoption/foreverpin-adoption.md).
+- Scope, verification and consumer adoption: [ForeverPin adoption](../../../research/foreverpin-adoption/foreverpin-adoption.md).

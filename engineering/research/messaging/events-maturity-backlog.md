@@ -130,4 +130,4 @@ Metrics: ❌ throughput counters · ❌ consume-duration/handler-latency histogr
 4. **Wave 3 — patterns & orchestration:** `IRequestClient` request/response · state-machine saga + `ISagaRepository` epic · aggregator/scatter-gather/claim-check · `IBusControl` + pause/resume/drain · test harness.
 5. **Wave 4 — adapter & format breadth (parallelizable once seams stable):** ASB → SQS+SNS → Redis Streams → … (3.1) · MessagePack/Protobuf/Avro/CloudEvents (3.2) · schema registry · encryption/signing.
 
-See also: [`handoff.md`](./handoff.md) · [`messaging-architecture-investigation.md`](./messaging-architecture-investigation.md) · `../platform-planning.md`.
+See also: [`messaging-architecture-investigation.md`](./messaging-architecture-investigation.md) · [`backlog.md`](../../planning/backlog.md).

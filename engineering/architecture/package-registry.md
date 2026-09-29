@@ -1,6 +1,6 @@
 # Package registry
 
-*Last updated: 2026-09-28*
+*Last updated: 2026-09-29*
 
 > The seven published NuGets and the capability areas compiled into them.
 
@@ -25,7 +25,7 @@ not additional package outputs.
 
 ### Published in 10.0.59-beta
 
-The [September 26 sweep](../planning/sdk-completion/sweep-2026-09-26.md) adds `Data.Sessions`
+The [September 26 sweep](../research/sdk-completion/sweep-2026-09-26.md) adds `Data.Sessions`
 (`AddDataSession<TContext>`, nested units, borrowed connections, completion hooks),
 `Mediator.DataUnits` (`ITransactionalRequest`, `AddMediatorDataUnitInterceptor`), and `Http.Safety`
 (`AddSafeOutboundHttp`). Dapper reads gain soft-delete/xmin policies; idempotency gains atomic
@@ -34,7 +34,7 @@ optional calendar end and test-host dependency validation found during ForeverPi
 
 ### Published in 10.0.58-beta
 
-The [ForeverPin SDK adoption cut](../planning/foreverpin-adoption/foreverpin-adoption.md) adds these mono-library capabilities;
+The [ForeverPin SDK adoption cut](../research/foreverpin-adoption/foreverpin-adoption.md) adds these mono-library capabilities;
 publication was recorded in the adoption track. Consumer upgrades are separate.
 
 - `Codes`: bounded SVG/PNG for every declared symbology, reusable validators and typed render results.
@@ -139,7 +139,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Mediator.Authorization` | `AddMediatorAuthorizationBehavior()` + `IRequireAuthorization` marker | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Mediator.Idempotency` | `AddMediatorDeduplicatingInterceptor()` + `IIdempotent` + `IIdempotencyRepository`; ownership-token contract since `10.0.59-beta`; durable `AddSqlIdempotencyRepository()` (PostgreSQL/SQLite, leases) implemented, unreleased; durable `AddRedisIdempotencyRepository` (Lua-atomic, lease by expiry, 2026-09-28) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity` | Meta — JWT + cookies + Identity API endpoints | planned |
-| `WoW.Two.Sdk.Backend.Beta.Identity.Core` | `AddUserAccounts<TUser>()` — own sliced-lego user model: 7 entities + `ApplyIdentitySchema` + `IUserRepository`/`EfUserRepository` + `UserAccountService` + `UserClaimsPrincipalFactory`; opt-in slices (implemented, unreleased): passwords + breach check, purpose tokens, email, lockout, security-stamp revocation, roles, user claims, external logins, two-factor, phone, sign-in, refresh tokens, account HTTP API (`MapUserAccountEndpoints`) ([track](../planning/identity/identity-slices.md)) | shipped core; slices implemented |
+| `WoW.Two.Sdk.Backend.Beta.Identity.Core` | `AddUserAccounts<TUser>()` — own sliced-lego user model: 7 entities + `ApplyIdentitySchema` + `IUserRepository`/`EfUserRepository` + `UserAccountService` + `UserClaimsPrincipalFactory`; opt-in slices (implemented, unreleased): passwords + breach check, purpose tokens, email, lockout, security-stamp revocation, roles, user claims, external logins, two-factor, phone, sign-in, refresh tokens, account HTTP API (`MapUserAccountEndpoints`) ([track](../research/identity/identity-slices.md)) | shipped core; slices implemented |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Jwt` | `AddJwtBearerAuthentication()` — JWT bearer (symmetric or JWKS) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.Cookies` | `AddCookieAuthentication()` — secure cookie defaults | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Identity.ApiKeys` | `AddApiKeyAuthentication(keys, gate)` + `UseApiKeyAccessGate()` — marked secrets stored as SHA-256, the `ApiKey` scheme (marked Bearer or `X-Api-Key`), a local-or-key gate with open and local-only paths; product-owned `IApiKeyRepository` (TranscriptForge v0.7) | shipped (mono-lib) |

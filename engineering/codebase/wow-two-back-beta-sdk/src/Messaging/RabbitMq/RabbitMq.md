@@ -66,4 +66,4 @@ publish → exchange "wt.events" (topic, routing key = destination)
 ## See also
 
 - Port: [`../Transport/ISendTransport.cs`](../Transport/ISendTransport.cs) · [`IReceiveTransport.cs`](../Transport/IReceiveTransport.cs) · pipeline: [`../Transport/EventProcessingPipeline.cs`](../Transport/EventProcessingPipeline.cs)
-- [`../Messaging.md`](../Messaging.md) · analysis: [`messaging-architecture-investigation.md`](../../../../../planning/messaging/messaging-architecture-investigation.md)
+- [`../Messaging.md`](../Messaging.md) · analysis: [`messaging-architecture-investigation.md`](../../../../../research/messaging/messaging-architecture-investigation.md)

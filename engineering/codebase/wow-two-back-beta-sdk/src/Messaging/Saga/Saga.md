@@ -133,4 +133,4 @@ topology and logs an unbound one once (`EventSagaPublisherService.cs`).
   [`../Reliability/IDelayedDeliveryService.cs`](../Reliability/IDelayedDeliveryService.cs) · ordering:
   [`../Transport/MessagePump.cs`](../Transport/MessagePump.cs) · topology: [`../Transport/ITopologyService.cs`](../Transport/ITopologyService.cs)
 - [`../Messaging.md`](../Messaging.md) · backlog §3.7:
-  [`engineering/planning/messaging/events-maturity-backlog.md`](../../../../../planning/messaging/events-maturity-backlog.md)
+  [`engineering/research/messaging/events-maturity-backlog.md`](../../../../../research/messaging/events-maturity-backlog.md)

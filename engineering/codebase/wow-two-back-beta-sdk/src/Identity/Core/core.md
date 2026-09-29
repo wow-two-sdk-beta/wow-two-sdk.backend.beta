@@ -4,7 +4,7 @@ Our **own** identity system (not a wrapper over `Microsoft.AspNetCore.Identity`)
 compose only what an app needs. Core is the mandatory slice: the user entity + user store + normalizer + the
 `UserAccountService` facade. Entities carry ASP.NET-Identity-shaped columns and persist through the Data layer.
 
-> Build order: `engineering/planning/identity/identity-architecture.md` §9; slice track: `identity-slices.md`.
+> Build order: `engineering/research/identity/identity-architecture.md` §9; slice track: `identity-slices.md`.
 > Every slice below is opt-in through the builder `AddUserAccounts` returns.
 
 ## Quick start
@@ -72,5 +72,5 @@ only when called after `AddEntityFrameworkStores`; otherwise the host registers 
 
 ## See also
 
-- Architecture + build order: [`engineering/planning/identity/identity-architecture.md`](../../../../../planning/identity/identity-architecture.md)
+- Architecture + build order: [`engineering/research/identity/identity-architecture.md`](../../../../../research/identity/identity-architecture.md)
 - Data layer this persists through: `../../Data/` (`AppDbContextBase`, `AddEntityFrameworkCore`, audit interceptor).

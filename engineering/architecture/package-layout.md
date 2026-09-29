@@ -1,6 +1,6 @@
 # Package layout
 
-*Last updated: 2026-06-22*
+*Last updated: 2026-09-29*
 
 > SDK-internal architecture — the repo/package shape, layering rule, package-id grammar, and the three-layer doc strategy for this mono-lib.
 > Code-style conventions (naming, documentation) are **centralized** in `wow-two-ws/conventions/` and apply to this repo too; only layout/registry live here.
@@ -12,7 +12,9 @@ wow-two-sdk.backend.beta/
 ├── README.md · CLAUDE.md · .github/workflows/   ← entry docs + CI (root-pinned)
 └── engineering/
     ├── engineering.md
-    ├── planning/                                ← platform-planning.md + per-vector deep-dives
+    ├── planning/                                ← backlog.md
+    ├── research/                                ← per-vector deep-dives (research.md lead)
+    ├── scripts/                                 ← sweep.sh convention checks
     ├── architecture/                            ← this folder
     │   ├── package-layout.md                    ← this file
     │   ├── package-registry.md                  ← per-area shipped-status lookup table

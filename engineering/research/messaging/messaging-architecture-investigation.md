@@ -2,7 +2,7 @@
 
 *Last updated: 2026-07-08 · Status: **event-centric rename + first code shipped (green build)** — see Review log; broker/CAP adapters + outbox dispatcher pending*
 
-> Design of the SDK event-messaging layer (`WoW.Two.Sdk.Backend.Beta.Messaging`). Pairs with the in-process `Mediator` (same handler ergonomics, different delivery guarantee) and the `Jobs` layer (outbox-as-job). Mirrors the format of `engineering/planning/errors/errors-architecture-investigation.md`.
+> Design of the SDK event-messaging layer (`WoW.Two.Sdk.Backend.Beta.Messaging`). Pairs with the in-process `Mediator` (same handler ergonomics, different delivery guarantee) and the `Jobs` layer (outbox-as-job). Mirrors the format of `engineering/research/errors/errors-architecture-investigation.md`.
 >
 > **Scope:** `src/Messaging/` was empty; the platform `comms.infra` repo is a bare `.sln` — **no prior code, no app consumers yet** (greenfield, per the brief). 6 parallel agents deep-dived the .NET messaging ecosystem against primary sources (masstransit.io, docs.particular.net, wolverinefx.net, cap.dotnetcore.xyz, broker docs, OTel semconv, Polly/Aspire). `targets.md §3.5 / §2.23` already set the high-level verdicts (CAP=core, MassTransit=adapter-only, Stateless=saga lib, brokers=adapters); this doc turns those into a concrete clean-room **abstraction + ports + declarative saga API**, and records what was built.
 
@@ -251,7 +251,7 @@ Capability flags let the dispatch pipeline decide native-vs-emulated per broker.
 - **D4 (outbox default):** CAP vs hand-rolled EF. *Rec: both behind `IOutbox`; CAP for multi-broker distributed, hand-rolled EF for zero-extra-infra single-broker.*
 - **D5 (resilience engine):** Polly vs hand-roll. *Rec: Polly behind `IRetryPolicy` (already pinned, MIT); in-memory default hand-rolls exp+jitter to keep core dep-free.*
 - **D6 (exactly-once):** transport-level (fiction) vs effectively-once via inbox. *Rec: at-least-once contract floor + `IInboxStore` for effectively-once; document it loudly.*
-- **D7 (doc home):** lives in `engineering/planning/messaging/`; on maturity distill into `Messaging.standard.md` + `targets.md §3.5`.
+- **D7 (doc home):** lives in `engineering/research/messaging/`; on maturity distill into `Messaging.standard.md` + `targets.md §3.5`.
 
 ---
 

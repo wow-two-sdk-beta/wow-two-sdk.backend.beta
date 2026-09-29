@@ -188,7 +188,7 @@ recut on 2026-08-19 into `core/` (scope) and `shapes/` (deliverable). Paths belo
 **Measured 2026-08-19** against 969 declared SDK types, 1208 directive rules. Every row carrying a count
 below was counted, not estimated; a row with no count was not mechanically checkable. Rows marked **[+]**
 were added by that measurement, and the corrected counts on N22 · N26 · N34 replace single-symbol
-estimates. Re-run the battery before and after any row: `engineering/planning/sweep.sh`.
+estimates. Re-run the battery before and after any row: `engineering/scripts/sweep.sh`.
 
 | Check | Rule | SDK hits |
 |---|---|---|

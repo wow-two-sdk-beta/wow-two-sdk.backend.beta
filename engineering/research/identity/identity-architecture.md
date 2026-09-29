@@ -1,6 +1,6 @@
 # Identity (own, sliced) — architecture
 
-*Last updated: 2026-09-28*
+*Last updated: 2026-09-29*
 
 > Build our **own** identity system that copies ASP.NET Core Identity's most important features but
 > exposes them as **orthogonal lego slices** — compose user store + password + OTP + Telegram +
@@ -201,7 +201,7 @@ The rebuild is mostly **glue + the user model + the stores** — ~60% of the sur
 
 ## 11. Security items this subsumes
 
-From the security backlog (`../platform-planning.md`):
+From the security backlog (`../../planning/backlog.md`):
 - **Token revocation** ⇒ `IUserSecurityStampStore` + stamp-validation middleware.
 - **Account lockout** ⇒ `IUserLockoutStore` (native, not a wrap).
 - **Breached-password check** ⇒ a password-validator slice.
@@ -220,4 +220,4 @@ The external-login baseline (uniform OAuth×17 + X · claim normalizer · cookie
 - `system/sessions/backend-beta-build/auth-extraction-analysis.md` — the v1 "no user model" decision this reverses (§4) + the OTP/issuance/policies seams now reused.
 - `engineering/architecture/package-registry.md` — shipped identity packages the slices plug into.
 - `engineering/architecture/analysis/philosophy/targets.md` — add the `identity/core` vector under P2 when this starts (paired source-of-truth rule).
-- `../platform-planning.md` — backlog + roadmap home.
+- `../../planning/backlog.md` — backlog home.

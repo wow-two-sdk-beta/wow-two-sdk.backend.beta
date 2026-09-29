@@ -39,4 +39,4 @@ builder.Services.AddExceptionMappingRule<PaymentDeclinedRule>();
 - [Foundation.Results](../Results/) — `Result` / `Result<T>` wrappers
 - [Web.ErrorMapping / Web.ExceptionHandling](../../Web/ExceptionHandling/) — `IErrorHttpStatusCodeMapper`,
   `IAppErrorProblemDetailsFactory` and the exception handlers
-- [`engineering/planning/errors/errors-architecture-investigation.md`](../../../../../planning/errors/errors-architecture-investigation.md) — full design record
+- [`engineering/research/errors/errors-architecture-investigation.md`](../../../../../research/errors/errors-architecture-investigation.md) — full design record

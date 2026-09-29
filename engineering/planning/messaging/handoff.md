@@ -2,7 +2,7 @@
 
 *Last updated: 2026-07-19*
 
-> Source of truth for *what to build*: [`events-maturity-backlog.md`](./events-maturity-backlog.md). This file = timeline + next batch.
+> Source of truth for *what to build*: [`events-maturity-backlog.md`](../../research/messaging/events-maturity-backlog.md). This file = timeline + next batch.
 > Repo: `workbench/wow-two-sdk-beta/wow-two-sdk.backend.beta`. Memory: `project_messaging_layer`.
 
 ## Restart prompt

@@ -1,6 +1,6 @@
 # Messaging — spec
 
-*Last updated: 2026-09-16*
+*Last updated: 2026-09-29*
 
 > **Concrete API + usage.** Updated when the public surface changes.
 
@@ -382,4 +382,4 @@ builder.Services.AddMessageHeaderPropagation(
 ## See also
 
 - [Messaging.standard.md](./Messaging.standard.md) · [Messaging.md](./Messaging.md)
-- [`messaging-architecture-investigation.md`](../../../../planning/messaging/messaging-architecture-investigation.md)
+- [`messaging-architecture-investigation.md`](../../../../research/messaging/messaging-architecture-investigation.md)

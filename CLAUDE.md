@@ -15,7 +15,8 @@ The `WoW.Two.Sdk.Backend.Beta.*` family — beta-forever .NET 10 backend SDK agg
 - **[`engineering/architecture/package-layout.md`](./engineering/architecture/package-layout.md)** — SDK-internal architecture: repo + per-package shape, layering, package-id grammar, three-layer doc strategy. Code-style conventions (naming, documentation) are centralized in `wow-two-ws/conventions/`.
 - **[`engineering/architecture/package-registry.md`](./engineering/architecture/package-registry.md)** — per-area shipped-status lookup table.
 - **[`engineering/architecture/templates/`](./engineering/architecture/templates/)** — copy-paste templates for new packages (`csproj`, `Module.cs`, `Options.cs`, `standard.md`, `spec.md`, `Tests.cs`, `folder-doc.md` — the folder lead doc, copied to `{folder}.md`).
-- **[`engineering/planning/platform-planning.md`](./engineering/planning/platform-planning.md)** — standing roadmap + backlog of lego features to build; deep-dives under `engineering/planning/<feature>/` (e.g. [`identity/identity-architecture.md`](./engineering/planning/identity/identity-architecture.md)). Format follows `conventions/planning/platform-planning/`.
+- **[`engineering/planning/backlog.md`](./engineering/planning/backlog.md)** — every unbuilt item: the SDK's vectors, fixes and ecosystem adoption. Format follows `conventions/planning/version-track/`.
+- **[`engineering/research/research.md`](./engineering/research/research.md)** — analyses and per-vector deep-dives (e.g. [`identity/identity-architecture.md`](./engineering/research/identity/identity-architecture.md)).
 
 When scope expansion is considered, walk `targets.md` first. If the desired vector is missing or marked **MAYBE/LATER**, raise it for triage and update both files. Treat these two as a paired source-of-truth — when one changes, sync the other.
 
@@ -43,8 +44,10 @@ wow-two-sdk.backend.beta/
 ├── README.md · CLAUDE.md · .github/workflows/  ← entry docs + CI (root-pinned)
 └── engineering/
     ├── engineering.md
-    ├── planning/                       ← platform-planning.md + per-vector deep-dives
-    │                                     (data-pipeline · errors · identity · mediator-cqrs · messaging · component-registry)
+    ├── planning/                       ← backlog.md
+    ├── research/                       ← per-vector deep-dives (research.md lead)
+    │                                     (data-pipeline · errors · identity · media · messaging · sdk-completion · …)
+    ├── scripts/                        ← sweep.sh convention checks
     ├── architecture/
     │   ├── package-layout.md           ← SDK-internal architecture + doc strategy
     │   ├── package-registry.md         ← per-area shipped-status lookup table

@@ -1,17 +1,17 @@
 # Backend convention sweep
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-29*
 
 ## Status
 
-The [September 26 implementation sweep](engineering/planning/sdk-completion/sweep-2026-09-26.md)
+The [September 26 implementation sweep](engineering/research/sdk-completion/sweep-2026-09-26.md)
 is the current SDK completion handoff: opt-in data sessions, Dapper read safety, outbound HTTP
 protection and atomic idempotency are implemented locally. Release tests passed 609 with one
 existing Kafka skip; seven local package/symbol pairs verified. Publication remains pending.
 
 ✅ **SDK commit batches and the follow-up convention sweep are complete.** `10.0.57-beta` contains the CI correction.
 The autonomous SDK adoption cut (`ba2a87e`) is published as `10.0.58-beta`; its verification is in the adoption track.
-The [ForeverPin adoption sweep](engineering/planning/foreverpin-adoption/foreverpin-adoption.md) owns the newly
+The [ForeverPin adoption sweep](engineering/research/foreverpin-adoption/foreverpin-adoption.md) owns the newly
 identified behavioral fixes and the combined upgrade cut; earlier convention completion does not close those findings.
 Fresh verification and the signed commit inventory are in the
 [batch verification report](../../../system/sessions/backend-beta-build/commit-batches-verification.md).
@@ -31,7 +31,7 @@ work is also complete; its fresh verification is linked below.
   Historical N94–N98 duplicates require subject-qualified references; new work extends an existing row.
 - Product adoption is separate: the 31 product rows live in
   `workbench/ventures/10x-venture-forever-pin/foreverpin-be-update.md`.
-- Use `engineering/planning/sweep.sh` for convention checks; source checks do not replace runtime checks.
+- Use `engineering/scripts/sweep.sh` for convention checks; source checks do not replace runtime checks.
 - Ordinary agent commits require the repository's persistent native commit switch; the developer publishes.
   Breaking SDK changes are approved; no production consumers exist.
 
@@ -47,7 +47,7 @@ work is also complete; its fresh verification is linked below.
 Other consumer repins remain recorded below; they do not precede the requested ForeverPin migration.
 
 The sweep includes data-safety slices such as tracked writes and migration guarantees. The full data-session build is
-larger than this sweep and remains owned by `engineering/planning/data-pipeline/`. Localization request culture and
+larger than this sweep and remains owned by `engineering/research/data-pipeline/`. Localization request culture and
 formatters exist; complete translation/i18n remains a later vector in `targets.md` and the errors architecture.
 
 ## Remaining SDK work

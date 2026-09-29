@@ -1,6 +1,6 @@
 # Mediator — CQRS + AppResult absorption
 
-*Last updated: 2026-06-13*
+*Last updated: 2026-09-29*
 
 > **Planning spec.** Absorb the per-product mediator wrapper (`*.Common/Mediator`, currently in haven + smart-qr) into the backend beta SDK so products consume the SDK mediator's CQRS layer + standard result, and delete their copy. Pairs with the `ApplicationResult → AppResult` rename.
 >
@@ -209,7 +209,7 @@ Mostly mechanical (namespace swap + symbol rename); `ApplicationResult → AppRe
 1. Land Group A + Group B + `.Match` + `SendAsync` decision in the SDK (`src/Mediator/Cqrs/` + `src/Mediator/Result/`); update `Mediator.spec.md` / `Mediator.standard.md` to document the CQRS + result surface.
 2. Reconcile `messaging/mediator.md` (Decision 2) — bless explicit `IQuery`/`ICommand` or keep the plain-`IRequest` line and note the CQRS markers as an alternative.
 3. Migrate smart-qr first (smaller: 13-file result blast radius, 2 registration sites) as the proving ground; then haven.
-4. Add a `check` to `engineering/planning/platform-planning.md` backlog: "Absorb product mediator wrapper (CQRS markers + AppResult) — haven/smart-qr dogfood" and update `package-registry.md` once the CQRS+Result surface ships.
+4. Add a `check` to the `engineering/planning/backlog.md` backlog: "Absorb product mediator wrapper (CQRS markers + AppResult) — haven/smart-qr dogfood" and update `package-registry.md` once the CQRS+Result surface ships.
 
 ## See also
 
@@ -217,4 +217,4 @@ Mostly mechanical (namespace swap + symbol rename); `ApplicationResult → AppRe
 - SDK docs: `src/Mediator/Mediator.spec.md` · `src/Mediator/Mediator.standard.md`
 - Conventions: `conventions/development/backend/messaging/mediator.md` · `conventions/development/backend/foundation/result-pattern.md` · `conventions/development/backend/presentation/controllers.md`
 - Wrapper sources being absorbed: `10x-ven-haven/.../Haven.Common/Mediator/` · `smart-qr-poc/.../SmartQr.Platform.Core/Mediator/`
-- Roadmap: `engineering/planning/platform-planning.md`
+- Backlog: `engineering/planning/backlog.md`

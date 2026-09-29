@@ -2,7 +2,7 @@
 
 *Last updated: 2026-06-22 · Status: **IMPLEMENTED** (mono-lib builds green · 172 tests pass) — the code is the source of truth; this doc is the design record + decisions.*
 
-> SDK error / validation / exception layer. Builds on `engineering/architecture/analysis/validation-and-result-pattern.md`; pairs with `engineering/planning/mediator-cqrs/mediator-cqrs-result-absorption.md`. Conventions still to rewrite to this model: `foundation/result-pattern.md`, `foundation/validation.md`, `presentation/problem-details.md`.
+> SDK error / validation / exception layer. Builds on `engineering/architecture/analysis/validation-and-result-pattern.md`; pairs with `engineering/research/mediator-cqrs/mediator-cqrs-result-absorption.md`. Conventions still to rewrite to this model: `foundation/result-pattern.md`, `foundation/validation.md`, `presentation/problem-details.md`.
 >
 > **Investigation scope (how this was derived):** scanned the SDK + apps (wheelhouse, secrets-vault, smart-qr, haven, your-pocket-doctor, prism) + UI lib + conventions; external = MS docs, ErrorOr / FluentResults / Ardalis, RFC 9457 (§8). Web claim-verification was rate-limited → validated by hand vs primary sources.
 

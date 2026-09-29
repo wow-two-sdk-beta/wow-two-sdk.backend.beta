@@ -3,7 +3,7 @@
 Event-driven messaging + declarative event sagas. Clean-room MIT abstraction; the **in-memory transport is the
 zero-broker default** (works in tests + single-host). Broker adapters (RabbitMQ / Kafka / ASB / NATS) and the CAP outbox
 plug in behind the same ports — opt-in, never core deps. Design + provider analysis + decision log:
-[`engineering/planning/messaging/messaging-architecture-investigation.md`](../../../../planning/messaging/messaging-architecture-investigation.md).
+[`engineering/research/messaging/messaging-architecture-investigation.md`](../../../../research/messaging/messaging-architecture-investigation.md).
 
 > **The bus carries `IEvent` only** — commands/queries stay on the in-process `Mediator`. Delivery topology (in-memory
 > vs broker) and scope (service-local vs cross-service) are wiring/routing choices, deliberately absent from the contract.
@@ -73,5 +73,5 @@ Pluggable EF interceptors (`AddEfSaveChangesInterceptor<T>()`) live in `Data/Ent
 ## See also
 
 - [Messaging.spec.md](./Messaging.spec.md) · [Messaging.standard.md](./Messaging.standard.md)
-- Architecture + provider analysis: [`messaging-architecture-investigation.md`](../../../../planning/messaging/messaging-architecture-investigation.md)
+- Architecture + provider analysis: [`messaging-architecture-investigation.md`](../../../../research/messaging/messaging-architecture-investigation.md)
 - Sibling in-process dispatcher: [`Mediator/`](../Mediator/mediator.md) (commands + queries, sync, no delivery guarantee)
