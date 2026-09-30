@@ -12,7 +12,8 @@ namespace WoW.Two.Sdk.Backend.Beta.Media.Markdown;
 /// <summary>
 /// Provides <see cref="IMarkdownService"/> over Markdig with the advanced extensions and YAML front matter. Raw HTML is
 /// escaped unless allowed; link and image URLs outside http, https, mailto, tel, relative paths and data images become
-/// <c>#</c>, so a <c>javascript:</c> link cannot run.
+/// <c>#</c>, so a <c>javascript:</c> link cannot run. The untrusted pipeline removes generic HTML properties and classes
+/// before adding its own link attributes; generated heading and footnote identifiers remain available.
 /// </summary>
 /// <param name="options">Raw HTML, link treatment and reading speed; <c>Media:Markdown</c> reloads live.</param>
 public sealed partial class MarkdigMarkdownService(IOptionsMonitor<MarkdownOptions> options) : IMarkdownService
@@ -28,6 +29,19 @@ public sealed partial class MarkdigMarkdownService(IOptionsMonitor<MarkdownOptio
         var current = options.CurrentValue;
         var pipeline = current.AllowRawHtml ? Trusted : Safe;
         var document = Markdig.Markdown.Parse(markdown, pipeline);
+
+        // DisableHtml does not disable generic attributes: {onclick=...}, {src=...}, and {style=...}
+        // can otherwise become executable HTML attributes on safe Markdown nodes.
+        // Do this before Guard adds the renderer-owned rel/target link policy.
+        if (!current.AllowRawHtml)
+        {
+            foreach (var node in document.Descendants().Prepend(document))
+            {
+                var attributes = node.TryGetAttributes();
+                attributes?.Properties?.Clear();
+                attributes?.Classes?.Clear();
+            }
+        }
 
         foreach (var link in document.Descendants<LinkInline>())
             link.Url = Guard(link.Url, link.IsImage, current, link);

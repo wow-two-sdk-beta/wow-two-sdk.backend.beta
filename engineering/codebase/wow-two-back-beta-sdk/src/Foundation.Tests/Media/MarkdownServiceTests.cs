@@ -63,6 +63,39 @@ public sealed class MarkdownServiceTests
         Build(o => o.AllowRawHtml = true).Render(source).Html.Should().Contain("<b>bold</b>");
     }
 
+    [Theory]
+    [InlineData("[Link](https://example.com){onclick=alert(1)}")]
+    [InlineData("**Words**{onmouseover=alert(1)}")]
+    [InlineData("# Heading {onclick=alert(1)}")]
+    [InlineData("[Link](https://example.com){style=\"background:url(javascript:alert(1))\"}")]
+    [InlineData("![Image](https://example.com/image.png){src=javascript:alert(1) onerror=alert(1)}")]
+    public void UntrustedMarkdown_ShouldRemoveGenericPropertiesBeforeRendering(string source)
+    {
+        var html = Markdown.Render(source).Html;
+
+        html.Should().NotContainEquivalentOf("onclick=").And.NotContainEquivalentOf("onmouseover=")
+            .And.NotContainEquivalentOf("onerror=").And.NotContainEquivalentOf("style=")
+            .And.NotContainEquivalentOf("javascript:");
+    }
+
+    [Fact]
+    public void UntrustedLinks_ShouldEnforceTrustedAttributesAndRetainHeadingAnchors()
+    {
+        var result = Markdown.Render("# Helpful heading\n\n[Link](https://example.com){rel=opener target=attacker .overlay}");
+
+        result.Html.Should().Contain("id=\"helpful-heading\"").And.Contain("rel=\"nofollow noopener noreferrer\"")
+            .And.Contain("target=\"_blank\"").And.NotContain("attacker").And.NotContain("overlay");
+        result.Headings.Single().Id.Should().Be("helpful-heading");
+    }
+
+    [Fact]
+    public void TrustedMarkdown_ShouldKeepExplicitlyAllowedGenericAttributes()
+    {
+        var html = Build(o => o.AllowRawHtml = true).Render("**Words**{data-editor=approved class=label}").Html;
+
+        html.Should().Contain("data-editor=\"approved\"").And.Contain("class=\"label\"");
+    }
+
     [Fact]
     public void Summaries_ShouldCountWordsAndReadingTime()
     {
