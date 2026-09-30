@@ -521,6 +521,7 @@ Subpath: `wow-two-sdk.backend.beta.storage` + `.media`.
 | FluentStorage abstraction over multi-cloud | NEXT | Single API across S3/Azure/GCS/MinIO |
 | ImageSharp (+`.Web`) | SKIP (core) | Six Labors Split License has a revenue threshold; core takes permissive licenses only |
 | SkiaSharp | DONE | `Media.Images` — edit, compress, text, watermark, collage, BlurHash, 2026-09-28 |
+| Optional background segmentation HTTP adapter | DONE | `Media.BackgroundRemoval`; bounded private worker, no model downloads, 2026-09-30 |
 | Magick.NET | LATER | Format-specific (RAW, TIFF, PSD) companion |
 | **QuestPDF** for PDF generation | SKIP (core) | Community license has a revenue threshold; PDFsharp (MIT) covers PDF |
 | PDFsharp + PdfPig | DONE | `Media.Pdf` — pages, images → PDF, metadata, AES-256, text, stamps, 2026-09-28 |

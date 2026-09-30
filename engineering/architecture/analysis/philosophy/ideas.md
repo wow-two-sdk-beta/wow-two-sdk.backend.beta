@@ -2240,6 +2240,10 @@ The core split: declarative type-safe clients (Refit, RestSharp v110+), fluent b
 | Cadence / Temporal SDK (.NET) | Durable workflow engines | community / Temporal Tech | Active | MIT | Distributed workflows |
 | Saga via ABP Framework | ABP-integrated sagas | Volosoft | Active | LGPL-3.0 | Module within ABP |
 
+### Optional image background segmentation
+
+Host-owned segmentation workers expose bounded raster processing through authenticated HTTP adapters. SDK responsibilities: limits, cancellation, readiness, transport and output validation; hosts own models, persistence and publication.
+
 ### C.10 Background jobs / scheduling
 
 | Lib | Niche | Maintainer | Active? | License | Notes |
