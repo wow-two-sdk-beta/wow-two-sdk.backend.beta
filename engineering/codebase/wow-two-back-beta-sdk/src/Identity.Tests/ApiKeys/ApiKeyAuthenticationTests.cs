@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using AwesomeAssertions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
@@ -120,6 +121,46 @@ public sealed class ApiKeyAuthenticationTests
         host.Store.Lookups.Should().Be(0);
     }
 
+    [Fact]
+    public async Task Scheme_ShouldCarryEachScopeTheKeyGrants_AsScopeClaims()
+    {
+        await using var host = await Host.StartAsync();
+        var key = host.AddKey("Catalog reader", "catalog:read", "catalog:read", "logs:read");
+
+        using var response = await host.Client.SendAsync(Remote("/api/scopes", bearer: key.Secret));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadAsStringAsync()).Should().Be("catalog:read logs:read");
+    }
+
+    [Fact]
+    public async Task RequireApiKeyScope_ShouldAdmitAKeyWithTheScope_AndForbidOneWithout()
+    {
+        await using var host = await Host.StartAsync();
+        var reader = host.AddKey("Catalog reader", "catalog:read");
+        var other = host.AddKey("Log reader", "logs:read");
+
+        using var admitted = await host.Client.SendAsync(Remote("/api/catalog", bearer: reader.Secret));
+        using var forbidden = await host.Client.SendAsync(Remote("/api/catalog", bearer: other.Secret));
+
+        admitted.StatusCode.Should().Be(HttpStatusCode.OK);
+        forbidden.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public void HasApiKeyScope_ShouldIgnoreAScopeClaim_WhenAnotherSchemeIssuedIt()
+    {
+        var cookie = new ClaimsIdentity([new Claim(ApiKeyAuthenticationDefaults.ScopeClaim, "catalog:read")], "Cookies");
+        var key = new ClaimsIdentity(
+            [new Claim(ClaimTypes.Name, "Script"), new Claim(ApiKeyAuthenticationDefaults.ScopeClaim, "logs:read")],
+            ApiKeyAuthenticationDefaults.Scheme);
+        var principal = new ClaimsPrincipal([cookie, key]);
+
+        principal.HasApiKeyScope("catalog:read").Should().BeFalse();
+        principal.HasApiKeyScope("logs:read").Should().BeTrue();
+        principal.GetApiKeyName().Should().Be("Script");
+    }
+
     /// <summary>Builds a request the host sees as coming from another machine.</summary>
     private static HttpRequestMessage Remote(string path, string? bearer = null, string? header = null)
     {
@@ -146,6 +187,8 @@ public sealed class ApiKeyAuthenticationTests
             builder.WebHost.UseTestServer();
             builder.Logging.ClearProviders();
             builder.Services.AddSingleton<IApiKeyRepository>(store);
+            builder.Services.AddAuthorization(options =>
+                options.AddPolicy("catalog", policy => policy.RequireApiKeyScope("catalog:read")));
             builder.Services.AddApiKeyAuthentication(
                 keys => keys.Marker = Marker,
                 gate =>
@@ -163,7 +206,11 @@ public sealed class ApiKeyAuthenticationTests
             });
             app.UseAuthentication();
             app.UseApiKeyAccessGate();
+            app.UseAuthorization();
             app.MapGet("/api/who", (ClaimsPrincipal user) => user.Identity?.Name ?? "anonymous");
+            app.MapGet("/api/scopes", (ClaimsPrincipal user) =>
+                string.Join(' ', user.FindAll(ApiKeyAuthenticationDefaults.ScopeClaim).Select(claim => claim.Value)));
+            app.MapGet("/api/catalog", () => "catalog").RequireAuthorization("catalog");
             app.MapGet("/api/keys", () => "keys");
             app.MapGet("/api/status", () => "ok");
             app.MapGet("/page", () => "page");
@@ -171,10 +218,10 @@ public sealed class ApiKeyAuthenticationTests
             return new Host(app, store, app.Services.GetRequiredService<ApiKeySecretFactory>());
         }
 
-        public ApiKeySecret AddKey(string name)
+        public ApiKeySecret AddKey(string name, params string[] scopes)
         {
             var key = secrets.Create();
-            store.Keys[key.Hash] = new ApiKeyRecord { Id = Guid.NewGuid().ToString(), Name = name };
+            store.Keys[key.Hash] = new ApiKeyRecord { Id = Guid.NewGuid().ToString(), Name = name, Scopes = scopes };
             return key;
         }
 

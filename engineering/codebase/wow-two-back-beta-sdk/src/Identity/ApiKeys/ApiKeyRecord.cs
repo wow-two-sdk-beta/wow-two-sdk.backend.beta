@@ -11,4 +11,8 @@ public sealed record ApiKeyRecord
 
     /// <summary>When the key last authenticated a request, or <c>null</c> before its first use.</summary>
     public DateTimeOffset? LastUsedAt { get; init; }
+
+    /// <summary>The scopes the key grants, each carried as a <c>scope</c> claim; a key with none reaches only
+    /// endpoints that ask for no scope.</summary>
+    public IReadOnlyList<string> Scopes { get; init; } = [];
 }

@@ -9,6 +9,10 @@
 - A presented value of the wrong shape fails without a store lookup; a well-shaped one fails unless the store finds a
   live key. Both failures read the same, so a response never tells a malformed key from a revoked one.
 - `TouchAsync` runs at most once per `TouchInterval` per key, judged by the record's `LastUsedAt`.
+- The scheme carries each distinct, non-blank scope of the record as a `scope` claim on the key's identity.
+- `HasApiKeyScope` reads only the identity the `ApiKey` scheme authenticated; a scope claim from any other scheme
+  never counts, so a merged principal cannot borrow one.
+- `RequireApiKeyScope` authenticates its policy with the `ApiKey` scheme: no key is 401, a key without the scope 403.
 - The gate guards `GuardedPaths` minus `OpenPaths`. With a key it authenticates the `ApiKey` scheme and sets
   `HttpContext.User`; without one it passes loopback callers (when `AllowLocalWithoutKey`) and callers another scheme
   already authenticated, and answers 401 otherwise.

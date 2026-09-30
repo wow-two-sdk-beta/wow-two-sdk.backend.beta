@@ -11,4 +11,7 @@ public static class ApiKeyAuthenticationDefaults
 
     /// <summary>Holds the claim that carries the authenticated key's identifier.</summary>
     public const string KeyIdClaim = "api_key_id";
+
+    /// <summary>Holds the claim type that carries each scope the authenticated key grants.</summary>
+    public const string ScopeClaim = "scope";
 }

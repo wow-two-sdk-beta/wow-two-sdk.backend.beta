@@ -42,12 +42,16 @@ public sealed class ApiKeyAuthenticationHandler(
         if (key.LastUsedAt is not { } lastUsed || now - lastUsed >= keyOptions.Value.TouchInterval)
             await store.TouchAsync(key.Id, now, Context.RequestAborted);
 
-        var identity = new ClaimsIdentity(
-            [
-                new Claim(ApiKeyAuthenticationDefaults.KeyIdClaim, key.Id),
-                new Claim(ClaimTypes.Name, key.Name),
-            ],
-            Scheme.Name);
+        Claim[] claims =
+        [
+            new Claim(ApiKeyAuthenticationDefaults.KeyIdClaim, key.Id),
+            new Claim(ClaimTypes.Name, key.Name),
+            .. key.Scopes
+                .Where(scope => !string.IsNullOrWhiteSpace(scope))
+                .Distinct(StringComparer.Ordinal)
+                .Select(scope => new Claim(ApiKeyAuthenticationDefaults.ScopeClaim, scope)),
+        ];
+        var identity = new ClaimsIdentity(claims, Scheme.Name);
         return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name));
     }
 }
