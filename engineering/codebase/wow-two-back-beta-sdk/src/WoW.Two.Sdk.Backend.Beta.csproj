@@ -112,6 +112,7 @@
   <ItemGroup Label="AI — Microsoft.Extensions.AI + provider brokers (wave 1)">
     <PackageReference Include="Microsoft.Extensions.AI" />
     <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
     <PackageReference Include="OllamaSharp" />
     <PackageReference Include="Microsoft.ML.Tokenizers" />
   </ItemGroup>

@@ -23,7 +23,7 @@ public static class OllamaChatClientServiceCollectionExtensions
         var options = new AiPipelineOptions();
         configure?.Invoke(options);
 
-        services.AddChatClient(builder => builder.Apply(new OllamaApiClient(endpoint, model), options));
+        services.AddChatClient(_ => new ChatClientBuilder(new OllamaApiClient(endpoint, model)).Apply(options));
         return services;
     }
 
@@ -50,7 +50,7 @@ public static class OllamaChatClientServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(endpoint);
         ArgumentException.ThrowIfNullOrWhiteSpace(model);
 
-        services.AddEmbeddingGenerator<string, Embedding<float>>(builder => builder.Use(new OllamaApiClient(endpoint, model)));
+        services.AddEmbeddingGenerator<string, Embedding<float>>(_ => new OllamaApiClient(endpoint, model));
         return services;
     }
 }

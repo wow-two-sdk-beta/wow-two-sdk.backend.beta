@@ -10,18 +10,16 @@ namespace WoW.Two.Sdk.Backend.Beta.Ai.Core;
 public static class ChatExtensions
 {
     /// <summary>
-    /// Wraps <paramref name="innerClient"/> with the conventional middleware selected by
+    /// Builds the client with the conventional middleware selected by
     /// <paramref name="options"/> and returns the built <see cref="IChatClient"/>. Terminal call on a
     /// <see cref="ChatClientBuilder"/>.
     /// </summary>
     /// <param name="builder">The chat-client builder (from <c>AddChatClient</c>).</param>
-    /// <param name="innerClient">The provider's raw chat client to wrap.</param>
     /// <param name="options">Middleware toggles; defaults enable function invocation + telemetry.</param>
     /// <returns>The composed chat client.</returns>
-    public static IChatClient Apply(this ChatClientBuilder builder, IChatClient innerClient, AiPipelineOptions? options = null)
+    public static IChatClient Apply(this ChatClientBuilder builder, AiPipelineOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(innerClient);
 
         options ??= new AiPipelineOptions();
 
@@ -31,6 +29,6 @@ public static class ChatExtensions
         if (options.EnableTelemetry)
             builder = builder.UseOpenTelemetry();
 
-        return builder.Use(innerClient);
+        return builder.Build();
     }
 }

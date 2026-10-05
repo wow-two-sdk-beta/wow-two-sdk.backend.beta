@@ -295,7 +295,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Tenancy.PerRow` | EF Core query-filter strategy | planned |
 | `WoW.Two.Sdk.Backend.Beta.Tenancy.PerDb` | Per-tenant DbContext factory | planned |
 | `WoW.Two.Sdk.Backend.Beta.Tenancy.PerSchema` | Per-tenant schema strategy | planned |
-| `WoW.Two.Sdk.Backend.Beta.Ai` | Meta — Microsoft.Extensions.AI defaults | planned |
+| `WoW.Two.Sdk.Backend.Beta.Ai` | `Microsoft.Extensions.AI` 10.x chat pipeline and provider abstractions | implemented (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Ai.SemanticKernel` | SK wrapping | planned |
 | `WoW.Two.Sdk.Backend.Beta.Ai.KernelMemory` | KernelMemory wrapping | planned |
 | `WoW.Two.Sdk.Backend.Beta.Ai.OpenAi` | OpenAI provider | planned |
@@ -303,7 +303,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Ai.Anthropic` | Anthropic Claude provider | planned |
 | `WoW.Two.Sdk.Backend.Beta.Ai.Bedrock` | AWS Bedrock provider | planned |
 | `WoW.Two.Sdk.Backend.Beta.Ai.Gemini` | Google Gemini provider | planned |
-| `WoW.Two.Sdk.Backend.Beta.Ai.Ollama` | Ollama local provider | planned |
+| `WoW.Two.Sdk.Backend.Beta.Ai.Ollama` | `AddOllamaChatClient` / `AddOllamaEmbeddingGenerator` — OllamaSharp 5.5.0 | implemented (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Ai.Llama` | LLamaSharp local inference | planned |
 | `WoW.Two.Sdk.Backend.Beta.Ai.Vector.Pgvector` | pgvector + Npgsql vector store | planned |
 | `WoW.Two.Sdk.Backend.Beta.Ai.Vector.Redis` | Redis Stack vector store | planned |
@@ -313,7 +313,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Ai.Vector.Chroma` | Chroma vector store | planned |
 | `WoW.Two.Sdk.Backend.Beta.Ai.Vector.AzureSearch` | Azure AI Search vector store | planned |
 | `WoW.Two.Sdk.Backend.Beta.Ai.Tokenizers` | Microsoft.ML.Tokenizers preset | planned |
-| `WoW.Two.Sdk.Backend.Beta.Ai.Mcp` | Model Context Protocol integration | planned |
+| `WoW.Two.Sdk.Backend.Beta.Ai.Mcp` | `AddStatelessMcpServer` / `MapAuthenticatedMcp` — stateless HTTP transport with host and operation authorization | implemented (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.FeatureFlags` | `AddFeatureFlags()` + `IFeatureFlags`; gates: `RequireFeatures(...)` endpoint filter and `AddMediatorFeatureGatingInterceptor()` (`IFeatureGated`, gates implemented, unreleased) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.FeatureFlags.OpenFeature` | `AddOpenFeatureClient()` — OpenFeature seam | shipped |
 | `WoW.Two.Sdk.Backend.Beta.FeatureFlags.LaunchDarkly` | LaunchDarkly provider | planned |

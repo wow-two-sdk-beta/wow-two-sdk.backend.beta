@@ -11,6 +11,7 @@ Namespace root: `WoW.Two.Sdk.Backend.Beta.Ai`. `IChatClient` / `IEmbeddingGenera
 | `Core/` | `ChatExtensions.Apply`, `AiPipelineOptions` | Uniform pipeline (function-invocation + OpenTelemetry) every broker terminates with |
 | `Ollama/` | `AddOllamaChatClient(endpoint, model)`, `AddOllamaEmbeddingGenerator(...)` | Local models via the Ollama server |
 | `Tokenizers/` | `AddTiktokenTokenCounter(model)`, `ITokenCounter` | tiktoken token counting for prompt-budget / cost |
+| `Mcp/` | `AddStatelessMcpServer`, `MapAuthenticatedMcp` | Explicit authenticated HTTP hosting for product tools |
 
 ## Quickstart
 
@@ -22,10 +23,10 @@ builder.Services
 
 public sealed class Assistant(IChatClient chat, ITokenCounter tokens)
 {
-    public Task<ChatCompletion> AskAsync(string prompt, CancellationToken ct)
+    public Task<ChatResponse> AskAsync(string prompt, CancellationToken ct)
     {
         _ = tokens.Count(prompt);                       // budget check
-        return chat.CompleteAsync(prompt, cancellationToken: ct);
+        return chat.GetResponseAsync(prompt, cancellationToken: ct);
     }
 }
 ```
@@ -38,9 +39,12 @@ Every broker wraps its raw client with the SDK pipeline (`ChatExtensions.Apply`)
 |---|---|
 | **Ollama** (local) | shipped (wave 1) |
 | Tokenizers (tiktoken) | shipped (wave 1) |
-| **Anthropic · OpenAI · Azure OpenAI** | pending — target M.E.AI `9.3.0+` (`GetResponseAsync` API); need a coordinated M.E.AI-stack version bump (+ newer OllamaSharp) that rewrites `Core` to the new API |
-| Gemini · Bedrock · Llama · Semantic Kernel · vector stores · MCP | roadmap |
+| **Anthropic · OpenAI · Azure OpenAI** | provider registrations pending; the shared stack uses the `GetResponseAsync` API |
+| MCP | stateless authenticated HTTP host implemented; publication and broader vector completeness pending |
+| Gemini · Bedrock · Llama · Semantic Kernel · vector stores | roadmap |
 
 ## Version note
 
-The pinned `Microsoft.Extensions.AI 9.0.0-preview.9` uses the older `CompleteAsync`/`ChatCompletion` API — matched by OllamaSharp 4.x. Modern provider SDKs (Anthropic 5.1, OpenAI adapters) target `9.3.0+` (`GetResponseAsync`/`ChatResponse`). Aligning them = one coordinated stack bump; deferred so wave 1 ships stable.
+`Microsoft.Extensions.AI 10.8.3`, OllamaSharp `5.5.0` and MCP `2.2.0` share the current AI abstractions.
+`ChatExtensions.Apply` takes a builder that already owns its inner client and calls `Build()`;
+the preview overload accepting a separate `innerClient` is removed.

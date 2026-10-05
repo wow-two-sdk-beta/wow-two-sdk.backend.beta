@@ -1,6 +1,6 @@
 # Backend Implementation Targets — what we'll build
 
-*Last updated: 2026-09-29*
+*Last updated: 2026-10-05*
 
 > Companion: [`ideas.md`](./ideas.md) — every .NET tech / pattern / library / runtime API that exists. **No verdicts.**
 >
@@ -548,7 +548,7 @@ Subpath: `wow-two-sdk.backend.beta.ai`.
 
 | Item | Verdict | Note |
 |---|---|---|
-| `Microsoft.Extensions.AI` + `.Abstractions` | LOCKED | Default abstraction (.NET 9) |
+| `Microsoft.Extensions.AI` + `.Abstractions` | LOCKED | Default abstraction; 10.8.3 adapter update implemented with OllamaSharp 5.5.0 |
 | `Microsoft.SemanticKernel` | NEXT | Plugin orchestration |
 | `Microsoft.KernelMemory` | LATER | Optional RAG service |
 | Provider adapters: OpenAI, Azure.AI.OpenAI, Anthropic.SDK, AWS Bedrock, Google Vertex/Gemini (via Mscc.GenerativeAI), OllamaSharp, LLamaSharp | NEXT | Pluggable per `IChatClient` |
@@ -562,7 +562,7 @@ Subpath: `wow-two-sdk.backend.beta.ai`.
 | Cost tracking + OTel meter for token usage | NEXT | First-class |
 | Embedding cache + semantic-similar response cache | NEXT | Built-in |
 | Microsoft.AI.Evaluation (.NET 9) | LATER | Eval framework |
-| MCP (Model Context Protocol) integration | NEXT | Anthropic standard; emerging |
+| MCP (Model Context Protocol) integration | NOW | Stateless HTTP hosting and authorization implemented in `src/Ai/Mcp/`; full vector inventory follows Wheelhouse adoption |
 
 ### 3.9 Authentication / Authorization deep — see §2.8
 

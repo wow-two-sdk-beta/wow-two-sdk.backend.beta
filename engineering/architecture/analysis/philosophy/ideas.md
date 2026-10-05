@@ -1,6 +1,6 @@
 # Backend World Catalog — what exists in .NET
 
-*Last updated: 2026-05-04*
+*Last updated: 2026-10-05*
 
 > Companion: [`targets.md`](./targets.md) — what *we'll* implement, prioritized.
 >
@@ -892,7 +892,8 @@ Per category, the hidden complexity beyond "make it work."
 | Vector DBs | Pinecone, Weaviate, Qdrant, Milvus, Chroma, Pgvector (Npgsql.Pgvector), NRedisStack vectors, Microsoft.SemanticKernel.Connectors.* |
 | Embedding models | text-embedding-3-small/large, ada-002, Cohere Embed, Voyage, BGE, Microsoft.Extensions.AI |
 | RAG | Ingest → chunk → embed → upsert → retrieve → rerank → augment-prompt; Microsoft.KernelMemory shape |
-| Tools / Function calling | OpenAI tools, Anthropic tools, MS SK plugins, MCP (Model Context Protocol) — anthropics' standard |
+| Tools / Function calling | OpenAI tools, Anthropic tools, MS SK plugins, MCP (Model Context Protocol) |
+| MCP integration | Official `ModelContextProtocol` .NET SDK: HTTP and stdio transports, tools, resources, prompts, authorization and client adapters |
 | Streaming | SSE / chunked stream of LLM tokens |
 | Cost tracking | Token-usage counters; OTel custom meter |
 | Prompt mgmt | Versioned prompts, Prompty file, Microsoft.Extensions.AI prompts |

@@ -1,6 +1,6 @@
 # Backend Beta SDK — Backlog
 
-*Last updated: 2026-09-29*
+*Last updated: 2026-10-05*
 
 Every unbuilt item, grouped; top of each group = next. Shipped capabilities live in
 [`package-registry.md`](../architecture/package-registry.md) and git; deep-dives in [`research/`](../research/research.md).
@@ -58,6 +58,7 @@ The SDK versions as NuGet `10.y.z-beta`, so a feature reads `shipped` once the p
 | GitHub and container-registry clients | shipped | — |
 | Per-row multi-tenancy | shipped | — |
 | AI chat and embeddings over Ollama | shipped | — |
+| Stateless HTTP MCP hosting with endpoint and tool authorization | implemented | [Mcp.spec.md](../codebase/wow-two-back-beta-sdk/src/Ai/Mcp/Mcp.spec.md) |
 | Payments | planned | — |
 | Search | planned | — |
 | Workflow | planned | — |
@@ -70,7 +71,8 @@ SDK vectors without a group of their own below; each row is the vector's next co
 
 | Item | Type | Notes |
 |---|---|---|
-| AI providers, SSE streaming and pgvector | feature | TranscriptForge pulls it forward; the `Microsoft.Extensions.AI` preview pin and OllamaSharp move together (owner decision) |
+| AI providers, SSE streaming and pgvector | feature | TranscriptForge pulls it forward; the coupled `Microsoft.Extensions.AI` 10.8.3 / OllamaSharp 5.5.0 adapter update is implemented |
+| MCP capability completion | feature | Dedicated pass after Wheelhouse adopts the essential stateless HTTP host; inventory client adapters, resources, prompts, transports and lifecycle coverage before extending the slice |
 | Payments, Stripe first | feature | ForeverPin billing and TranscriptForge wait on it — [D04](../research/foreverpin-adoption/foreverpin-adoption.md) |
 | Tenancy strategies: Finbuckle, per-database, per-schema | feature | Per-row isolation ships |
 | Feature-flag providers: LaunchDarkly, ConfigCat, Unleash, GrowthBook | feature | Flags, gates and the OpenFeature seam ship |
@@ -183,7 +185,7 @@ SDK vectors without a group of their own below; each row is the vector's next co
 | CSV file result with spreadsheet-safe cells | feature | ListingShelf |
 | Enum-mapping seam in `AddPostgresPersistence` | feature | TranscriptForge and Haven both map enums by hand |
 | Carry a product's XML docs into its OpenAPI document | feature | TranscriptForge |
-| Bump `Microsoft.Extensions.AI` to 10.x with OllamaSharp | engineering | TranscriptForge; the preview pin blocks extracting its MCP host |
+| Adopt the generic MCP host in TranscriptForge | engineering | SDK host and coupled AI 10.x / OllamaSharp update implemented; the separate consumer adoption remains |
 | Transcript fetch in `Media.Transcripts` | feature | Sift is the second consumer after TranscriptForge; check against the shipped caption parser |
 | HTML listing extraction shared by ListingShelf and Haven | feature | ListingShelf collects; Haven never crawls |
 | Publish granular entity abstractions | engineering | SecretsVault; slims the Domain dependency closure |
