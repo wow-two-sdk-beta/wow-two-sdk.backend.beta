@@ -1,6 +1,6 @@
 # Package registry
 
-*Last updated: 2026-09-29*
+*Last updated: 2026-10-05*
 
 > The seven published NuGets and the capability areas compiled into them.
 
@@ -114,7 +114,7 @@ publication was recorded in the adoption track. Consumer upgrades are separate.
 | `WoW.Two.Sdk.Backend.Beta.Web.RequestLimits` | `AddRequestLimits` — Kestrel body/header/request-line/headers-timeout caps (bounds the decompression input) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Web.OpenApi` | `AddOpenApiDefaults` / `MapOpenApiEndpoint` — `Microsoft.AspNetCore.OpenApi` (.NET 10) | shipped |
 | `WoW.Two.Sdk.Backend.Beta.Web.OpenApi.Swashbuckle` | Swashbuckle fallback adapter | planned |
-| `WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails` | `AddTraceAwareProblemDetails` — RFC 7807 + traceId/requestId enrichment | shipped |
+| `WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails` | `AddTraceAwareProblemDetails` plus opt-in `AddHttpProblemDetails` / `UseHttpProblemDetails` — RFC 9457 errors, trace context and MVC normalization | implemented (mono-lib) |
 | `WoW.Two.Sdk.Backend.Beta.Http.Errors` | `HttpExceptionMappingRule` (in `AddApiDefaults`) + `ToAppErrorAsync` / `EnsureSuccessAsync` — outbound failures as `AppError` | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Web.Contracts.Paging` | `PageDto<T>` / `TokenPageDto<T>` (UI SDK `Page` / `TokenPage` shapes), `PageApiRequest` / `TokenPageApiRequest`, EF `ToPageAsync` + composite-key `ToTokenPageAsync` with opaque tokens | implemented (mono-lib, unreleased) |
 | `WoW.Two.Sdk.Backend.Beta.Web.Idempotency` | `Idempotency-Key` execute-once + replay (422 on body reuse, 409 in flight) over `IIdempotencyRepository`; activated by the `HttpIdempotency` section | implemented (mono-lib, unreleased) |

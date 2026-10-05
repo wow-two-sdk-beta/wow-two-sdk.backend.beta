@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails;
@@ -17,10 +18,10 @@ public static class ProblemDetailsServiceCollectionExtensions
             options.CustomizeProblemDetails = ctx =>
             {
                 var activity = System.Diagnostics.Activity.Current;
-                if (activity is not null)
-                {
-                    ctx.ProblemDetails.Extensions["traceId"] = activity.Id;
-                }
+                ctx.ProblemDetails.Extensions["traceId"] = activity?.Id ?? ctx.HttpContext.TraceIdentifier;
+                ctx.ProblemDetails.Type ??= "about:blank";
+                ctx.ProblemDetails.Title ??= ReasonPhrases.GetReasonPhrase(ctx.ProblemDetails.Status ?? ctx.HttpContext.Response.StatusCode);
+                ctx.ProblemDetails.Instance ??= ctx.HttpContext.Request.Path;
 
                 ctx.ProblemDetails.Extensions["requestId"] = ctx.HttpContext.TraceIdentifier;
 
@@ -46,10 +47,13 @@ public static class ProblemDetailsServiceCollectionExtensions
             StatusCodes.Status404NotFound => "NotFound",
             StatusCodes.Status405MethodNotAllowed => "MethodNotAllowed",
             StatusCodes.Status409Conflict => "Conflict",
+            StatusCodes.Status410Gone => "Gone",
+            StatusCodes.Status413PayloadTooLarge => "PayloadTooLarge",
+            StatusCodes.Status422UnprocessableEntity => "Validation",
             StatusCodes.Status415UnsupportedMediaType => "UnsupportedMediaType",
             StatusCodes.Status429TooManyRequests => "TooManyRequests",
             >= 500 => "Unexpected",
-            _ => null,
+            _ => "HttpError",
         };
 
         if (code is not null)

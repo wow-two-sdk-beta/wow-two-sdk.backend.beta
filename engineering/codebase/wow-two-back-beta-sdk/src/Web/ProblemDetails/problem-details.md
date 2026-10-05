@@ -1,26 +1,19 @@
-# WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails
+# ProblemDetails
 
-> RFC 7807 ProblemDetails — built-in `AddProblemDetails` + automatic `traceId` and `requestId` enrichment.
+*Last updated: 2026-10-02*
 
-## Install
-
-```
-dotnet add package WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails
-```
-
-## Usage
+> RFC 9457 HTTP errors and trace context from `WoW2.Sdk.Backend.Beta`.
 
 ```csharp
-builder.Services.AddTraceAwareProblemDetails();
-
+using WoW.Two.Sdk.Backend.Beta.Web.ProblemDetails;
+builder.Services.AddHttpProblemDetails();
 var app = builder.Build();
-app.UseExceptionHandler();
-app.UseStatusCodePages();
+app.UseHttpProblemDetails();
 ```
 
-Throw `Microsoft.AspNetCore.Http.BadHttpRequestException` etc. — they map to ProblemDetails automatically. Or return `DomainError`-shaped results from your handlers and convert via the [`Errors`](../../foundation/errors/errors.md) package.
+`AddTraceAwareProblemDetails()` remains the lower-level registration.
+The complete opt-in HTTP boundary adds the SDK exception chain, status pages and MVC result normalization.
 
-## See also
-
-- [ASP.NET Core ProblemDetails](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling)
-- [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807)
+[API](HttpProblemDetails.spec.md) · [Contract](HttpProblemDetails.standard.md) ·
+[ASP.NET Core](https://learn.microsoft.com/aspnet/core/fundamentals/error-handling) ·
+[RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)
